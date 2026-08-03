@@ -94,3 +94,13 @@ export { WatchlistButton } from '@/components/sync/WatchlistButton'
 export type { WatchlistButtonProps } from '@/components/sync/WatchlistButton'
 export { FavoriteButton } from '@/components/sync/FavoriteButton'
 export type { FavoriteButtonProps } from '@/components/sync/FavoriteButton'
+
+// Social
+export { CommentThread } from '@/components/social/CommentThread'
+export { ReactionPicker } from '@/components/social/ReactionPicker'
+export { ActivityItem } from '@/components/social/ActivityItem'
+export { CalendarEntry } from '@/components/social/CalendarEntry'
+export { NotificationItem } from '@/components/social/NotificationItem'
+export { FollowButton } from '@/components/social/FollowButton'
+export { ProgressBar } from '@/components/social/ProgressBar'
+export { SpoilerOverlay } from '@/components/social/SpoilerOverlay'

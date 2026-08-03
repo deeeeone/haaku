@@ -15,7 +15,10 @@ import { Route as CollectionRouteImport } from './routes/collection'
 import { Route as FavoritesRouteImport } from './routes/favorites'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as ListsRouteImport } from './routes/lists'
+import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as OfflineRouteImport } from './routes/offline'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as RatingsRouteImport } from './routes/ratings'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -28,6 +31,12 @@ import { Route as ListsCommunityRouteImport } from './routes/lists.community'
 import { Route as MoviesIdRouteImport } from './routes/movies.$id'
 import { Route as PeopleIdRouteImport } from './routes/people.$id'
 import { Route as SeasonsIdRouteImport } from './routes/seasons.$id'
+import { Route as SettingsIndexRouteImport } from './routes/settings/index'
+import { Route as SettingsApikeysRouteImport } from './routes/settings/apikeys'
+import { Route as SettingsFiltersRouteImport } from './routes/settings/filters'
+import { Route as SettingsIntegrationsRouteImport } from './routes/settings/integrations'
+import { Route as SettingsNotificationsRouteImport } from './routes/settings/notifications'
+import { Route as SettingsWebhooksRouteImport } from './routes/settings/webhooks'
 import { Route as ShowsIdRouteImport } from './routes/shows.$id'
 import { Route as ListsSmartNewRouteImport } from './routes/lists.smart.new'
 
@@ -61,9 +70,24 @@ const ListsRoute = ListsRouteImport.update({
   path: '/lists',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OfflineRoute = OfflineRouteImport.update({
+  id: '/offline',
+  path: '/offline',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProgressRoute = ProgressRouteImport.update({
+  id: '/progress',
+  path: '/progress',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RatingsRoute = RatingsRouteImport.update({
@@ -126,6 +150,36 @@ const SeasonsIdRoute = SeasonsIdRouteImport.update({
   path: '/seasons/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsIndexRoute = SettingsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsApikeysRoute = SettingsApikeysRouteImport.update({
+  id: '/apikeys',
+  path: '/apikeys',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsFiltersRoute = SettingsFiltersRouteImport.update({
+  id: '/filters',
+  path: '/filters',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsIntegrationsRoute = SettingsIntegrationsRouteImport.update({
+  id: '/integrations',
+  path: '/integrations',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsNotificationsRoute = SettingsNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
+  getParentRoute: () => SettingsRoute,
+} as any)
+const SettingsWebhooksRoute = SettingsWebhooksRouteImport.update({
+  id: '/webhooks',
+  path: '/webhooks',
+  getParentRoute: () => SettingsRoute,
+} as any)
 const ShowsIdRoute = ShowsIdRouteImport.update({
   id: '/shows/$id',
   path: '/shows/$id',
@@ -144,10 +198,13 @@ export interface FileRoutesByFullPath {
   '/favorites': typeof FavoritesRoute
   '/history': typeof HistoryRoute
   '/lists': typeof ListsRouteWithChildren
+  '/notifications': typeof NotificationsRoute
+  '/offline': typeof OfflineRoute
   '/profile': typeof ProfileRoute
+  '/progress': typeof ProgressRoute
   '/ratings': typeof RatingsRoute
   '/search': typeof SearchRoute
-  '/settings': typeof SettingsRoute
+  '/settings': typeof SettingsRouteWithChildren
   '/social': typeof SocialRoute
   '/watchlist': typeof WatchlistRoute
   '/episodes/$id': typeof EpisodesIdRoute
@@ -156,8 +213,14 @@ export interface FileRoutesByFullPath {
   '/movies/$id': typeof MoviesIdRoute
   '/people/$id': typeof PeopleIdRoute
   '/seasons/$id': typeof SeasonsIdRoute
+  '/settings/apikeys': typeof SettingsApikeysRoute
+  '/settings/filters': typeof SettingsFiltersRoute
+  '/settings/integrations': typeof SettingsIntegrationsRoute
+  '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/webhooks': typeof SettingsWebhooksRoute
   '/shows/$id': typeof ShowsIdRoute
   '/lists/': typeof ListsIndexRoute
+  '/settings/': typeof SettingsIndexRoute
   '/lists/smart/new': typeof ListsSmartNewRoute
 }
 export interface FileRoutesByTo {
@@ -166,10 +229,12 @@ export interface FileRoutesByTo {
   '/collection': typeof CollectionRoute
   '/favorites': typeof FavoritesRoute
   '/history': typeof HistoryRoute
+  '/notifications': typeof NotificationsRoute
+  '/offline': typeof OfflineRoute
   '/profile': typeof ProfileRoute
+  '/progress': typeof ProgressRoute
   '/ratings': typeof RatingsRoute
   '/search': typeof SearchRoute
-  '/settings': typeof SettingsRoute
   '/social': typeof SocialRoute
   '/watchlist': typeof WatchlistRoute
   '/episodes/$id': typeof EpisodesIdRoute
@@ -178,8 +243,14 @@ export interface FileRoutesByTo {
   '/movies/$id': typeof MoviesIdRoute
   '/people/$id': typeof PeopleIdRoute
   '/seasons/$id': typeof SeasonsIdRoute
+  '/settings/apikeys': typeof SettingsApikeysRoute
+  '/settings/filters': typeof SettingsFiltersRoute
+  '/settings/integrations': typeof SettingsIntegrationsRoute
+  '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/webhooks': typeof SettingsWebhooksRoute
   '/shows/$id': typeof ShowsIdRoute
   '/lists': typeof ListsIndexRoute
+  '/settings': typeof SettingsIndexRoute
   '/lists/smart/new': typeof ListsSmartNewRoute
 }
 export interface FileRoutesById {
@@ -190,10 +261,13 @@ export interface FileRoutesById {
   '/favorites': typeof FavoritesRoute
   '/history': typeof HistoryRoute
   '/lists': typeof ListsRouteWithChildren
+  '/notifications': typeof NotificationsRoute
+  '/offline': typeof OfflineRoute
   '/profile': typeof ProfileRoute
+  '/progress': typeof ProgressRoute
   '/ratings': typeof RatingsRoute
   '/search': typeof SearchRoute
-  '/settings': typeof SettingsRoute
+  '/settings': typeof SettingsRouteWithChildren
   '/social': typeof SocialRoute
   '/watchlist': typeof WatchlistRoute
   '/episodes/$id': typeof EpisodesIdRoute
@@ -202,8 +276,14 @@ export interface FileRoutesById {
   '/movies/$id': typeof MoviesIdRoute
   '/people/$id': typeof PeopleIdRoute
   '/seasons/$id': typeof SeasonsIdRoute
+  '/settings/apikeys': typeof SettingsApikeysRoute
+  '/settings/filters': typeof SettingsFiltersRoute
+  '/settings/integrations': typeof SettingsIntegrationsRoute
+  '/settings/notifications': typeof SettingsNotificationsRoute
+  '/settings/webhooks': typeof SettingsWebhooksRoute
   '/shows/$id': typeof ShowsIdRoute
   '/lists/': typeof ListsIndexRoute
+  '/settings/': typeof SettingsIndexRoute
   '/lists/smart/new': typeof ListsSmartNewRoute
 }
 export interface FileRouteTypes {
@@ -215,7 +295,10 @@ export interface FileRouteTypes {
     | '/favorites'
     | '/history'
     | '/lists'
+    | '/notifications'
+    | '/offline'
     | '/profile'
+    | '/progress'
     | '/ratings'
     | '/search'
     | '/settings'
@@ -227,8 +310,14 @@ export interface FileRouteTypes {
     | '/movies/$id'
     | '/people/$id'
     | '/seasons/$id'
+    | '/settings/apikeys'
+    | '/settings/filters'
+    | '/settings/integrations'
+    | '/settings/notifications'
+    | '/settings/webhooks'
     | '/shows/$id'
     | '/lists/'
+    | '/settings/'
     | '/lists/smart/new'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -237,10 +326,12 @@ export interface FileRouteTypes {
     | '/collection'
     | '/favorites'
     | '/history'
+    | '/notifications'
+    | '/offline'
     | '/profile'
+    | '/progress'
     | '/ratings'
     | '/search'
-    | '/settings'
     | '/social'
     | '/watchlist'
     | '/episodes/$id'
@@ -249,8 +340,14 @@ export interface FileRouteTypes {
     | '/movies/$id'
     | '/people/$id'
     | '/seasons/$id'
+    | '/settings/apikeys'
+    | '/settings/filters'
+    | '/settings/integrations'
+    | '/settings/notifications'
+    | '/settings/webhooks'
     | '/shows/$id'
     | '/lists'
+    | '/settings'
     | '/lists/smart/new'
   id:
     | '__root__'
@@ -260,7 +357,10 @@ export interface FileRouteTypes {
     | '/favorites'
     | '/history'
     | '/lists'
+    | '/notifications'
+    | '/offline'
     | '/profile'
+    | '/progress'
     | '/ratings'
     | '/search'
     | '/settings'
@@ -272,8 +372,14 @@ export interface FileRouteTypes {
     | '/movies/$id'
     | '/people/$id'
     | '/seasons/$id'
+    | '/settings/apikeys'
+    | '/settings/filters'
+    | '/settings/integrations'
+    | '/settings/notifications'
+    | '/settings/webhooks'
     | '/shows/$id'
     | '/lists/'
+    | '/settings/'
     | '/lists/smart/new'
   fileRoutesById: FileRoutesById
 }
@@ -284,10 +390,13 @@ export interface RootRouteChildren {
   FavoritesRoute: typeof FavoritesRoute
   HistoryRoute: typeof HistoryRoute
   ListsRoute: typeof ListsRouteWithChildren
+  NotificationsRoute: typeof NotificationsRoute
+  OfflineRoute: typeof OfflineRoute
   ProfileRoute: typeof ProfileRoute
+  ProgressRoute: typeof ProgressRoute
   RatingsRoute: typeof RatingsRoute
   SearchRoute: typeof SearchRoute
-  SettingsRoute: typeof SettingsRoute
+  SettingsRoute: typeof SettingsRouteWithChildren
   SocialRoute: typeof SocialRoute
   WatchlistRoute: typeof WatchlistRoute
   EpisodesIdRoute: typeof EpisodesIdRoute
@@ -341,11 +450,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ListsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/offline': {
+      id: '/offline'
+      path: '/offline'
+      fullPath: '/offline'
+      preLoaderRoute: typeof OfflineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/profile': {
       id: '/profile'
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/progress': {
+      id: '/progress'
+      path: '/progress'
+      fullPath: '/progress'
+      preLoaderRoute: typeof ProgressRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ratings': {
@@ -432,6 +562,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SeasonsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings/': {
+      id: '/settings/'
+      path: '/'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof SettingsIndexRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/apikeys': {
+      id: '/settings/apikeys'
+      path: '/apikeys'
+      fullPath: '/settings/apikeys'
+      preLoaderRoute: typeof SettingsApikeysRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/filters': {
+      id: '/settings/filters'
+      path: '/filters'
+      fullPath: '/settings/filters'
+      preLoaderRoute: typeof SettingsFiltersRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/integrations': {
+      id: '/settings/integrations'
+      path: '/integrations'
+      fullPath: '/settings/integrations'
+      preLoaderRoute: typeof SettingsIntegrationsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/notifications': {
+      id: '/settings/notifications'
+      path: '/notifications'
+      fullPath: '/settings/notifications'
+      preLoaderRoute: typeof SettingsNotificationsRouteImport
+      parentRoute: typeof SettingsRoute
+    }
+    '/settings/webhooks': {
+      id: '/settings/webhooks'
+      path: '/webhooks'
+      fullPath: '/settings/webhooks'
+      preLoaderRoute: typeof SettingsWebhooksRouteImport
+      parentRoute: typeof SettingsRoute
+    }
     '/shows/$id': {
       id: '/shows/$id'
       path: '/shows/$id'
@@ -465,6 +637,28 @@ const ListsRouteChildren: ListsRouteChildren = {
 
 const ListsRouteWithChildren = ListsRoute._addFileChildren(ListsRouteChildren)
 
+interface SettingsRouteChildren {
+  SettingsApikeysRoute: typeof SettingsApikeysRoute
+  SettingsFiltersRoute: typeof SettingsFiltersRoute
+  SettingsIntegrationsRoute: typeof SettingsIntegrationsRoute
+  SettingsNotificationsRoute: typeof SettingsNotificationsRoute
+  SettingsWebhooksRoute: typeof SettingsWebhooksRoute
+  SettingsIndexRoute: typeof SettingsIndexRoute
+}
+
+const SettingsRouteChildren: SettingsRouteChildren = {
+  SettingsApikeysRoute: SettingsApikeysRoute,
+  SettingsFiltersRoute: SettingsFiltersRoute,
+  SettingsIntegrationsRoute: SettingsIntegrationsRoute,
+  SettingsNotificationsRoute: SettingsNotificationsRoute,
+  SettingsWebhooksRoute: SettingsWebhooksRoute,
+  SettingsIndexRoute: SettingsIndexRoute,
+}
+
+const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
+  SettingsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalendarRoute: CalendarRoute,
@@ -472,10 +666,13 @@ const rootRouteChildren: RootRouteChildren = {
   FavoritesRoute: FavoritesRoute,
   HistoryRoute: HistoryRoute,
   ListsRoute: ListsRouteWithChildren,
+  NotificationsRoute: NotificationsRoute,
+  OfflineRoute: OfflineRoute,
   ProfileRoute: ProfileRoute,
+  ProgressRoute: ProgressRoute,
   RatingsRoute: RatingsRoute,
   SearchRoute: SearchRoute,
-  SettingsRoute: SettingsRoute,
+  SettingsRoute: SettingsRouteWithChildren,
   SocialRoute: SocialRoute,
   WatchlistRoute: WatchlistRoute,
   EpisodesIdRoute: EpisodesIdRoute,
