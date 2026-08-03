@@ -1,0 +1,232 @@
+@import url('https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,300..900;1,300..900&family=Sora:wght@100..800&display=swap');
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+/*
+  TKiller Web — Design tokens and base styles.
+  Uses the SwiflyTV "Ultra" design system from the design-kit.
+  Namespaced --sf-* tokens for collision-free theming.
+*/
+
+:root {
+  /* Surfaces */
+  --sf-bg: #050711;
+  --sf-bg-2: #080b18;
+  --sf-bg-3: #0c1122;
+
+  /* Ink */
+  --sf-ink: #f8fbff;
+  --sf-ink-muted: rgba(248, 251, 255, 0.66);
+  --sf-ink-faint: rgba(248, 251, 255, 0.45);
+  --sf-ink-hint: rgba(248, 251, 255, 0.28);
+
+  /* Glass surfaces */
+  --sf-panel: rgba(255, 255, 255, 0.072);
+  --sf-panel-2: rgba(255, 255, 255, 0.11);
+  --sf-panel-3: rgba(255, 255, 255, 0.16);
+
+  /* Lines */
+  --sf-line: rgba(255, 255, 255, 0.13);
+  --sf-line-2: rgba(255, 255, 255, 0.2);
+
+  /* Accents */
+  --sf-accent: #8c6bff;
+  --sf-accent-2: #35d8ff;
+  --sf-accent-3: #ff65d8;
+  --sf-accent-4: #6fffc6;
+  --sf-brand-red: #e50914;
+  --sf-glow: rgba(140, 107, 255, 0.35);
+
+  /* Effects */
+  --sf-shadow: 0 22px 70px rgba(0, 0, 0, 0.36);
+  --sf-shadow-lg: 0 28px 120px rgba(0, 0, 0, 0.48);
+
+  /* Radius */
+  --sf-radius-sm: 14px;
+  --sf-radius: 18px;
+  --sf-radius-lg: 28px;
+  --sf-radius-xl: 34px;
+  --sf-radius-full: 9999px;
+
+  /* Layout */
+  --sf-nav-h: 74px;
+  --sf-edge: clamp(18px, 4.4vw, 82px);
+  --sf-rail-gap: clamp(12px, 1.05vw, 18px);
+  --sf-card-min: 202px;
+
+  /* Motion */
+  --sf-dur-fast: 150ms;
+  --sf-dur: 250ms;
+  --sf-dur-slow: 610ms;
+  --sf-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --sf-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --sf-ease-pop: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  /* Fonts */
+  --sf-font-ui: 'Rubik', 'Host Grotesk', Inter, system-ui, -apple-system,
+    BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --sf-font-display: 'Sora', 'Rubik', 'Host Grotesk', Inter, sans-serif;
+}
+
+@theme inline {
+  --color-sf-bg: var(--sf-bg);
+  --color-sf-bg-2: var(--sf-bg-2);
+  --color-sf-bg-3: var(--sf-bg-3);
+  --color-sf-ink: var(--sf-ink);
+  --color-sf-ink-muted: var(--sf-ink-muted);
+  --color-sf-ink-faint: var(--sf-ink-faint);
+  --color-sf-ink-hint: var(--sf-ink-hint);
+  --color-sf-panel: var(--sf-panel);
+  --color-sf-panel-2: var(--sf-panel-2);
+  --color-sf-panel-3: var(--sf-panel-3);
+  --color-sf-line: var(--sf-line);
+  --color-sf-line-2: var(--sf-line-2);
+  --color-sf-accent: var(--sf-accent);
+  --color-sf-accent-2: var(--sf-accent-2);
+  --color-sf-accent-3: var(--sf-accent-3);
+  --color-sf-accent-4: var(--sf-accent-4);
+
+  --radius-sf-sm: var(--sf-radius-sm);
+  --radius-sf: var(--sf-radius);
+  --radius-sf-lg: var(--sf-radius-lg);
+  --radius-sf-xl: var(--sf-radius-xl);
+
+  --font-ui: var(--sf-font-ui);
+  --font-display: var(--sf-font-display);
+}
+
+@layer base {
+  * {
+    @apply border-sf-line;
+  }
+
+  html {
+    background: var(--sf-bg);
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--sf-font-ui);
+    color: var(--sf-ink);
+    background-color: var(--sf-bg);
+    background-image: radial-gradient(
+        1100px circle at 78% -8%,
+        rgba(140, 107, 255, 0.1),
+        transparent 46%
+      ),
+      radial-gradient(
+        980px circle at -6% 44%,
+        rgba(53, 216, 255, 0.075),
+        transparent 44%
+      ),
+      radial-gradient(
+        850px circle at 50% 105%,
+        rgba(255, 79, 216, 0.1),
+        transparent 50%
+      ),
+      linear-gradient(180deg, var(--sf-bg) 0%, #060916 38%, var(--sf-bg) 100%);
+    background-attachment: fixed;
+    letter-spacing: -0.012em;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: rgba(140, 107, 255, 0.35);
+    color: var(--sf-ink);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.16);
+    border-radius: 9999px;
+    border: 2px solid var(--sf-bg);
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer utilities {
+  .shine {
+    background: linear-gradient(
+      90deg,
+      #ffffff 0%,
+      #a9efff 32%,
+      #d4c5ff 58%,
+      #ffffff 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .title-shadow {
+    text-shadow: 0 12px 38px rgba(0, 0, 0, 0.55);
+  }
+
+  .glass {
+    background: var(--sf-panel);
+    border: 1px solid var(--sf-line);
+    backdrop-filter: blur(18px) saturate(1.08);
+    -webkit-backdrop-filter: blur(18px) saturate(1.08);
+  }
+
+  .grid-bg {
+    background-image: linear-gradient(
+        rgba(255, 255, 255, 0.035) 1px,
+        transparent 1px
+      ),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    background-size: 52px 52px;
+    mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.85), transparent 76%);
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.85),
+      transparent 76%
+    );
+  }
+
+  .vignette {
+    background: radial-gradient(
+      circle at 50% 50%,
+      transparent 0,
+      rgba(0, 0, 0, 0.28) 100%
+    );
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mask-rail {
+    mask-image: linear-gradient(
+      to right,
+      transparent 0,
+      black 32px,
+      black calc(100% - 32px),
+      transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent 0,
+      black 32px,
+      black calc(100% - 32px),
+      transparent 100%
+    );
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+}

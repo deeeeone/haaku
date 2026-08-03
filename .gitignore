@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build
+dist/
+build/
+
+# Env
+.env.local
+.env.production
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test
+coverage/
+e2e/test-results/
+e2e/playwright-report/
+
+# Generated
+src/api/generated/
+
+# Misc
+*.log
