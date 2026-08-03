@@ -11,13 +11,25 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CalendarRouteImport } from './routes/calendar'
+import { Route as CollectionRouteImport } from './routes/collection'
+import { Route as FavoritesRouteImport } from './routes/favorites'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as ListsRouteImport } from './routes/lists'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as RatingsRouteImport } from './routes/ratings'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SocialRouteImport } from './routes/social'
 import { Route as WatchlistRouteImport } from './routes/watchlist'
+import { Route as EpisodesIdRouteImport } from './routes/episodes.$id'
+import { Route as ListsIndexRouteImport } from './routes/lists.index'
+import { Route as ListsIdRouteImport } from './routes/lists.$id'
+import { Route as ListsCommunityRouteImport } from './routes/lists.community'
+import { Route as MoviesIdRouteImport } from './routes/movies.$id'
+import { Route as PeopleIdRouteImport } from './routes/people.$id'
+import { Route as SeasonsIdRouteImport } from './routes/seasons.$id'
+import { Route as ShowsIdRouteImport } from './routes/shows.$id'
+import { Route as ListsSmartNewRouteImport } from './routes/lists.smart.new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -27,6 +39,16 @@ const IndexRoute = IndexRouteImport.update({
 const CalendarRoute = CalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CollectionRoute = CollectionRouteImport.update({
+  id: '/collection',
+  path: '/collection',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FavoritesRoute = FavoritesRouteImport.update({
+  id: '/favorites',
+  path: '/favorites',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HistoryRoute = HistoryRouteImport.update({
@@ -42,6 +64,11 @@ const ListsRoute = ListsRouteImport.update({
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RatingsRoute = RatingsRouteImport.update({
+  id: '/ratings',
+  path: '/ratings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SearchRoute = SearchRouteImport.update({
@@ -64,87 +91,210 @@ const WatchlistRoute = WatchlistRouteImport.update({
   path: '/watchlist',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EpisodesIdRoute = EpisodesIdRouteImport.update({
+  id: '/episodes/$id',
+  path: '/episodes/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ListsIndexRoute = ListsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ListsRoute,
+} as any)
+const ListsIdRoute = ListsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ListsRoute,
+} as any)
+const ListsCommunityRoute = ListsCommunityRouteImport.update({
+  id: '/community',
+  path: '/community',
+  getParentRoute: () => ListsRoute,
+} as any)
+const MoviesIdRoute = MoviesIdRouteImport.update({
+  id: '/movies/$id',
+  path: '/movies/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PeopleIdRoute = PeopleIdRouteImport.update({
+  id: '/people/$id',
+  path: '/people/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SeasonsIdRoute = SeasonsIdRouteImport.update({
+  id: '/seasons/$id',
+  path: '/seasons/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShowsIdRoute = ShowsIdRouteImport.update({
+  id: '/shows/$id',
+  path: '/shows/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ListsSmartNewRoute = ListsSmartNewRouteImport.update({
+  id: '/smart/new',
+  path: '/smart/new',
+  getParentRoute: () => ListsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
+  '/collection': typeof CollectionRoute
+  '/favorites': typeof FavoritesRoute
   '/history': typeof HistoryRoute
-  '/lists': typeof ListsRoute
+  '/lists': typeof ListsRouteWithChildren
   '/profile': typeof ProfileRoute
+  '/ratings': typeof RatingsRoute
   '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
   '/social': typeof SocialRoute
   '/watchlist': typeof WatchlistRoute
+  '/episodes/$id': typeof EpisodesIdRoute
+  '/lists/$id': typeof ListsIdRoute
+  '/lists/community': typeof ListsCommunityRoute
+  '/movies/$id': typeof MoviesIdRoute
+  '/people/$id': typeof PeopleIdRoute
+  '/seasons/$id': typeof SeasonsIdRoute
+  '/shows/$id': typeof ShowsIdRoute
+  '/lists/': typeof ListsIndexRoute
+  '/lists/smart/new': typeof ListsSmartNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
+  '/collection': typeof CollectionRoute
+  '/favorites': typeof FavoritesRoute
   '/history': typeof HistoryRoute
-  '/lists': typeof ListsRoute
   '/profile': typeof ProfileRoute
+  '/ratings': typeof RatingsRoute
   '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
   '/social': typeof SocialRoute
   '/watchlist': typeof WatchlistRoute
+  '/episodes/$id': typeof EpisodesIdRoute
+  '/lists/$id': typeof ListsIdRoute
+  '/lists/community': typeof ListsCommunityRoute
+  '/movies/$id': typeof MoviesIdRoute
+  '/people/$id': typeof PeopleIdRoute
+  '/seasons/$id': typeof SeasonsIdRoute
+  '/shows/$id': typeof ShowsIdRoute
+  '/lists': typeof ListsIndexRoute
+  '/lists/smart/new': typeof ListsSmartNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
+  '/collection': typeof CollectionRoute
+  '/favorites': typeof FavoritesRoute
   '/history': typeof HistoryRoute
-  '/lists': typeof ListsRoute
+  '/lists': typeof ListsRouteWithChildren
   '/profile': typeof ProfileRoute
+  '/ratings': typeof RatingsRoute
   '/search': typeof SearchRoute
   '/settings': typeof SettingsRoute
   '/social': typeof SocialRoute
   '/watchlist': typeof WatchlistRoute
+  '/episodes/$id': typeof EpisodesIdRoute
+  '/lists/$id': typeof ListsIdRoute
+  '/lists/community': typeof ListsCommunityRoute
+  '/movies/$id': typeof MoviesIdRoute
+  '/people/$id': typeof PeopleIdRoute
+  '/seasons/$id': typeof SeasonsIdRoute
+  '/shows/$id': typeof ShowsIdRoute
+  '/lists/': typeof ListsIndexRoute
+  '/lists/smart/new': typeof ListsSmartNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/calendar'
+    | '/collection'
+    | '/favorites'
     | '/history'
     | '/lists'
     | '/profile'
+    | '/ratings'
     | '/search'
     | '/settings'
     | '/social'
     | '/watchlist'
+    | '/episodes/$id'
+    | '/lists/$id'
+    | '/lists/community'
+    | '/movies/$id'
+    | '/people/$id'
+    | '/seasons/$id'
+    | '/shows/$id'
+    | '/lists/'
+    | '/lists/smart/new'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/calendar'
+    | '/collection'
+    | '/favorites'
     | '/history'
-    | '/lists'
     | '/profile'
+    | '/ratings'
     | '/search'
     | '/settings'
     | '/social'
     | '/watchlist'
+    | '/episodes/$id'
+    | '/lists/$id'
+    | '/lists/community'
+    | '/movies/$id'
+    | '/people/$id'
+    | '/seasons/$id'
+    | '/shows/$id'
+    | '/lists'
+    | '/lists/smart/new'
   id:
     | '__root__'
     | '/'
     | '/calendar'
+    | '/collection'
+    | '/favorites'
     | '/history'
     | '/lists'
     | '/profile'
+    | '/ratings'
     | '/search'
     | '/settings'
     | '/social'
     | '/watchlist'
+    | '/episodes/$id'
+    | '/lists/$id'
+    | '/lists/community'
+    | '/movies/$id'
+    | '/people/$id'
+    | '/seasons/$id'
+    | '/shows/$id'
+    | '/lists/'
+    | '/lists/smart/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CalendarRoute: typeof CalendarRoute
+  CollectionRoute: typeof CollectionRoute
+  FavoritesRoute: typeof FavoritesRoute
   HistoryRoute: typeof HistoryRoute
-  ListsRoute: typeof ListsRoute
+  ListsRoute: typeof ListsRouteWithChildren
   ProfileRoute: typeof ProfileRoute
+  RatingsRoute: typeof RatingsRoute
   SearchRoute: typeof SearchRoute
   SettingsRoute: typeof SettingsRoute
   SocialRoute: typeof SocialRoute
   WatchlistRoute: typeof WatchlistRoute
+  EpisodesIdRoute: typeof EpisodesIdRoute
+  MoviesIdRoute: typeof MoviesIdRoute
+  PeopleIdRoute: typeof PeopleIdRoute
+  SeasonsIdRoute: typeof SeasonsIdRoute
+  ShowsIdRoute: typeof ShowsIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -161,6 +311,20 @@ declare module '@tanstack/react-router' {
       path: '/calendar'
       fullPath: '/calendar'
       preLoaderRoute: typeof CalendarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/collection': {
+      id: '/collection'
+      path: '/collection'
+      fullPath: '/collection'
+      preLoaderRoute: typeof CollectionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/favorites': {
+      id: '/favorites'
+      path: '/favorites'
+      fullPath: '/favorites'
+      preLoaderRoute: typeof FavoritesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/history': {
@@ -182,6 +346,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ratings': {
+      id: '/ratings'
+      path: '/ratings'
+      fullPath: '/ratings'
+      preLoaderRoute: typeof RatingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/search': {
@@ -212,19 +383,106 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WatchlistRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/episodes/$id': {
+      id: '/episodes/$id'
+      path: '/episodes/$id'
+      fullPath: '/episodes/$id'
+      preLoaderRoute: typeof EpisodesIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lists/': {
+      id: '/lists/'
+      path: '/'
+      fullPath: '/lists/'
+      preLoaderRoute: typeof ListsIndexRouteImport
+      parentRoute: typeof ListsRoute
+    }
+    '/lists/$id': {
+      id: '/lists/$id'
+      path: '/$id'
+      fullPath: '/lists/$id'
+      preLoaderRoute: typeof ListsIdRouteImport
+      parentRoute: typeof ListsRoute
+    }
+    '/lists/community': {
+      id: '/lists/community'
+      path: '/community'
+      fullPath: '/lists/community'
+      preLoaderRoute: typeof ListsCommunityRouteImport
+      parentRoute: typeof ListsRoute
+    }
+    '/movies/$id': {
+      id: '/movies/$id'
+      path: '/movies/$id'
+      fullPath: '/movies/$id'
+      preLoaderRoute: typeof MoviesIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/people/$id': {
+      id: '/people/$id'
+      path: '/people/$id'
+      fullPath: '/people/$id'
+      preLoaderRoute: typeof PeopleIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/seasons/$id': {
+      id: '/seasons/$id'
+      path: '/seasons/$id'
+      fullPath: '/seasons/$id'
+      preLoaderRoute: typeof SeasonsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shows/$id': {
+      id: '/shows/$id'
+      path: '/shows/$id'
+      fullPath: '/shows/$id'
+      preLoaderRoute: typeof ShowsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lists/smart/new': {
+      id: '/lists/smart/new'
+      path: '/smart/new'
+      fullPath: '/lists/smart/new'
+      preLoaderRoute: typeof ListsSmartNewRouteImport
+      parentRoute: typeof ListsRoute
+    }
   }
 }
+
+interface ListsRouteChildren {
+  ListsIdRoute: typeof ListsIdRoute
+  ListsCommunityRoute: typeof ListsCommunityRoute
+  ListsIndexRoute: typeof ListsIndexRoute
+  ListsSmartNewRoute: typeof ListsSmartNewRoute
+}
+
+const ListsRouteChildren: ListsRouteChildren = {
+  ListsIdRoute: ListsIdRoute,
+  ListsCommunityRoute: ListsCommunityRoute,
+  ListsIndexRoute: ListsIndexRoute,
+  ListsSmartNewRoute: ListsSmartNewRoute,
+}
+
+const ListsRouteWithChildren = ListsRoute._addFileChildren(ListsRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalendarRoute: CalendarRoute,
+  CollectionRoute: CollectionRoute,
+  FavoritesRoute: FavoritesRoute,
   HistoryRoute: HistoryRoute,
-  ListsRoute: ListsRoute,
+  ListsRoute: ListsRouteWithChildren,
   ProfileRoute: ProfileRoute,
+  RatingsRoute: RatingsRoute,
   SearchRoute: SearchRoute,
   SettingsRoute: SettingsRoute,
   SocialRoute: SocialRoute,
   WatchlistRoute: WatchlistRoute,
+  EpisodesIdRoute: EpisodesIdRoute,
+  MoviesIdRoute: MoviesIdRoute,
+  PeopleIdRoute: PeopleIdRoute,
+  SeasonsIdRoute: SeasonsIdRoute,
+  ShowsIdRoute: ShowsIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

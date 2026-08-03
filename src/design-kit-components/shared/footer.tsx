@@ -23,11 +23,11 @@ export function Footer({ className }: FooterProps) {
     <footer
       className={cn('mt-20 border-t border-sf-line bg-sf-bg-2/60', className)}
     >
-      <div className="mx-auto max-w-[1520px] px-(--sf-edge) py-12">
+      <div className="mx-auto max-w-380 px-(--sf-edge) py-12">
         <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div className="space-y-4">
             <div className="flex items-center gap-2.5">
-              <span className="grid size-9 place-items-center rounded-[12px] bg-linear-to-br from-sf-accent to-sf-accent-2 shadow-[0_6px_20px_rgba(140,107,255,0.4)]">
+              <span className="grid size-9 place-items-center rounded-full bg-linear-to-br from-sf-accent to-sf-accent-2 shadow-[0_6px_20px_rgba(140,107,255,0.4)]">
                 <svg
                   viewBox="0 0 24 24"
                   className="size-4 fill-white"
@@ -37,12 +37,12 @@ export function Footer({ className }: FooterProps) {
                 </svg>
               </span>
               <span className="font-display text-lg font-bold tracking-tight text-sf-ink">
-                SwiflyTV
+                Design Kit
               </span>
             </div>
             <p className="max-w-xs text-sm text-sf-ink-faint">
               The everything-in-one streaming platform. Crafted to demo the
-              SwiflyTV design kit.
+              design kit.
             </p>
             <div className="flex items-center gap-2">
               {[
@@ -85,7 +85,7 @@ export function Footer({ className }: FooterProps) {
 
         <div className="mt-10 flex flex-col items-start justify-between gap-3 border-t border-sf-line pt-6 text-xs text-sf-ink-hint md:flex-row md:items-center">
           <p>
-            © {new Date().getFullYear()} SwiflyTV Design Kit. For demonstration
+            © {new Date().getFullYear()} Design Kit. For demonstration
             only.
           </p>
           <p className="font-mono">

@@ -14,14 +14,14 @@ export function Topbar({ brand, nav, className }: TopbarProps) {
   return (
     <header
       className={cn(
-        'sticky top-0 z-40 h-[var(--sf-nav-h)] border-b border-sf-line bg-sf-bg/70 backdrop-blur-xl',
+        'sticky top-0 z-40 h-(--sf-nav-h) border-b border-sf-line bg-sf-bg/70 backdrop-blur-xl',
         className
       )}
     >
-      <div className="mx-auto flex h-full max-w-[1520px] items-center justify-between gap-4 px-(--sf-edge)">
+      <div className="mx-auto flex h-full max-w-380 items-center justify-between gap-4 px-(--sf-edge)">
         <div className="flex items-center gap-8">
           <div className="flex items-center gap-2.5">
-            <span className="grid size-9 place-items-center rounded-[12px] bg-linear-to-br from-sf-accent to-sf-accent-2 shadow-[0_6px_20px_rgba(140,107,255,0.4)]">
+            <span className="grid size-9 place-items-center rounded-full bg-linear-to-br from-sf-accent to-sf-accent-2 shadow-[0_6px_20px_rgba(140,107,255,0.4)]">
               <svg
                 viewBox="0 0 24 24"
                 className="size-4 fill-white"
@@ -31,7 +31,7 @@ export function Topbar({ brand, nav, className }: TopbarProps) {
               </svg>
             </span>
             <span className="font-display text-lg font-bold tracking-tight text-sf-ink">
-              {brand ?? 'SwiflyTV'}
+              {brand ?? 'Design Kit'}
             </span>
           </div>
 

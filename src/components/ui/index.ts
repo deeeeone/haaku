@@ -86,3 +86,11 @@ export { JsonHighlight } from '@/design-kit-components/ui/json-highlight'
 // Shared
 export { ProfilePill } from '@/design-kit-components/shared/profile-pill'
 export { WatchProgress } from '@/design-kit-components/shared/watch-progress'
+
+// Sync
+export { RatingStars } from '@/components/sync/RatingStars'
+export type { RatingStarsProps } from '@/components/sync/RatingStars'
+export { WatchlistButton } from '@/components/sync/WatchlistButton'
+export type { WatchlistButtonProps } from '@/components/sync/WatchlistButton'
+export { FavoriteButton } from '@/components/sync/FavoriteButton'
+export type { FavoriteButtonProps } from '@/components/sync/FavoriteButton'
