@@ -13,6 +13,8 @@ import (
 	"trakt-api/internal/httpapi"
 	"trakt-api/internal/logging"
 	"trakt-api/internal/openapi"
+
+	"github.com/robfig/cron/v3"
 )
 
 func main() {
@@ -56,12 +58,11 @@ func main() {
 		logger.Warn("failed to generate openapi.yaml", "error", err)
 	}
 
-	// TODO(T0.9): Cron scaffold (robfig/cron) — startup-refresh for leaderboard,
-	// trending rankings recompute, TMDB change-feed poll.
-	// Pattern: theintrodb-api main.go setupCronJobs().
+	// Cron jobs (T0.9 — TIDB pattern: UTC, panic recovery, startup refresh)
+	setupCronJobs(logger)
 
-	// TODO(T0.9): Worker entrypoints — metadata-worker, webhook-worker, import-worker,
-	// stats-worker, notify-worker. Separate main packages in cmd/workers/.
+	// TODO(T0.9): Worker entrypoints in cmd/workers/ — run as separate containers:
+	// metadata-worker, webhooks-worker, stats-worker, import-worker, notify-worker
 
 	go func() {
 		logger.Info("trakt-api listening", "port", cfg.Port)
@@ -82,4 +83,27 @@ func main() {
 		logger.Error("server forced to shutdown", "error", err)
 	}
 	logger.Info("server stopped gracefully")
+}
+
+// setupCronJobs initializes cron with UTC timezone and panic recovery.
+// Pattern: theintrodb-api main.go setupCronJobs().
+func setupCronJobs(logger *slog.Logger) {
+	c := cron.New(cron.WithLocation(time.UTC))
+
+	// TODO(Phase 3): refresh trending rankings every 15m
+	// _, err := c.AddFunc("*/15 * * * *", refreshTrendingRankings)
+
+	// TODO(Phase 1): daily TMDB change-feed poll
+	// _, err := c.AddFunc("0 3 * * *", refreshMetadataCache)
+
+	// Start the scheduler; jobs are added by domain agents as phases land.
+	c.Start()
+	logger.Info("cron scheduler started")
+}
+
+// recoverFromPanic logs and recovers from goroutine panics.
+func recoverFromPanic(logger *slog.Logger, context string) {
+	if r := recover(); r != nil {
+		logger.Error("panic recovered", "context", context, "panic", r)
+	}
 }

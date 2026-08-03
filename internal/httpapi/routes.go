@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"trakt-api/internal/database"
+	"trakt-api/internal/openapi"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -20,6 +21,17 @@ func RegisterRoutes(app *fiber.App) {
 	app.Get("/healthz", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "ok"})
 	})
+	openapi.Register(openapi.RouteDef{
+		Method:  "GET",
+		Path:    "/healthz",
+		Summary: "Health check — returns service liveness status",
+		Tags:    []string{"Health"},
+		Auth:    "none",
+		StatusCodes: map[int]string{
+			200: "Service is healthy",
+		},
+	})
+
 	app.Get("/readyz", func(c *fiber.Ctx) error {
 		// Check DB + Redis connectivity
 		if db, err := database.GetDB(); err != nil || db == nil {
@@ -33,6 +45,17 @@ func RegisterRoutes(app *fiber.App) {
 			return c.JSON(fiber.Map{"status": "ready", "redis": "unavailable"})
 		}
 		return c.JSON(fiber.Map{"status": "ready"})
+	})
+	openapi.Register(openapi.RouteDef{
+		Method:  "GET",
+		Path:    "/readyz",
+		Summary: "Readiness check — returns service health including DB/Redis",
+		Tags:    []string{"Health"},
+		Auth:    "none",
+		StatusCodes: map[int]string{
+			200: "Service is ready",
+			503: "Service is degraded",
+		},
 	})
 
 	// Placeholder for v1 route groups (Phase 1+):
