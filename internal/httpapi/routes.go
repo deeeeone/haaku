@@ -3,11 +3,17 @@ package httpapi
 import (
 	"trakt-api/internal/auth"
 	"trakt-api/internal/database"
+	"trakt-api/internal/handlers/activity"
 	"trakt-api/internal/handlers/checkin"
+	"trakt-api/internal/handlers/collab"
+	"trakt-api/internal/handlers/comments"
 	"trakt-api/internal/handlers/discovery"
 	"trakt-api/internal/handlers/hidden"
+	"trakt-api/internal/handlers/lists"
 	"trakt-api/internal/handlers/media"
+	"trakt-api/internal/handlers/notifications"
 	"trakt-api/internal/handlers/scrobble"
+	"trakt-api/internal/handlers/social"
 	"trakt-api/internal/handlers/stats"
 	"trakt-api/internal/handlers/sync"
 	"trakt-api/internal/handlers/syncs"
@@ -141,11 +147,29 @@ func RegisterRoutes(app *fiber.App) {
 	// Hidden items (T3.10)
 	hidden.RegisterRoutes(api)
 
+	// Lists + Smart Lists (T4.1 + T4.2)
+	lists.RegisterRoutes(api)
+
+	// Collaborations (T4.3)
+	collab.RegisterRoutes(api)
+
+	// Social — follows/friends (T4.4)
+	social.RegisterRoutes(api)
+
 	// Scrobble + playback (T3.3, T3.4)
 	scrobble.RegisterRoutes(api)
 
 	// Checkin (T3.5)
 	checkin.RegisterRoutes(api)
+
+	// Comments (T4.5)
+	comments.RegisterRoutes(api)
+
+	// Activity feed (T4.6)
+	activity.RegisterRoutes(api)
+
+	// Notifications (T4.7)
+	notifications.RegisterRoutes(api)
 
 	// OAuth2 server (T2.4)
 	oauth.RegisterRoutes(app)

@@ -9,10 +9,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"trakt-api/internal/auth"
 	"trakt-api/internal/database"
 	"trakt-api/internal/openapi"
+	"trakt-api/internal/outbox"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -31,8 +33,8 @@ func registerOpenAPIRoutes() {
 		{Method: "PUT", Path: "/v1/users/me/settings", Summary: "Update user settings", Tags: []string{"Users"}, Auth: "required", StatusCodes: map[int]string{200: "Updated settings", 400: "Invalid request", 401: "Unauthorized"}},
 		{Method: "POST", Path: "/v1/users/me/avatar", Summary: "Upload avatar image", Tags: []string{"Users"}, Auth: "required", StatusCodes: map[int]string{200: "Avatar URL", 400: "Invalid file", 401: "Unauthorized"}},
 		{Method: "DELETE", Path: "/v1/users/me", Summary: "Delete account", Tags: []string{"Users"}, Auth: "required", StatusCodes: map[int]string{204: "Deletion scheduled", 401: "Unauthorized"}},
-		{Method: "POST", Path: "/v1/users/{id}/block", Summary: "Block a user", Tags: []string{"Users"}, Auth: "required", StatusCodes: map[int]string{501: "Not implemented"}},
-		{Method: "DELETE", Path: "/v1/users/{id}/block", Summary: "Unblock a user", Tags: []string{"Users"}, Auth: "required", StatusCodes: map[int]string{501: "Not implemented"}},
+		{Method: "POST", Path: "/v1/users/{id}/block", Summary: "Block a user", Tags: []string{"Users"}, Auth: "required", StatusCodes: map[int]string{204: "Blocked", 400: "Invalid request", 404: "User not found", 401: "Unauthorized"}},
+		{Method: "DELETE", Path: "/v1/users/{id}/block", Summary: "Unblock a user", Tags: []string{"Users"}, Auth: "required", StatusCodes: map[int]string{204: "Unblocked", 404: "Block not found", 401: "Unauthorized"}},
 	}
 	for _, r := range routes {
 		openapi.Register(r)
@@ -254,7 +256,7 @@ func handleGetUser(c *fiber.Ctx) error {
 
 	// Populate stats stubs.
 	var followersCount, followingCount int64
-	db.Model(&database.UserFollow{}).Where("followed_id = ?", userID).Count(&followersCount)
+	db.Model(&database.UserFollow{}).Where("following_id = ?", userID).Count(&followersCount)
 	db.Model(&database.UserFollow{}).Where("follower_id = ?", userID).Count(&followingCount)
 
 	resp.StatsSummary = &StatsSummary{
@@ -415,14 +417,85 @@ func handleDeleteAccount(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-// handleBlockUser is a stub — returns 501.
+// handleBlockUser blocks a user.
 func handleBlockUser(c *fiber.Ctx) error {
-	return writeError(c, fiber.StatusNotImplemented, "not_implemented", "blocking is not yet implemented")
+	userID, ok := c.Locals("user_id").(string)
+	if !ok || userID == "" {
+		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+	}
+
+	targetID := c.Params("id")
+	if targetID == "" || targetID == userID {
+		return writeError(c, fiber.StatusBadRequest, "invalid_request", "invalid target user id")
+	}
+
+	db, err := database.GetDB()
+	if err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+	}
+
+	// Verify target exists.
+	var target database.User
+	if err := db.First(&target, "id = ?", targetID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return writeError(c, fiber.StatusNotFound, "not_found", "user not found")
+		}
+		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+	}
+
+	block := database.UserBlock{
+		BlockerID: userID,
+		BlockedID: targetID,
+		CreatedAt: time.Now(),
+	}
+
+	result := db.Where(database.UserBlock{
+		BlockerID: userID,
+		BlockedID: targetID,
+	}).FirstOrCreate(&block)
+
+	if result.Error != nil {
+		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to block user")
+	}
+
+	// Remove any existing follow relationship in both directions.
+	db.Where("follower_id = ? AND following_id = ?", userID, targetID).Delete(&database.UserFollow{})
+	db.Where("follower_id = ? AND following_id = ?", targetID, userID).Delete(&database.UserFollow{})
+
+	// Publish outbox event.
+	_ = outbox.PublishEvent(db, "user.blocked", userID, map[string]any{"blocked_id": targetID})
+
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
-// handleUnblockUser is a stub — returns 501.
+// handleUnblockUser unblocks a user.
 func handleUnblockUser(c *fiber.Ctx) error {
-	return writeError(c, fiber.StatusNotImplemented, "not_implemented", "unblocking is not yet implemented")
+	userID, ok := c.Locals("user_id").(string)
+	if !ok || userID == "" {
+		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+	}
+
+	targetID := c.Params("id")
+	if targetID == "" {
+		return writeError(c, fiber.StatusBadRequest, "invalid_request", "invalid target user id")
+	}
+
+	db, err := database.GetDB()
+	if err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+	}
+
+	result := db.Where("blocker_id = ? AND blocked_id = ?", userID, targetID).Delete(&database.UserBlock{})
+	if result.Error != nil {
+		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to unblock user")
+	}
+	if result.RowsAffected == 0 {
+		return writeError(c, fiber.StatusNotFound, "not_found", "block not found")
+	}
+
+	_ = outbox.PublishEvent(db, "user.unblocked", userID, map[string]any{"unblocked_id": targetID})
+
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 // ---------------------------------------------------------------------------

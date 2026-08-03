@@ -77,7 +77,7 @@ func PrivacyFilter(targetUserIDParam string) fiber.Handler {
 		if currentUserID != "" {
 			var followCount int64
 			db.Model(&database.UserFollow{}).
-				Where("follower_id = ? AND followed_id = ?", currentUserID, targetUserID).
+				Where("follower_id = ? AND following_id = ?", currentUserID, targetUserID).
 				Count(&followCount)
 			if followCount > 0 {
 				return c.Next()

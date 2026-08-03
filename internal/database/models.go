@@ -34,20 +34,4 @@ type User struct {
 
 func (User) TableName() string { return "users" }
 
-// UserBlock records a block relationship (blocker blocks blocked).
-type UserBlock struct {
-	BlockerID string    `gorm:"primaryKey;type:text" json:"blocker_id"`
-	BlockedID string    `gorm:"primaryKey;type:text" json:"blocked_id"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
-func (UserBlock) TableName() string { return "user_blocks" }
-
-// UserFollow records a follow relationship.
-type UserFollow struct {
-	FollowerID string    `gorm:"primaryKey;type:text" json:"follower_id"`
-	FollowedID string    `gorm:"primaryKey;type:text" json:"followed_id"`
-	CreatedAt  time.Time `json:"created_at"`
-}
-
-func (UserFollow) TableName() string { return "user_follows" }
+// UserBlock and UserFollow are defined in social_models.go (T4.4).
