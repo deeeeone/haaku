@@ -5,6 +5,7 @@ build:
 
 test:
 	go test ./...
+	go test ./_tests_/*.go
 
 vet:
 	go vet ./...

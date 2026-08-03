@@ -22,7 +22,11 @@ jobs:
         run: go build ./...
 
       - name: Test
-        run: go test ./...
+        run: |
+          go test ./...
+          # _tests_/ is a standalone "command-line-arguments" package (underscore
+          # dirs are invisible to `go test ./...`), so run it via explicit files.
+          go test ./_tests_/*.go
 
       # TODO(T0.3): govulncheck, gitleaks secret scan, OpenAPI freshness check
       # (generated openapi.yaml diff), golangci-lint.
