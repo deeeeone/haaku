@@ -4,21 +4,21 @@ import "time"
 
 // List represents a user-created list (T4.1).
 type List struct {
-	ID             int64     `gorm:"primaryKey;autoIncrement" json:"id"`
-	UserID         string    `gorm:"type:text;not null" json:"user_id"`
-	Name           string    `gorm:"type:text;not null" json:"name"`
-	Description    string    `gorm:"type:text;default:''" json:"description,omitempty"`
-	Slug           string    `gorm:"type:text;uniqueIndex;not null" json:"slug"`
-	Privacy        string    `gorm:"type:text;not null;default:public" json:"privacy"`
-	SortBy         string    `gorm:"type:text;default:rank" json:"sort_by,omitempty"`
-	SortHow        string    `gorm:"type:text;default:asc" json:"sort_how,omitempty"`
-	IsRanked       bool      `gorm:"default:false" json:"is_ranked"`
-	CoverURL       string    `gorm:"type:text;default:''" json:"cover_url,omitempty"`
-	AllowComments  bool      `gorm:"default:true" json:"allow_comments"`
-	LikeCount      int       `gorm:"default:0" json:"like_count"`
-	CommentCount   int       `gorm:"default:0" json:"comment_count"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	ID            int64     `gorm:"primaryKey;autoIncrement" json:"id"`
+	UserID        string    `gorm:"type:text;not null" json:"user_id"`
+	Name          string    `gorm:"type:text;not null" json:"name"`
+	Description   string    `gorm:"type:text;default:''" json:"description,omitempty"`
+	Slug          string    `gorm:"type:text;uniqueIndex;not null" json:"slug"`
+	Privacy       string    `gorm:"type:text;not null;default:public" json:"privacy"`
+	SortBy        string    `gorm:"type:text;default:rank" json:"sort_by,omitempty"`
+	SortHow       string    `gorm:"type:text;default:asc" json:"sort_how,omitempty"`
+	IsRanked      bool      `gorm:"default:false" json:"is_ranked"`
+	CoverURL      string    `gorm:"type:text;default:''" json:"cover_url,omitempty"`
+	AllowComments bool      `gorm:"default:true" json:"allow_comments"`
+	LikeCount     int       `gorm:"default:0" json:"like_count"`
+	CommentCount  int       `gorm:"default:0" json:"comment_count"`
+	CreatedAt     time.Time `json:"created_at"`
+	UpdatedAt     time.Time `json:"updated_at"`
 }
 
 func (List) TableName() string { return "lists" }

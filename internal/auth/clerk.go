@@ -34,17 +34,17 @@ type ClerkClient struct {
 
 // ClerkUser is the Clerk user profile as returned by the Clerk API.
 type ClerkUser struct {
-	ID                     string             `json:"id"`
-	Username               string             `json:"username"`
-	FirstName              string             `json:"first_name"`
-	LastName               string             `json:"last_name"`
-	ImageURL               string             `json:"image_url"`
-	EmailAddresses         []clerkEmail       `json:"email_addresses"`
-	PrimaryEmailAddressID  string             `json:"primary_email_address_id"`
-	CreatedAt              int64              `json:"created_at"`
-	UpdatedAt              int64              `json:"updated_at"`
-	PublicMetadata         map[string]any     `json:"public_metadata"`
-	UnsafeMetadata         map[string]any     `json:"unsafe_metadata"`
+	ID                    string         `json:"id"`
+	Username              string         `json:"username"`
+	FirstName             string         `json:"first_name"`
+	LastName              string         `json:"last_name"`
+	ImageURL              string         `json:"image_url"`
+	EmailAddresses        []clerkEmail   `json:"email_addresses"`
+	PrimaryEmailAddressID string         `json:"primary_email_address_id"`
+	CreatedAt             int64          `json:"created_at"`
+	UpdatedAt             int64          `json:"updated_at"`
+	PublicMetadata        map[string]any `json:"public_metadata"`
+	UnsafeMetadata        map[string]any `json:"unsafe_metadata"`
 }
 
 type clerkEmail struct {
@@ -85,8 +85,8 @@ func InitClerk(cfg *config.Config) {
 		slog.Warn("Clerk secret key not set — auth will reject all tokens")
 	}
 	clerkClient = &ClerkClient{
-		BaseURL:   strings.TrimRight(cfg.ClerkBaseURL, "/"),
-		SecretKey: cfg.ClerkSecret,
+		BaseURL:    strings.TrimRight(cfg.ClerkBaseURL, "/"),
+		SecretKey:  cfg.ClerkSecret,
 		httpClient: &http.Client{Timeout: 10 * time.Second},
 		jwks: &jwksCache{
 			keys: make(map[string]*rsa.PublicKey),

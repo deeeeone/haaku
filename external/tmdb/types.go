@@ -3,60 +3,60 @@ package tmdb
 // --- Shared response shapes (partial — only what we need) ---
 
 type IDSet struct {
-	TMDB    int    `json:"id"`
-	IMDB    string `json:"imdb_id"`
-	TVDB    int    `json:"tvdb_id"`
-	Slug    string // our computed slug
+	TMDB int    `json:"id"`
+	IMDB string `json:"imdb_id"`
+	TVDB int    `json:"tvdb_id"`
+	Slug string // our computed slug
 }
 
 // Movie represents a TMDB movie detail response.
 type Movie struct {
-	ID            int      `json:"id"`
-	IMDBID        string   `json:"imdb_id"`
-	Title         string   `json:"title"`
-	OriginalTitle string   `json:"original_title"`
-	Tagline       string   `json:"tagline"`
-	Overview      string   `json:"overview"`
-	ReleaseDate   string   `json:"release_date"`
-	Runtime       int      `json:"runtime"`
-	Status        string   `json:"status"`
-	Popularity    float64  `json:"popularity"`
-	VoteAverage   float64  `json:"vote_average"`
-	VoteCount     int64    `json:"vote_count"`
-	Genres        []Genre  `json:"genres"`
-	Language      string   `json:"original_language"`
-	PosterPath    string   `json:"poster_path"`
-	BackdropPath  string   `json:"backdrop_path"`
-	Adult         bool     `json:"adult"`
-	Budget        int64    `json:"budget"`    // for metadata passthrough
-	Revenue       int64    `json:"revenue"`   // for metadata passthrough
+	ID                  int       `json:"id"`
+	IMDBID              string    `json:"imdb_id"`
+	Title               string    `json:"title"`
+	OriginalTitle       string    `json:"original_title"`
+	Tagline             string    `json:"tagline"`
+	Overview            string    `json:"overview"`
+	ReleaseDate         string    `json:"release_date"`
+	Runtime             int       `json:"runtime"`
+	Status              string    `json:"status"`
+	Popularity          float64   `json:"popularity"`
+	VoteAverage         float64   `json:"vote_average"`
+	VoteCount           int64     `json:"vote_count"`
+	Genres              []Genre   `json:"genres"`
+	Language            string    `json:"original_language"`
+	PosterPath          string    `json:"poster_path"`
+	BackdropPath        string    `json:"backdrop_path"`
+	Adult               bool      `json:"adult"`
+	Budget              int64     `json:"budget"`  // for metadata passthrough
+	Revenue             int64     `json:"revenue"` // for metadata passthrough
 	ProductionCountries []Country `json:"production_countries"`
 }
 
 // Show represents a TMDB TV show detail response.
 type Show struct {
-	ID            int      `json:"id"`
-	IMDBID        string   `json:"imdb_id"`
-	Name          string   `json:"name"`
-	OriginalName  string   `json:"original_name"`
-	Tagline       string   `json:"tagline"`
-	Overview      string   `json:"overview"`
-	FirstAirDate  string   `json:"first_air_date"`
-	LastAirDate   string   `json:"last_air_date"`
-	Status        string   `json:"status"`
-	Popularity    float64  `json:"popularity"`
-	VoteAverage   float64  `json:"vote_average"`
-	VoteCount     int64    `json:"vote_count"`
-	Genres        []Genre  `json:"genres"`
-	Language      string   `json:"original_language"`
-	PosterPath    string   `json:"poster_path"`
-	BackdropPath  string   `json:"backdrop_path"`
-	Networks      []Network `json:"networks"`
-	SeasonsCount  int       `json:"number_of_seasons"`
-	EpisodesCount int       `json:"number_of_episodes"`
-	Seasons       []SeasonSummary `json:"seasons"`
-	Adult         bool     `json:"adult"`
-	ProductionCountries []Country `json:"production_countries"`
+	ID                  int             `json:"id"`
+	IMDBID              string          `json:"imdb_id"`
+	Name                string          `json:"name"`
+	OriginalName        string          `json:"original_name"`
+	Tagline             string          `json:"tagline"`
+	Overview            string          `json:"overview"`
+	FirstAirDate        string          `json:"first_air_date"`
+	LastAirDate         string          `json:"last_air_date"`
+	Status              string          `json:"status"`
+	Popularity          float64         `json:"popularity"`
+	VoteAverage         float64         `json:"vote_average"`
+	VoteCount           int64           `json:"vote_count"`
+	Genres              []Genre         `json:"genres"`
+	Language            string          `json:"original_language"`
+	PosterPath          string          `json:"poster_path"`
+	BackdropPath        string          `json:"backdrop_path"`
+	Networks            []Network       `json:"networks"`
+	SeasonsCount        int             `json:"number_of_seasons"`
+	EpisodesCount       int             `json:"number_of_episodes"`
+	Seasons             []SeasonSummary `json:"seasons"`
+	Adult               bool            `json:"adult"`
+	ProductionCountries []Country       `json:"production_countries"`
 }
 
 // SeasonSummary is the lightweight season info from the show detail.
@@ -136,8 +136,8 @@ type Network struct {
 }
 
 type Country struct {
-	ISO   string `json:"iso_3166_1"`
-	Name  string `json:"name"`
+	ISO  string `json:"iso_3166_1"`
+	Name string `json:"name"`
 }
 
 // Paginated wraps a TMDB paged response.
@@ -250,19 +250,19 @@ type MovieListItem struct {
 
 // TVListItem is a lightweight TV show from list/discover responses.
 type TVListItem struct {
-	ID            int     `json:"id"`
-	Name          string  `json:"name"`
-	OriginalName  string  `json:"original_name"`
-	Overview      string  `json:"overview"`
-	FirstAirDate  string  `json:"first_air_date"`
-	Popularity    float64 `json:"popularity"`
-	VoteAverage   float64 `json:"vote_average"`
-	VoteCount     int64   `json:"vote_count"`
-	PosterPath    string  `json:"poster_path"`
-	BackdropPath  string  `json:"backdrop_path"`
-	Language      string  `json:"original_language"`
-	GenreIDs      []int   `json:"genre_ids"`
-	Adult         bool    `json:"adult"`
+	ID           int     `json:"id"`
+	Name         string  `json:"name"`
+	OriginalName string  `json:"original_name"`
+	Overview     string  `json:"overview"`
+	FirstAirDate string  `json:"first_air_date"`
+	Popularity   float64 `json:"popularity"`
+	VoteAverage  float64 `json:"vote_average"`
+	VoteCount    int64   `json:"vote_count"`
+	PosterPath   string  `json:"poster_path"`
+	BackdropPath string  `json:"backdrop_path"`
+	Language     string  `json:"original_language"`
+	GenreIDs     []int   `json:"genre_ids"`
+	Adult        bool    `json:"adult"`
 }
 
 // TrendingItem is a single item from the trending endpoint.
@@ -290,9 +290,9 @@ type TrendingItem struct {
 
 // CreditsResponse holds cast and crew for a movie or TV show.
 type CreditsResponse struct {
-	ID   int           `json:"id"`
-	Cast []CastMember  `json:"cast"`
-	Crew []CrewMember  `json:"crew"`
+	ID   int          `json:"id"`
+	Cast []CastMember `json:"cast"`
+	Crew []CrewMember `json:"crew"`
 }
 
 // CastMember represents an actor/actress credit.

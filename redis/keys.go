@@ -33,11 +33,11 @@ const (
 
 // Redis sizing and timeout constants.
 const (
-	RedisMaxCacheEntrySize    = 1 * 1024 * 1024  // 1 MB — reject cache entries larger than this
-	RedisDefaultTimeout       = 5 * time.Second   // Default timeout for Redis operations
-	RedisInvalidationTimeout  = 10 * time.Second  // Timeout for cache invalidation operations
-	RedisDeleteBatchSize      = 100               // Batch size for key deletion operations
-	RedisScanBatchSize        = 100               // Batch size for SCAN operations
+	RedisMaxCacheEntrySize   = 1 * 1024 * 1024  // 1 MB — reject cache entries larger than this
+	RedisDefaultTimeout      = 5 * time.Second  // Default timeout for Redis operations
+	RedisInvalidationTimeout = 10 * time.Second // Timeout for cache invalidation operations
+	RedisDeleteBatchSize     = 100              // Batch size for key deletion operations
+	RedisScanBatchSize       = 100              // Batch size for SCAN operations
 )
 
 // BuildMediaVersionKey creates the version counter key for a media entity.

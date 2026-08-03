@@ -70,12 +70,12 @@ func RegisterRoutes(api fiber.Router) {
 // ---------------------------------------------------------------------------
 
 var validSections = map[string]bool{
-	"calendar":            true,
-	"progress_watched":    true,
-	"progress_collected":  true,
-	"recommendations":     true,
-	"comments":            true,
-	"dropped":             true,
+	"calendar":           true,
+	"progress_watched":   true,
+	"progress_collected": true,
+	"recommendations":    true,
+	"comments":           true,
+	"dropped":            true,
 }
 
 // ---------------------------------------------------------------------------

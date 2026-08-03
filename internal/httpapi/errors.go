@@ -64,5 +64,5 @@ func Conflict(c *fiber.Ctx, message string) error {
 
 // Lowercase aliases for internal httpapi package use.
 func notFound(c *fiber.Ctx, msg string) error   { return NotFound(c, msg) }
-func badRequest(c *fiber.Ctx, msg string) error  { return BadRequest(c, msg) }
-func unauthorized(c *fiber.Ctx) error            { return Unauthorized(c) }
+func badRequest(c *fiber.Ctx, msg string) error { return BadRequest(c, msg) }
+func unauthorized(c *fiber.Ctx) error           { return Unauthorized(c) }

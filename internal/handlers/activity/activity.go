@@ -98,35 +98,35 @@ func handleGetActivity(c *fiber.Ctx) error {
 
 	switch feedType {
 	case "following":
-			// Only users the current user follows
-			var follows []database.UserFollow
-			db.Where("follower_id = ?", userID).Find(&follows)
-			for _, f := range follows {
-				actorIDs = append(actorIDs, f.FollowingID)
-			}
-		case "followers":
-			// Only users who follow the current user
-			var follows []database.UserFollow
-			db.Where("following_id = ?", userID).Find(&follows)
-			for _, f := range follows {
+		// Only users the current user follows
+		var follows []database.UserFollow
+		db.Where("follower_id = ?", userID).Find(&follows)
+		for _, f := range follows {
+			actorIDs = append(actorIDs, f.FollowingID)
+		}
+	case "followers":
+		// Only users who follow the current user
+		var follows []database.UserFollow
+		db.Where("following_id = ?", userID).Find(&follows)
+		for _, f := range follows {
+			actorIDs = append(actorIDs, f.FollowerID)
+		}
+	case "friends", "":
+		// Mutual follows (friends) — both follower and following
+		var following []database.UserFollow
+		db.Where("follower_id = ?", userID).Find(&following)
+		var followers []database.UserFollow
+		db.Where("following_id = ?", userID).Find(&followers)
+
+		followingSet := make(map[string]bool)
+		for _, f := range following {
+			followingSet[f.FollowingID] = true
+		}
+		for _, f := range followers {
+			if followingSet[f.FollowerID] {
 				actorIDs = append(actorIDs, f.FollowerID)
 			}
-		case "friends", "":
-			// Mutual follows (friends) — both follower and following
-			var following []database.UserFollow
-			db.Where("follower_id = ?", userID).Find(&following)
-			var followers []database.UserFollow
-			db.Where("following_id = ?", userID).Find(&followers)
-
-			followingSet := make(map[string]bool)
-			for _, f := range following {
-				followingSet[f.FollowingID] = true
-			}
-			for _, f := range followers {
-				if followingSet[f.FollowerID] {
-					actorIDs = append(actorIDs, f.FollowerID)
-				}
-			}
+		}
 	}
 
 	// Start at filter

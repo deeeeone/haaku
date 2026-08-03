@@ -21,7 +21,7 @@ func (UserStats) TableName() string { return "user_stats" }
 type SyncSession struct {
 	ID             int64     `gorm:"primaryKey;autoIncrement" json:"id"`
 	UserID         string    `gorm:"type:text;not null" json:"user_id"`
-	Kind           string    `gorm:"type:text;not null" json:"kind"`   // history | ratings
+	Kind           string    `gorm:"type:text;not null" json:"kind"`          // history | ratings
 	Status         string    `gorm:"type:text;default:pending" json:"status"` // pending | processing | completed | failed
 	TotalItems     int       `gorm:"default:0" json:"total_items"`
 	ProcessedItems int       `gorm:"default:0" json:"processed_items"`

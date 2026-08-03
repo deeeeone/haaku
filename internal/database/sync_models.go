@@ -4,16 +4,16 @@ import "time"
 
 // UserHistory records a watch for a movie or episode.
 type UserHistory struct {
-	ID        int64      `gorm:"primaryKey" json:"id"`
-	UserID    string     `gorm:"type:text;not null;uniqueIndex:idx_history_dedupe,priority:1" json:"user_id"`
-	MediaType string     `gorm:"type:text;not null;uniqueIndex:idx_history_dedupe,priority:2" json:"media_type"`
-	MediaID   int64      `gorm:"not null;uniqueIndex:idx_history_dedupe,priority:3" json:"media_id"`
-	SeasonID  *int64     `json:"season_id,omitempty"`
-	EpisodeID *int64     `json:"episode_id,omitempty"`
-	WatchedAt time.Time  `gorm:"not null" json:"watched_at"`
-	Source    string     `gorm:"type:text;not null;default:api;uniqueIndex:idx_history_dedupe,priority:4" json:"source"`
-	SourceID  *string    `gorm:"uniqueIndex:idx_history_dedupe,priority:5" json:"source_id,omitempty"`
-	CreatedAt time.Time  `json:"created_at"`
+	ID        int64     `gorm:"primaryKey" json:"id"`
+	UserID    string    `gorm:"type:text;not null;uniqueIndex:idx_history_dedupe,priority:1" json:"user_id"`
+	MediaType string    `gorm:"type:text;not null;uniqueIndex:idx_history_dedupe,priority:2" json:"media_type"`
+	MediaID   int64     `gorm:"not null;uniqueIndex:idx_history_dedupe,priority:3" json:"media_id"`
+	SeasonID  *int64    `json:"season_id,omitempty"`
+	EpisodeID *int64    `json:"episode_id,omitempty"`
+	WatchedAt time.Time `gorm:"not null" json:"watched_at"`
+	Source    string    `gorm:"type:text;not null;default:api;uniqueIndex:idx_history_dedupe,priority:4" json:"source"`
+	SourceID  *string   `gorm:"uniqueIndex:idx_history_dedupe,priority:5" json:"source_id,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 func (UserHistory) TableName() string { return "user_history" }

@@ -113,12 +113,12 @@ func handlePlaybackMovies(c *fiber.Ctx) error {
 	// Query user_playback joined with movies.
 	type playbackMovieRow struct {
 		database.UserPlayback
-		Title       string `json:"title"`
-		TmdbID      int    `json:"tmdb_id"`
-		ImdbID      string `json:"imdb_id"`
-		Year        int    `json:"year"`
-		Overview    string `json:"overview"`
-		Runtime     int    `json:"runtime"`
+		Title    string `json:"title"`
+		TmdbID   int    `json:"tmdb_id"`
+		ImdbID   string `json:"imdb_id"`
+		Year     int    `json:"year"`
+		Overview string `json:"overview"`
+		Runtime  int    `json:"runtime"`
 	}
 
 	var rows []playbackMovieRow
@@ -171,13 +171,13 @@ func handlePlaybackEpisodes(c *fiber.Ctx) error {
 	// Query user_playback joined with episodes, seasons, and shows.
 	type playbackEpisodeRow struct {
 		database.UserPlayback
-		EpisodeTitle    string `json:"episode_title"`
-		EpisodeNumber   int    `json:"episode_number"`
-		SeasonNumber    int    `json:"season_number"`
-		ShowTitle       string `json:"show_title"`
-		ShowID          int64  `json:"show_id"`
-		ShowTmdbID      int    `json:"show_tmdb_id"`
-		ShowImdbID      string `json:"show_imdb_id"`
+		EpisodeTitle  string `json:"episode_title"`
+		EpisodeNumber int    `json:"episode_number"`
+		SeasonNumber  int    `json:"season_number"`
+		ShowTitle     string `json:"show_title"`
+		ShowID        int64  `json:"show_id"`
+		ShowTmdbID    int    `json:"show_tmdb_id"`
+		ShowImdbID    string `json:"show_imdb_id"`
 	}
 
 	var rows []playbackEpisodeRow

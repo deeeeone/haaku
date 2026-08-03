@@ -214,9 +214,9 @@ func buildMovieResponse(m *database.Movie, extended string) media.MovieResponse 
 	}
 
 	resp := media.MovieResponse{
-		IDs:   buildMovieIDs(m),
-		Title: m.Title,
-		Year:  year,
+		IDs:    buildMovieIDs(m),
+		Title:  m.Title,
+		Year:   year,
 		Images: m.Images,
 		RatingSummary: &media.RatingSummary{
 			Rating:       m.RatingAvg,
@@ -264,9 +264,9 @@ func buildShowResponse(s *database.Show, extended string) media.ShowResponse {
 	}
 
 	resp := media.ShowResponse{
-		IDs:   buildShowIDs(s),
-		Title: s.Title,
-		Year:  year,
+		IDs:    buildShowIDs(s),
+		Title:  s.Title,
+		Year:   year,
 		Images: s.Images,
 		RatingSummary: &media.RatingSummary{
 			Rating:       s.RatingAvg,

@@ -97,7 +97,7 @@ func handleGetHistory(c *fiber.Ctx) error {
 		return internalError(c)
 	}
 
-	mediaType := c.Query("type", "")     // movie,episode or empty=all
+	mediaType := c.Query("type", "") // movie,episode or empty=all
 	page, limit := parsePaginationSync(c)
 	startAt := c.Query("start_at")
 	endAt := c.Query("end_at")
@@ -197,7 +197,7 @@ type historyMovie struct {
 }
 
 type historyShow struct {
-	IDs     idsObj         `json:"ids"`
+	IDs     idsObj          `json:"ids"`
 	Seasons []historySeason `json:"seasons,omitempty"`
 }
 
@@ -214,8 +214,8 @@ type historyEpisode struct {
 }
 
 type idsObj struct {
-	TMDB int   `json:"tmdb"`
-	TVDB int   `json:"tvdb,omitempty"`
+	TMDB int    `json:"tmdb"`
+	TVDB int    `json:"tvdb,omitempty"`
 	IMDB string `json:"imdb,omitempty"`
 }
 
@@ -225,10 +225,10 @@ type historyAddResponse struct {
 		Episodes int `json:"episodes"`
 	} `json:"added"`
 	NotFound struct {
-		Movies      []map[string]interface{} `json:"movies"`
-		Shows       []map[string]interface{} `json:"shows"`
-		Seasons     []map[string]interface{} `json:"seasons"`
-		Episodes    []map[string]interface{} `json:"episodes"`
+		Movies   []map[string]interface{} `json:"movies"`
+		Shows    []map[string]interface{} `json:"shows"`
+		Seasons  []map[string]interface{} `json:"seasons"`
+		Episodes []map[string]interface{} `json:"episodes"`
 	} `json:"not_found"`
 	Duplicates struct {
 		Movies   int `json:"movies"`
@@ -389,10 +389,10 @@ func handleRemoveHistory(c *fiber.Ctx) error {
 	}
 
 	var req struct {
-		IDs      []int64           `json:"ids,omitempty"`
-		Movies   []historyMovie    `json:"movies,omitempty"`
-		Shows    []historyShow     `json:"shows,omitempty"`
-		Episodes []historyEpisode  `json:"episodes,omitempty"`
+		IDs      []int64          `json:"ids,omitempty"`
+		Movies   []historyMovie   `json:"movies,omitempty"`
+		Shows    []historyShow    `json:"shows,omitempty"`
+		Episodes []historyEpisode `json:"episodes,omitempty"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return badRequest(c, "invalid JSON body")
@@ -695,11 +695,11 @@ func handleAddWatchlist(c *fiber.Ctx) error {
 
 	var req struct {
 		Movies []struct {
-			IDs   idsObj `json:"ids"`
+			IDs   idsObj  `json:"ids"`
 			Notes *string `json:"notes,omitempty"`
 		} `json:"movies,omitempty"`
 		Shows []struct {
-			IDs   idsObj `json:"ids"`
+			IDs   idsObj  `json:"ids"`
 			Notes *string `json:"notes,omitempty"`
 		} `json:"shows,omitempty"`
 	}
@@ -878,15 +878,15 @@ func handleAddRatings(c *fiber.Ctx) error {
 	}
 
 	var req struct {
-		Movies   []struct {
+		Movies []struct {
 			IDs    idsObj `json:"ids"`
 			Rating int    `json:"rating"`
 		} `json:"movies,omitempty"`
-		Shows    []struct {
+		Shows []struct {
 			IDs    idsObj `json:"ids"`
 			Rating int    `json:"rating"`
 		} `json:"shows,omitempty"`
-		Seasons  []struct {
+		Seasons []struct {
 			IDs    idsObj `json:"ids"`
 			Rating int    `json:"rating"`
 		} `json:"seasons,omitempty"`

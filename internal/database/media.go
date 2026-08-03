@@ -76,134 +76,134 @@ func (s *StringSlice) Scan(value interface{}) error {
 
 // Movie mirrors TMDB movie detail with our community fields.
 type Movie struct {
-	ID              int64          `gorm:"primaryKey" json:"id"`
-	TmdbID          int            `gorm:"uniqueIndex" json:"tmdb_id"`
-	ImdbID          string         `json:"imdb_id,omitempty"`
-	Title           string         `json:"title"`
-	OriginalTitle   string         `json:"original_title"`
-	Tagline         string         `json:"tagline,omitempty"`
-	Overview        string         `json:"overview,omitempty"`
-	Released        *Date          `json:"released,omitempty"`
-	Runtime         int            `json:"runtime,omitempty"`
-	Certification   string         `json:"certification,omitempty"`
-	Genres          StringSlice    `gorm:"type:jsonb;default:'[]'" json:"genres"`
-	Language        string         `json:"language,omitempty"`
-	Status          string         `json:"status,omitempty"`
-	Popularity      float64        `json:"popularity"`
-	RatingAvg       float64        `json:"rating_avg"`
-	RatingCount     int64          `json:"rating_count"`
-	TrailerURL      string         `json:"trailer_url,omitempty"`
-	Images          JSONMap        `gorm:"type:jsonb;default:'{}'" json:"images"`
-	Metadata        JSONMap        `gorm:"type:jsonb;default:'{}'" json:"metadata"`
-	Adult           bool           `json:"adult"`
-	LastSyncedAt    *time.Time     `json:"last_synced_at,omitempty"`
-	CreatedAt       time.Time      `json:"created_at"`
-	UpdatedAt       time.Time      `json:"updated_at"`
+	ID            int64       `gorm:"primaryKey" json:"id"`
+	TmdbID        int         `gorm:"uniqueIndex" json:"tmdb_id"`
+	ImdbID        string      `json:"imdb_id,omitempty"`
+	Title         string      `json:"title"`
+	OriginalTitle string      `json:"original_title"`
+	Tagline       string      `json:"tagline,omitempty"`
+	Overview      string      `json:"overview,omitempty"`
+	Released      *Date       `json:"released,omitempty"`
+	Runtime       int         `json:"runtime,omitempty"`
+	Certification string      `json:"certification,omitempty"`
+	Genres        StringSlice `gorm:"type:jsonb;default:'[]'" json:"genres"`
+	Language      string      `json:"language,omitempty"`
+	Status        string      `json:"status,omitempty"`
+	Popularity    float64     `json:"popularity"`
+	RatingAvg     float64     `json:"rating_avg"`
+	RatingCount   int64       `json:"rating_count"`
+	TrailerURL    string      `json:"trailer_url,omitempty"`
+	Images        JSONMap     `gorm:"type:jsonb;default:'{}'" json:"images"`
+	Metadata      JSONMap     `gorm:"type:jsonb;default:'{}'" json:"metadata"`
+	Adult         bool        `json:"adult"`
+	LastSyncedAt  *time.Time  `json:"last_synced_at,omitempty"`
+	CreatedAt     time.Time   `json:"created_at"`
+	UpdatedAt     time.Time   `json:"updated_at"`
 }
 
 func (Movie) TableName() string { return "movies" }
 
 // Show mirrors TMDB TV show detail.
 type Show struct {
-	ID              int64          `gorm:"primaryKey" json:"id"`
-	TmdbID          int            `gorm:"uniqueIndex" json:"tmdb_id"`
-	ImdbID          string         `json:"imdb_id,omitempty"`
-	Title           string         `json:"title"`
-	OriginalTitle   string         `json:"original_title"`
-	Overview        string         `json:"overview,omitempty"`
-	FirstAired      *Date          `json:"first_aired,omitempty"`
-	LastAired       *Date          `json:"last_aired,omitempty"`
-	EpisodeCount    int            `json:"episode_count"`
-	SeasonCount     int            `json:"season_count"`
-	Network         string         `json:"network,omitempty"`
-	Status          string         `json:"status,omitempty"`
-	Popularity      float64        `json:"popularity"`
-	RatingAvg       float64        `json:"rating_avg"`
-	RatingCount     int64          `json:"rating_count"`
-	Genres          StringSlice    `gorm:"type:jsonb;default:'[]'" json:"genres"`
-	Language        string         `json:"language,omitempty"`
-	Certification   string         `json:"certification,omitempty"`
-	Images          JSONMap        `gorm:"type:jsonb;default:'{}'" json:"images"`
-	Metadata        JSONMap        `gorm:"type:jsonb;default:'{}'" json:"metadata"`
-	Adult           bool           `json:"adult"`
-	SearchVector    string         `gorm:"->" json:"-"`
-	LastSyncedAt    *time.Time     `json:"last_synced_at,omitempty"`
-	CreatedAt       time.Time      `json:"created_at"`
-	UpdatedAt       time.Time      `json:"updated_at"`
+	ID            int64       `gorm:"primaryKey" json:"id"`
+	TmdbID        int         `gorm:"uniqueIndex" json:"tmdb_id"`
+	ImdbID        string      `json:"imdb_id,omitempty"`
+	Title         string      `json:"title"`
+	OriginalTitle string      `json:"original_title"`
+	Overview      string      `json:"overview,omitempty"`
+	FirstAired    *Date       `json:"first_aired,omitempty"`
+	LastAired     *Date       `json:"last_aired,omitempty"`
+	EpisodeCount  int         `json:"episode_count"`
+	SeasonCount   int         `json:"season_count"`
+	Network       string      `json:"network,omitempty"`
+	Status        string      `json:"status,omitempty"`
+	Popularity    float64     `json:"popularity"`
+	RatingAvg     float64     `json:"rating_avg"`
+	RatingCount   int64       `json:"rating_count"`
+	Genres        StringSlice `gorm:"type:jsonb;default:'[]'" json:"genres"`
+	Language      string      `json:"language,omitempty"`
+	Certification string      `json:"certification,omitempty"`
+	Images        JSONMap     `gorm:"type:jsonb;default:'{}'" json:"images"`
+	Metadata      JSONMap     `gorm:"type:jsonb;default:'{}'" json:"metadata"`
+	Adult         bool        `json:"adult"`
+	SearchVector  string      `gorm:"->" json:"-"`
+	LastSyncedAt  *time.Time  `json:"last_synced_at,omitempty"`
+	CreatedAt     time.Time   `json:"created_at"`
+	UpdatedAt     time.Time   `json:"updated_at"`
 }
 
 func (Show) TableName() string { return "shows" }
 
 // Season belongs to a show.
 type Season struct {
-	ID            int64          `gorm:"primaryKey" json:"id"`
-	ShowID        int64          `gorm:"index" json:"show_id"`
-	TmdbShowID    int            `json:"tmdb_show_id"`
-	SeasonNumber  int            `json:"season_number"`
-	EpisodeCount  int            `json:"episode_count"`
-	AiredAt       *Date          `json:"aired_at,omitempty"`
-	Images        JSONMap        `gorm:"type:jsonb;default:'{}'" json:"images"`
-	LastSyncedAt  *time.Time     `json:"last_synced_at,omitempty"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
+	ID           int64      `gorm:"primaryKey" json:"id"`
+	ShowID       int64      `gorm:"index" json:"show_id"`
+	TmdbShowID   int        `json:"tmdb_show_id"`
+	SeasonNumber int        `json:"season_number"`
+	EpisodeCount int        `json:"episode_count"`
+	AiredAt      *Date      `json:"aired_at,omitempty"`
+	Images       JSONMap    `gorm:"type:jsonb;default:'{}'" json:"images"`
+	LastSyncedAt *time.Time `json:"last_synced_at,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
 }
 
 func (Season) TableName() string { return "seasons" }
 
 // Episode belongs to a season and show.
 type Episode struct {
-	ID              int64          `gorm:"primaryKey" json:"id"`
-	SeasonID        int64          `gorm:"uniqueIndex:idx_episode_show_season_ep,priority:2" json:"season_id"`
-	ShowID          int64          `gorm:"uniqueIndex:idx_episode_show_season_ep,priority:1" json:"show_id"`
-	EpisodeNumber   int            `gorm:"uniqueIndex:idx_episode_show_season_ep,priority:3" json:"episode_number"`
-	AbsoluteNumber  *int           `json:"absolute_number,omitempty"`
-	Title           string         `json:"title"`
-	Overview        string         `json:"overview,omitempty"`
-	Runtime         int            `json:"runtime,omitempty"`
-	AiredAt         *Date          `json:"aired_at,omitempty"`
-	Images          JSONMap        `gorm:"type:jsonb;default:'{}'" json:"images"`
-	SearchVector    string         `gorm:"->" json:"-"`
-	LastSyncedAt    *time.Time     `json:"last_synced_at,omitempty"`
-	CreatedAt       time.Time      `json:"created_at"`
-	UpdatedAt       time.Time      `json:"updated_at"`
+	ID             int64      `gorm:"primaryKey" json:"id"`
+	SeasonID       int64      `gorm:"uniqueIndex:idx_episode_show_season_ep,priority:2" json:"season_id"`
+	ShowID         int64      `gorm:"uniqueIndex:idx_episode_show_season_ep,priority:1" json:"show_id"`
+	EpisodeNumber  int        `gorm:"uniqueIndex:idx_episode_show_season_ep,priority:3" json:"episode_number"`
+	AbsoluteNumber *int       `json:"absolute_number,omitempty"`
+	Title          string     `json:"title"`
+	Overview       string     `json:"overview,omitempty"`
+	Runtime        int        `json:"runtime,omitempty"`
+	AiredAt        *Date      `json:"aired_at,omitempty"`
+	Images         JSONMap    `gorm:"type:jsonb;default:'{}'" json:"images"`
+	SearchVector   string     `gorm:"->" json:"-"`
+	LastSyncedAt   *time.Time `json:"last_synced_at,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
 func (Episode) TableName() string { return "episodes" }
 
 // Person mirrors TMDB person detail.
 type Person struct {
-	ID                 int64          `gorm:"primaryKey" json:"id"`
-	TmdbID             int            `gorm:"uniqueIndex" json:"tmdb_id"`
-	ImdbID             string         `json:"imdb_id,omitempty"`
-	Name               string         `json:"name"`
-	Biography          string         `json:"biography,omitempty"`
-	Birthday           *Date          `json:"birthday,omitempty"`
-	Deathday           *Date          `json:"deathday,omitempty"`
-	Gender             int            `json:"gender"`
-	KnownForDepartment string         `json:"known_for_department,omitempty"`
-	Images             JSONMap        `gorm:"type:jsonb;default:'{}'" json:"images"`
-	Adult              bool           `json:"adult"`
-	SearchVector       string         `gorm:"->" json:"-"`
-	LastSyncedAt       *time.Time     `json:"last_synced_at,omitempty"`
-	CreatedAt          time.Time      `json:"created_at"`
-	UpdatedAt          time.Time      `json:"updated_at"`
+	ID                 int64      `gorm:"primaryKey" json:"id"`
+	TmdbID             int        `gorm:"uniqueIndex" json:"tmdb_id"`
+	ImdbID             string     `json:"imdb_id,omitempty"`
+	Name               string     `json:"name"`
+	Biography          string     `json:"biography,omitempty"`
+	Birthday           *Date      `json:"birthday,omitempty"`
+	Deathday           *Date      `json:"deathday,omitempty"`
+	Gender             int        `json:"gender"`
+	KnownForDepartment string     `json:"known_for_department,omitempty"`
+	Images             JSONMap    `gorm:"type:jsonb;default:'{}'" json:"images"`
+	Adult              bool       `json:"adult"`
+	SearchVector       string     `gorm:"->" json:"-"`
+	LastSyncedAt       *time.Time `json:"last_synced_at,omitempty"`
+	CreatedAt          time.Time  `json:"created_at"`
+	UpdatedAt          time.Time  `json:"updated_at"`
 }
 
 func (Person) TableName() string { return "people" }
 
 // Credit links a person to a media title.
 type Credit struct {
-	ID             int64  `gorm:"primaryKey" json:"id"`
-	PersonID       int64  `gorm:"index" json:"person_id"`
-	MediaType      string `gorm:"index" json:"media_type"` // movie or show
-	MediaID        int64  `gorm:"index" json:"media_id"`
-	CreditType     string `json:"credit_type"` // cast or crew
-	Job            string `json:"job,omitempty"`
-	Character      string `gorm:"column:character_name" json:"character,omitempty"`
-	Department     string `json:"department,omitempty"`
-	Order          int    `json:"order"`
-	SeriesRegular  bool   `json:"series_regular"`
-	EpisodeCount   int    `json:"episode_count,omitempty"`
+	ID            int64  `gorm:"primaryKey" json:"id"`
+	PersonID      int64  `gorm:"index" json:"person_id"`
+	MediaType     string `gorm:"index" json:"media_type"` // movie or show
+	MediaID       int64  `gorm:"index" json:"media_id"`
+	CreditType    string `json:"credit_type"` // cast or crew
+	Job           string `json:"job,omitempty"`
+	Character     string `gorm:"column:character_name" json:"character,omitempty"`
+	Department    string `json:"department,omitempty"`
+	Order         int    `json:"order"`
+	SeriesRegular bool   `json:"series_regular"`
+	EpisodeCount  int    `json:"episode_count,omitempty"`
 }
 
 func (Credit) TableName() string { return "credits" }

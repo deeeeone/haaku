@@ -63,10 +63,10 @@ func requireAuth(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 
 type scrobbleRequest struct {
-	Movie   *scrobbleItem `json:"movie,omitempty"`
-	Episode *scrobbleItem `json:"episode,omitempty"`
-	Show    *scrobbleItem `json:"show,omitempty"`
-	Progress float64      `json:"progress"`
+	Movie    *scrobbleItem `json:"movie,omitempty"`
+	Episode  *scrobbleItem `json:"episode,omitempty"`
+	Show     *scrobbleItem `json:"show,omitempty"`
+	Progress float64       `json:"progress"`
 }
 
 type scrobbleItem struct {
@@ -249,8 +249,8 @@ func handleScrobbleStart(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"id":      0, // session ID tracked internally
-		"action":  "start",
+		"id":       0, // session ID tracked internally
+		"action":   "start",
 		"progress": req.Progress,
 	})
 }
@@ -312,7 +312,7 @@ func handleScrobblePause(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"action":  "pause",
+		"action":   "pause",
 		"progress": req.Progress,
 	})
 }
@@ -460,7 +460,7 @@ func handleScrobbleStop(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"action":  "pause",
+		"action":   "pause",
 		"progress": req.Progress,
 	})
 }

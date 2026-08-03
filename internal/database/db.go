@@ -14,8 +14,8 @@ import (
 )
 
 var (
-	db      *gorm.DB
-	dbOnce  sync.Once
+	db     *gorm.DB
+	dbOnce sync.Once
 )
 
 // --- env helpers ---
@@ -187,4 +187,3 @@ func GetRedis() (interface{}, error) {
 // CloseRedis closes the Redis connection if open.
 func CloseRedis() {
 }
-

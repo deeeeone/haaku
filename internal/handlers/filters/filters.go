@@ -50,9 +50,9 @@ func requireAuth(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 
 type filterSaveRequest struct {
-	Section string            `json:"section"`
-	Name    string            `json:"name"`
-	Filter  database.JSONMap  `json:"filter"`
+	Section string           `json:"section"`
+	Name    string           `json:"name"`
+	Filter  database.JSONMap `json:"filter"`
 }
 
 type filterResponse struct {

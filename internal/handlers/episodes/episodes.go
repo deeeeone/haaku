@@ -49,8 +49,8 @@ type EpisodeDetailResponse struct {
 	media.EpisodeResponse `json:",inline"`
 
 	Show   *media.ShowResponse   `json:"show,omitempty"`
-	Season *media.SeasonResponse  `json:"season"`
-	Stats  *EpisodeStatsResponse  `json:"stats"`
+	Season *media.SeasonResponse `json:"season"`
+	Stats  *EpisodeStatsResponse `json:"stats"`
 }
 
 // EpisodeStatsResponse holds public stats for an episode.
@@ -312,17 +312,17 @@ func queryMediaComments(c *fiber.Ctx, db *gorm.DB, mediaType string, mediaID int
 		Find(&comments)
 
 	type commentResponse struct {
-		ID          int64   `json:"id"`
-		UserID      string  `json:"user_id"`
-		ParentID    *int64  `json:"parent_id,omitempty"`
-		MediaType   string  `json:"media_type,omitempty"`
-		MediaID     *int64  `json:"media_id,omitempty"`
-		CommentType string  `json:"comment_type"`
-		Body        string  `json:"body"`
-		Spoiler     bool    `json:"spoiler"`
-		LikeCount   int     `json:"like_count"`
-		ReplyCount  int     `json:"reply_count"`
-		CreatedAt   string  `json:"created_at"`
+		ID          int64  `json:"id"`
+		UserID      string `json:"user_id"`
+		ParentID    *int64 `json:"parent_id,omitempty"`
+		MediaType   string `json:"media_type,omitempty"`
+		MediaID     *int64 `json:"media_id,omitempty"`
+		CommentType string `json:"comment_type"`
+		Body        string `json:"body"`
+		Spoiler     bool   `json:"spoiler"`
+		LikeCount   int    `json:"like_count"`
+		ReplyCount  int    `json:"reply_count"`
+		CreatedAt   string `json:"created_at"`
 	}
 
 	out := make([]commentResponse, 0, len(comments))

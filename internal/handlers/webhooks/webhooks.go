@@ -13,8 +13,8 @@ import (
 	"time"
 
 	"trakt-api/internal/database"
-	"trakt-api/internal/outbox"
 	"trakt-api/internal/openapi"
+	"trakt-api/internal/outbox"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"

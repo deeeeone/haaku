@@ -21,33 +21,33 @@ func registerOpenAPIRoutes() {
 		{
 			Method: "GET", Path: "/v1/recommendations/movies",
 			Summary: "Get personalized movie recommendations based on watch history",
-			Tags: []string{"Recommendations"}, Auth: "required",
+			Tags:    []string{"Recommendations"}, Auth: "required",
 			StatusCodes: map[int]string{200: "Movie recommendations", 401: "Unauthorized"},
 		},
 		{
 			Method: "GET", Path: "/v1/recommendations/shows",
 			Summary: "Get personalized show recommendations based on watch history",
-			Tags: []string{"Recommendations"}, Auth: "required",
+			Tags:    []string{"Recommendations"}, Auth: "required",
 			StatusCodes: map[int]string{200: "Show recommendations", 401: "Unauthorized"},
 		},
 		// Social
 		{
 			Method: "GET", Path: "/v1/social_recommendations/movies",
 			Summary: "Get movie recommendations from friends' watch history",
-			Tags: []string{"Recommendations"}, Auth: "required",
+			Tags:    []string{"Recommendations"}, Auth: "required",
 			StatusCodes: map[int]string{200: "Social movie recommendations", 401: "Unauthorized"},
 		},
 		{
 			Method: "GET", Path: "/v1/social_recommendations/shows",
 			Summary: "Get show recommendations from friends' watch history",
-			Tags: []string{"Recommendations"}, Auth: "required",
+			Tags:    []string{"Recommendations"}, Auth: "required",
 			StatusCodes: map[int]string{200: "Social show recommendations", 401: "Unauthorized"},
 		},
 		// Anticipated
 		{
 			Method: "GET", Path: "/v1/media/anticipated",
 			Summary: "Get anticipated upcoming media weighted by watchlist interest",
-			Tags: []string{"Media"}, Auth: "required",
+			Tags:    []string{"Media"}, Auth: "required",
 			StatusCodes: map[int]string{200: "Anticipated media", 401: "Unauthorized"},
 		},
 	}

@@ -45,15 +45,15 @@ type SeasonDetailResponse struct {
 	media.SeasonResponse `json:",inline"`
 
 	Show  *media.ShowResponse  `json:"show"`
-	Stats *SeasonStatsResponse  `json:"stats"`
+	Stats *SeasonStatsResponse `json:"stats"`
 }
 
 // SeasonStatsResponse holds public stats for a season.
 type SeasonStatsResponse struct {
-	Watchers       int64   `json:"watchers"`
-	Plays          int64   `json:"plays"`
-	EpisodesCount  int64   `json:"episodes_count"`
-	Rating         float64 `json:"rating"`
+	Watchers      int64   `json:"watchers"`
+	Plays         int64   `json:"plays"`
+	EpisodesCount int64   `json:"episodes_count"`
+	Rating        float64 `json:"rating"`
 }
 
 // ---------------------------------------------------------------------------

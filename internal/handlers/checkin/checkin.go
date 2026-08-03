@@ -51,11 +51,11 @@ func requireAuth(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 
 type checkinRequest struct {
-	Movie     *checkinItem `json:"movie,omitempty"`
-	Episode   *checkinItem `json:"episode,omitempty"`
-	Show      *checkinItem `json:"show,omitempty"`
-	Message   string       `json:"message,omitempty"`
-	Sharing   *checkinSharing `json:"sharing,omitempty"`
+	Movie   *checkinItem    `json:"movie,omitempty"`
+	Episode *checkinItem    `json:"episode,omitempty"`
+	Show    *checkinItem    `json:"show,omitempty"`
+	Message string          `json:"message,omitempty"`
+	Sharing *checkinSharing `json:"sharing,omitempty"`
 }
 
 type checkinItem struct {
@@ -75,19 +75,19 @@ type checkinSharing struct {
 }
 
 type checkinResponse struct {
-	ID        int64     `json:"id"`
-	ExpiresAt string    `json:"expires_at"`
-	WatchedAt string    `json:"watched_at"`
+	ID        int64            `json:"id"`
+	ExpiresAt string           `json:"expires_at"`
+	WatchedAt string           `json:"watched_at"`
 	Movie     *checkinMediaRef `json:"movie,omitempty"`
 	Episode   *checkinMediaRef `json:"episode,omitempty"`
 	Show      *checkinMediaRef `json:"show,omitempty"`
-	Message   string    `json:"message,omitempty"`
+	Message   string           `json:"message,omitempty"`
 }
 
 type checkinMediaRef struct {
-	IDs    mediaRefIDs `json:"ids"`
-	Title  string      `json:"title"`
-	Year   int         `json:"year,omitempty"`
+	IDs   mediaRefIDs `json:"ids"`
+	Title string      `json:"title"`
+	Year  int         `json:"year,omitempty"`
 }
 
 type mediaRefIDs struct {

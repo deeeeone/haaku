@@ -452,9 +452,9 @@ type addItemsRequest struct {
 }
 
 type addItemsResponse struct {
-	Added     map[string]int `json:"added"`
+	Added     map[string]int           `json:"added"`
 	NotFound  []map[string]interface{} `json:"not_found"`
-	Duplicate map[string]int `json:"duplicate"`
+	Duplicate map[string]int           `json:"duplicate"`
 }
 
 type removeItemsRequest struct {
@@ -610,8 +610,8 @@ func handleAddListItems(c *fiber.Ctx) error {
 			mediaID, err := resolveItemByTMDB(db, mediaType, ref.IDs.TMDB)
 			if err != nil {
 				result.NotFound = append(result.NotFound, map[string]interface{}{
-					"type":      mediaType,
-					"tmdb_id":   ref.IDs.TMDB,
+					"type":    mediaType,
+					"tmdb_id": ref.IDs.TMDB,
 				})
 				continue
 			}
@@ -1440,13 +1440,13 @@ func applyUserFilters(query *gorm.DB, filters database.JSONMap, userID, mediaTyp
 
 func sanitizeSortColumn(col string) string {
 	allowed := map[string]bool{
-		"popularity":  true,
-		"rating_avg":  true,
+		"popularity":   true,
+		"rating_avg":   true,
 		"rating_count": true,
-		"released":    true,
-		"first_aired": true,
-		"created_at":  true,
-		"title":       true,
+		"released":     true,
+		"first_aired":  true,
+		"created_at":   true,
+		"title":        true,
 	}
 	if allowed[col] {
 		return col

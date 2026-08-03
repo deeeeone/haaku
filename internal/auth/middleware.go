@@ -101,10 +101,10 @@ func verifyJWT(token string) (string, string, error) {
 // ---------------------------------------------------------------------------
 
 var (
-	errNoAuthHeader        = errStr("no authorization header")
-	errUnsupportedPrefix   = errStr("unsupported token prefix")
-	errClerkNotConfigured  = errStr("clerk not configured")
-	errInvalidToken        = errStr("invalid or expired token")
+	errNoAuthHeader       = errStr("no authorization header")
+	errUnsupportedPrefix  = errStr("unsupported token prefix")
+	errClerkNotConfigured = errStr("clerk not configured")
+	errInvalidToken       = errStr("invalid or expired token")
 )
 
 type errStr string

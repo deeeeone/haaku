@@ -64,8 +64,8 @@ func RegisterRoutes(api fiber.Router) {
 
 // tmdbClient is lazily initialized on first use.
 var (
-	tmdbClient     *tmdb.Client
-	tmdbClientErr  error
+	tmdbClient    *tmdb.Client
+	tmdbClientErr error
 )
 
 func getTMDBClient() (*tmdb.Client, error) {
@@ -81,10 +81,10 @@ func getTMDBClient() (*tmdb.Client, error) {
 
 // WatchResponse is the API response shape for watch providers.
 type WatchResponse struct {
-	Link     string               `json:"link,omitempty"`
-	Flatrate []ProviderSummary    `json:"flatrate,omitempty"`
-	Rent     []ProviderSummary    `json:"rent,omitempty"`
-	Buy      []ProviderSummary    `json:"buy,omitempty"`
+	Link     string            `json:"link,omitempty"`
+	Flatrate []ProviderSummary `json:"flatrate,omitempty"`
+	Rent     []ProviderSummary `json:"rent,omitempty"`
+	Buy      []ProviderSummary `json:"buy,omitempty"`
 }
 
 // ProviderSummary is a single streaming provider entry.
@@ -101,10 +101,10 @@ type cachedWatchProviders struct {
 }
 
 type cachedCountryResult struct {
-	Link     string             `json:"link"`
-	Flatrate []tmdb.Provider    `json:"flatrate,omitempty"`
-	Rent     []tmdb.Provider    `json:"rent,omitempty"`
-	Buy      []tmdb.Provider    `json:"buy,omitempty"`
+	Link     string          `json:"link"`
+	Flatrate []tmdb.Provider `json:"flatrate,omitempty"`
+	Rent     []tmdb.Provider `json:"rent,omitempty"`
+	Buy      []tmdb.Provider `json:"buy,omitempty"`
 }
 
 // ---------------------------------------------------------------------------

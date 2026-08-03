@@ -21,9 +21,9 @@ type IDs struct {
 
 // RatingSummary is the community rating summary.
 type RatingSummary struct {
-	Rating       float64           `json:"rating"`
-	Votes        int64             `json:"votes"`
-	Distribution map[string]int64  `json:"distribution"`
+	Rating       float64          `json:"rating"`
+	Votes        int64            `json:"votes"`
+	Distribution map[string]int64 `json:"distribution"`
 }
 
 // MovieResponse is the API response shape for a movie.
@@ -104,15 +104,15 @@ type EpisodeResponse struct {
 
 // PersonResponse is the API response shape for a person.
 type PersonResponse struct {
-	IDs                IDs               `json:"ids"`
-	Name               string            `json:"name"`
-	Biography          string            `json:"biography,omitempty"`
-	Birthday           string            `json:"birthday,omitempty"`
-	Deathday           string            `json:"deathday,omitempty"`
-	Gender             int               `json:"gender"`
-	KnownForDepartment string            `json:"known_for_department,omitempty"`
-	Images             map[string]any    `json:"images"`
-	Credits            *PersonCredits    `json:"credits,omitempty"`
+	IDs                IDs            `json:"ids"`
+	Name               string         `json:"name"`
+	Biography          string         `json:"biography,omitempty"`
+	Birthday           string         `json:"birthday,omitempty"`
+	Deathday           string         `json:"deathday,omitempty"`
+	Gender             int            `json:"gender"`
+	KnownForDepartment string         `json:"known_for_department,omitempty"`
+	Images             map[string]any `json:"images"`
+	Credits            *PersonCredits `json:"credits,omitempty"`
 }
 
 // PersonCredits holds movie and show credits for a person.
@@ -143,9 +143,9 @@ type PeopleResponse struct {
 
 // CastMemberResponse is a cast member entry.
 type CastMemberResponse struct {
-	Person     PersonResponse `json:"person"`
-	Character  string         `json:"character"`
-	Order      int            `json:"order"`
+	Person    PersonResponse `json:"person"`
+	Character string         `json:"character"`
+	Order     int            `json:"order"`
 }
 
 // CrewMemberResponse is a crew member entry.
@@ -157,10 +157,10 @@ type CrewMemberResponse struct {
 
 // StatsResponse is the stats response for a media item.
 type StatsResponse struct {
-	Watchers  int64 `json:"watchers"`
-	Plays     int64 `json:"plays"`
+	Watchers   int64 `json:"watchers"`
+	Plays      int64 `json:"plays"`
 	Collectors int64 `json:"collectors"`
-	Lists     int64 `json:"lists"`
+	Lists      int64 `json:"lists"`
 }
 
 // WatchingResponse is a stub — returns empty array for now.

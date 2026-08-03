@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"trakt-api/external/tmdb"
 	"trakt-api/internal/database"
 	"trakt-api/internal/openapi"
-	"trakt-api/external/tmdb"
 	"trakt-api/redis"
 
 	"github.com/gofiber/fiber/v2"
@@ -88,10 +88,10 @@ type tmdbTranslationData struct {
 }
 
 type tmdbTranslation struct {
-	ISO3166 string             `json:"iso_3166_1"`
-	ISO639  string             `json:"iso_639_1"`
-	Name    string             `json:"name"`
-	English string             `json:"english_name"`
+	ISO3166 string              `json:"iso_3166_1"`
+	ISO639  string              `json:"iso_639_1"`
+	Name    string              `json:"name"`
+	English string              `json:"english_name"`
 	Data    tmdbTranslationData `json:"data"`
 }
 

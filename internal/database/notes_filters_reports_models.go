@@ -27,12 +27,12 @@ func (UserNote) TableName() string { return "user_notes" }
 // SavedFilter is a user's saved UI filter configuration for a section.
 // Max 20 per user per section.
 type SavedFilter struct {
-	ID        int64           `gorm:"primaryKey;autoIncrement" json:"id"`
-	UserID    string          `gorm:"type:text;not null" json:"user_id"`
-	Section   string          `gorm:"type:text;not null" json:"section"`
-	Name      string          `gorm:"type:text;not null" json:"name"`
-	Filter    JSONMap         `gorm:"type:jsonb;not null;default:'{}'" json:"filter"`
-	CreatedAt time.Time       `json:"created_at"`
+	ID        int64     `gorm:"primaryKey;autoIncrement" json:"id"`
+	UserID    string    `gorm:"type:text;not null" json:"user_id"`
+	Section   string    `gorm:"type:text;not null" json:"section"`
+	Name      string    `gorm:"type:text;not null" json:"name"`
+	Filter    JSONMap   `gorm:"type:jsonb;not null;default:'{}'" json:"filter"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 func (SavedFilter) TableName() string { return "saved_filters" }

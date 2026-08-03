@@ -84,11 +84,11 @@ type commentCreateRequest struct {
 	Comment string `json:"comment"`
 	Spoiler *bool  `json:"spoiler,omitempty"`
 	Item    *struct {
-		Movie  *int64 `json:"movie,omitempty"`
-		Show   *int64 `json:"show,omitempty"`
-		Season *int64 `json:"season,omitempty"`
+		Movie   *int64 `json:"movie,omitempty"`
+		Show    *int64 `json:"show,omitempty"`
+		Season  *int64 `json:"season,omitempty"`
 		Episode *int64 `json:"episode,omitempty"`
-		List   *int64 `json:"list,omitempty"`
+		List    *int64 `json:"list,omitempty"`
 	} `json:"item,omitempty"`
 }
 
@@ -181,16 +181,16 @@ var allowedReactions = map[string]bool{
 }
 
 var allowedReportReasons = map[string]bool{
-	"spoilers":   true,
-	"language":   true,
-	"abusive":    true,
-	"spam":       true,
-	"bigotry":    true,
-	"political":  true,
-	"offtopic":   true,
-	"duplicate":  true,
-	"too_short":  true,
-	"other":      true,
+	"spoilers":  true,
+	"language":  true,
+	"abusive":   true,
+	"spam":      true,
+	"bigotry":   true,
+	"political": true,
+	"offtopic":  true,
+	"duplicate": true,
+	"too_short": true,
+	"other":     true,
 }
 
 // ---------------------------------------------------------------------------
@@ -412,8 +412,8 @@ func handleEditComment(c *fiber.Ctx) error {
 
 	now := time.Now()
 	updates := map[string]interface{}{
-		"body":      req.Comment,
-		"edited_at": now,
+		"body":       req.Comment,
+		"edited_at":  now,
 		"updated_at": now,
 	}
 	if req.Spoiler != nil {

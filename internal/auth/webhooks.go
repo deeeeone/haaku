@@ -23,9 +23,9 @@ import (
 
 // ClerkWebhookEvent is the Clerk webhook event payload.
 type ClerkWebhookEvent struct {
-	Data   ClerkUser       `json:"data"`
-	Object string          `json:"object"`
-	Type   string          `json:"type"`
+	Data   ClerkUser `json:"data"`
+	Object string    `json:"object"`
+	Type   string    `json:"type"`
 }
 
 // ---------------------------------------------------------------------------
