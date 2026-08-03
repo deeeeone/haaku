@@ -1,6 +1,8 @@
 # trakt-api — local dev stack (Phase 0 infra)
 # Postgres, Redis, MinIO, clerk-emulator, Mailpit.
 # The api/web services get Dockerfiles in T0.x and join this file.
+# Host ports are offset (+50000) so native macOS/brew services (5432, 6379)
+# don't shadow these containers; keep deploy/.env.example in sync.
 
 services:
   postgres:
@@ -10,7 +12,7 @@ services:
       POSTGRES_PASSWORD: trakt
       POSTGRES_DB: trakt
     ports:
-      - "5432:5432"
+      - "55432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -22,7 +24,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "56379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
