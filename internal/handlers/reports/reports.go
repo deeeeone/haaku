@@ -1,0 +1,184 @@
+package reports
+
+import (
+	"errors"
+	"strconv"
+	"strings"
+
+	"trakt-api/internal/database"
+	"trakt-api/internal/openapi"
+
+	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
+)
+
+func init() {
+	registerOpenAPIRoutes()
+}
+
+func registerOpenAPIRoutes() {
+	routes := []openapi.RouteDef{
+		{Method: "POST", Path: "/v1/movies/{id}/report", Summary: "Report a movie", Tags: []string{"Reports"}, Auth: "required", StatusCodes: map[int]string{201: "Reported", 400: "Invalid request or duplicate", 401: "Unauthorized", 404: "Movie not found"}},
+		{Method: "POST", Path: "/v1/shows/{id}/report", Summary: "Report a show", Tags: []string{"Reports"}, Auth: "required", StatusCodes: map[int]string{201: "Reported", 400: "Invalid request or duplicate", 401: "Unauthorized", 404: "Show not found"}},
+		{Method: "POST", Path: "/v1/seasons/{id}/report", Summary: "Report a season", Tags: []string{"Reports"}, Auth: "required", StatusCodes: map[int]string{201: "Reported", 400: "Invalid request or duplicate", 401: "Unauthorized", 404: "Season not found"}},
+		{Method: "POST", Path: "/v1/episodes/{id}/report", Summary: "Report an episode", Tags: []string{"Reports"}, Auth: "required", StatusCodes: map[int]string{201: "Reported", 400: "Invalid request or duplicate", 401: "Unauthorized", 404: "Episode not found"}},
+	}
+	for _, r := range routes {
+		openapi.Register(r)
+	}
+}
+
+// RegisterRoutes wires content report routes.
+func RegisterRoutes(api fiber.Router) {
+	api.Post("/movies/:id/report", requireAuth, handleReportMovie)
+	api.Post("/shows/:id/report", requireAuth, handleReportShow)
+	api.Post("/seasons/:id/report", requireAuth, handleReportSeason)
+	api.Post("/episodes/:id/report", requireAuth, handleReportEpisode)
+}
+
+// ---------------------------------------------------------------------------
+// Auth middleware
+// ---------------------------------------------------------------------------
+
+func requireAuth(c *fiber.Ctx) error {
+	userID, ok := c.Locals("user_id").(string)
+	if !ok || userID == "" {
+		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+	}
+	return c.Next()
+}
+
+// ---------------------------------------------------------------------------
+// Valid reasons
+// ---------------------------------------------------------------------------
+
+var validReportReasons = map[string]bool{
+	"spam":      true,
+	"spoiler":   true,
+	"offensive": true,
+	"incorrect": true,
+	"duplicate": true,
+	"other":     true,
+}
+
+// ---------------------------------------------------------------------------
+// Request/Response types
+// ---------------------------------------------------------------------------
+
+type reportRequest struct {
+	Reason      string `json:"reason"`
+	Description string `json:"description,omitempty"`
+}
+
+type reportResponse struct {
+	ID          int64  `json:"id"`
+	ReporterID  string `json:"reporter_id"`
+	MediaType   string `json:"media_type"`
+	MediaID     int64  `json:"media_id"`
+	Reason      string `json:"reason"`
+	Description string `json:"description"`
+	CreatedAt   string `json:"created_at"`
+}
+
+func toReportResponse(r *database.ContentReport) reportResponse {
+	return reportResponse{
+		ID:          r.ID,
+		ReporterID:  r.ReporterID,
+		MediaType:   r.MediaType,
+		MediaID:     r.MediaID,
+		Reason:      r.Reason,
+		Description: r.Description,
+		CreatedAt:   r.CreatedAt.Format("2006-01-02T15:04:05.000Z"),
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Handlers
+// ---------------------------------------------------------------------------
+
+// POST /v1/movies/:id/report
+func handleReportMovie(c *fiber.Ctx) error {
+	return handleReportContent(c, "movie")
+}
+
+// POST /v1/shows/:id/report
+func handleReportShow(c *fiber.Ctx) error {
+	return handleReportContent(c, "show")
+}
+
+// POST /v1/seasons/:id/report
+func handleReportSeason(c *fiber.Ctx) error {
+	return handleReportContent(c, "season")
+}
+
+// POST /v1/episodes/:id/report
+func handleReportEpisode(c *fiber.Ctx) error {
+	return handleReportContent(c, "episode")
+}
+
+func handleReportContent(c *fiber.Ctx, mediaType string) error {
+	userID := c.Locals("user_id").(string)
+	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	if err != nil {
+		return badRequest(c, "invalid media id")
+	}
+
+	var req reportRequest
+	if err := c.BodyParser(&req); err != nil {
+		return badRequest(c, "invalid request body")
+	}
+
+	reason := strings.ToLower(strings.TrimSpace(req.Reason))
+	if !validReportReasons[reason] {
+		return badRequest(c, "invalid reason: must be one of spam, spoiler, offensive, incorrect, duplicate, other")
+	}
+
+	description := strings.TrimSpace(req.Description)
+
+	db, err := database.GetDB()
+	if err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+	}
+
+	// Check for duplicate report.
+	var existing database.ContentReport
+	result := db.Where("reporter_id = ? AND media_type = ? AND media_id = ?", userID, mediaType, id).
+		First(&existing)
+	if result.Error == nil {
+		return badRequest(c, "you have already reported this content")
+	}
+	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+	}
+
+	report := database.ContentReport{
+		ReporterID:  userID,
+		MediaType:   mediaType,
+		MediaID:     id,
+		Reason:      reason,
+		Description: description,
+	}
+
+	if err := db.Create(&report).Error; err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to create report")
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(toReportResponse(&report))
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+func writeError(c *fiber.Ctx, status int, code, message string) error {
+	return c.Status(status).JSON(fiber.Map{
+		"error": fiber.Map{
+			"code":    code,
+			"message": message,
+		},
+	})
+}
+
+func badRequest(c *fiber.Ctx, msg string) error {
+	return writeError(c, fiber.StatusBadRequest, "invalid_request", msg)
+}

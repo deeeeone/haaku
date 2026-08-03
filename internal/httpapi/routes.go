@@ -9,15 +9,20 @@ import (
 	"trakt-api/internal/handlers/collab"
 	"trakt-api/internal/handlers/comments"
 	"trakt-api/internal/handlers/discovery"
+	"trakt-api/internal/handlers/episodes"
+	"trakt-api/internal/handlers/filters"
 	"trakt-api/internal/handlers/hidden"
 	"trakt-api/internal/handlers/integrations"
 	"trakt-api/internal/handlers/lists"
 	"trakt-api/internal/handlers/media"
+	"trakt-api/internal/handlers/notes"
 	"trakt-api/internal/handlers/notifications"
 	"trakt-api/internal/handlers/progress"
 	"trakt-api/internal/handlers/recommendations"
 	"trakt-api/internal/handlers/reference"
+	"trakt-api/internal/handlers/reports"
 	"trakt-api/internal/handlers/scrobble"
+	"trakt-api/internal/handlers/seasons"
 	"trakt-api/internal/handlers/social"
 	"trakt-api/internal/handlers/stats"
 	"trakt-api/internal/handlers/sync"
@@ -145,6 +150,12 @@ func RegisterRoutes(app *fiber.App) {
 	// Discovery endpoints (Phase 1: T1.7)
 	discovery.RegisterRoutes(api)
 
+	// Episode detail endpoints (T1.x)
+	episodes.RegisterRoutes(api)
+
+	// Season detail endpoints (T1.x)
+	seasons.RegisterRoutes(api)
+
 	// Users endpoints (Phase 2: T2.6, T2.7)
 	users.RegisterRoutes(api)
 
@@ -199,6 +210,15 @@ func RegisterRoutes(app *fiber.App) {
 
 	// Reference data endpoints (T9a.1)
 	reference.RegisterRoutes(api)
+
+	// Personal notes (T5.x)
+	notes.RegisterRoutes(api)
+
+	// Saved filters (T5.x)
+	filters.RegisterRoutes(api)
+
+	// Content reports (T5.x)
+	reports.RegisterRoutes(api)
 
 	// OAuth2 server (T2.4)
 	oauth.RegisterRoutes(app)

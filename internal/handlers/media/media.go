@@ -81,6 +81,9 @@ func RegisterRoutes(api fiber.Router) {
 	people.Get("/:id", handleGetPerson)
 	people.Get("/:id/movies", handleGetPersonMovies)
 	people.Get("/:id/shows", handleGetPersonShows)
+
+	// --- Translation & alias routes ---
+	RegisterTranslationRoutes(api)
 }
 
 // ---------------------------------------------------------------------------

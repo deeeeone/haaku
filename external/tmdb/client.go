@@ -334,6 +334,17 @@ func (c *Client) GetConfigCountries() ([]ConfigCountry, error) {
 	return *countries, nil
 }
 
+// GetV3 returns the raw response body from a TMDB v3 API path.
+// Used for proxying endpoints like translations, alternative titles, etc.
+func (c *Client) GetV3(path string) ([]byte, error) {
+	resp, err := c.doV3("GET", path, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	return io.ReadAll(resp.Body)
+}
+
 // GetMovieCertifications returns movie certifications grouped by country.
 func (c *Client) GetMovieCertifications() (*CertificationsResponse, error) {
 	resp, err := c.doV3("GET", "/certification/movie/list", nil)
