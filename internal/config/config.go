@@ -3,6 +3,8 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -20,11 +22,25 @@ type Config struct {
 	// External services
 	TMDBAPIToken string // TMDB v4 read-access token; sent as Authorization Bearer to api.themoviedb.org/4
 	ClerkBaseURL string // Clerk API base URL (clerk-emulator in dev)
-	ClerkSecret  string // Clerk secret key (sk_test_emulate in dev)
+	ClerkSecret  string // Clerk secret key (*** in dev)
 
 	// Admin/mod whitelists (pattern: theintrodb-api)
 	AdminUserIDs []string
 	ModUserIDs   []string
+
+	// Rate limiting (Phase 9d)
+	RateLimitEnabled bool
+	RateLimitAuth    RateLimitConfig
+	RateLimitPublic  RateLimitConfig
+
+	// CORS
+	CORSOrigins []string
+}
+
+// RateLimitConfig holds window + max for a rate limit tier.
+type RateLimitConfig struct {
+	WindowSeconds int
+	Max           int
 }
 
 // Load reads configuration from the environment.
@@ -44,6 +60,19 @@ func Load() (*Config, error) {
 		ClerkSecret:  os.Getenv("CLERK_SECRET_KEY"),
 		AdminUserIDs: splitCSV(os.Getenv("ADMIN_USER_IDS")),
 		ModUserIDs:   splitCSV(os.Getenv("MOD_USER_IDS")),
+
+		// Rate limiting (Phase 9d)
+		RateLimitEnabled: getEnvBool("RATE_LIMIT_ENABLED", false),
+		RateLimitAuth: RateLimitConfig{
+			WindowSeconds: getEnvInt("RATE_LIMIT_AUTH_WINDOW", 60),
+			Max:           getEnvInt("RATE_LIMIT_AUTH_MAX", 100),
+		},
+		RateLimitPublic: RateLimitConfig{
+			WindowSeconds: getEnvInt("RATE_LIMIT_PUBLIC_WINDOW", 60),
+			Max:           getEnvInt("RATE_LIMIT_PUBLIC_MAX", 30),
+		},
+
+		CORSOrigins: splitCSV(os.Getenv("CORS_ORIGINS")),
 	}
 
 	if cfg.TMDBAPIToken == "" {
@@ -56,6 +85,27 @@ func Load() (*Config, error) {
 func getEnv(key, fallback string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
+	}
+	return fallback
+}
+
+func getEnvInt(key string, fallback int) int {
+	if v := os.Getenv(key); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
+		}
+	}
+	return fallback
+}
+
+func getEnvBool(key string, fallback bool) bool {
+	if v := os.Getenv(key); v != "" {
+		switch strings.ToLower(v) {
+		case "true", "1", "yes":
+			return true
+		case "false", "0", "no", "":
+			return false
+		}
 	}
 	return fallback
 }
