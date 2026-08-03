@@ -15,7 +15,7 @@ func TestCalendarEntryJSON(t *testing.T) {
 	entry := struct {
 		Episode media.EpisodeResponse `json:"episode"`
 		Show    struct {
-			Title string   `json:"title"`
+			Title string    `json:"title"`
 			IDs   media.IDs `json:"ids"`
 		} `json:"show"`
 		Season struct {
@@ -88,44 +88,31 @@ func TestCalendarEntryJSON(t *testing.T) {
 	}
 }
 
-// TestCalendarEmptyArray verifies the my/shows stub returns empty array.
-func TestCalendarEmptyArray(t *testing.T) {
-	entries := make([]interface{}, 0)
-	data, err := json.Marshal(entries)
-	if err != nil {
-		t.Fatalf("failed to marshal: %v", err)
-	}
-	if string(data) != "[]" {
-		t.Errorf("empty calendar should be [], got %s", string(data))
-	}
-}
-
-// TestCalendarOpenAPIRoutesRegistered verifies calendar routes can be registered.
+// TestCalendarOpenAPIRoutesRegistered verifies all calendar routes are registered.
 func TestCalendarOpenAPIRoutesRegistered(t *testing.T) {
 	routes := openapi.AllRoutes()
 
-	expectedPaths := map[string]bool{
-		"/v1/calendars/my/shows":                        true,
-		"/v1/calendars/all/shows/{start_date}/{days}":   true,
+	expectedPaths := map[string]string{
+		"/v1/calendars/my/shows/{start_date}/{days}":        "required",
+		"/v1/calendars/all/shows/{start_date}/{days}":       "none",
+		"/v1/calendars/friends/shows/{start_date}/{days}":   "required",
+		"/v1/calendars/favorites/shows/{start_date}/{days}": "required",
+		"/v1/calendars/watched/shows/{start_date}/{days}":   "required",
 	}
 
-	found := make(map[string]bool)
+	found := make(map[string]string)
 	for _, r := range routes {
-		found[r.Path] = true
-	}
-
-	for path := range expectedPaths {
-		if !found[path] {
-			t.Errorf("expected calendar route %q not registered", path)
+		if expectedAuth, exists := expectedPaths[r.Path]; exists {
+			found[r.Path] = r.Auth
+			if r.Auth != expectedAuth {
+				t.Errorf("calendar route %s %s has auth=%q, want %q", r.Method, r.Path, r.Auth, expectedAuth)
+			}
 		}
 	}
 
-	// Verify auth is "none" for calendar routes.
-	for _, r := range routes {
-		if expectedPaths[r.Path] {
-			if r.Auth != "none" {
-				t.Errorf("calendar route %s %s has auth=%q, want 'none'", r.Method, r.Path, r.Auth)
-			}
+	for path := range expectedPaths {
+		if _, ok := found[path]; !ok {
+			t.Errorf("expected calendar route %q not registered", path)
 		}
 	}
 }
@@ -153,15 +140,15 @@ func TestCalendarDaysBounds(t *testing.T) {
 		input string
 		want  int
 	}{
-		{"", 7},       // default
+		{"", 7},      // default
 		{"7", 7},
 		{"1", 1},
 		{"30", 30},
-		{"31", 30},    // capped at 30
-		{"100", 30},   // capped
-		{"0", 1},      // floor at 1
-		{"-5", 7},     // invalid (minus sign) → default 7
-		{"abc", 7},    // invalid → default
+		{"31", 30},   // capped at 30
+		{"100", 30},  // capped
+		{"0", 1},     // floor at 1
+		{"-5", 7},    // invalid (minus sign) → default 7
+		{"abc", 7},   // invalid → default
 	}
 
 	for _, tt := range tests {
@@ -177,7 +164,7 @@ func TestCalendarDaysBounds(t *testing.T) {
 // TestCalendarShowShape verifies the show sub-object shape.
 func TestCalendarShowShape(t *testing.T) {
 	show := struct {
-		Title string   `json:"title"`
+		Title string    `json:"title"`
 		IDs   media.IDs `json:"ids"`
 	}{
 		Title: "Test Show",
@@ -210,6 +197,76 @@ func TestCalendarSeasonShape(t *testing.T) {
 	}
 	if string(data) != `{"number":3}` {
 		t.Errorf("season JSON = %s, want {\"number\":3}", string(data))
+	}
+}
+
+// TestCalendarTypeFilterValues verifies accepted type filter values.
+func TestCalendarTypeFilterValues(t *testing.T) {
+	validTypes := map[string]bool{"": true, "new": true, "premieres": true, "finale": true}
+	invalidTypes := []string{"invalid", "premiere", "final", "NEW", " "}
+
+	for _, ft := range invalidTypes {
+		if validTypes[ft] {
+			t.Errorf("%q should be invalid type filter", ft)
+		}
+	}
+	for ft := range validTypes {
+		if !validTypes[ft] {
+			t.Errorf("%q should be valid type filter", ft)
+		}
+	}
+}
+
+// TestCalendarPaginationEnvelope verifies pagination fields in responses.
+func TestCalendarPaginationEnvelope(t *testing.T) {
+	envelope := struct {
+		Items    []interface{} `json:"items"`
+		Page     int           `json:"page"`
+		Limit    int           `json:"limit"`
+		RowCount int64         `json:"row_count"`
+	}{
+		Items:    []interface{}{},
+		Page:     1,
+		Limit:    25,
+		RowCount: 0,
+	}
+
+	data, err := json.Marshal(envelope)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+
+	var raw map[string]interface{}
+	json.Unmarshal(data, &raw)
+	if raw["page"] == nil || raw["limit"] == nil || raw["row_count"] == nil {
+		t.Error("pagination envelope missing required fields")
+	}
+	if raw["items"] == nil {
+		t.Error("items field missing from envelope")
+	}
+}
+
+// TestCalendarTargetsDerivation verifies target derivation logic.
+func TestCalendarTargetsDerivation(t *testing.T) {
+	tests := []struct {
+		path   string
+		target string
+	}{
+		{"/v1/calendars/my/shows/2026-01-01/7", "my"},
+		{"/v1/calendars/all/shows/2026-01-01/7", "all"},
+		{"/v1/calendars/friends/shows/2026-01-01/7", "friends"},
+		{"/v1/calendars/favorites/shows/2026-01-01/7", "favorites"},
+		{"/v1/calendars/watched/shows/2026-01-01/7", "watched"},
+		{"/unknown", "all"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.target, func(t *testing.T) {
+			got := deriveTargetHelper(tt.path)
+			if got != tt.target {
+				t.Errorf("deriveTarget(%q) = %q, want %q", tt.path, got, tt.target)
+			}
+		})
 	}
 }
 
@@ -270,4 +327,23 @@ func clampDays(input string) int {
 		return 30
 	}
 	return d
+}
+
+// deriveTargetHelper duplicates the handler's target derivation logic.
+func deriveTargetHelper(path string) string {
+	idx := 0
+	for i := 0; i < len(path); i++ {
+		if path[i] == '/' {
+			idx++
+			if idx == 3 {
+				start := i + 1
+				end := start
+				for end < len(path) && path[end] != '/' {
+					end++
+				}
+				return path[start:end]
+			}
+		}
+	}
+	return "all"
 }

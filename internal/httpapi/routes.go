@@ -14,6 +14,7 @@ import (
 	"trakt-api/internal/handlers/lists"
 	"trakt-api/internal/handlers/media"
 	"trakt-api/internal/handlers/notifications"
+	"trakt-api/internal/handlers/progress"
 	"trakt-api/internal/handlers/recommendations"
 	"trakt-api/internal/handlers/reference"
 	"trakt-api/internal/handlers/scrobble"
@@ -170,6 +171,9 @@ func RegisterRoutes(app *fiber.App) {
 
 	// Scrobble + playback (T3.3, T3.4)
 	scrobble.RegisterRoutes(api)
+
+	// Playback progress (T9b.2)
+	progress.RegisterRoutes(api)
 
 	// Checkin (T3.5)
 	checkin.RegisterRoutes(api)

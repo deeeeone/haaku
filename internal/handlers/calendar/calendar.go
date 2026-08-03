@@ -9,6 +9,7 @@ import (
 	"trakt-api/internal/openapi"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 )
 
 func init() {
@@ -20,12 +21,14 @@ func registerOpenAPIRoutes() {
 	routes := []openapi.RouteDef{
 		{
 			Method:  "GET",
-			Path:    "/v1/calendars/my/shows",
-			Summary: "Get your upcoming show calendar (stub — requires user scrobble data in Phase 2+)",
+			Path:    "/v1/calendars/my/shows/{start_date}/{days}",
+			Summary: "Get your upcoming show calendar (shows you've watched or watchlisted)",
 			Tags:    []string{"Calendars"},
-			Auth:    "none",
+			Auth:    "required",
 			StatusCodes: map[int]string{
-				200: "Calendar entries (empty for now)",
+				200: "Calendar entries",
+				400: "Invalid parameters",
+				401: "Unauthorized",
 			},
 		},
 		{
@@ -39,6 +42,42 @@ func registerOpenAPIRoutes() {
 				400: "Invalid start_date or days parameter",
 			},
 		},
+		{
+			Method:  "GET",
+			Path:    "/v1/calendars/friends/shows/{start_date}/{days}",
+			Summary: "Get upcoming episodes from shows your mutual follows have watched",
+			Tags:    []string{"Calendars"},
+			Auth:    "required",
+			StatusCodes: map[int]string{
+				200: "Calendar entries",
+				400: "Invalid parameters",
+				401: "Unauthorized",
+			},
+		},
+		{
+			Method:  "GET",
+			Path:    "/v1/calendars/favorites/shows/{start_date}/{days}",
+			Summary: "Get upcoming episodes from your favorited shows",
+			Tags:    []string{"Calendars"},
+			Auth:    "required",
+			StatusCodes: map[int]string{
+				200: "Calendar entries",
+				400: "Invalid parameters",
+				401: "Unauthorized",
+			},
+		},
+		{
+			Method:  "GET",
+			Path:    "/v1/calendars/watched/shows/{start_date}/{days}",
+			Summary: "Get upcoming episodes from shows you've watched",
+			Tags:    []string{"Calendars"},
+			Auth:    "required",
+			StatusCodes: map[int]string{
+				200: "Calendar entries",
+				400: "Invalid parameters",
+				401: "Unauthorized",
+			},
+		},
 	}
 
 	for _, r := range routes {
@@ -49,8 +88,28 @@ func registerOpenAPIRoutes() {
 // RegisterRoutes wires calendar route handlers to the Fiber router.
 func RegisterRoutes(api fiber.Router) {
 	calendars := api.Group("/calendars")
-	calendars.Get("/my/shows", handleMyShows)
-	calendars.Get("/all/shows/:start_date/:days", handleAllShows)
+
+	// Public: all shows
+	calendars.Get("/all/shows/:start_date/:days", handleCalendarShows)
+
+	// Auth-required: my, friends, favorites, watched
+	calendars.Get("/my/shows/:start_date/:days", requireAuth, handleCalendarShows)
+	calendars.Get("/friends/shows/:start_date/:days", requireAuth, handleCalendarShows)
+	calendars.Get("/favorites/shows/:start_date/:days", requireAuth, handleCalendarShows)
+	calendars.Get("/watched/shows/:start_date/:days", requireAuth, handleCalendarShows)
+}
+
+// ---------------------------------------------------------------------------
+// Auth middleware wrapper
+// ---------------------------------------------------------------------------
+
+func requireAuth(c *fiber.Ctx) error {
+	userID, ok := c.Locals("user_id").(string)
+	if !ok || userID == "" {
+		return authRequired(c)
+	}
+	_ = userID // used in downstream handlers via c.Locals
+	return c.Next()
 }
 
 // ---------------------------------------------------------------------------
@@ -79,22 +138,19 @@ type CalendarSeason struct {
 // Handlers
 // ---------------------------------------------------------------------------
 
-// handleMyShows returns the user's personal calendar. Stub until user scrobble
-// data is available in Phase 2+.
-func handleMyShows(c *fiber.Ctx) error {
-	return c.JSON([]CalendarEntry{})
-}
-
-// handleAllShows returns all episodes airing between start_date and
-// start_date+days, ordered by air date then episode number.
-//
-// Query params: page, limit
+// handleCalendarShows is the unified calendar handler for all targets.
 // Path params: start_date (YYYY-MM-DD), days (1-30, default 7)
-func handleAllShows(c *fiber.Ctx) error {
+// Query params: type (new|premieres|finale), page, limit
+// Target is derived from the route path via c.Params.
+func handleCalendarShows(c *fiber.Ctx) error {
+	// Derive target from the URL path.
+	target := deriveTarget(c.Path())
+
 	startDateStr := c.Params("start_date")
 	daysStr := c.Params("days")
+	typeFilter := c.Query("type", "")
 
-	// Parse start_date.
+	// Validate start_date.
 	startDate, err := time.Parse("2006-01-02", startDateStr)
 	if err != nil {
 		return badRequest(c, "invalid start_date format, expected YYYY-MM-DD")
@@ -104,6 +160,21 @@ func handleAllShows(c *fiber.Ctx) error {
 	days := clampDays(daysStr)
 	endDate := startDate.AddDate(0, 0, days)
 
+	// Validate type filter.
+	if typeFilter != "" && typeFilter != "new" && typeFilter != "premieres" && typeFilter != "finale" {
+		return badRequest(c, "invalid type filter, expected new, premieres, or finale")
+	}
+
+	// Auth check for non-all targets.
+	var userID string
+	if target != "all" {
+		var ok bool
+		userID, ok = c.Locals("user_id").(string)
+		if !ok || userID == "" {
+			return authRequired(c)
+		}
+	}
+
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "database unavailable")
@@ -111,31 +182,61 @@ func handleAllShows(c *fiber.Ctx) error {
 
 	page, limit := parsePagination(c)
 
-	// Query episodes airing in [startDate, endDate).
+	// Build the base episode query.
+	query := db.Table("episodes e").
+		Select("e.*").
+		Where("e.aired_at >= ? AND e.aired_at < ?",
+			startDate.Format("2006-01-02"),
+			endDate.Format("2006-01-02"))
+
+	// Apply type filter (requires season join for new/premieres).
+	switch typeFilter {
+	case "new":
+		query = query.Joins("JOIN seasons s ON s.id = e.season_id").
+			Where("s.season_number = 1 AND e.episode_number = 1")
+	case "premieres":
+		query = query.Joins("JOIN seasons s ON s.id = e.season_id").
+			Where("s.season_number > 1 AND e.episode_number = 1")
+	case "finale":
+		query = query.Where(`(e.season_id, e.episode_number) IN (
+			SELECT season_id, MAX(episode_number) FROM episodes GROUP BY season_id
+		)`)
+	}
+
+	// Apply target filter.
+	if target != "all" {
+		showIDs := getShowIDsForTarget(db, target, userID)
+		if len(showIDs) == 0 {
+			return c.JSON([]CalendarEntry{})
+		}
+		query = query.Where("e.show_id IN ?", showIDs)
+	}
+
+	// Count, then paginate.
+	var total int64
+	query.Count(&total)
+
 	var episodes []database.Episode
-	if err := db.Where("aired_at >= ? AND aired_at < ?",
-		startDate.Format("2006-01-02"),
-		endDate.Format("2006-01-02"),
-	).
-		Order("aired_at ASC, episode_number ASC").
+	if err := query.
+		Order("e.aired_at ASC, e.episode_number ASC").
 		Offset((page - 1) * limit).
 		Limit(limit).
 		Find(&episodes).Error; err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
 
+	// Build response, merging season_number from seasons table.
 	resp := make([]CalendarEntry, 0, len(episodes))
 	for _, ep := range episodes {
-		// Fetch the show for title + IDs.
 		var show database.Show
 		if err := db.First(&show, ep.ShowID).Error; err != nil {
-			continue // skip if show deleted
+			continue
 		}
 
-		// Fetch the season for the season number.
 		var season database.Season
-		if err := db.First(&season, ep.SeasonID).Error; err != nil {
-			season.SeasonNumber = 0 // fallback
+		seasonNumber := 0
+		if err := db.First(&season, ep.SeasonID).Error; err == nil {
+			seasonNumber = season.SeasonNumber
 		}
 
 		entry := CalendarEntry{
@@ -145,13 +246,164 @@ func handleAllShows(c *fiber.Ctx) error {
 				IDs:   buildShowIDs(&show),
 			},
 			Season: CalendarSeason{
-				Number: season.SeasonNumber,
+				Number: seasonNumber,
 			},
 		}
 		resp = append(resp, entry)
 	}
 
-	return c.JSON(resp)
+	// Return with pagination envelope.
+	return c.JSON(fiber.Map{
+		"items":     resp,
+		"page":      page,
+		"limit":     limit,
+		"row_count": total,
+	})
+}
+
+// deriveTarget extracts the calendar target from the request path.
+// e.g. "/v1/calendars/my/shows/2026-01-01/7" → "my"
+func deriveTarget(path string) string {
+	// Path format: /v1/calendars/{target}/shows/...
+	// Simple extraction between "calendars/" and "/shows"
+	idx := 0
+	for i := 0; i < len(path); i++ {
+		if path[i] == '/' {
+			idx++
+			if idx == 3 { // after /v1/calendars/
+				start := i + 1
+				// Find next /
+				end := start
+				for end < len(path) && path[end] != '/' {
+					end++
+				}
+				return path[start:end]
+			}
+		}
+	}
+	return "all"
+}
+
+// getShowIDsForTarget returns the set of show IDs for a given calendar target.
+func getShowIDsForTarget(db *gorm.DB, target, userID string) []int64 {
+	var showIDs []int64
+
+	switch target {
+	case "my":
+		// Shows user has watched (via episodes) OR on watchlist.
+		// Exclude hidden (section='calendar').
+
+		// Subquery 1: show IDs from history (via episodes).
+		var historyShowIDs []int64
+		db.Table("user_history uh").
+			Joins("JOIN episodes e ON e.id = uh.media_id AND uh.media_type = 'episode'").
+			Where("uh.user_id = ?", userID).
+			Distinct("e.show_id").
+			Pluck("e.show_id", &historyShowIDs)
+
+		// Subquery 2: show IDs from watchlist.
+		var watchlistShowIDs []int64
+		db.Table("user_watchlist").
+			Where("user_id = ? AND media_type = ?", userID, "show").
+			Pluck("media_id", &watchlistShowIDs)
+
+		// Union uniquely.
+		showIDMap := make(map[int64]bool)
+		for _, id := range historyShowIDs {
+			showIDMap[id] = true
+		}
+		for _, id := range watchlistShowIDs {
+			showIDMap[id] = true
+		}
+
+		// Exclude hidden.
+		excludeHiddenShowIDs(db, userID, "calendar", "show", showIDMap)
+
+		for id := range showIDMap {
+			showIDs = append(showIDs, id)
+		}
+
+	case "friends":
+		// Mutual follows: A follows B AND B follows A, both approved.
+		// Get friends who the user mutually follows.
+		var friendIDs []string
+		db.Raw(`
+			SELECT f1.following_id FROM user_follows f1
+			JOIN user_follows f2 ON f1.following_id = f2.follower_id AND f2.following_id = f1.follower_id
+			WHERE f1.follower_id = ?
+			  AND f1.approved_at IS NOT NULL
+			  AND f2.approved_at IS NOT NULL
+		`, userID).Pluck("following_id", &friendIDs)
+
+		if len(friendIDs) == 0 {
+			return nil
+		}
+
+		// Shows those friends have watched in the last 90 days.
+		cutoff := time.Now().AddDate(0, 0, -90)
+		showIDMap := make(map[int64]bool)
+		var friendShowIDs []int64
+		db.Table("user_history uh").
+			Joins("JOIN episodes e ON e.id = uh.media_id AND uh.media_type = 'episode'").
+			Where("uh.user_id IN ? AND uh.watched_at >= ?", friendIDs, cutoff).
+			Distinct("e.show_id").
+			Pluck("e.show_id", &friendShowIDs)
+		for _, id := range friendShowIDs {
+			showIDMap[id] = true
+		}
+
+		// Exclude user's hidden items.
+		excludeHiddenShowIDs(db, userID, "calendar", "show", showIDMap)
+
+		for id := range showIDMap {
+			showIDs = append(showIDs, id)
+		}
+
+	case "favorites":
+		// Shows the user has favorited.
+		var favShowIDs []int64
+		db.Table("user_favorites").
+			Where("user_id = ? AND media_type = ?", userID, "show").
+			Pluck("media_id", &favShowIDs)
+
+		showIDMap := make(map[int64]bool)
+		for _, id := range favShowIDs {
+			showIDMap[id] = true
+		}
+		for id := range showIDMap {
+			showIDs = append(showIDs, id)
+		}
+
+	case "watched":
+		// Shows user has watched (same as my but no watchlist).
+		var historyShowIDs []int64
+		db.Table("user_history uh").
+			Joins("JOIN episodes e ON e.id = uh.media_id AND uh.media_type = 'episode'").
+			Where("uh.user_id = ?", userID).
+			Distinct("e.show_id").
+			Pluck("e.show_id", &historyShowIDs)
+
+		showIDMap := make(map[int64]bool)
+		for _, id := range historyShowIDs {
+			showIDMap[id] = true
+		}
+		for id := range showIDMap {
+			showIDs = append(showIDs, id)
+		}
+	}
+
+	return showIDs
+}
+
+// excludeHiddenShowIDs removes show IDs that are hidden in a given section.
+func excludeHiddenShowIDs(db *gorm.DB, userID, section, mediaType string, showIDMap map[int64]bool) {
+	var hiddenIDs []int64
+	db.Table("user_hidden").
+		Where("user_id = ? AND section = ? AND media_type = ?", userID, section, mediaType).
+		Pluck("media_id", &hiddenIDs)
+	for _, id := range hiddenIDs {
+		delete(showIDMap, id)
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -253,5 +505,11 @@ func badRequest(c *fiber.Ctx, msg string) error {
 			"code":    "invalid_request",
 			"message": msg,
 		},
+	})
+}
+
+func authRequired(c *fiber.Ctx) error {
+	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+		"error": fiber.Map{"code": "unauthorized", "message": "invalid or expired token"},
 	})
 }

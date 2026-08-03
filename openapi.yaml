@@ -527,6 +527,54 @@ paths:
             summary: Get your upcoming show calendar (stub — requires user scrobble data in Phase 2+)
             tags:
                 - Calendars
+    /v1/certifications/{type}:
+        get:
+            operationId: _v1_certifications_type_GET
+            responses:
+                "200":
+                    description: Certifications grouped by country
+                "400":
+                    description: Invalid type parameter
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: List certifications grouped by country for movies or shows
+            tags:
+                - Reference
     /v1/checkin:
         delete:
             operationId: _v1_checkin_DELETE
@@ -1513,6 +1561,102 @@ paths:
             summary: Recently edited comments
             tags:
                 - Comments
+    /v1/countries/{type}:
+        get:
+            operationId: _v1_countries_type_GET
+            responses:
+                "200":
+                    description: List of countries
+                "400":
+                    description: Invalid type parameter
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: List all supported countries for movies or shows
+            tags:
+                - Reference
+    /v1/genres/{type}:
+        get:
+            operationId: _v1_genres_type_GET
+            responses:
+                "200":
+                    description: List of genres
+                "400":
+                    description: Invalid type parameter
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: List all genres for movies or shows
+            tags:
+                - Reference
     /v1/integrations:
         get:
             operationId: _v1_integrations_GET
@@ -1698,6 +1842,54 @@ paths:
             summary: Receive inbound integration event
             tags:
                 - Integrations
+    /v1/languages/{type}:
+        get:
+            operationId: _v1_languages_type_GET
+            responses:
+                "200":
+                    description: List of languages
+                "400":
+                    description: Invalid type parameter
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: List all supported languages for movies or shows
+            tags:
+                - Reference
     /v1/lists/{id}:
         delete:
             operationId: _v1_lists_id_DELETE
@@ -2475,6 +2667,56 @@ paths:
             summary: Get trending lists
             tags:
                 - Lists
+    /v1/media/anticipated:
+        get:
+            operationId: _v1_media_anticipated_GET
+            responses:
+                "200":
+                    description: Anticipated media
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    description: Unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Get anticipated upcoming media weighted by watchlist interest
+            tags:
+                - Media
     /v1/movies/{id}:
         get:
             operationId: _v1_movies_id_GET
@@ -3035,6 +3277,58 @@ paths:
             summary: Get movies updated since a date
             tags:
                 - Updates
+    /v1/networks:
+        get:
+            operationId: _v1_networks_GET
+            responses:
+                "200":
+                    description: List of networks
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: List all distinct TV networks
+            tags:
+                - Reference
     /v1/notifications:
         get:
             operationId: _v1_notifications_GET
@@ -3389,6 +3683,106 @@ paths:
             summary: Get people updated since a date
             tags:
                 - Updates
+    /v1/recommendations/movies:
+        get:
+            operationId: _v1_recommendations_movies_GET
+            responses:
+                "200":
+                    description: Movie recommendations
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    description: Unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Get personalized movie recommendations based on watch history
+            tags:
+                - Recommendations
+    /v1/recommendations/shows:
+        get:
+            operationId: _v1_recommendations_shows_GET
+            responses:
+                "200":
+                    description: Show recommendations
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    description: Unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Get personalized show recommendations based on watch history
+            tags:
+                - Recommendations
     /v1/scrobble/pause:
         post:
             operationId: _v1_scrobble_pause_POST
@@ -4609,6 +5003,106 @@ paths:
             summary: Get resolved smart list items
             tags:
                 - Lists
+    /v1/social_recommendations/movies:
+        get:
+            operationId: _v1_social_recommendations_movies_GET
+            responses:
+                "200":
+                    description: Social movie recommendations
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    description: Unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Get movie recommendations from friends' watch history
+            tags:
+                - Recommendations
+    /v1/social_recommendations/shows:
+        get:
+            operationId: _v1_social_recommendations_shows_GET
+            responses:
+                "200":
+                    description: Social show recommendations
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    description: Unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Get show recommendations from friends' watch history
+            tags:
+                - Recommendations
     /v1/sync/collection:
         get:
             operationId: _v1_sync_collection_GET
