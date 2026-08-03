@@ -13,6 +13,7 @@ import (
 	"trakt-api/internal/httpapi"
 	"trakt-api/internal/logging"
 	"trakt-api/internal/openapi"
+	"trakt-api/internal/workers"
 	"trakt-api/redis"
 
 	"github.com/robfig/cron/v3"
@@ -51,6 +52,9 @@ func main() {
 		}
 		defer redis.CloseRedis()
 	}
+
+	// Background workers
+	workers.StartWebhookWorker()
 
 	app := httpapi.NewServer(cfg)
 

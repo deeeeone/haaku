@@ -94,6 +94,7 @@ func InitDB() (*gorm.DB, error) {
 		models = append(models, CommentModels()...)
 		models = append(models, ActivityModels()...)
 		models = append(models, NotifModels()...)
+		models = append(models, WebhookModels()...)
 		if err = db.AutoMigrate(models...); err != nil {
 			err = fmt.Errorf("automigrate failed: %w", err)
 			return
