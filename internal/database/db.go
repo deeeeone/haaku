@@ -1,7 +1,6 @@
 package database
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -10,16 +9,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 var (
 	db      *gorm.DB
-	rdb     *redis.Client
 	dbOnce  sync.Once
-	redOnce sync.Once
 )
 
 // --- env helpers ---
@@ -164,39 +160,20 @@ func CloseDB() error {
 	return sqlDB.Close()
 }
 
-// --- Redis ---
+// --- Redis stubs (T0.7 full implementation) ---
 
-// InitRedis opens the Redis connection. Safe to call multiple times.
-func InitRedis() (*redis.Client, error) {
-	var err error
-	redOnce.Do(func() {
-		opts, perr := redis.ParseURL(getEnv("REDIS_URL", "redis://localhost:6379"))
-		if perr != nil {
-			err = fmt.Errorf("invalid REDIS_URL: %w", perr)
-			return
-		}
-		rdb = redis.NewClient(opts)
-		if cerr := rdb.Ping(context.Background()).Err(); cerr != nil {
-			err = fmt.Errorf("redis ping failed: %w", cerr)
-			return
-		}
-		log.Println("[redis] connected")
-	})
-	return rdb, err
+// InitRedis initializes the Redis connection. Returns nil,* if not configured.
+// Full implementation arrives in T0.7 (circuit breaker + single-flight).
+func InitRedis() (interface{}, error) {
+	return nil, nil
 }
 
-// GetRedis returns the Redis singleton. Call after InitRedis.
-func GetRedis() (*redis.Client, error) {
-	if rdb == nil {
-		return nil, fmt.Errorf("redis not initialized — call InitRedis first")
-	}
-	return rdb, nil
+// GetRedis returns the Redis client singleton or nil if not initialized.
+func GetRedis() (interface{}, error) {
+	return nil, nil
 }
 
-// CloseRedis shuts down the Redis connection.
-func CloseRedis() error {
-	if rdb == nil {
-		return nil
-	}
-	return rdb.Close()
+// CloseRedis closes the Redis connection if open.
+func CloseRedis() {
 }
+

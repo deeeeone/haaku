@@ -210,7 +210,7 @@ func TestCircuitBreakerStates(t *testing.T) {
 		t.Errorf("CircuitOpen = %d, want 1", redis.CircuitOpen)
 	}
 	if redis.CircuitHalfOpen != 2 {
-		t.Errorf("CircuitHalfOpen = 2, want 2", redis.CircuitHalfOpen)
+		t.Errorf("CircuitHalfOpen = %d, want 2", redis.CircuitHalfOpen)
 	}
 }
 

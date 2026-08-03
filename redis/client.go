@@ -83,6 +83,17 @@ func CloseRedis() error {
 	return nil
 }
 
+// requireClient returns the Redis client if initialized, or an error.
+func requireClient() (*redis.Client, error) {
+	if rdb == nil {
+		return nil, fmt.Errorf("redis not initialized — call InitRedis first")
+	}
+	return rdb, nil
+}
+
+// isClientNil returns true if Redis is not initialized.
+func isClientNil() bool { return rdb == nil }
+
 // ---------------------------------------------------------------------------
 // Circuit-breaker-wrapped core operations
 // ---------------------------------------------------------------------------
@@ -158,6 +169,9 @@ func Pipeline(ctx context.Context, fn func(redis.Pipeliner) error) error {
 
 // SetCacheData stores raw bytes in Redis with size validation and circuit breaker.
 func SetCacheData(key string, data []byte, ttl time.Duration) error {
+	if rdb == nil {
+		return fmt.Errorf("redis not initialized")
+	}
 	if len(data) > RedisMaxCacheEntrySize {
 		return fmt.Errorf("cache entry size %d bytes exceeds max %d bytes (key: %s)",
 			len(data), RedisMaxCacheEntrySize, key)
@@ -173,6 +187,9 @@ func SetCacheData(key string, data []byte, ttl time.Duration) error {
 // GetCacheData retrieves raw bytes from Redis with circuit breaker and
 // single-flight deduplication for thundering-herd protection.
 func GetCacheData(key string) ([]byte, error) {
+	if rdb == nil {
+		return nil, fmt.Errorf("redis not initialized")
+	}
 	res, err := cacheSingleFlight.Do(key, func() (interface{}, error) {
 		ctx, cancel := context.WithTimeout(context.Background(), RedisDefaultTimeout)
 		defer cancel()
@@ -196,6 +213,9 @@ func InvalidateMultipleKeysPipeline(keys []string) error {
 	if len(keys) == 0 {
 		return nil
 	}
+	if _, err := requireClient(); err != nil {
+		return err // Redis not initialized — graceful no-op for tests
+	}
 
 	return executeWithRetry(func() error {
 		ctx, cancel := context.WithTimeout(context.Background(), RedisInvalidationTimeout)
@@ -217,6 +237,9 @@ func InvalidateMultipleKeysPipeline(keys []string) error {
 // IncrementMediaVersion atomically bumps the version counter for a media entity.
 // Returns the new version number.
 func IncrementMediaVersion(mediaType string, mediaID int64, season, episode *int) (int64, error) {
+	if _, err := requireClient(); err != nil {
+		return 0, err
+	}
 	key := BuildMediaVersionKey(mediaType, mediaID, season, episode)
 
 	var version int64
@@ -240,6 +263,9 @@ func IncrementMediaVersion(mediaType string, mediaID int64, season, episode *int
 
 // IncrementUserVersion atomically bumps the version counter for a user.
 func IncrementUserVersion(userID string) (int64, error) {
+	if _, err := requireClient(); err != nil {
+		return 0, err
+	}
 	key := BuildUserVersionKey(userID)
 
 	var version int64
@@ -261,6 +287,9 @@ func IncrementUserVersion(userID string) (int64, error) {
 
 // IncrementListVersion atomically bumps the version counter for a list.
 func IncrementListVersion(listID int64) (int64, error) {
+	if _, err := requireClient(); err != nil {
+		return 0, err
+	}
 	key := BuildListVersionKey(listID)
 
 	var version int64
@@ -283,6 +312,9 @@ func IncrementListVersion(listID int64) (int64, error) {
 // GetMediaVersion returns the current version counter for a media entity.
 // Returns 0 if no version counter exists (never cached).
 func GetMediaVersion(mediaType string, mediaID int64, season, episode *int) (int64, error) {
+	if _, err := requireClient(); err != nil {
+		return 0, err
+	}
 	key := BuildMediaVersionKey(mediaType, mediaID, season, episode)
 
 	var version int64
@@ -307,6 +339,9 @@ func GetMediaVersion(mediaType string, mediaID int64, season, episode *int) (int
 
 // GetUserVersion returns the current version counter for a user.
 func GetUserVersion(userID string) (int64, error) {
+	if _, err := requireClient(); err != nil {
+		return 0, err
+	}
 	key := BuildUserVersionKey(userID)
 
 	var version int64

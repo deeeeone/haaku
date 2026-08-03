@@ -3,6 +3,7 @@ package httpapi
 import (
 	"trakt-api/internal/database"
 	"trakt-api/internal/openapi"
+	"trakt-api/redis"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -40,7 +41,7 @@ func RegisterRoutes(app *fiber.App) {
 			})
 		}
 		// Redis is soft — degradation, not failure
-		rdb, _ := database.GetRedis()
+		rdb := redis.GetClient()
 		if rdb == nil {
 			return c.JSON(fiber.Map{"status": "ready", "redis": "unavailable"})
 		}

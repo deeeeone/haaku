@@ -13,6 +13,7 @@ import (
 	"trakt-api/internal/httpapi"
 	"trakt-api/internal/logging"
 	"trakt-api/internal/openapi"
+	"trakt-api/redis"
 
 	"github.com/robfig/cron/v3"
 )
@@ -43,12 +44,12 @@ func main() {
 		logger.Warn("DATABASE_URL not set — running without persistence")
 	}
 
-	// Redis (T0.4 init; T0.7 circuit breaker + single-flight pending)
+	// Redis (T0.7 + T0.8: circuit breaker, single-flight, version counters)
 	if cfg.RedisURL != "" {
-		if _, err := database.InitRedis(); err != nil {
+		if err := redis.InitRedis(); err != nil {
 			logger.Warn("redis unavailable — running without cache", "error", err)
 		}
-		defer database.CloseRedis()
+		defer redis.CloseRedis()
 	}
 
 	app := httpapi.NewServer(cfg)

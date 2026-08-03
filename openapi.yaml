@@ -1,0 +1,140 @@
+components:
+    schemas:
+        ErrorEnvelope:
+            properties:
+                error:
+                    properties:
+                        code:
+                            type: string
+                        message:
+                            type: string
+                    required:
+                        - code
+                        - message
+                    type: object
+            required:
+                - error
+            type: object
+    securitySchemes:
+        apiKey:
+            in: header
+            name: X-API-Key
+            type: apiKey
+        oauth:
+            bearerFormat: JWT
+            scheme: bearer
+            type: http
+info:
+    title: trakt-api
+    version: 0.1.0
+openapi: 3.1.0
+paths:
+    /healthz:
+        get:
+            operationId: _healthz_GET
+            responses:
+                "200":
+                    description: Service is healthy
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Health check — returns service liveness status
+            tags:
+                - Health
+    /readyz:
+        get:
+            operationId: _readyz_GET
+            responses:
+                "200":
+                    description: Service is ready
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+                "503":
+                    description: Service is degraded
+            security: []
+            summary: Readiness check — returns service health including DB/Redis
+            tags:
+                - Health
+servers:
+    - description: Local development
+      url: http://localhost:8080
