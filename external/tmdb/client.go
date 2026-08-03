@@ -287,3 +287,67 @@ func (c *Client) GetShowWatchProviders(showID int) (*WatchProvidersResponse, err
 	}
 	return decode[WatchProvidersResponse](resp)
 }
+
+// --- Reference / configuration API methods (v3) ---
+
+// GetMovieGenres returns the list of movie genres from TMDB.
+func (c *Client) GetMovieGenres() (*GenreList, error) {
+	resp, err := c.doV3("GET", "/genre/movie/list", nil)
+	if err != nil {
+		return nil, err
+	}
+	return decode[GenreList](resp)
+}
+
+// GetTVGenres returns the list of TV show genres from TMDB.
+func (c *Client) GetTVGenres() (*GenreList, error) {
+	resp, err := c.doV3("GET", "/genre/tv/list", nil)
+	if err != nil {
+		return nil, err
+	}
+	return decode[GenreList](resp)
+}
+
+// GetConfigLanguages returns the list of supported languages from TMDB.
+func (c *Client) GetConfigLanguages() ([]ConfigLanguage, error) {
+	resp, err := c.doV3("GET", "/configuration/languages", nil)
+	if err != nil {
+		return nil, err
+	}
+	langs, err := decode[[]ConfigLanguage](resp)
+	if err != nil {
+		return nil, err
+	}
+	return *langs, nil
+}
+
+// GetConfigCountries returns the list of supported countries from TMDB.
+func (c *Client) GetConfigCountries() ([]ConfigCountry, error) {
+	resp, err := c.doV3("GET", "/configuration/countries", nil)
+	if err != nil {
+		return nil, err
+	}
+	countries, err := decode[[]ConfigCountry](resp)
+	if err != nil {
+		return nil, err
+	}
+	return *countries, nil
+}
+
+// GetMovieCertifications returns movie certifications grouped by country.
+func (c *Client) GetMovieCertifications() (*CertificationsResponse, error) {
+	resp, err := c.doV3("GET", "/certification/movie/list", nil)
+	if err != nil {
+		return nil, err
+	}
+	return decode[CertificationsResponse](resp)
+}
+
+// GetTVCertifications returns TV show certifications grouped by country.
+func (c *Client) GetTVCertifications() (*CertificationsResponse, error) {
+	resp, err := c.doV3("GET", "/certification/tv/list", nil)
+	if err != nil {
+		return nil, err
+	}
+	return decode[CertificationsResponse](resp)
+}

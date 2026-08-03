@@ -14,6 +14,8 @@ import (
 	"trakt-api/internal/handlers/lists"
 	"trakt-api/internal/handlers/media"
 	"trakt-api/internal/handlers/notifications"
+	"trakt-api/internal/handlers/recommendations"
+	"trakt-api/internal/handlers/reference"
 	"trakt-api/internal/handlers/scrobble"
 	"trakt-api/internal/handlers/social"
 	"trakt-api/internal/handlers/stats"
@@ -184,9 +186,15 @@ func RegisterRoutes(app *fiber.App) {
 	// Webhooks (T8.1)
 	webhooks.RegisterRoutes(api)
 
+	// Recommendations (T9a.2 + T9a.3)
+	recommendations.RegisterRoutes(api)
+
 	// Integrations (T8.3)
 	integrations.RegisterRoutes(api)
 	integrations.RegisterReceiverRoutes(api)
+
+	// Reference data endpoints (T9a.1)
+	reference.RegisterRoutes(api)
 
 	// OAuth2 server (T2.4)
 	oauth.RegisterRoutes(app)

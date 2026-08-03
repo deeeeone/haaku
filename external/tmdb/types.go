@@ -342,3 +342,36 @@ type Provider struct {
 	ProviderName string `json:"provider_name"`
 	LogoPath     string `json:"logo_path"`
 }
+
+// --- Reference / configuration types (v3) ---
+
+// GenreList is the wrapper for TMDB genre list responses.
+// GET /genre/movie/list and /genre/tv/list both return this shape.
+type GenreList struct {
+	Genres []Genre `json:"genres"`
+}
+
+// ConfigLanguage is a single entry from GET /configuration/languages.
+type ConfigLanguage struct {
+	ISOCode     string `json:"iso_639_1"`
+	EnglishName string `json:"english_name"`
+	Name        string `json:"name"`
+}
+
+// ConfigCountry is a single entry from GET /configuration/countries.
+type ConfigCountry struct {
+	ISOCode     string `json:"iso_3166_1"`
+	EnglishName string `json:"english_name"`
+}
+
+// CertificationsResponse is the wrapper for GET /certification/{movie,tv}/list.
+type CertificationsResponse struct {
+	Certifications map[string][]Certification `json:"certifications"`
+}
+
+// Certification is a single rating entry within a country's list.
+type Certification struct {
+	Certification string `json:"certification"`
+	Meaning       string `json:"meaning"`
+	Order         int    `json:"order"`
+}
