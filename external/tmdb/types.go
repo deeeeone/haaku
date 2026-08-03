@@ -228,3 +228,117 @@ func (t *Title) ReleaseYear() string {
 	}
 	return ""
 }
+
+// --- Lightweight list types (v3 popular/discover/trending responses) ---
+
+// MovieListItem is a lightweight movie from list/discover responses.
+type MovieListItem struct {
+	ID            int     `json:"id"`
+	Title         string  `json:"title"`
+	OriginalTitle string  `json:"original_title"`
+	Overview      string  `json:"overview"`
+	ReleaseDate   string  `json:"release_date"`
+	Popularity    float64 `json:"popularity"`
+	VoteAverage   float64 `json:"vote_average"`
+	VoteCount     int64   `json:"vote_count"`
+	PosterPath    string  `json:"poster_path"`
+	BackdropPath  string  `json:"backdrop_path"`
+	Language      string  `json:"original_language"`
+	GenreIDs      []int   `json:"genre_ids"`
+	Adult         bool    `json:"adult"`
+}
+
+// TVListItem is a lightweight TV show from list/discover responses.
+type TVListItem struct {
+	ID            int     `json:"id"`
+	Name          string  `json:"name"`
+	OriginalName  string  `json:"original_name"`
+	Overview      string  `json:"overview"`
+	FirstAirDate  string  `json:"first_air_date"`
+	Popularity    float64 `json:"popularity"`
+	VoteAverage   float64 `json:"vote_average"`
+	VoteCount     int64   `json:"vote_count"`
+	PosterPath    string  `json:"poster_path"`
+	BackdropPath  string  `json:"backdrop_path"`
+	Language      string  `json:"original_language"`
+	GenreIDs      []int   `json:"genre_ids"`
+	Adult         bool    `json:"adult"`
+}
+
+// TrendingItem is a single item from the trending endpoint.
+type TrendingItem struct {
+	ID            int     `json:"id"`
+	MediaType     string  `json:"media_type"` // "movie" or "tv" or "person"
+	Title         string  `json:"title,omitempty"`
+	Name          string  `json:"name,omitempty"`
+	OriginalTitle string  `json:"original_title,omitempty"`
+	OriginalName  string  `json:"original_name,omitempty"`
+	Overview      string  `json:"overview"`
+	ReleaseDate   string  `json:"release_date,omitempty"`
+	FirstAirDate  string  `json:"first_air_date,omitempty"`
+	Popularity    float64 `json:"popularity"`
+	VoteAverage   float64 `json:"vote_average"`
+	VoteCount     int64   `json:"vote_count"`
+	PosterPath    string  `json:"poster_path"`
+	BackdropPath  string  `json:"backdrop_path"`
+	Language      string  `json:"original_language"`
+	GenreIDs      []int   `json:"genre_ids"`
+	Adult         bool    `json:"adult"`
+}
+
+// --- Credits ---
+
+// CreditsResponse holds cast and crew for a movie or TV show.
+type CreditsResponse struct {
+	ID   int           `json:"id"`
+	Cast []CastMember  `json:"cast"`
+	Crew []CrewMember  `json:"crew"`
+}
+
+// CastMember represents an actor/actress credit.
+type CastMember struct {
+	ID                 int    `json:"id"`
+	Name               string `json:"name"`
+	Character          string `json:"character"`
+	Order              int    `json:"order"`
+	ProfilePath        string `json:"profile_path"`
+	Gender             int    `json:"gender"`
+	KnownForDepartment string `json:"known_for_department"`
+	Adult              bool   `json:"adult"`
+}
+
+// CrewMember represents a crew credit (director, writer, etc.).
+type CrewMember struct {
+	ID                 int    `json:"id"`
+	Name               string `json:"name"`
+	Job                string `json:"job"`
+	Department         string `json:"department"`
+	ProfilePath        string `json:"profile_path"`
+	Gender             int    `json:"gender"`
+	KnownForDepartment string `json:"known_for_department"`
+	Adult              bool   `json:"adult"`
+}
+
+// --- Watch providers (v3) ---
+
+// WatchProvidersResponse is the TMDB v3 watch/providers response.
+type WatchProvidersResponse struct {
+	ID      int                         `json:"id"`
+	Results map[string]CountryProviders `json:"results"`
+}
+
+// CountryProviders holds streaming/rent/buy availability for one country.
+type CountryProviders struct {
+	Link     string     `json:"link"`
+	Flatrate []Provider `json:"flatrate"`
+	Watch    []Provider `json:"watch"`
+	Rent     []Provider `json:"rent"`
+	Buy      []Provider `json:"buy"`
+}
+
+// Provider is a streaming service entry.
+type Provider struct {
+	ProviderID   int    `json:"provider_id"`
+	ProviderName string `json:"provider_name"`
+	LogoPath     string `json:"logo_path"`
+}

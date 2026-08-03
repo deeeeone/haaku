@@ -3,6 +3,7 @@ package httpapi
 import (
 	"time"
 
+	"trakt-api/internal/auth"
 	"trakt-api/internal/config"
 
 	"github.com/gofiber/fiber/v2"
@@ -23,6 +24,9 @@ func NewServer(cfg *config.Config) *fiber.App {
 	app.Use(recover.New(recover.Config{
 		EnableStackTrace: cfg.Env == "development",
 	}))
+
+	// Initialize Clerk client (Phase 2: T2.1)
+	auth.InitClerk(cfg)
 
 	RegisterRoutes(app)
 

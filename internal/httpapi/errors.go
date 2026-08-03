@@ -39,15 +39,30 @@ func errorHandler(c *fiber.Ctx, err error) error {
 }
 
 // Common error constructors for handlers.
-func notFound(c *fiber.Ctx, message string) error {
+// Exported for cross-package use (e.g., oauth, auth packages).
+
+func NotFound(c *fiber.Ctx, message string) error {
 	return writeError(c, fiber.StatusNotFound, "not_found", message)
 }
 
-func badRequest(c *fiber.Ctx, message string) error {
+func BadRequest(c *fiber.Ctx, message string) error {
 	return writeError(c, fiber.StatusBadRequest, "invalid_request", message)
 }
 
-func unauthorized(c *fiber.Ctx) error {
+func Unauthorized(c *fiber.Ctx) error {
 	// Generic message — detailed reasons go to server logs only (no info disclosure).
 	return writeError(c, fiber.StatusUnauthorized, "unauthorized", "invalid or expired token")
 }
+
+func Forbidden(c *fiber.Ctx, message string) error {
+	return writeError(c, fiber.StatusForbidden, "forbidden", message)
+}
+
+func Conflict(c *fiber.Ctx, message string) error {
+	return writeError(c, fiber.StatusConflict, "conflict", message)
+}
+
+// Lowercase aliases for internal httpapi package use.
+func notFound(c *fiber.Ctx, msg string) error   { return NotFound(c, msg) }
+func badRequest(c *fiber.Ctx, msg string) error  { return BadRequest(c, msg) }
+func unauthorized(c *fiber.Ctx) error            { return Unauthorized(c) }

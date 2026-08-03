@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS episodes (
     last_synced_at  TIMESTAMPTZ,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (season_id, episode_number)
+    UNIQUE (show_id, season_id, episode_number)
 );
 
 CREATE INDEX idx_seasons_show ON seasons (show_id);

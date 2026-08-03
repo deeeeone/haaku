@@ -182,3 +182,108 @@ func (c *Client) GetConfiguration() (*ImageConfig, error) {
 	}
 	return &w.Images, nil
 }
+
+// --- v3 API methods (discover, popular, trending, credits) ---
+
+const v3BaseURL = "https://api.themoviedb.org/3"
+
+// doV3 performs a TMDB v3 API request.
+func (c *Client) doV3(method, path string, params url.Values) (*http.Response, error) {
+	u, err := url.Parse(v3BaseURL + path)
+	if err != nil {
+		return nil, fmt.Errorf("invalid URL: %w", err)
+	}
+	if params != nil {
+		u.RawQuery = params.Encode()
+	}
+
+	req, err := http.NewRequest(method, u.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Authorization", c.authHeader())
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("tmdb v3 request failed: %w", err)
+	}
+	if resp.StatusCode == http.StatusTooManyRequests {
+		resp.Body.Close()
+		return nil, fmt.Errorf("tmdb rate limited (429) on %s", path)
+	}
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		return nil, fmt.Errorf("tmdb v3 error %d on %s: %s", resp.StatusCode, path, string(body))
+	}
+	return resp, nil
+}
+
+// MoviePopular returns the popular movies list (v3).
+func (c *Client) MoviePopular(page int) (*Paginated[MovieListItem], error) {
+	p := url.Values{"page": {fmt.Sprintf("%d", page)}}
+	resp, err := c.doV3("GET", "/movie/popular", p)
+	if err != nil {
+		return nil, err
+	}
+	return decode[Paginated[MovieListItem]](resp)
+}
+
+// TVPopular returns the popular TV shows list (v3).
+func (c *Client) TVPopular(page int) (*Paginated[TVListItem], error) {
+	p := url.Values{"page": {fmt.Sprintf("%d", page)}}
+	resp, err := c.doV3("GET", "/tv/popular", p)
+	if err != nil {
+		return nil, err
+	}
+	return decode[Paginated[TVListItem]](resp)
+}
+
+// Trending returns trending movies/TV/people (v3).
+// mediaType: "all", "movie", "tv", "person"
+// timeWindow: "day" or "week"
+func (c *Client) Trending(mediaType, timeWindow string, page int) (*Paginated[TrendingItem], error) {
+	p := url.Values{"page": {fmt.Sprintf("%d", page)}}
+	resp, err := c.doV3("GET", fmt.Sprintf("/trending/%s/%s", mediaType, timeWindow), p)
+	if err != nil {
+		return nil, err
+	}
+	return decode[Paginated[TrendingItem]](resp)
+}
+
+// GetMovieCredits returns the cast and crew for a movie (v3).
+func (c *Client) GetMovieCredits(id int) (*CreditsResponse, error) {
+	resp, err := c.doV3("GET", fmt.Sprintf("/movie/%d/credits", id), nil)
+	if err != nil {
+		return nil, err
+	}
+	return decode[CreditsResponse](resp)
+}
+
+// GetShowCredits returns the cast and crew for a TV show (v3).
+func (c *Client) GetShowCredits(id int) (*CreditsResponse, error) {
+	resp, err := c.doV3("GET", fmt.Sprintf("/tv/%d/credits", id), nil)
+	if err != nil {
+		return nil, err
+	}
+	return decode[CreditsResponse](resp)
+}
+
+// GetMovieWatchProviders returns streaming/rent/buy availability for a movie (v3).
+func (c *Client) GetMovieWatchProviders(movieID int) (*WatchProvidersResponse, error) {
+	resp, err := c.doV3("GET", fmt.Sprintf("/movie/%d/watch/providers", movieID), nil)
+	if err != nil {
+		return nil, err
+	}
+	return decode[WatchProvidersResponse](resp)
+}
+
+// GetShowWatchProviders returns streaming/rent/buy availability for a TV show (v3).
+func (c *Client) GetShowWatchProviders(showID int) (*WatchProvidersResponse, error) {
+	resp, err := c.doV3("GET", fmt.Sprintf("/tv/%d/watch/providers", showID), nil)
+	if err != nil {
+		return nil, err
+	}
+	return decode[WatchProvidersResponse](resp)
+}

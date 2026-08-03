@@ -1,8 +1,75 @@
 package database
 
 import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"time"
 )
+
+// JSONMap is a map[string]any that implements sql.Scanner and driver.Valuer
+// for GORM compatibility with both PostgreSQL jsonb and SQLite TEXT columns.
+type JSONMap map[string]any
+
+func (j JSONMap) Value() (driver.Value, error) {
+	if j == nil {
+		return nil, nil
+	}
+	return json.Marshal(j)
+}
+
+func (j *JSONMap) Scan(value interface{}) error {
+	if value == nil {
+		*j = nil
+		return nil
+	}
+	var bytes []byte
+	switch v := value.(type) {
+	case []byte:
+		bytes = v
+	case string:
+		bytes = []byte(v)
+	default:
+		return fmt.Errorf("JSONMap.Scan: unsupported type %T", value)
+	}
+	if len(bytes) == 0 {
+		*j = nil
+		return nil
+	}
+	return json.Unmarshal(bytes, j)
+}
+
+// StringSlice is a []string that implements sql.Scanner and driver.Valuer
+// for GORM compatibility with both PostgreSQL jsonb arrays and SQLite TEXT columns.
+type StringSlice []string
+
+func (s StringSlice) Value() (driver.Value, error) {
+	if s == nil {
+		return nil, nil
+	}
+	return json.Marshal(s)
+}
+
+func (s *StringSlice) Scan(value interface{}) error {
+	if value == nil {
+		*s = nil
+		return nil
+	}
+	var bytes []byte
+	switch v := value.(type) {
+	case []byte:
+		bytes = v
+	case string:
+		bytes = []byte(v)
+	default:
+		return fmt.Errorf("StringSlice.Scan: unsupported type %T", value)
+	}
+	if len(bytes) == 0 {
+		*s = nil
+		return nil
+	}
+	return json.Unmarshal(bytes, (*[]string)(s))
+}
 
 // --- Media (cached from TMDB — our source of truth after ingest) ---
 // See ../trakt-killer-plan/02-architecture/data-model.md §2.
@@ -19,15 +86,15 @@ type Movie struct {
 	Released        *Date          `json:"released,omitempty"`
 	Runtime         int            `json:"runtime,omitempty"`
 	Certification   string         `json:"certification,omitempty"`
-	Genres          []string       `gorm:"type:jsonb;default:'[]'" json:"genres"`
+	Genres          StringSlice    `gorm:"type:jsonb;default:'[]'" json:"genres"`
 	Language        string         `json:"language,omitempty"`
 	Status          string         `json:"status,omitempty"`
 	Popularity      float64        `json:"popularity"`
 	RatingAvg       float64        `json:"rating_avg"`
 	RatingCount     int64          `json:"rating_count"`
 	TrailerURL      string         `json:"trailer_url,omitempty"`
-	Images          map[string]any `gorm:"type:jsonb;default:'{}'" json:"images"`
-	Metadata        map[string]any `gorm:"type:jsonb;default:'{}'" json:"metadata"`
+	Images          JSONMap        `gorm:"type:jsonb;default:'{}'" json:"images"`
+	Metadata        JSONMap        `gorm:"type:jsonb;default:'{}'" json:"metadata"`
 	Adult           bool           `json:"adult"`
 	LastSyncedAt    *time.Time     `json:"last_synced_at,omitempty"`
 	CreatedAt       time.Time      `json:"created_at"`
@@ -53,12 +120,13 @@ type Show struct {
 	Popularity      float64        `json:"popularity"`
 	RatingAvg       float64        `json:"rating_avg"`
 	RatingCount     int64          `json:"rating_count"`
-	Genres          []string       `gorm:"type:jsonb;default:'[]'" json:"genres"`
+	Genres          StringSlice    `gorm:"type:jsonb;default:'[]'" json:"genres"`
 	Language        string         `json:"language,omitempty"`
 	Certification   string         `json:"certification,omitempty"`
-	Images          map[string]any `gorm:"type:jsonb;default:'{}'" json:"images"`
-	Metadata        map[string]any `gorm:"type:jsonb;default:'{}'" json:"metadata"`
+	Images          JSONMap        `gorm:"type:jsonb;default:'{}'" json:"images"`
+	Metadata        JSONMap        `gorm:"type:jsonb;default:'{}'" json:"metadata"`
 	Adult           bool           `json:"adult"`
+	SearchVector    string         `gorm:"->" json:"-"`
 	LastSyncedAt    *time.Time     `json:"last_synced_at,omitempty"`
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`
@@ -74,7 +142,7 @@ type Season struct {
 	SeasonNumber  int            `json:"season_number"`
 	EpisodeCount  int            `json:"episode_count"`
 	AiredAt       *Date          `json:"aired_at,omitempty"`
-	Images        map[string]any `gorm:"type:jsonb;default:'{}'" json:"images"`
+	Images        JSONMap        `gorm:"type:jsonb;default:'{}'" json:"images"`
 	LastSyncedAt  *time.Time     `json:"last_synced_at,omitempty"`
 	CreatedAt     time.Time      `json:"created_at"`
 	UpdatedAt     time.Time      `json:"updated_at"`
@@ -85,15 +153,16 @@ func (Season) TableName() string { return "seasons" }
 // Episode belongs to a season and show.
 type Episode struct {
 	ID              int64          `gorm:"primaryKey" json:"id"`
-	SeasonID        int64          `gorm:"index" json:"season_id"`
-	ShowID          int64          `gorm:"index" json:"show_id"`
-	EpisodeNumber   int            `json:"episode_number"`
+	SeasonID        int64          `gorm:"uniqueIndex:idx_episode_show_season_ep,priority:2" json:"season_id"`
+	ShowID          int64          `gorm:"uniqueIndex:idx_episode_show_season_ep,priority:1" json:"show_id"`
+	EpisodeNumber   int            `gorm:"uniqueIndex:idx_episode_show_season_ep,priority:3" json:"episode_number"`
 	AbsoluteNumber  *int           `json:"absolute_number,omitempty"`
 	Title           string         `json:"title"`
 	Overview        string         `json:"overview,omitempty"`
 	Runtime         int            `json:"runtime,omitempty"`
 	AiredAt         *Date          `json:"aired_at,omitempty"`
-	Images          map[string]any `gorm:"type:jsonb;default:'{}'" json:"images"`
+	Images          JSONMap        `gorm:"type:jsonb;default:'{}'" json:"images"`
+	SearchVector    string         `gorm:"->" json:"-"`
 	LastSyncedAt    *time.Time     `json:"last_synced_at,omitempty"`
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`
@@ -112,8 +181,9 @@ type Person struct {
 	Deathday           *Date          `json:"deathday,omitempty"`
 	Gender             int            `json:"gender"`
 	KnownForDepartment string         `json:"known_for_department,omitempty"`
-	Images             map[string]any `gorm:"type:jsonb;default:'{}'" json:"images"`
+	Images             JSONMap        `gorm:"type:jsonb;default:'{}'" json:"images"`
 	Adult              bool           `json:"adult"`
+	SearchVector       string         `gorm:"->" json:"-"`
 	LastSyncedAt       *time.Time     `json:"last_synced_at,omitempty"`
 	CreatedAt          time.Time      `json:"created_at"`
 	UpdatedAt          time.Time      `json:"updated_at"`
@@ -129,7 +199,7 @@ type Credit struct {
 	MediaID        int64  `gorm:"index" json:"media_id"`
 	CreditType     string `json:"credit_type"` // cast or crew
 	Job            string `json:"job,omitempty"`
-	Character      string `json:"character,omitempty"`
+	Character      string `gorm:"column:character_name" json:"character,omitempty"`
 	Department     string `json:"department,omitempty"`
 	Order          int    `json:"order"`
 	SeriesRegular  bool   `json:"series_regular"`
@@ -202,6 +272,40 @@ func (d *Date) String() string {
 		return ""
 	}
 	return d.Format("2006-01-02")
+}
+
+// Value implements the driver.Valuer interface for database storage.
+func (d Date) Value() (driver.Value, error) {
+	if d.IsZero() {
+		return nil, nil
+	}
+	return d.Format("2006-01-02"), nil
+}
+
+// Scan implements the sql.Scanner interface for reading from the database.
+func (d *Date) Scan(value interface{}) error {
+	if value == nil {
+		return nil
+	}
+	switch v := value.(type) {
+	case time.Time:
+		d.Time = v
+	case string:
+		t, err := time.Parse("2006-01-02", v)
+		if err != nil {
+			return err
+		}
+		d.Time = t
+	case []byte:
+		t, err := time.Parse("2006-01-02", string(v))
+		if err != nil {
+			return err
+		}
+		d.Time = t
+	default:
+		return fmt.Errorf("unsupported type for Date.Scan: %T", value)
+	}
+	return nil
 }
 
 // Ensure AutoMigrate picks up all media models (called from db.go InitDB).

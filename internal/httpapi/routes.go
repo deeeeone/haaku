@@ -1,7 +1,13 @@
 package httpapi
 
 import (
+	"trakt-api/internal/auth"
 	"trakt-api/internal/database"
+	"trakt-api/internal/handlers/discovery"
+	"trakt-api/internal/handlers/media"
+	"trakt-api/internal/handlers/users"
+	"trakt-api/internal/handlers/watch"
+	"trakt-api/internal/oauth"
 	"trakt-api/internal/openapi"
 	"trakt-api/redis"
 
@@ -59,6 +65,69 @@ func RegisterRoutes(app *fiber.App) {
 		},
 	})
 
+	// Clerk webhook receiver (Phase 2: T2.2 — signature verified, no user auth required)
+	api.Post("/webhooks/clerk", auth.HandleClerkWebhook)
+
 	// Placeholder for v1 route groups (Phase 1+):
+	// Search (public, API key)
+	api.Get("/search", handleSearch)
+	openapi.Register(openapi.RouteDef{
+		Method:  "GET",
+		Path:    "/v1/search",
+		Summary: "Full-text search across movies, shows, episodes, people, and lists",
+		Tags:    []string{"Search"},
+		Auth:    "none",
+		StatusCodes: map[int]string{
+			200: "Search results",
+			400: "Invalid query parameters",
+		},
+	})
+
+	api.Get("/search/exact", handleSearchExact)
+	openapi.Register(openapi.RouteDef{
+		Method:  "GET",
+		Path:    "/v1/search/exact",
+		Summary: "Exact title match for movies and shows",
+		Tags:    []string{"Search"},
+		Auth:    "none",
+		StatusCodes: map[int]string{
+			200: "Exact match found",
+			404: "No exact match — candidates provided",
+			400: "Invalid query parameters",
+		},
+	})
+
+	api.Get("/search/lookup", handleSearchLookup)
+	openapi.Register(openapi.RouteDef{
+		Method:  "GET",
+		Path:    "/v1/search/lookup",
+		Summary: "Look up media by external ID (IMDB, TMDB, etc.)",
+		Tags:    []string{"Search"},
+		Auth:    "none",
+		StatusCodes: map[int]string{
+			200: "Media found",
+			404: "No media found for the given external ID",
+			400: "Invalid query parameters",
+		},
+	})
+
+	// Media read endpoints (Phase 1: T1.5)
+	media.RegisterRoutes(api)
+
+	// Watch providers endpoints (Phase 1: T1.10)
+	watch.RegisterRoutes(api)
+
+	// Discovery endpoints (Phase 1: T1.7)
+	discovery.RegisterRoutes(api)
+
+	// Users endpoints (Phase 2: T2.6, T2.7)
+	users.RegisterRoutes(api)
+
+	// OAuth2 server (T2.4)
+	oauth.RegisterRoutes(app)
+
+		// API key management (T2.5) — TODO: auth.RegisterRoutes not yet implemented
+		// auth.RegisterRoutes(api)
+
 	_ = api
 }

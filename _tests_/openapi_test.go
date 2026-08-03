@@ -12,7 +12,14 @@ import (
 
 // TestRouteRegistration verifies that a registered route appears in generated YAML.
 func TestRouteRegistration(t *testing.T) {
-	// Clean slate: clear any previously-registered routes from other tests.
+	// Save existing routes and restore after test so other tests aren't affected.
+	saved := openapi.AllRoutes()
+	defer func() {
+		openapi.Reset()
+		for _, r := range saved {
+			openapi.Register(r)
+		}
+	}()
 	openapi.Reset()
 
 	openapi.Register(openapi.RouteDef{
@@ -103,6 +110,13 @@ func TestRouteRegistration(t *testing.T) {
 
 // TestUnknownAuthSkipped verifies that routes with unknown auth types are silently skipped.
 func TestUnknownAuthSkipped(t *testing.T) {
+	saved := openapi.AllRoutes()
+	defer func() {
+		openapi.Reset()
+		for _, r := range saved {
+			openapi.Register(r)
+		}
+	}()
 	openapi.Reset()
 
 	openapi.Register(openapi.RouteDef{
@@ -159,6 +173,13 @@ func TestUnknownAuthSkipped(t *testing.T) {
 
 // TestEmptyRegistry verifies that an empty registry produces a valid skeleton.
 func TestEmptyRegistry(t *testing.T) {
+	saved := openapi.AllRoutes()
+	defer func() {
+		openapi.Reset()
+		for _, r := range saved {
+			openapi.Register(r)
+		}
+	}()
 	openapi.Reset()
 
 	tmp := filepath.Join(t.TempDir(), "openapi.yaml")
