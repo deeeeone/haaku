@@ -125,14 +125,19 @@ func (ct *CacheTransaction) executeBatchInvalidations(operations []CacheOperatio
 	var versionKeys []string
 
 	for _, op := range operations {
-		delKeys = append(delKeys, op.Key)
-
 		// If metadata contains a version key hint, queue a version bump.
 		if meta, ok := op.Metadata.(map[string]interface{}); ok {
 			if vk, ok := meta["version_key"].(string); ok && vk != "" {
 				versionKeys = append(versionKeys, vk)
 			}
+			// Version counters must be INCR'd, never DEL'd — the bump IS the
+			// invalidation (O(1)). Skip the direct DEL when version_only is set
+			// so the counter stays monotonic and stale keys never resurface.
+			if only, _ := meta["version_only"].(bool); only {
+				continue
+			}
 		}
+		delKeys = append(delKeys, op.Key)
 	}
 
 	// Batch delete all keys via pipeline.

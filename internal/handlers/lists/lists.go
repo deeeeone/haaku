@@ -9,8 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"trakt-api/internal/cache"
 	"trakt-api/internal/database"
 	"trakt-api/internal/openapi"
+	"trakt-api/internal/outbox"
+	"trakt-api/redis"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -109,6 +112,31 @@ func requireAuth(c *fiber.Ctx) error {
 func userID(c *fiber.Ctx) string {
 	uid, _ := c.Locals("user_id").(string)
 	return uid
+}
+
+// bumpListVersion queues a version-counter bump for a list's cached data.
+func bumpListVersion(cacheTx *cache.CacheTransaction, listID int64) {
+	lvk := redis.BuildListVersionKey(listID)
+	cacheTx.AddInvalidation(lvk, map[string]interface{}{
+		"list_id":      listID,
+		"version_key":  lvk,
+		"version_only": true,
+	})
+}
+
+// bumpUserVersion queues a version-counter bump for a user's cached lists.
+func bumpUserVersion(cacheTx *cache.CacheTransaction, userID string) {
+	uvk := redis.BuildUserVersionKey(userID)
+	cacheTx.AddInvalidation(uvk, map[string]interface{}{
+		"user_id":      userID,
+		"version_key":  uvk,
+		"version_only": true,
+	})
+}
+
+// advisoryListLock serializes concurrent writes to a list.
+func advisoryListLock(tx *gorm.DB, listID int64) error {
+	return tx.Exec("SELECT pg_advisory_xact_lock(hashtext(?))", fmt.Sprintf("list:%d", listID)).Error
 }
 
 // ============================================================================
@@ -210,11 +238,6 @@ func handleCreateList(c *fiber.Ctx) error {
 
 	slug := generateSlug(req.Name, uid)
 
-	db, err := database.GetDB()
-	if err != nil {
-		return internalError(c)
-	}
-
 	list := database.List{
 		UserID:        uid,
 		Name:          strings.TrimSpace(req.Name),
@@ -228,16 +251,34 @@ func handleCreateList(c *fiber.Ctx) error {
 		AllowComments: allowComments,
 	}
 
-	if err := db.Create(&list).Error; err != nil {
-		// If slug collision, append timestamp
-		if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "unique") {
-			list.Slug = fmt.Sprintf("%s-%d", slug, time.Now().Unix())
-			if err := db.Create(&list).Error; err != nil {
-				return internalError(c)
+	err := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
+
+		if err := tx.Create(&list).Error; err != nil {
+			// If slug collision, append timestamp
+			if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "unique") {
+				list.Slug = fmt.Sprintf("%s-%d", slug, time.Now().Unix())
+				if err := tx.Create(&list).Error; err != nil {
+					return nil, err
+				}
+			} else {
+				return nil, err
 			}
-		} else {
-			return internalError(c)
 		}
+
+		bumpUserVersion(cacheTx, uid)
+		if err := outbox.PublishEvent(tx, outbox.EventListCreated, uid, map[string]any{
+			"list_id": list.ID,
+			"slug":    list.Slug,
+			"name":    list.Name,
+			"privacy": list.Privacy,
+		}); err != nil {
+			return nil, err
+		}
+		return cacheTx, nil
+	})
+	if err != nil {
+		return internalError(c)
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(list)
@@ -362,7 +403,29 @@ func handleUpdateList(c *fiber.Ctx) error {
 		return badRequest(c, "no fields to update")
 	}
 
-	if err := db.Model(&list).Updates(updates).Error; err != nil {
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
+
+		if err := advisoryListLock(tx, listID); err != nil {
+			return nil, err
+		}
+		if err := tx.Model(&list).Updates(updates).Error; err != nil {
+			return nil, err
+		}
+
+		bumpListVersion(cacheTx, listID)
+		bumpUserVersion(cacheTx, uid)
+		if err := outbox.PublishEvent(tx, outbox.EventListUpdated, uid, map[string]any{
+			"list_id": listID,
+			"slug":    list.Slug,
+			"name":    list.Name,
+			"privacy": list.Privacy,
+		}); err != nil {
+			return nil, err
+		}
+		return cacheTx, nil
+	})
+	if err != nil {
 		return internalError(c)
 	}
 
@@ -400,7 +463,27 @@ func handleDeleteList(c *fiber.Ctx) error {
 		return forbidden(c, "you do not have permission to delete this list")
 	}
 
-	if err := db.Delete(&list).Error; err != nil {
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
+
+		if err := advisoryListLock(tx, listID); err != nil {
+			return nil, err
+		}
+		if err := tx.Delete(&list).Error; err != nil {
+			return nil, err
+		}
+
+		bumpUserVersion(cacheTx, uid)
+		if err := outbox.PublishEvent(tx, outbox.EventListDeleted, uid, map[string]any{
+			"list_id": listID,
+			"slug":    list.Slug,
+			"name":    list.Name,
+		}); err != nil {
+			return nil, err
+		}
+		return cacheTx, nil
+	})
+	if err != nil {
 		return internalError(c)
 	}
 
@@ -605,44 +688,70 @@ func handleAddListItems(c *fiber.Ctx) error {
 		Duplicate: make(map[string]int),
 	}
 
-	processMediaItems := func(items []mediaRef, mediaType string) {
-		for _, ref := range items {
-			mediaID, err := resolveItemByTMDB(db, mediaType, ref.IDs.TMDB)
-			if err != nil {
-				result.NotFound = append(result.NotFound, map[string]interface{}{
-					"type":    mediaType,
-					"tmdb_id": ref.IDs.TMDB,
-				})
-				continue
-			}
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
 
-			rank := 0
-			if ref.Rank != nil {
-				rank = *ref.Rank
-			}
+		if err := advisoryListLock(tx, listID); err != nil {
+			return nil, err
+		}
 
-			item := database.ListItem{
-				ListID:    listID,
-				MediaType: mediaType,
-				MediaID:   mediaID,
-				Rank:      rank,
-				Notes:     ref.Notes,
-				AddedBy:   uid,
-			}
+		processMediaItems := func(items []mediaRef, mediaType string) {
+			for _, ref := range items {
+				mediaID, err := resolveItemByTMDB(tx, mediaType, ref.IDs.TMDB)
+				if err != nil {
+					result.NotFound = append(result.NotFound, map[string]interface{}{
+						"type":    mediaType,
+						"tmdb_id": ref.IDs.TMDB,
+					})
+					continue
+				}
 
-			res := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&item)
-			if res.RowsAffected > 0 {
-				result.Added[mediaType]++
-			} else {
-				result.Duplicate[mediaType]++
+				rank := 0
+				if ref.Rank != nil {
+					rank = *ref.Rank
+				}
+
+				item := database.ListItem{
+					ListID:    listID,
+					MediaType: mediaType,
+					MediaID:   mediaID,
+					Rank:      rank,
+					Notes:     ref.Notes,
+					AddedBy:   uid,
+				}
+
+				res := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&item)
+				if res.RowsAffected > 0 {
+					result.Added[mediaType]++
+				} else {
+					result.Duplicate[mediaType]++
+				}
 			}
 		}
-	}
 
-	processMediaItems(req.Movies, "movie")
-	processMediaItems(req.Shows, "show")
-	processMediaItems(req.Seasons, "season")
-	processMediaItems(req.Episodes, "episode")
+		processMediaItems(req.Movies, "movie")
+		processMediaItems(req.Shows, "show")
+		processMediaItems(req.Seasons, "season")
+		processMediaItems(req.Episodes, "episode")
+
+		added := 0
+		for _, n := range result.Added {
+			added += n
+		}
+		if added > 0 {
+			bumpListVersion(cacheTx, listID)
+			if err := outbox.PublishEvent(tx, outbox.EventListItemsAdded, uid, map[string]any{
+				"list_id": listID,
+				"items":   result.Added,
+			}); err != nil {
+				return nil, err
+			}
+		}
+		return cacheTx, nil
+	})
+	if err != nil {
+		return internalError(c)
+	}
 
 	return c.Status(fiber.StatusCreated).JSON(result)
 }
@@ -683,25 +792,47 @@ func handleRemoveListItems(c *fiber.Ctx) error {
 
 	removed := 0
 
-	// Remove by item IDs
-	if len(req.IDs) > 0 {
-		res := db.Where("list_id = ? AND id IN ?", listID, req.IDs).Delete(&database.ListItem{})
-		removed += int(res.RowsAffected)
-	}
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
 
-	// Remove by media references
-	removeByMedia := func(items []mediaRef, mediaType string) {
-		for _, ref := range items {
-			mediaID, err := resolveItemByTMDB(db, mediaType, ref.IDs.TMDB)
-			if err != nil {
-				continue
-			}
-			res := db.Where("list_id = ? AND media_type = ? AND media_id = ?", listID, mediaType, mediaID).Delete(&database.ListItem{})
+		if err := advisoryListLock(tx, listID); err != nil {
+			return nil, err
+		}
+
+		// Remove by item IDs
+		if len(req.IDs) > 0 {
+			res := tx.Where("list_id = ? AND id IN ?", listID, req.IDs).Delete(&database.ListItem{})
 			removed += int(res.RowsAffected)
 		}
+
+		// Remove by media references
+		removeByMedia := func(items []mediaRef, mediaType string) {
+			for _, ref := range items {
+				mediaID, err := resolveItemByTMDB(tx, mediaType, ref.IDs.TMDB)
+				if err != nil {
+					continue
+				}
+				res := tx.Where("list_id = ? AND media_type = ? AND media_id = ?", listID, mediaType, mediaID).Delete(&database.ListItem{})
+				removed += int(res.RowsAffected)
+			}
+		}
+		removeByMedia(req.Movies, "movie")
+		removeByMedia(req.Shows, "show")
+
+		if removed > 0 {
+			bumpListVersion(cacheTx, listID)
+			if err := outbox.PublishEvent(tx, outbox.EventListItemsRemoved, uid, map[string]any{
+				"list_id": listID,
+				"removed": removed,
+			}); err != nil {
+				return nil, err
+			}
+		}
+		return cacheTx, nil
+	})
+	if err != nil {
+		return internalError(c)
 	}
-	removeByMedia(req.Movies, "movie")
-	removeByMedia(req.Shows, "show")
 
 	return c.JSON(removeItemsResponse{Removed: removed})
 }
@@ -744,13 +875,32 @@ func handleReorderListItems(c *fiber.Ctx) error {
 		return badRequest(c, "order array must not be empty")
 	}
 
-	// Assign rank based on position in the order array
-	for i, itemID := range req.Order {
-		db.Model(&database.ListItem{}).Where("id = ? AND list_id = ?", itemID, listID).Update("rank", i)
-	}
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
 
-	// Mark as ranked
-	db.Model(&list).Update("is_ranked", true)
+		if err := advisoryListLock(tx, listID); err != nil {
+			return nil, err
+		}
+
+		// Assign rank based on position in the order array
+		for i, itemID := range req.Order {
+			if err := tx.Model(&database.ListItem{}).Where("id = ? AND list_id = ?", itemID, listID).Update("rank", i).Error; err != nil {
+				return nil, err
+			}
+		}
+
+		// Mark as ranked
+		if err := tx.Model(&list).Update("is_ranked", true).Error; err != nil {
+			return nil, err
+		}
+
+		bumpListVersion(cacheTx, listID)
+		bumpUserVersion(cacheTx, uid)
+		return cacheTx, nil
+	})
+	if err != nil {
+		return internalError(c)
+	}
 
 	return c.JSON(fiber.Map{"status": "reordered", "count": len(req.Order)})
 }
@@ -828,14 +978,25 @@ func handleLikeList(c *fiber.Ctx) error {
 		return internalError(c)
 	}
 
-	// Insert like (ignore duplicates)
-	res := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&database.ListLike{
-		ListID: listID,
-		UserID: uid,
-	})
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
 
-	if res.RowsAffected > 0 {
-		db.Model(&list).UpdateColumn("like_count", gorm.Expr("like_count + 1"))
+		// Insert like (ignore duplicates)
+		res := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&database.ListLike{
+			ListID: listID,
+			UserID: uid,
+		})
+
+		if res.RowsAffected > 0 {
+			if err := tx.Model(&list).UpdateColumn("like_count", gorm.Expr("like_count + 1")).Error; err != nil {
+				return nil, err
+			}
+			bumpListVersion(cacheTx, listID)
+		}
+		return cacheTx, nil
+	})
+	if err != nil {
+		return internalError(c)
 	}
 
 	return c.JSON(fiber.Map{"liked": true})
@@ -853,14 +1014,20 @@ func handleUnlikeList(c *fiber.Ctx) error {
 		return badRequest(c, "invalid list id")
 	}
 
-	db, dbErr := database.GetDB()
-	if dbErr != nil {
-		return internalError(c)
-	}
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
 
-	res := db.Where("list_id = ? AND user_id = ?", listID, uid).Delete(&database.ListLike{})
-	if res.RowsAffected > 0 {
-		db.Model(&database.List{}).Where("id = ?", listID).UpdateColumn("like_count", gorm.Expr("GREATEST(like_count - 1, 0)"))
+		res := tx.Where("list_id = ? AND user_id = ?", listID, uid).Delete(&database.ListLike{})
+		if res.RowsAffected > 0 {
+			if err := tx.Model(&database.List{}).Where("id = ?", listID).UpdateColumn("like_count", gorm.Expr("GREATEST(like_count - 1, 0)")).Error; err != nil {
+				return nil, err
+			}
+			bumpListVersion(cacheTx, listID)
+		}
+		return cacheTx, nil
+	})
+	if err != nil {
+		return internalError(c)
 	}
 
 	return c.JSON(fiber.Map{"liked": false})
@@ -1025,11 +1192,6 @@ func handleCreateSmartList(c *fiber.Ctx) error {
 		return badRequest(c, "name is required")
 	}
 
-	db, err := database.GetDB()
-	if err != nil {
-		return internalError(c)
-	}
-
 	sl := database.SmartList{
 		UserID: uid,
 		Name:   strings.TrimSpace(req.Name),
@@ -1041,7 +1203,16 @@ func handleCreateSmartList(c *fiber.Ctx) error {
 		sl.Filters = database.JSONMap{}
 	}
 
-	if err := db.Create(&sl).Error; err != nil {
+	err := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
+
+		if err := tx.Create(&sl).Error; err != nil {
+			return nil, err
+		}
+		bumpUserVersion(cacheTx, uid)
+		return cacheTx, nil
+	})
+	if err != nil {
 		return internalError(c)
 	}
 
@@ -1126,7 +1297,16 @@ func handleUpdateSmartList(c *fiber.Ctx) error {
 		return badRequest(c, "no fields to update")
 	}
 
-	if err := db.Model(&sl).Updates(updates).Error; err != nil {
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
+
+		if err := tx.Model(&sl).Updates(updates).Error; err != nil {
+			return nil, err
+		}
+		bumpUserVersion(cacheTx, uid)
+		return cacheTx, nil
+	})
+	if err != nil {
 		return internalError(c)
 	}
 
@@ -1163,7 +1343,16 @@ func handleDeleteSmartList(c *fiber.Ctx) error {
 		return forbidden(c, "you do not have access to this smart list")
 	}
 
-	if err := db.Delete(&sl).Error; err != nil {
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
+
+		if err := tx.Delete(&sl).Error; err != nil {
+			return nil, err
+		}
+		bumpUserVersion(cacheTx, uid)
+		return cacheTx, nil
+	})
+	if err != nil {
 		return internalError(c)
 	}
 

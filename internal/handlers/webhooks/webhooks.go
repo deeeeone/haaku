@@ -547,16 +547,25 @@ func handleDeliveries(c *fiber.Ctx) error {
 
 func ValidEventTypes() map[string]bool {
 	return map[string]bool{
-		outbox.EventHistoryAdded:    true,
-		outbox.EventHistoryRemoved:  true,
-		outbox.EventCollectionAdded: true,
-		outbox.EventWatchlistAdded:  true,
-		outbox.EventRatingAdded:     true,
-		outbox.EventFavoriteAdded:   true,
-		outbox.EventScrobble:        true,
-		outbox.EventCheckin:         true,
-		outbox.EventUserUpdated:     true,
-		"ping":                      true,
+		outbox.EventHistoryAdded:     true,
+		outbox.EventHistoryRemoved:   true,
+		outbox.EventCollectionAdded:  true,
+		outbox.EventWatchlistAdded:   true,
+		outbox.EventWatchlistRemoved: true,
+		outbox.EventRatingAdded:      true,
+		outbox.EventFavoriteAdded:    true,
+		outbox.EventScrobbleStart:    true,
+		outbox.EventScrobblePause:    true,
+		outbox.EventScrobbleStop:     true,
+		outbox.EventCheckinCreated:   true,
+		outbox.EventCheckinDeleted:   true,
+		outbox.EventUserUpdated:      true,
+		outbox.EventListCreated:      true,
+		outbox.EventListUpdated:      true,
+		outbox.EventListDeleted:      true,
+		outbox.EventListItemsAdded:   true,
+		outbox.EventListItemsRemoved: true,
+		"ping":                       true,
 	}
 }
 
@@ -576,16 +585,25 @@ func VerifyHMAC(secret string, timestamp int64, body, signature string) bool {
 // ---------------------------------------------------------------------------
 
 var EventCatalogV1 = map[string]string{
-	outbox.EventHistoryAdded:    "history.added",
-	outbox.EventHistoryRemoved:  "history.removed",
-	outbox.EventCollectionAdded: "collection.updated",
-	outbox.EventWatchlistAdded:  "watchlist.updated",
-	outbox.EventRatingAdded:     "rating.added",
-	outbox.EventFavoriteAdded:   "favorite.added",
-	outbox.EventScrobble:        "scrobble",
-	outbox.EventCheckin:         "checkin",
-	outbox.EventUserUpdated:     "user.updated",
-	"ping":                      "ping",
+	outbox.EventHistoryAdded:     "history.added",
+	outbox.EventHistoryRemoved:   "history.removed",
+	outbox.EventCollectionAdded:  "collection.updated",
+	outbox.EventWatchlistAdded:   "watchlist.added",
+	outbox.EventWatchlistRemoved: "watchlist.removed",
+	outbox.EventRatingAdded:      "rating.added",
+	outbox.EventFavoriteAdded:    "favorite.added",
+	outbox.EventScrobbleStart:    "scrobble.start",
+	outbox.EventScrobblePause:    "scrobble.pause",
+	outbox.EventScrobbleStop:     "scrobble.stop",
+	outbox.EventCheckinCreated:   "checkin.created",
+	outbox.EventCheckinDeleted:   "checkin.deleted",
+	outbox.EventUserUpdated:      "user.updated",
+	outbox.EventListCreated:      "list.created",
+	outbox.EventListUpdated:      "list.updated",
+	outbox.EventListDeleted:      "list.deleted",
+	outbox.EventListItemsAdded:   "list.items.added",
+	outbox.EventListItemsRemoved: "list.items.removed",
+	"ping":                       "ping",
 }
 
 type WebhookPayload struct {

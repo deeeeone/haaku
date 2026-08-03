@@ -14,16 +14,28 @@ import (
 )
 
 // Event type constants — the canonical event names emitted to the outbox.
+// Names match the webhook event catalog (plan 03-api/webhooks.md §Event catalog).
 const (
-	EventHistoryAdded    = "history.added"
-	EventHistoryRemoved  = "history.removed"
-	EventCollectionAdded = "collection.updated"
-	EventWatchlistAdded  = "watchlist.updated"
-	EventRatingAdded     = "rating.added"
-	EventFavoriteAdded   = "favorite.added"
-	EventScrobble        = "scrobble"
-	EventCheckin         = "checkin"
-	EventUserUpdated     = "user.updated"
+	EventHistoryAdded     = "history.added"
+	EventHistoryRemoved   = "history.removed"
+	EventCollectionAdded  = "collection.updated"
+	EventWatchlistAdded   = "watchlist.added"
+	EventWatchlistRemoved = "watchlist.removed"
+	EventRatingAdded      = "rating.added"
+	EventFavoriteAdded    = "favorite.added"
+	EventScrobbleStart    = "scrobble.start"
+	EventScrobblePause    = "scrobble.pause"
+	EventScrobbleStop     = "scrobble.stop"
+	EventCheckinCreated   = "checkin.created"
+	EventCheckinDeleted   = "checkin.deleted"
+	EventUserUpdated      = "user.updated"
+
+	// List events (plan 03-api/lists-api.md §Events).
+	EventListCreated      = "list.created"
+	EventListUpdated      = "list.updated"
+	EventListDeleted      = "list.deleted"
+	EventListItemsAdded   = "list.items.added"
+	EventListItemsRemoved = "list.items.removed"
 )
 
 // PublishEvent inserts an event into the events_outbox table within the

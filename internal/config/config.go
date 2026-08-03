@@ -61,8 +61,9 @@ func Load() (*Config, error) {
 		AdminUserIDs: splitCSV(os.Getenv("ADMIN_USER_IDS")),
 		ModUserIDs:   splitCSV(os.Getenv("MOD_USER_IDS")),
 
-		// Rate limiting (Phase 9d)
-		RateLimitEnabled: getEnvBool("RATE_LIMIT_ENABLED", false),
+		// Rate limiting (Phase 9d) — ON by default (primary abuse control);
+		// set RATE_LIMIT_ENABLED=false for local dev without Redis.
+		RateLimitEnabled: getEnvBool("RATE_LIMIT_ENABLED", true),
 		RateLimitAuth: RateLimitConfig{
 			WindowSeconds: getEnvInt("RATE_LIMIT_AUTH_WINDOW", 60),
 			Max:           getEnvInt("RATE_LIMIT_AUTH_MAX", 100),

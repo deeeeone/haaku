@@ -223,8 +223,8 @@ func RegisterRoutes(app *fiber.App) {
 	// OAuth2 server (T2.4)
 	oauth.RegisterRoutes(app)
 
-	// API key management (T2.5) — TODO: auth.RegisterRoutes not yet implemented
-	// auth.RegisterRoutes(api)
+	// API key management (T2.5)
+	auth.RegisterAPIKeyRoutes(api)
 
 	_ = api
 }

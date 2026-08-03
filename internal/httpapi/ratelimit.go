@@ -27,16 +27,16 @@ var rateLimitSkipPaths = map[string]bool{
 //
 // Config via env vars:
 //
-//	RATE_LIMIT_ENABLED=true           # enable rate limiting
-//	RATE_LIMIT_AUTH_WINDOW=***         # window in seconds for authenticated users
-//	RATE_LIMIT_AUTH_MAX=***           # max requests per window for authenticated users
+//	RATE_LIMIT_ENABLED=true           # enable rate limiting (default: on)
+//	RATE_LIMIT_AUTH_WINDOW=60         # window in seconds for authenticated users
+//	RATE_LIMIT_AUTH_MAX=100           # max requests per window for authenticated users
 //	RATE_LIMIT_PUBLIC_WINDOW=60       # window in seconds for public users
 //	RATE_LIMIT_PUBLIC_MAX=30          # max requests per window for public users
 //
 // Algorithm: sliding window via Redis ZSET (ZADD + ZREMRANGEBYSCORE + ZCARD).
 // Fails OPEN: if Redis is unavailable, requests pass through unthrottled.
 func RateLimit() fiber.Handler {
-	enabled := rlGetEnvBool("RATE_LIMIT_ENABLED", false)
+	enabled := rlGetEnvBool("RATE_LIMIT_ENABLED", true)
 	if !enabled {
 		return func(c *fiber.Ctx) error { return c.Next() }
 	}

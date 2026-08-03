@@ -6,9 +6,12 @@ import (
 	"time"
 
 	"trakt-api/internal/auth"
+	"trakt-api/internal/cache"
 	"trakt-api/internal/database"
 	"trakt-api/internal/handlers/media"
 	"trakt-api/internal/openapi"
+	"trakt-api/internal/outbox"
+	"trakt-api/redis"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -194,16 +197,18 @@ func handleCheckinCreate(c *fiber.Ctx) error {
 	now := time.Now()
 
 	var response *checkinResponse
-	err = database.WithTransaction(func(tx *gorm.DB) error {
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
+
 		// Advisory lock for checkin exclusivity
 		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtext(?))", userID).Error; err != nil {
-			return fmt.Errorf("advisory lock: %w", err)
+			return nil, fmt.Errorf("advisory lock: %w", err)
 		}
 
 		// Check if user has an active (non-expired) checkin
 		var existing database.UserCheckin
 		if result := tx.Where("user_id = ? AND expires_at > ?", userID, now).First(&existing); result.Error == nil {
-			return fmt.Errorf("already checked in")
+			return nil, fmt.Errorf("already checked in")
 		}
 
 		// Delete any expired checkins for the user
@@ -221,7 +226,7 @@ func handleCheckinCreate(c *fiber.Ctx) error {
 			CreatedAt: now,
 		}
 		if err := tx.Create(checkin).Error; err != nil {
-			return fmt.Errorf("create checkin: %w", err)
+			return nil, fmt.Errorf("create checkin: %w", err)
 		}
 
 		response = &checkinResponse{
@@ -235,7 +240,29 @@ func handleCheckinCreate(c *fiber.Ctx) error {
 		} else if mediaType == "episode" {
 			response.Episode = &checkinMediaRef{IDs: mediaRefIDs{TMDB: int(mediaID)}}
 		}
-		return nil
+
+		uvk := redis.BuildUserVersionKey(userID)
+		cacheTx.AddInvalidation(uvk, map[string]interface{}{
+			"user_id":      userID,
+			"version_key":  uvk,
+			"version_only": true,
+		})
+		mvk := redis.BuildMediaVersionKey(mediaType, mediaID, nil, nil)
+		cacheTx.AddInvalidation(mvk, map[string]interface{}{
+			"media_id":     mediaID,
+			"media_type":   mediaType,
+			"version_key":  mvk,
+			"version_only": true,
+		})
+
+		if err := outbox.PublishEvent(tx, outbox.EventCheckinCreated, userID, map[string]any{
+			"action":     "checkin",
+			"media_type": mediaType,
+			"media_id":   mediaID,
+		}); err != nil {
+			return nil, err
+		}
+		return cacheTx, nil
 	})
 
 	if err != nil {
@@ -255,16 +282,33 @@ func handleCheckinDelete(c *fiber.Ctx) error {
 		return writeAPIError(c, fiber.StatusUnauthorized, "unauthorized", "user not authenticated")
 	}
 
-	err := database.WithTransaction(func(tx *gorm.DB) error {
+	err := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
+
 		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtext(?))", userID).Error; err != nil {
-			return fmt.Errorf("advisory lock: %w", err)
+			return nil, fmt.Errorf("advisory lock: %w", err)
 		}
 
 		result := tx.Where("user_id = ?", userID).Delete(&database.UserCheckin{})
 		if result.Error != nil {
-			return fmt.Errorf("delete checkin: %w", result.Error)
+			return nil, fmt.Errorf("delete checkin: %w", result.Error)
 		}
-		return nil
+		if result.RowsAffected == 0 {
+			return cacheTx, nil
+		}
+
+		uvk := redis.BuildUserVersionKey(userID)
+		cacheTx.AddInvalidation(uvk, map[string]interface{}{
+			"user_id":      userID,
+			"version_key":  uvk,
+			"version_only": true,
+		})
+		if err := outbox.PublishEvent(tx, outbox.EventCheckinDeleted, userID, map[string]any{
+			"action": "delete",
+		}); err != nil {
+			return nil, err
+		}
+		return cacheTx, nil
 	})
 
 	if err != nil {

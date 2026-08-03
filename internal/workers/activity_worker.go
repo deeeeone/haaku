@@ -37,11 +37,20 @@ func StartActivityWorker() {
 var activityEventTypes = map[string]bool{
 	"history.added":      true,
 	"collection.updated": true,
-	"watchlist.updated":  true,
+	"watchlist.added":    true,
+	"watchlist.removed":  true,
 	"rating.added":       true,
 	"favorite.added":     true,
-	"scrobble":           true,
-	"checkin":            true,
+	"scrobble.start":     true,
+	"scrobble.pause":     true,
+	"scrobble.stop":      true,
+	"checkin.created":    true,
+	"checkin.deleted":    true,
+	"list.created":       true,
+	"list.updated":       true,
+	"list.deleted":       true,
+	"list.items.added":   true,
+	"list.items.removed": true,
 }
 
 // processActivityEvents reads new events from Redis Stream and fans them out.

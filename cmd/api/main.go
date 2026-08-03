@@ -13,6 +13,7 @@ import (
 	"trakt-api/internal/httpapi"
 	"trakt-api/internal/logging"
 	"trakt-api/internal/openapi"
+	"trakt-api/internal/outbox"
 	"trakt-api/internal/workers"
 	"trakt-api/redis"
 
@@ -53,8 +54,13 @@ func main() {
 		defer redis.CloseRedis()
 	}
 
-	// Background workers
+	// Background workers (T0.9)
+	// - Webhooks: reads events_outbox rows via cron and delivers webhooks
+	// - Outbox publisher: polls events_outbox → Redis Streams "events"
+	// - Activity worker: consumes "events" → activity_feed fan-out
 	workers.StartWebhookWorker()
+	outbox.StartPublisher(redis.GetClient())
+	workers.StartActivityWorker()
 
 	app := httpapi.NewServer(cfg)
 

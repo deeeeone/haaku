@@ -72,9 +72,13 @@ func extractAuth(c *fiber.Ctx) (string, string, error) {
 		// JWT path — verify through Clerk
 		return verifyJWT(token)
 	case strings.HasPrefix(token, "tk_"):
-		// API key path — defer to apikey package (not yet implemented)
-		slog.Debug("api key path not yet implemented", "path", c.Path())
-		return "", "", errUnsupportedPrefix
+		// API key path — resolve via Redis-cached Clerk metadata lookup
+		userID, err := LookupUserByAPIKey(token)
+		if err != nil {
+			slog.Debug("api key verification failed", "path", c.Path(), "error", err)
+			return "", "", errInvalidToken
+		}
+		return userID, "apikey", nil
 	default:
 		return "", "", errUnsupportedPrefix
 	}

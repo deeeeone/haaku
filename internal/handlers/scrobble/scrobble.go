@@ -6,9 +6,12 @@ import (
 	"time"
 
 	"trakt-api/internal/auth"
+	"trakt-api/internal/cache"
 	"trakt-api/internal/database"
 	"trakt-api/internal/handlers/media"
 	"trakt-api/internal/openapi"
+	"trakt-api/internal/outbox"
+	"trakt-api/redis"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -193,6 +196,26 @@ func resolveScrobbleItem(c *fiber.Ctx, req *scrobbleRequest) (string, int64, *in
 // ---------------------------------------------------------------------------
 
 // handleScrobbleStart handles POST /v1/scrobble/start
+// queueScrobbleInvalidation bumps the user's version counter and the media
+// entity's version counter so cached scrobble/playback/activity responses
+// are invalidated in O(1).
+func queueScrobbleInvalidation(cacheTx *cache.CacheTransaction, userID, mediaType string, mediaID int64) {
+	uvk := redis.BuildUserVersionKey(userID)
+	cacheTx.AddInvalidation(uvk, map[string]interface{}{
+		"user_id":      userID,
+		"version_key":  uvk,
+		"version_only": true,
+	})
+	mvk := redis.BuildMediaVersionKey(mediaType, mediaID, nil, nil)
+	cacheTx.AddInvalidation(mvk, map[string]interface{}{
+		"media_id":     mediaID,
+		"media_type":   mediaType,
+		"version_key":  mvk,
+		"version_only": true,
+	})
+}
+
+// handleScrobbleStart handles POST /v1/scrobble/start
 func handleScrobbleStart(c *fiber.Ctx) error {
 	var req scrobbleRequest
 	if err := json.Unmarshal(c.Body(), &req); err != nil {
@@ -209,11 +232,12 @@ func handleScrobbleStart(c *fiber.Ctx) error {
 		return writeAPIError(c, fiber.StatusBadRequest, "invalid_request", err.Error())
 	}
 
-	// Use WithTransaction for the write with advisory lock
-	err = database.WithTransaction(func(tx *gorm.DB) error {
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
+
 		// Advisory lock to prevent races
 		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtext(?), ?)", userID, mediaID).Error; err != nil {
-			return fmt.Errorf("advisory lock: %w", err)
+			return nil, fmt.Errorf("advisory lock: %w", err)
 		}
 
 		// Clean up expired sessions for this user+media (5h timeout).
@@ -239,9 +263,19 @@ func handleScrobbleStart(c *fiber.Ctx) error {
 			ExpiresAt: time.Now().Add(scrobbleSessionTimeout),
 		}
 		if err := tx.Create(session).Error; err != nil {
-			return fmt.Errorf("create session: %w", err)
+			return nil, fmt.Errorf("create session: %w", err)
 		}
-		return nil
+
+		queueScrobbleInvalidation(cacheTx, userID, mediaType, mediaID)
+		if err := outbox.PublishEvent(tx, outbox.EventScrobbleStart, userID, map[string]any{
+			"action":     "start",
+			"media_type": mediaType,
+			"media_id":   mediaID,
+			"progress":   req.Progress,
+		}); err != nil {
+			return nil, err
+		}
+		return cacheTx, nil
 	})
 
 	if err != nil {
@@ -272,9 +306,11 @@ func handleScrobblePause(c *fiber.Ctx) error {
 		return writeAPIError(c, fiber.StatusBadRequest, "invalid_request", err.Error())
 	}
 
-	err = database.WithTransaction(func(tx *gorm.DB) error {
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
+
 		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtext(?), ?)", userID, mediaID).Error; err != nil {
-			return fmt.Errorf("advisory lock: %w", err)
+			return nil, fmt.Errorf("advisory lock: %w", err)
 		}
 
 		// Write pause session
@@ -288,7 +324,7 @@ func handleScrobblePause(c *fiber.Ctx) error {
 			Progress:  req.Progress,
 		}
 		if err := tx.Create(session).Error; err != nil {
-			return fmt.Errorf("create session: %w", err)
+			return nil, fmt.Errorf("create session: %w", err)
 		}
 
 		// Save playback position for resume
@@ -302,9 +338,19 @@ func handleScrobblePause(c *fiber.Ctx) error {
 		if err := tx.Where("user_id = ? AND media_type = ? AND media_id = ?", userID, mediaType, mediaID).
 			Assign(playback).
 			FirstOrCreate(playback).Error; err != nil {
-			return fmt.Errorf("save playback: %w", err)
+			return nil, fmt.Errorf("save playback: %w", err)
 		}
-		return nil
+
+		queueScrobbleInvalidation(cacheTx, userID, mediaType, mediaID)
+		if err := outbox.PublishEvent(tx, outbox.EventScrobblePause, userID, map[string]any{
+			"action":     "pause",
+			"media_type": mediaType,
+			"media_id":   mediaID,
+			"progress":   req.Progress,
+		}); err != nil {
+			return nil, err
+		}
+		return cacheTx, nil
 	})
 
 	if err != nil {
@@ -343,9 +389,11 @@ func handleScrobbleStop(c *fiber.Ctx) error {
 	if req.Progress >= 80.0 {
 		// Scrobble path
 		var scrobbleResp *scrobbleResponse
-		err = database.WithTransaction(func(tx *gorm.DB) error {
+		err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+			cacheTx := cache.NewCacheTransaction()
+
 			if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtext(?), ?)", userID, mediaID).Error; err != nil {
-				return fmt.Errorf("advisory lock: %w", err)
+				return nil, fmt.Errorf("advisory lock: %w", err)
 			}
 
 			// Check for expired session (5h timeout with no activity).
@@ -356,7 +404,7 @@ func handleScrobbleStop(c *fiber.Ctx) error {
 				userID, mediaType, mediaID, []string{"start", "pause"}).
 				Order("created_at DESC").First(&lastSession); result.Error == nil {
 				if time.Now().After(lastSession.ExpiresAt) {
-					return &scrobbleSessionExpiredError{}
+					return nil, &scrobbleSessionExpiredError{}
 				}
 			}
 
@@ -369,7 +417,7 @@ func handleScrobbleStop(c *fiber.Ctx) error {
 				Order("created_at DESC").
 				First(&existing); result.Error == nil {
 				// Duplicate scrobble found
-				return &duplicateScrobbleError{
+				return nil, &duplicateScrobbleError{
 					WatchedAt: existing.CreatedAt.Format(time.RFC3339),
 					ExpiresAt: existing.CreatedAt.Add(cooldown).Format(time.RFC3339),
 				}
@@ -386,7 +434,7 @@ func handleScrobbleStop(c *fiber.Ctx) error {
 				Progress:  req.Progress,
 			}
 			if err := tx.Create(session).Error; err != nil {
-				return fmt.Errorf("create session: %w", err)
+				return nil, fmt.Errorf("create session: %w", err)
 			}
 
 			// Remove playback position (fully watched)
@@ -399,7 +447,18 @@ func handleScrobbleStop(c *fiber.Ctx) error {
 				Progress:  req.Progress,
 				WatchedAt: session.CreatedAt.Format(time.RFC3339),
 			}
-			return nil
+
+			queueScrobbleInvalidation(cacheTx, userID, mediaType, mediaID)
+			if err := outbox.PublishEvent(tx, outbox.EventScrobbleStop, userID, map[string]any{
+				"action":     "scrobble",
+				"media_type": mediaType,
+				"media_id":   mediaID,
+				"progress":   req.Progress,
+				"watched_at": session.CreatedAt.Format(time.RFC3339),
+			}); err != nil {
+				return nil, err
+			}
+			return cacheTx, nil
 		})
 
 		if err != nil {
@@ -420,9 +479,11 @@ func handleScrobbleStop(c *fiber.Ctx) error {
 	}
 
 	// 1–79% → pause behavior
-	err = database.WithTransaction(func(tx *gorm.DB) error {
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
+
 		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtext(?), ?)", userID, mediaID).Error; err != nil {
-			return fmt.Errorf("advisory lock: %w", err)
+			return nil, fmt.Errorf("advisory lock: %w", err)
 		}
 
 		// Write stop session
@@ -436,7 +497,7 @@ func handleScrobbleStop(c *fiber.Ctx) error {
 			Progress:  req.Progress,
 		}
 		if err := tx.Create(session).Error; err != nil {
-			return fmt.Errorf("create session: %w", err)
+			return nil, fmt.Errorf("create session: %w", err)
 		}
 
 		// Save playback position
@@ -450,9 +511,19 @@ func handleScrobbleStop(c *fiber.Ctx) error {
 		if err := tx.Where("user_id = ? AND media_type = ? AND media_id = ?", userID, mediaType, mediaID).
 			Assign(playback).
 			FirstOrCreate(playback).Error; err != nil {
-			return fmt.Errorf("save playback: %w", err)
+			return nil, fmt.Errorf("save playback: %w", err)
 		}
-		return nil
+
+		queueScrobbleInvalidation(cacheTx, userID, mediaType, mediaID)
+		if err := outbox.PublishEvent(tx, outbox.EventScrobbleStop, userID, map[string]any{
+			"action":     "stop",
+			"media_type": mediaType,
+			"media_id":   mediaID,
+			"progress":   req.Progress,
+		}); err != nil {
+			return nil, err
+		}
+		return cacheTx, nil
 	})
 
 	if err != nil {
@@ -537,19 +608,34 @@ func handleDeletePlayback(c *fiber.Ctx) error {
 		return writeAPIError(c, fiber.StatusBadRequest, "invalid_request", "invalid media_id")
 	}
 
-	db, dbErr := database.GetDB()
-	if dbErr != nil {
-		return writeAPIError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
-	}
+	err := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
 
-	result := db.Where("user_id = ? AND media_type = ? AND media_id = ?", userID, mediaType, mediaID).
-		Delete(&database.UserPlayback{})
-	if result.Error != nil {
+		result := tx.Where("user_id = ? AND media_type = ? AND media_id = ?", userID, mediaType, mediaID).
+			Delete(&database.UserPlayback{})
+		if result.Error != nil {
+			return nil, result.Error
+		}
+		if result.RowsAffected == 0 {
+			return nil, errPlaybackNotFound
+		}
+
+		uvk := redis.BuildUserVersionKey(userID)
+		cacheTx.AddInvalidation(uvk, map[string]interface{}{
+			"user_id":      userID,
+			"version_key":  uvk,
+			"version_only": true,
+		})
+		return cacheTx, nil
+	})
+	if err != nil {
+		if err == errPlaybackNotFound {
+			return writeAPIError(c, fiber.StatusNotFound, "not_found", "playback position not found")
+		}
 		return writeAPIError(c, fiber.StatusInternalServerError, "internal", "database error")
-	}
-	if result.RowsAffected == 0 {
-		return writeAPIError(c, fiber.StatusNotFound, "not_found", "playback position not found")
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
 }
+
+var errPlaybackNotFound = fmt.Errorf("playback position not found")

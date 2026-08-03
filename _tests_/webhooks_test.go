@@ -401,9 +401,12 @@ func TestEventCatalogV1(t *testing.T) {
 
 	expectedEvents := []string{
 		"history.added", "history.removed",
-		"collection.updated", "watchlist.updated",
+		"collection.updated", "watchlist.added", "watchlist.removed",
 		"rating.added", "favorite.added",
-		"scrobble", "checkin",
+		"scrobble.start", "scrobble.pause", "scrobble.stop",
+		"checkin.created", "checkin.deleted",
+		"list.created", "list.updated", "list.deleted",
+		"list.items.added", "list.items.removed",
 		"user.updated", "ping",
 	}
 
@@ -419,9 +422,12 @@ func TestValidEventTypes(t *testing.T) {
 
 	required := []string{
 		"history.added", "history.removed",
-		"collection.updated", "watchlist.updated",
+		"collection.updated", "watchlist.added", "watchlist.removed",
 		"rating.added", "favorite.added",
-		"scrobble", "checkin",
+		"scrobble.start", "scrobble.pause", "scrobble.stop",
+		"checkin.created", "checkin.deleted",
+		"list.created", "list.updated", "list.deleted",
+		"list.items.added", "list.items.removed",
 		"user.updated", "ping",
 	}
 
