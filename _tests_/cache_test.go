@@ -27,10 +27,10 @@ func TestCacheTransaction_AddInvalidation(t *testing.T) {
 	ct := cache.NewCacheTransaction()
 	ct.AddInvalidation("media_response:movie:42", nil)
 	ct.AddInvalidation("media_response:show:7", nil)
-	// Execute on a nil Redis client will fail gracefully (no-op or log)
+	// Without Redis, Execute returns an error — that's expected.
+	// The key requirement: it must not panic.
 	err := ct.Execute()
-	// Without Redis, Execute should return an error or nil depending on implementation.
-	// We just verify it doesn't panic.
+	// Error is expected since Redis isn't connected.
 	_ = err
 }
 

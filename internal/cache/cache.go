@@ -157,8 +157,11 @@ func (ct *CacheTransaction) executeBatchInvalidations(operations []CacheOperatio
 func bumpKey(key string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), redis.RedisDefaultTimeout)
 	defer cancel()
-	_, err := redis.Incr(ctx, key)
-	return err
+	if _, err := redis.Incr(ctx, key); err != nil {
+		// Redis not initialized or other error — non-fatal.
+		return err
+	}
+	return nil
 }
 
 // executeSet marshals the data to JSON, validates size, and sends to Redis.

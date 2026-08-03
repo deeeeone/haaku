@@ -366,6 +366,9 @@ func GetUserVersion(userID string) (int64, error) {
 
 // GetListVersion returns the current version counter for a list.
 func GetListVersion(listID int64) (int64, error) {
+	if _, err := requireClient(); err != nil {
+		return 0, err
+	}
 	key := BuildListVersionKey(listID)
 
 	var version int64

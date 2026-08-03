@@ -84,11 +84,11 @@ func InitDB() (*gorm.DB, error) {
 
 		log.Printf("[db] pool configured: idle=%d open=%d lifetime=%dm slow_query_threshold=%dms",
 			maxIdle, maxOpen, maxLifetimeMin, threshold)
-
-		if err = db.AutoMigrate(&User{}); err != nil {
-			err = fmt.Errorf("automigrate failed: %w", err)
-			return
-		}
+		// AutoMigrate user + media tables; safe for repeated calls.
+				if err = db.AutoMigrate(append([]interface{}{&User{}}, MediaModels()...)...); err != nil {
+					err = fmt.Errorf("automigrate failed: %w", err)
+					return
+				}
 
 		log.Println("[db] connection established and schema migrated")
 	})
