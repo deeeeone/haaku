@@ -3,6 +3,8 @@ package config
 import (
 	"fmt"
 	"os"
+
+	"github.com/joho/godotenv"
 )
 
 // Config holds all runtime configuration, loaded once from env vars.
@@ -26,7 +28,12 @@ type Config struct {
 }
 
 // Load reads configuration from the environment.
+// In development, loads .env from the project root (silently ignores if missing).
 func Load() (*Config, error) {
+	// Load .env file if present — production uses real env vars.
+	// Errors (missing file, etc.) are intentionally ignored.
+	_ = godotenv.Load()
+
 	cfg := &Config{
 		Env:          getEnv("APP_ENV", "development"),
 		Port:         getEnv("PORT", "8080"),
