@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS scrobble_sessions (
     episode_id      BIGINT,
     action          TEXT NOT NULL CHECK (action IN ('start', 'pause', 'stop', 'scrobble')),
     progress        DOUBLE PRECISION NOT NULL DEFAULT 0,
+    expires_at      TIMESTAMPTZ NOT NULL DEFAULT (now() + interval '5 hours'),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

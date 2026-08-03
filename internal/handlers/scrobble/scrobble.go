@@ -18,6 +18,10 @@ func init() {
 	registerOpenAPIRoutes()
 }
 
+// Scrobble session timeout: if no update for 5 hours, session is considered
+// abandoned/inactive. The next scrobble event will start a fresh session.
+const scrobbleSessionTimeout = 5 * time.Hour
+
 func registerOpenAPIRoutes() {
 	routes := []openapi.RouteDef{
 		// Scrobble
@@ -212,11 +216,18 @@ func handleScrobbleStart(c *fiber.Ctx) error {
 			return fmt.Errorf("advisory lock: %w", err)
 		}
 
+		// Clean up expired sessions for this user+media (5h timeout).
+		// If a session has been sitting in "start" or "pause" for >5h with no
+		// update, it's abandoned — delete it so the player can start fresh.
+		tx.Where("user_id = ? AND media_type = ? AND media_id = ? AND expires_at < ?",
+			userID, mediaType, mediaID, time.Now()).
+			Delete(&database.ScrobbleSession{})
+
 		// Remove prior playback for this user+media (if any)
 		tx.Where("user_id = ? AND media_type = ? AND media_id = ?", userID, mediaType, mediaID).
 			Delete(&database.UserPlayback{})
 
-		// Write start session
+		// Write start session with 5h expiry
 		session := &database.ScrobbleSession{
 			UserID:    userID,
 			MediaType: mediaType,
@@ -225,6 +236,7 @@ func handleScrobbleStart(c *fiber.Ctx) error {
 			EpisodeID: episodeID,
 			Action:    "start",
 			Progress:  req.Progress,
+			ExpiresAt: time.Now().Add(scrobbleSessionTimeout),
 		}
 		if err := tx.Create(session).Error; err != nil {
 			return fmt.Errorf("create session: %w", err)
@@ -336,6 +348,18 @@ func handleScrobbleStop(c *fiber.Ctx) error {
 				return fmt.Errorf("advisory lock: %w", err)
 			}
 
+			// Check for expired session (5h timeout with no activity).
+			// If the last start/pause session expired, the watching session
+			// is dead — player should re-start instead.
+			var lastSession database.ScrobbleSession
+			if result := tx.Where("user_id = ? AND media_type = ? AND media_id = ? AND action IN ?",
+				userID, mediaType, mediaID, []string{"start", "pause"}).
+				Order("created_at DESC").First(&lastSession); result.Error == nil {
+				if time.Now().After(lastSession.ExpiresAt) {
+					return &scrobbleSessionExpiredError{}
+				}
+			}
+
 			// Check for recent duplicate scrobble (within cooldown period)
 			cooldown := 24 * time.Hour
 			cooldownThreshold := time.Now().Add(-cooldown)
@@ -384,6 +408,10 @@ func handleScrobbleStop(c *fiber.Ctx) error {
 					WatchedAt: dupErr.WatchedAt,
 					ExpiresAt: dupErr.ExpiresAt,
 				})
+			}
+			if _, ok := err.(*scrobbleSessionExpiredError); ok {
+				return writeAPIError(c, fiber.StatusGone, "session_expired",
+					"scrobble session expired after 5 hours of inactivity — restart watching to begin a new session")
 			}
 			return writeAPIError(c, fiber.StatusInternalServerError, "internal", err.Error())
 		}
@@ -444,6 +472,14 @@ type duplicateScrobbleError struct {
 
 func (e *duplicateScrobbleError) Error() string {
 	return "duplicate scrobble"
+}
+
+// scrobbleSessionExpiredError is returned when a stop arrives for a session
+// that has been inactive for >5 hours. The client should restart watching.
+type scrobbleSessionExpiredError struct{}
+
+func (e *scrobbleSessionExpiredError) Error() string {
+	return "scrobble session expired — restart watching to begin a new session"
 }
 
 // ---------------------------------------------------------------------------

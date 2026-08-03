@@ -16,6 +16,7 @@ type ScrobbleSession struct {
 	EpisodeID  *int64    `json:"episode_id,omitempty"`
 	Action     string    `gorm:"type:text;not null" json:"action"` // start, pause, stop, scrobble
 	Progress   float64   `gorm:"not null;default:0" json:"progress"`
+	ExpiresAt  time.Time `gorm:"not null" json:"expires_at"`
 	CreatedAt  time.Time `gorm:"not null;default:now()" json:"created_at"`
 }
 
