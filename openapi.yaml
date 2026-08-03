@@ -427,6 +427,106 @@ paths:
             summary: Readiness check — returns service health including DB/Redis
             tags:
                 - Health
+    /v1/calendars/all/shows/{start_date}/{days}:
+        get:
+            operationId: _v1_calendars_all_shows_start_date_days_GET
+            responses:
+                "200":
+                    description: Calendar entries
+                "400":
+                    description: Invalid start_date or days parameter
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Get all upcoming episodes airing within a date range
+            tags:
+                - Calendars
+    /v1/calendars/my/shows:
+        get:
+            operationId: _v1_calendars_my_shows_GET
+            responses:
+                "200":
+                    description: Calendar entries (empty for now)
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Get your upcoming show calendar (stub — requires user scrobble data in Phase 2+)
+            tags:
+                - Calendars
     /v1/checkin:
         delete:
             operationId: _v1_checkin_DELETE
@@ -2887,6 +2987,54 @@ paths:
             summary: Get trending movies
             tags:
                 - Discovery
+    /v1/movies/updates/{start_date}:
+        get:
+            operationId: _v1_movies_updates_start_date_GET
+            responses:
+                "200":
+                    description: Updated movies
+                "400":
+                    description: Invalid start_date format
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Get movies updated since a date
+            tags:
+                - Updates
     /v1/notifications:
         get:
             operationId: _v1_notifications_GET
@@ -3193,6 +3341,54 @@ paths:
             summary: Get show credits for a person
             tags:
                 - People
+    /v1/people/updates/{start_date}:
+        get:
+            operationId: _v1_people_updates_start_date_GET
+            responses:
+                "200":
+                    description: Updated people
+                "400":
+                    description: Invalid start_date format
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Get people updated since a date
+            tags:
+                - Updates
     /v1/scrobble/pause:
         post:
             operationId: _v1_scrobble_pause_POST
@@ -4179,6 +4375,54 @@ paths:
             summary: Get trending shows
             tags:
                 - Discovery
+    /v1/shows/updates/{start_date}:
+        get:
+            operationId: _v1_shows_updates_start_date_GET
+            responses:
+                "200":
+                    description: Updated shows
+                "400":
+                    description: Invalid start_date format
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Get shows updated since a date
+            tags:
+                - Updates
     /v1/smart-lists/{id}:
         delete:
             operationId: _v1_smart_lists_id_DELETE

@@ -4,6 +4,7 @@ import (
 	"trakt-api/internal/auth"
 	"trakt-api/internal/database"
 	"trakt-api/internal/handlers/activity"
+	"trakt-api/internal/handlers/calendar"
 	"trakt-api/internal/handlers/checkin"
 	"trakt-api/internal/handlers/collab"
 	"trakt-api/internal/handlers/comments"
@@ -18,6 +19,7 @@ import (
 	"trakt-api/internal/handlers/stats"
 	"trakt-api/internal/handlers/sync"
 	"trakt-api/internal/handlers/syncs"
+	"trakt-api/internal/handlers/updates"
 	"trakt-api/internal/handlers/users"
 	"trakt-api/internal/handlers/watch"
 	"trakt-api/internal/handlers/webhooks"
@@ -130,6 +132,12 @@ func RegisterRoutes(app *fiber.App) {
 
 	// Watch providers endpoints (Phase 1: T1.10)
 	watch.RegisterRoutes(api)
+
+	// Calendars (Phase 1: T1.8)
+	calendar.RegisterRoutes(api)
+
+	// Updates (Phase 1: T1.9)
+	updates.RegisterRoutes(api)
 
 	// Discovery endpoints (Phase 1: T1.7)
 	discovery.RegisterRoutes(api)
