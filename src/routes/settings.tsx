@@ -35,7 +35,7 @@ function SettingsLayout() {
       <div className="flex flex-col gap-6 lg:flex-row">
         {/* Sidebar */}
         <aside className="w-full shrink-0 lg:w-56">
-          <nav className="sticky top-24 space-y-1">
+          <nav className="sticky top-4 space-y-1">
             <h1 className="mb-4 font-display text-xl font-bold text-sf-ink">
               Settings
             </h1>
