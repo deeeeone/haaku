@@ -7,10 +7,12 @@ import { cn } from '../../lib/utils'
 export type TopbarProps = {
   brand?: React.ReactNode
   nav?: Array<{ label: string; active?: boolean }>
+  /** Hide demo user/profile section. Default: true (hidden). */
+  hideUser?: boolean
   className?: string
 }
 
-export function Topbar({ brand, nav, className }: TopbarProps) {
+export function Topbar({ brand, nav, hideUser = true, className }: TopbarProps) {
   return (
     <header
       className={cn(
@@ -69,6 +71,7 @@ export function Topbar({ brand, nav, className }: TopbarProps) {
             <span className="absolute top-2 right-2.5 size-1.5 rounded-full bg-sf-accent-2" />
           </button>
 
+          {!hideUser && (
           <Dropdown
             trigger={<ProfilePill name="Alex Rivera" subtitle="Member" />}
             items={[
@@ -77,6 +80,7 @@ export function Topbar({ brand, nav, className }: TopbarProps) {
               { label: 'Settings', icon: <Settings className="size-4" /> },
             ]}
           />
+          )}
         </div>
       </div>
     </header>
