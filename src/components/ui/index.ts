@@ -84,6 +84,7 @@ export { ShimmerText } from '@/design-kit-components/ui/shimmer-text'
 export { JsonHighlight } from '@/design-kit-components/ui/json-highlight'
 
 // Shared
+export { EmptyState } from '@/design-kit-components/shared/empty-state'
 export { ProfilePill } from '@/design-kit-components/shared/profile-pill'
 export { WatchProgress } from '@/design-kit-components/shared/watch-progress'
 

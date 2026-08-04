@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui'
-import { Banner } from '@/components/ui'
+import { EmptyState } from '@/components/ui'
 import { ListCard } from '@/components/lists/ListCard'
 import { useApi } from '@/api/client'
 import {
@@ -167,15 +167,22 @@ function MyListsPage() {
             ))}
           </div>
         ) : displayedLists.length === 0 ? (
-          <Banner id="banner-197413ac" type="info">
-            <p className="text-sf-ink-muted">
-              {filter === 'owned'
+          <EmptyState
+            title={
+              filter === 'owned'
                 ? "You haven't created any lists yet."
                 : filter === 'collaborated'
                   ? "You're not collaborating on any lists."
-                  : "No lists yet. Create one to get started."}
-            </p>
-          </Banner>
+                  : "No lists yet. Create one to get started."
+            }
+            description="Organize your favorite movies and shows into shareable lists."
+            action={
+              <Button size="sm" onClick={() => setCreateOpen(true)}>
+                <Plus className="size-4 mr-1.5" />
+                Create List
+              </Button>
+            }
+          />
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {displayedLists.map((list) => (
