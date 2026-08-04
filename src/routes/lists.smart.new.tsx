@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Page, Section } from '@/components/layout'
-import { SectionHead, Button, Banner, Badge } from '@/components/ui'
+import { Button, Banner, Badge } from '@/components/ui'
 import { useApi } from '@/api/client'
 import { useCreateSmartList, useMySmartLists } from '@/api/hooks/useLists'
 import { SmartListEditor } from '@/components/lists/SmartListEditor'
@@ -33,17 +33,21 @@ function SmartListNewPage() {
   return (
     <Page>
 
-      <SectionHead
-        title="Smart Lists"
-        eyebrow="Dynamic lists that auto-populate based on filters."
-      />
+      <Section>
+        <div className="mb-6">
+          <h1 className="font-display text-2xl font-bold text-sf-ink">
+            Smart Lists
+          </h1>
+          <p className="mt-1 text-sm text-sf-ink-muted">
+            Dynamic lists that auto-populate based on filters.
+          </p>
+        </div>
 
-      <div className="mt-4 flex gap-2">
-        <Button onClick={() => setEditorOpen(true)}>Create Smart List</Button>
-      </div>
+        <div className="mb-6 flex gap-2">
+          <Button onClick={() => setEditorOpen(true)}>Create Smart List</Button>
+        </div>
 
-      {/* Existing Smart Lists */}
-      <Section className="mt-6">
+        {/* Existing Smart Lists */}
         {smartLoading ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => (

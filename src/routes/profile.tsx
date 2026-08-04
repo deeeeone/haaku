@@ -115,7 +115,7 @@ function ProfilePage() {
     <Page>
 
       {isLoading ? (
-        <div className="space-y-6 pt-8">
+        <div className="space-y-6">
           <ShimmerText className="h-8 w-48" />
           <ShimmerText className="h-4 w-96" />
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -153,7 +153,7 @@ function ProfilePage() {
                   )}
                 </div>
                 <div>
-                  <h1 className="font-display text-2xl font-bold text-sf-ink sm:text-3xl">
+                  <h1 className="font-display text-2xl font-bold text-sf-ink">
                     {displayName ?? username ?? 'User'}
                   </h1>
                   {username && (
