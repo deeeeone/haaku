@@ -53,8 +53,6 @@ function HomePage() {
 
   return (
     <Page>
-      <div className="pointer-events-none fixed inset-0 z-0 grid-bg" />
-      <div className="pointer-events-none fixed inset-0 z-0 vignette" />
 
       {/* Continue Watching */}
       {continueWatching.length > 0 && (

@@ -27,7 +27,6 @@ function EpisodeDetailPage() {
   if (isLoading) {
     return (
       <Page>
-        <div className="pointer-events-none fixed inset-0 z-0 grid-bg" />
         <div className="space-y-6 py-16">
           <ShimmerText className="h-[300px] w-full rounded-sf-xl" />
           <ShimmerText className="h-8 w-64" />
@@ -40,7 +39,6 @@ function EpisodeDetailPage() {
   if (isError || !episode) {
     return (
       <Page>
-        <div className="pointer-events-none fixed inset-0 z-0 grid-bg" />
         <div className="flex flex-col items-center gap-4 py-24 text-center">
           <p className="text-lg font-semibold text-sf-ink">Episode not found</p>
           <Button variant="glass" onClick={() => navigate({ to: '/search' })}>
@@ -55,8 +53,6 @@ function EpisodeDetailPage() {
 
   return (
     <Page>
-      <div className="pointer-events-none fixed inset-0 z-0 grid-bg" />
-      <div className="pointer-events-none fixed inset-0 z-0 vignette" />
 
       <Hero
         eyebrow={`Season ${episode.season} · Episode ${episode.number}`}

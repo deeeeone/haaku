@@ -100,7 +100,6 @@ function ListDetailPage() {
   if (listLoading) {
     return (
       <Page>
-        <div className="pointer-events-none fixed inset-0 z-0 grid-bg" />
         <ShimmerText className="h-8 w-64" />
         <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {Array.from({ length: 10 }).map((_, i) => (
@@ -114,7 +113,6 @@ function ListDetailPage() {
   if (!list) {
     return (
       <Page>
-        <div className="pointer-events-none fixed inset-0 z-0 grid-bg" />
         <Banner id="banner-db5d4cce" type="error">
           <p>List not found.</p>
         </Banner>
@@ -208,7 +206,6 @@ function ListDetailPage() {
 
   return (
     <Page>
-      <div className="pointer-events-none fixed inset-0 z-0 grid-bg" />
 
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

@@ -116,7 +116,6 @@ function MyListsPage() {
 
   return (
     <Page>
-      <div className="pointer-events-none fixed inset-0 z-0 grid-bg" />
 
       <div className="flex items-center justify-between">
         <SectionHead title="My Lists" />

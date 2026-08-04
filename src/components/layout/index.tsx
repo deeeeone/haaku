@@ -10,20 +10,19 @@ export function Page({
   className,
 }: PropsWithChildren<{ className?: string }>) {
   return (
-    <main
+    <div
       className={cn(
-        'mx-auto min-h-[calc(100vh-var(--sf-nav-h))] w-full max-w-[1440px] px-[--sf-edge] pb-16 pt-6',
+        'mx-auto w-full max-w-[1440px] px-[--sf-edge] pb-16 pt-6',
         className
       )}
     >
       {children}
-    </main>
+    </div>
   )
 }
 
 /**
  * Content section wrapper.
- * Used to group related content blocks on a page.
  */
 export function Section({
   children,

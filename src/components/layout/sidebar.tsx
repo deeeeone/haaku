@@ -29,16 +29,20 @@ const bottomItems = [
 
 export function Sidebar() {
   return (
-    <aside className="hidden w-[220px] flex-shrink-0 flex-col border-r border-sf-line lg:flex">
-      <div className="flex flex-1 flex-col gap-1 px-3 pt-6">
-        {navItems.map((item) => (
-          <SidebarLink key={item.to} {...item} />
-        ))}
+    <aside className="sticky top-[--sf-nav-h] hidden h-[calc(100vh-var(--sf-nav-h))] w-[220px] flex-shrink-0 flex-col border-r border-sf-line lg:flex">
+      <div className="flex-1 overflow-y-auto px-3 pt-6">
+        <nav className="flex flex-col gap-1">
+          {navItems.map((item) => (
+            <SidebarLink key={item.to} {...item} />
+          ))}
+        </nav>
       </div>
-      <div className="flex flex-col gap-1 border-t border-sf-line px-3 py-4">
-        {bottomItems.map((item) => (
-          <SidebarLink key={item.to} {...item} />
-        ))}
+      <div className="flex-shrink-0 border-t border-sf-line px-3 py-4">
+        <nav className="flex flex-col gap-1">
+          {bottomItems.map((item) => (
+            <SidebarLink key={item.to} {...item} />
+          ))}
+        </nav>
       </div>
     </aside>
   )

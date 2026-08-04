@@ -113,7 +113,6 @@ function ProfilePage() {
 
   return (
     <Page>
-      <div className="pointer-events-none fixed inset-0 z-0 grid-bg" />
 
       {isLoading ? (
         <div className="space-y-6 pt-8">

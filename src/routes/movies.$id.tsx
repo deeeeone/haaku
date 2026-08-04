@@ -89,7 +89,6 @@ function MovieDetailPage() {
   if (isLoading) {
     return (
       <Page>
-        <div className="pointer-events-none fixed inset-0 z-0 grid-bg" />
         <div className="space-y-6 py-16">
           <ShimmerText className="h-[400px] w-full rounded-sf-xl" />
           <ShimmerText className="h-8 w-64" />
@@ -102,7 +101,6 @@ function MovieDetailPage() {
   if (isError || !movie) {
     return (
       <Page>
-        <div className="pointer-events-none fixed inset-0 z-0 grid-bg" />
         <div className="flex flex-col items-center gap-4 py-24 text-center">
           <p className="text-lg font-semibold text-sf-ink">Movie not found</p>
           <Button variant="glass" onClick={() => navigate({ to: '/search' })}>
@@ -118,8 +116,6 @@ function MovieDetailPage() {
 
   return (
     <Page>
-      <div className="pointer-events-none fixed inset-0 z-0 grid-bg" />
-      <div className="pointer-events-none fixed inset-0 z-0 vignette" />
 
       <Hero
         eyebrow={String(movie.year)}
