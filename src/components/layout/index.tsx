@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 
 /**
  * Responsive page wrapper.
- * Applies consistent padding matching the design-kit --sf-edge token.
+ * Applies consistent horizontal padding and max-width constraint.
  */
 export function Page({
   children,
@@ -12,7 +12,7 @@ export function Page({
   return (
     <div
       className={cn(
-        'mx-auto w-full max-w-[1440px] px-[--sf-edge] pb-16 pt-6',
+        'mx-auto w-full max-w-[1440px] px-5 sm:px-8 lg:px-10 pb-12 pt-6',
         className
       )}
     >
@@ -30,7 +30,7 @@ export function Section({
   title,
 }: PropsWithChildren<{ className?: string; title?: string }>) {
   return (
-    <section className={cn('py-6', className)}>
+    <section className={cn('py-5', className)}>
       {title && (
         <h2 className="mb-4 font-display text-xl font-semibold text-sf-ink">
           {title}
