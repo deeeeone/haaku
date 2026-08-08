@@ -159,9 +159,12 @@ func handleGetHistoryItem(c *fiber.Ctx) error {
 	mt := c.Params("media_type")
 	mediaParam := c.Params("media_id")
 
-	_, mediaID, err := media.ResolveID(c, mediaParam)
+	resolvedMT, mediaID, err := media.ResolveID(c, mediaParam)
 	if err != nil {
 		return err
+	}
+	if resolvedMT != mt {
+		return badRequest(c, "media_type does not match the resolved media id")
 	}
 
 	db, dbErr := database.GetDB()
@@ -271,7 +274,13 @@ func handleAddHistory(c *fiber.Ctx) error {
 				resp.NotFound.Movies = append(resp.NotFound.Movies, map[string]interface{}{"ids": m.IDs})
 				continue
 			}
-			watchedAt := parseWatchedAt(m.WatchedAt, now, nil)
+			watchedAt, err := parseWatchedAt(m.WatchedAt, now, nil)
+			if err != nil {
+				resp.NotFound.Movies = append(resp.NotFound.Movies, map[string]interface{}{
+					"ids": m.IDs, "error": "invalid watched_at",
+				})
+				continue
+			}
 			added, dup := insertHistory(tx, userID, "movie", mediaID, nil, nil, watchedAt)
 			if dup {
 				resp.Duplicates.Movies++
@@ -310,7 +319,7 @@ func handleAddHistory(c *fiber.Ctx) error {
 								})
 								continue
 							}
-							wt := parseWatchedAt("unknown", now, epRow.AiredAt)
+							wt, _ := parseWatchedAt("unknown", now, epRow.AiredAt)
 							added, dup := insertHistory(tx, userID, "episode", epRow.ID, &seasonRow.ID, &epRow.ID, wt)
 							if dup {
 								resp.Duplicates.Episodes++
@@ -323,7 +332,7 @@ func handleAddHistory(c *fiber.Ctx) error {
 						// All episodes in this season
 						eps := findAllEpisodesInSeason(tx, seasonRow.ID)
 						for i := range eps {
-							wt := parseWatchedAt("unknown", now, eps[i].AiredAt)
+							wt, _ := parseWatchedAt("unknown", now, eps[i].AiredAt)
 							added, dup := insertHistory(tx, userID, "episode", eps[i].ID, &seasonRow.ID, &eps[i].ID, wt)
 							if dup {
 								resp.Duplicates.Episodes++
@@ -338,7 +347,7 @@ func handleAddHistory(c *fiber.Ctx) error {
 				// All aired episodes of the show
 				eps := findAllEpisodesInShow(tx, mediaID)
 				for i := range eps {
-					wt := parseWatchedAt("unknown", now, eps[i].AiredAt)
+					wt, _ := parseWatchedAt("unknown", now, eps[i].AiredAt)
 					added, dup := insertHistory(tx, userID, "episode", eps[i].ID, &eps[i].SeasonID, &eps[i].ID, wt)
 					if dup {
 						resp.Duplicates.Episodes++
@@ -376,7 +385,13 @@ func handleAddHistory(c *fiber.Ctx) error {
 				continue
 			}
 
-			wt := parseWatchedAt(ep.WatchedAt, now, epRow.AiredAt)
+			wt, err := parseWatchedAt(ep.WatchedAt, now, epRow.AiredAt)
+			if err != nil {
+				resp.NotFound.Episodes = append(resp.NotFound.Episodes, map[string]interface{}{
+					"ids": ep.IDs, "season": ep.Season, "number": ep.Number, "error": "invalid watched_at",
+				})
+				continue
+			}
 			added, dup := insertHistory(tx, userID, "episode", epRow.ID, &seasonRow.ID, &epRow.ID, wt)
 			if dup {
 				resp.Duplicates.Episodes++
@@ -1609,20 +1624,22 @@ func verifyMediaExists(db *gorm.DB, mediaType string, mediaID int64) (bool, erro
 }
 
 // parseWatchedAt handles "released", "unknown", and explicit timestamps.
-func parseWatchedAt(val string, now time.Time, airedAt *database.Date) time.Time {
+// An explicit timestamp that isn't valid RFC3339 is an error — it must never
+// silently become "now" (that would corrupt watch history).
+func parseWatchedAt(val string, now time.Time, airedAt *database.Date) (time.Time, error) {
 	switch val {
 	case "released":
 		if airedAt != nil && !airedAt.IsZero() {
-			return airedAt.Time
+			return airedAt.Time, nil
 		}
-		return now
+		return now, nil
 	case "", "unknown":
-		return now
+		return now, nil
 	default:
 		if t, err := time.Parse(time.RFC3339, val); err == nil {
-			return t
+			return t, nil
 		}
-		return now
+		return time.Time{}, fmt.Errorf("invalid watched_at %q", val)
 	}
 }
 

@@ -31,12 +31,13 @@ Writes use `cache.WithCacheTransaction` with version-counter invalidation (`queu
   - `handleRemoveRatings` published `EventRatingAdded`, `handleRemoveFavorites` published `EventFavoriteAdded`, `handleReorderWatchlist` published `EventWatchlistAdded` (sync.go) — **fixed**: the webhook catalog (`trakt-killer-plan/03-api/webhooks.md`) defines no rating/favorite removal or watchlist-reorder events, so these handlers now emit nothing.
 - **Hardcoded `0` in add responses (RESOLVED)** — `handleAddWatchlist` returned `"added":{"movies":0,"episodes":0}` instead of real counts; `handleAddFavorites` returned `"movies":0,"shows":0` with `added` unused; `handleAddRatings` lumped ALL adds into `"movies"`. Now all three track real per-type `added`/`duplicates` (`addedMovies/Shows`, `dupMovies/Shows`, `addedSeasons/Episodes`) and return them.
 - **No requireAuth middleware on routes** — `RegisterRoutes` attaches nothing; each handler repeats the `c.Locals("user_id")` check. Inconsistent with `scrobble` (which wraps `auth.AuthRequired`).
-- **`handleGetHistoryItem` never validates `media_type`** — the route param is used verbatim in the WHERE (sync.go:173) while `media.ResolveID` may resolve a different type (e.g. show id passed with `media_type=movie` matches nothing or wrong rows).
+- **`handleGetHistoryItem` never validated `media_type` (RESOLVED)** — the route param was used verbatim in the WHERE while `media.ResolveID` may resolve a different type; now the resolved type must match the param or the request returns 400.
+- **`parseWatchedAt` silently fell back to `now` (RESOLVED)** — invalid/unknown timestamps became "now", silently corrupting watch history on client typos. Invalid RFC3339 strings now error and the offending item is reported under `not_found` with `"error": "invalid watched_at"` (batch keeps processing the rest). `"unknown"` semantics (aired_at vs now) still need a spec decision.
 - **`resolveByTMDB` bypasses `media.ResolveID`** — mutates the context (`c.Set("id_type", ...)`) and hand-rolls an `external_ids` lookup + `verifyMediaExists` per item; duplicates the resolver and does an extra query per item (N+1 on bulk adds).
 - **No advisory locks on rank assignment** — `MAX(rank)` + increment in `handleAddWatchlist`/`handleAddFavorites` is racy under concurrency (duplicate ranks); the checklist/patterns say concurrent writes should be advisory-locked.
 - **Reorder is 0-based and partial** — `Update("rank", i)` with `i` from 0 (Trakt ranks are 1-based); a partial `rank` array silently re-ranks only those rows, leaving gaps/duplicates; no validation that all items belong to the user before applying.
 - **`sort_by=title` is wrong** — `order = "media_type, media_id"` (sync.go:781) sorts by type+id, not title; would need a join to media tables.
-- **`parseWatchedAt` silently falls back to `now`** — invalid/unknown timestamps become "now" instead of erroring or using `released`; `"unknown"` in show/season expansion also uses `now` rather than the episode `aired_at`.
+- **`"unknown"` watched_at semantics undecided** — `"unknown"` in show/season expansion uses `now` rather than the episode `aired_at`; needs a spec decision (aired_at vs now).
 - **Bulk-add N+1** — per-item `findSeason`/`findEpisode` queries inside the transaction loop; fine for small batches, quadratic-ish for large syncs.
 - **No pagination on `handleGetHistoryItem`** — returns all history rows for one item.
 - **No episode support in collection/watchlist/favorites** — Trakt allows episodes in watchlist; only movies/shows handled here.
@@ -48,7 +49,7 @@ Writes use `cache.WithCacheTransaction` with version-counter invalidation (`queu
 - [x] Fix outbox event names on collection/ratings/favorites remove + watchlist reorder (removals/reorder now emit nothing; collection keeps `collection.updated`).
 - [x] Return real `added`/`duplicates` counts in watchlist/favorites/ratings add responses.
 - [ ] Attach `auth.AuthRequired` at route registration; drop per-handler checks.
-- [ ] Validate `media_type` against the resolved type in `handleGetHistoryItem`.
+- [x] Validate `media_type` against the resolved type in `handleGetHistoryItem` (400 on mismatch; `parseWatchedAt` now errors on invalid timestamps instead of silently using `now`).
 - [ ] Reuse `media.ResolveID` and batch-resolve bulk add IDs.
 - [ ] Advisory-lock rank assignment; make reorder atomic + validated (1-based, complete set).
 - [ ] Fix `sort_by=title` to join titles.
