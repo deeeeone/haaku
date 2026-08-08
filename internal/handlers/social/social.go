@@ -5,9 +5,11 @@ import (
 	"time"
 
 	"trakt-api/internal/auth"
+	"trakt-api/internal/cache"
 	"trakt-api/internal/database"
 	"trakt-api/internal/openapi"
 	"trakt-api/internal/outbox"
+	"trakt-api/redis"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -84,6 +86,19 @@ type FollowRequestResponse struct {
 // Handlers — Follow / Unfollow
 // ---------------------------------------------------------------------------
 
+// queueFollowInvalidation bumps the version counters of both users involved,
+// so cached follower/following/friend/request responses are invalidated in O(1).
+func queueFollowInvalidation(cacheTx *cache.CacheTransaction, userA, userB string) {
+	for _, uid := range []string{userA, userB} {
+		uvk := redis.BuildUserVersionKey(uid)
+		cacheTx.AddInvalidation(uvk, map[string]interface{}{
+			"user_id":      uid,
+			"version_key":  uvk,
+			"version_only": true,
+		})
+	}
+}
+
 // handleFollow follows a user. If target has private profile, it creates a pending follow.
 func handleFollow(c *fiber.Ctx) error {
 	followerID, ok := c.Locals("user_id").(string)
@@ -121,33 +136,48 @@ func handleFollow(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusCreated).JSON(buildFollowResponse(&existing, status))
 	}
 
-	now := time.Now()
-	follow := database.UserFollow{
-		FollowerID:  followerID,
-		FollowingID: targetID,
-		CreatedAt:   now,
-	}
+	var resp FollowResponse
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
 
-	status := "approved"
-	if target.IsPrivate {
-		// Private profile — follow is pending.
-		follow.ApprovedAt = nil
-		status = "pending"
-	} else {
-		follow.ApprovedAt = &now
-	}
+		now := time.Now()
+		follow := database.UserFollow{
+			FollowerID:  followerID,
+			FollowingID: targetID,
+			CreatedAt:   now,
+		}
 
-	if err := db.Create(&follow).Error; err != nil {
+		status := "approved"
+		if target.IsPrivate {
+			// Private profile — follow is pending.
+			follow.ApprovedAt = nil
+			status = "pending"
+		} else {
+			follow.ApprovedAt = &now
+		}
+
+		if err := tx.Create(&follow).Error; err != nil {
+			return nil, err
+		}
+
+		queueFollowInvalidation(cacheTx, followerID, targetID)
+		if err := outbox.PublishEvent(tx, outbox.EventFollowCreated, followerID, map[string]any{
+			"actor":        followerID,
+			"target":       targetID,
+			"following_id": targetID,
+			"status":       status,
+		}); err != nil {
+			return nil, err
+		}
+
+		resp = buildFollowResponse(&follow, status)
+		return cacheTx, nil
+	})
+	if err != nil {
 		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to follow user")
 	}
 
-	// Publish outbox event.
-	_ = outbox.PublishEvent(db, "user.followed", followerID, map[string]any{
-		"following_id": targetID,
-		"status":       status,
-	})
-
-	return c.Status(fiber.StatusCreated).JSON(buildFollowResponse(&follow, status))
+	return c.Status(fiber.StatusCreated).JSON(resp)
 }
 
 // handleUnfollow unfollows a user.
@@ -162,22 +192,37 @@ func handleUnfollow(c *fiber.Ctx) error {
 		return badRequest(c, "invalid target user id")
 	}
 
-	db, err := database.GetDB()
-	if err != nil {
+	if _, err := database.GetDB(); err != nil {
 		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
-	result := db.Where("follower_id = ? AND following_id = ?", followerID, targetID).Delete(&database.UserFollow{})
-	if result.Error != nil {
+	err := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
+
+		result := tx.Where("follower_id = ? AND following_id = ?", followerID, targetID).Delete(&database.UserFollow{})
+		if result.Error != nil {
+			return nil, result.Error
+		}
+		if result.RowsAffected == 0 {
+			return nil, errNotFollowing
+		}
+
+		queueFollowInvalidation(cacheTx, followerID, targetID)
+		if err := outbox.PublishEvent(tx, outbox.EventFollowRemoved, followerID, map[string]any{
+			"actor":         followerID,
+			"target":        targetID,
+			"unfollowed_id": targetID,
+		}); err != nil {
+			return nil, err
+		}
+		return cacheTx, nil
+	})
+	if err != nil {
+		if errors.Is(err, errNotFollowing) {
+			return notFound(c, "not following this user")
+		}
 		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to unfollow user")
 	}
-	if result.RowsAffected == 0 {
-		return notFound(c, "not following this user")
-	}
-
-	_ = outbox.PublishEvent(db, "user.unfollowed", followerID, map[string]any{
-		"unfollowed_id": targetID,
-	})
 
 	return c.SendStatus(fiber.StatusNoContent)
 }
@@ -320,24 +365,40 @@ func handleApproveFollowRequest(c *fiber.Ctx) error {
 		return badRequest(c, "invalid follower id")
 	}
 
-	db, err := database.GetDB()
-	if err != nil {
+	if _, err := database.GetDB(); err != nil {
 		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
-	now := time.Now()
-	result := db.Model(&database.UserFollow{}).
-		Where("follower_id = ? AND following_id = ? AND approved_at IS NULL", followerID, userID).
-		Update("approved_at", now)
+	err := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
 
-	if result.Error != nil {
+		now := time.Now()
+		result := tx.Model(&database.UserFollow{}).
+			Where("follower_id = ? AND following_id = ? AND approved_at IS NULL", followerID, userID).
+			Update("approved_at", now)
+		if result.Error != nil {
+			return nil, result.Error
+		}
+		if result.RowsAffected == 0 {
+			return nil, errRequestNotFound
+		}
+
+		queueFollowInvalidation(cacheTx, followerID, userID)
+		if err := outbox.PublishEvent(tx, outbox.EventFollowApproved, userID, map[string]any{
+			"actor":       followerID,
+			"target":      userID,
+			"follower_id": followerID,
+		}); err != nil {
+			return nil, err
+		}
+		return cacheTx, nil
+	})
+	if err != nil {
+		if errors.Is(err, errRequestNotFound) {
+			return notFound(c, "follow request not found")
+		}
 		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to approve follow request")
 	}
-	if result.RowsAffected == 0 {
-		return notFound(c, "follow request not found")
-	}
-
-	_ = outbox.PublishEvent(db, "user.follow_approved", userID, map[string]any{"follower_id": followerID})
 
 	return c.JSON(fiber.Map{"status": "approved"})
 }
@@ -354,19 +415,30 @@ func handleDenyFollowRequest(c *fiber.Ctx) error {
 		return badRequest(c, "invalid follower id")
 	}
 
-	db, err := database.GetDB()
-	if err != nil {
+	if _, err := database.GetDB(); err != nil {
 		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
-	result := db.Where("follower_id = ? AND following_id = ? AND approved_at IS NULL", followerID, userID).
-		Delete(&database.UserFollow{})
+	err := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
 
-	if result.Error != nil {
+		result := tx.Where("follower_id = ? AND following_id = ? AND approved_at IS NULL", followerID, userID).
+			Delete(&database.UserFollow{})
+		if result.Error != nil {
+			return nil, result.Error
+		}
+		if result.RowsAffected == 0 {
+			return nil, errRequestNotFound
+		}
+
+		queueFollowInvalidation(cacheTx, followerID, userID)
+		return cacheTx, nil
+	})
+	if err != nil {
+		if errors.Is(err, errRequestNotFound) {
+			return notFound(c, "follow request not found")
+		}
 		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to deny follow request")
-	}
-	if result.RowsAffected == 0 {
-		return notFound(c, "follow request not found")
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
@@ -375,6 +447,11 @@ func handleDenyFollowRequest(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+var (
+	errNotFollowing    = errors.New("not following this user")
+	errRequestNotFound = errors.New("follow request not found")
+)
 
 func buildFollowResponse(f *database.UserFollow, status string) FollowResponse {
 	resp := FollowResponse{

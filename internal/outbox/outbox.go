@@ -29,6 +29,9 @@ const (
 	EventCheckinCreated   = "checkin.created"
 	EventCheckinDeleted   = "checkin.deleted"
 	EventUserUpdated      = "user.updated"
+	EventFollowCreated    = "follow.created"
+	EventFollowApproved   = "follow.approved"
+	EventFollowRemoved    = "follow.removed"
 
 	// List events (plan 03-api/lists-api.md §Events).
 	EventListCreated      = "list.created"

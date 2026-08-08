@@ -26,8 +26,8 @@ Emits outbox events (`user.followed`, `user.unfollowed`, `user.follow_approved`)
 ## Oversights
 
 - **CRITICAL: no auth middleware on any route (RESOLVED)** — `RegisterRoutes` attached no `requireAuth`, and every handler read `c.Locals("user_id").(string)` with an **unchecked type assertion** (social.go:88, 151, 261, 303, 334), so an unauthenticated request hit `nil` → panic on the assert → 500 via Recovery, not 401. Now the 5 auth-required endpoints (follow, unfollow, follow_requests, approve, deny) run `auth.AuthRequired()` middleware, the 3 public read routes (followers/following/friends) stay unauthenticated per OpenAPI, and every handler uses the checked form returning 401 `unauthorized` when the user is missing.
-- **No `cache.WithCacheTransaction`, no advisory locks** — mutations run on plain `db` (Create/Update/Delete) with no transaction/cache invalidation. Outbox events published directly with `db`, not within the write transaction (compare `checkin`/`scrobble`).
-- **Raw event-name strings** — `"user.followed"`, `"user.unfollowed"`, `"user.follow_approved"` are literals, not outbox constants (checkin uses `outbox.EventCheckinCreated`). Drift/typo risk; verify these names exist in `internal/outbox`.
+- **No `cache.WithCacheTransaction`, no advisory locks (RESOLVED for cache-tx)** — mutations ran on plain `db` with outbox events published outside the write transaction. Now follow/unfollow/approve/deny run inside `cache.WithCacheTransaction`: DB commits first, then async cache invalidation; outbox events are published in-tx (roll back with the write). Both users' version counters (`BuildUserVersionKey`) are bumped on every mutation. Advisory locks on follow still pending (todo).
+- **Raw event-name strings (RESOLVED)** — `"user.followed"`, `"user.unfollowed"`, `"user.follow_approved"` were literals AND wrong: the webhook catalog (`trakt-killer-plan/03-api/webhooks.md`) defines `follow.created` / `follow.approved` / `follow.removed`. Now `outbox.EventFollowCreated/Approved/Removed` are used, matching the catalog (payload includes `actor` + `target`).
 - **No `notifications.CreateNotification`** — approval/follow events are outboxed but no notification record is created for the target (spec likely wants inbox notifications).
 - **Unchecked errors throughout** — `listFollowRelations` ignores `Count` error; `resolveUserStubs` ignores `Find` error; several handlers ignore `db.Exec`/`Find` errors and return empty lists on failure.
 - **No pagination** — followers/following/friends/requests are unbounded lists (charter: unlimited data → must paginate).
@@ -40,8 +40,8 @@ Emits outbox events (`user.followed`, `user.unfollowed`, `user.follow_approved`)
 ## Todos
 
 - [x] Attach `auth.AuthRequired` to all mutation routes; drop unchecked asserts (fail closed with 401). Public reads (followers/following/friends) stay open.
-- [ ] Wrap follow/unfollow/approve/deny in `cache.WithCacheTransaction` with version-counter invalidation and in-tx outbox publish.
-- [ ] Define typed outbox constants for follow events (or reuse existing ones).
+- [x] Wrap follow/unfollow/approve/deny in `cache.WithCacheTransaction` with version-counter invalidation and in-tx outbox publish.
+- [x] Define typed outbox constants for follow events — `EventFollowCreated/Approved/Removed` matching the webhook catalog (`follow.created` / `follow.approved` / `follow.removed`); old `user.*` names were drift. Advisory locks on follow still pending.
 - [ ] Create inbox notifications on follow/approve.
 - [ ] Add pagination + stable ordering to all list endpoints.
 - [ ] Handle all DB errors instead of ignoring them.
