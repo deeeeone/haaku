@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"strconv"
 	"time"
 
 	"trakt-api/internal/auth"
@@ -162,7 +163,11 @@ func unauthorized(c *fiber.Ctx) error {
 }
 
 func serverError(c *fiber.Ctx, msg string) error {
-	return writeError(c, fiber.StatusInternalServerError, "internal_error", msg)
+	return writeError(c, fiber.StatusInternalServerError, "internal", msg)
+}
+
+func serviceUnavailable(c *fiber.Ctx, msg string) error {
+	return writeError(c, fiber.StatusServiceUnavailable, "db_unavailable", msg)
 }
 
 // requireUserID returns the authenticated user ID or writes a 401 when the
@@ -399,12 +404,12 @@ func handleListEndpoints(c *fiber.Ctx) error {
 
 	db, err := getDB()
 	if err != nil {
-		return badRequest(c, "database unavailable")
+		return serviceUnavailable(c, "database unavailable")
 	}
 
 	var endpoints []database.WebhookEndpoint
 	if err := db.Where("user_id = ?", uid).Order("created_at DESC").Find(&endpoints).Error; err != nil {
-		return badRequest(c, "failed to list webhooks")
+		return serverError(c, "failed to list webhooks")
 	}
 
 	results := make([]endpointResponse, len(endpoints))
@@ -450,13 +455,13 @@ func handleCreateEndpoint(c *fiber.Ctx) error {
 		var err error
 		secret, err = generateSecret()
 		if err != nil {
-			return badRequest(c, "failed to generate secret")
+			return serverError(c, "failed to generate secret")
 		}
 	}
 
 	db, err := getDB()
 	if err != nil {
-		return badRequest(c, "database unavailable")
+		return serviceUnavailable(c, "database unavailable")
 	}
 
 	encSecret, err := EncryptSecret(secret)
@@ -475,7 +480,7 @@ func handleCreateEndpoint(c *fiber.Ctx) error {
 	}
 
 	if err := db.Create(&ep).Error; err != nil {
-		return badRequest(c, "failed to create webhook endpoint")
+		return serverError(c, "failed to create webhook endpoint")
 	}
 
 	resp := createEndpointResponse{
@@ -499,7 +504,7 @@ func handleUpdateEndpoint(c *fiber.Ctx) error {
 
 	db, err := getDB()
 	if err != nil {
-		return badRequest(c, "database unavailable")
+		return serviceUnavailable(c, "database unavailable")
 	}
 
 	var ep database.WebhookEndpoint
@@ -507,7 +512,7 @@ func handleUpdateEndpoint(c *fiber.Ctx) error {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return notFound(c, "webhook endpoint not found")
 		}
-		return badRequest(c, "database query error")
+		return serverError(c, "database query error")
 	}
 
 	var req updateEndpointRequest
@@ -542,7 +547,7 @@ func handleUpdateEndpoint(c *fiber.Ctx) error {
 	ep.UpdatedAt = time.Now().UTC()
 
 	if err := db.Save(&ep).Error; err != nil {
-		return badRequest(c, "failed to update webhook endpoint")
+		return serverError(c, "failed to update webhook endpoint")
 	}
 
 	return c.JSON(toEndpointResponse(&ep))
@@ -562,12 +567,12 @@ func handleDeleteEndpoint(c *fiber.Ctx) error {
 
 	db, err := getDB()
 	if err != nil {
-		return badRequest(c, "database unavailable")
+		return serviceUnavailable(c, "database unavailable")
 	}
 
 	result := db.Where("id = ? AND user_id = ?", id, uid).Delete(&database.WebhookEndpoint{})
 	if result.Error != nil {
-		return badRequest(c, "failed to delete webhook endpoint")
+		return serverError(c, "failed to delete webhook endpoint")
 	}
 	if result.RowsAffected == 0 {
 		return notFound(c, "webhook endpoint not found")
@@ -590,7 +595,7 @@ func handleRotateSecret(c *fiber.Ctx) error {
 
 	db, err := getDB()
 	if err != nil {
-		return badRequest(c, "database unavailable")
+		return serviceUnavailable(c, "database unavailable")
 	}
 
 	var ep database.WebhookEndpoint
@@ -598,12 +603,12 @@ func handleRotateSecret(c *fiber.Ctx) error {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return notFound(c, "webhook endpoint not found")
 		}
-		return badRequest(c, "database query error")
+		return serverError(c, "database query error")
 	}
 
 	secret, err := generateSecret()
 	if err != nil {
-		return badRequest(c, "failed to generate secret")
+		return serverError(c, "failed to generate secret")
 	}
 
 	encSecret, err := EncryptSecret(secret)
@@ -615,7 +620,7 @@ func handleRotateSecret(c *fiber.Ctx) error {
 	ep.UpdatedAt = time.Now().UTC()
 
 	if err := db.Save(&ep).Error; err != nil {
-		return badRequest(c, "failed to rotate secret")
+		return serverError(c, "failed to rotate secret")
 	}
 
 	return c.JSON(fiber.Map{"secret": secret})
@@ -635,7 +640,7 @@ func handleTestPing(c *fiber.Ctx) error {
 
 	db, err := getDB()
 	if err != nil {
-		return badRequest(c, "database unavailable")
+		return serviceUnavailable(c, "database unavailable")
 	}
 
 	var ep database.WebhookEndpoint
@@ -643,7 +648,7 @@ func handleTestPing(c *fiber.Ctx) error {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return notFound(c, "webhook endpoint not found")
 		}
-		return badRequest(c, "database query error")
+		return serverError(c, "database query error")
 	}
 
 	payload := map[string]interface{}{
@@ -651,7 +656,7 @@ func handleTestPing(c *fiber.Ctx) error {
 		"sent_to": ep.URL,
 	}
 	if err := outbox.PublishEvent(db, "ping", uid, payload); err != nil {
-		return badRequest(c, "failed to queue ping event")
+		return serverError(c, "failed to queue ping event")
 	}
 
 	return c.Status(fiber.StatusAccepted).JSON(fiber.Map{"status": "queued"})
@@ -671,7 +676,7 @@ func handleDeliveries(c *fiber.Ctx) error {
 
 	db, err := getDB()
 	if err != nil {
-		return badRequest(c, "database unavailable")
+		return serviceUnavailable(c, "database unavailable")
 	}
 
 	var ep database.WebhookEndpoint
@@ -679,19 +684,71 @@ func handleDeliveries(c *fiber.Ctx) error {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return notFound(c, "webhook endpoint not found")
 		}
-		return badRequest(c, "database query error")
+		return serverError(c, "database query error")
+	}
+
+	// Pagination per api-conventions.md §7 (default 25, max 100).
+	page := queryInt(c, "page", 1)
+	if page < 1 {
+		page = 1
+	}
+	limit := clampLimit(queryInt(c, "limit", 25), 1, 100)
+
+	var total int64
+	if err := db.Model(&database.WebhookDelivery{}).Where("endpoint_id = ?", id).Count(&total).Error; err != nil {
+		return serverError(c, "failed to list deliveries")
 	}
 
 	var deliveries []database.WebhookDelivery
-	if err := db.Where("endpoint_id = ?", id).Order("created_at DESC").Limit(100).Find(&deliveries).Error; err != nil {
-		return badRequest(c, "failed to list deliveries")
+	if err := db.Where("endpoint_id = ?", id).
+		Order("created_at DESC, id DESC"). // stable order for pagination
+		Offset((page - 1) * limit).Limit(limit).
+		Find(&deliveries).Error; err != nil {
+		return serverError(c, "failed to list deliveries")
 	}
 
 	results := make([]deliveryResponse, len(deliveries))
 	for i, d := range deliveries {
 		results[i] = toDeliveryResponse(&d)
 	}
+
+	totalPages := int64(1)
+	if total > 0 {
+		totalPages = (total + int64(limit) - 1) / int64(limit)
+	}
+	c.Set("X-Pagination-Page", strconv.Itoa(page))
+	c.Set("X-Pagination-Limit", strconv.Itoa(limit))
+	c.Set("X-Pagination-Total-Pages", strconv.FormatInt(totalPages, 10))
+	c.Set("X-Pagination-Total-Items", strconv.FormatInt(total, 10))
+	c.Set("X-Pagination-Items-Count", strconv.Itoa(len(results)))
+	if page < int(totalPages) {
+		c.Set("Link", fmt.Sprintf(`<%s?page=%d>; rel="next"`, c.Path(), page+1))
+	}
+
 	return c.JSON(results)
+}
+
+// queryInt parses a query param as an int, falling back to defaultVal.
+func queryInt(c *fiber.Ctx, key string, defaultVal int) int {
+	raw := c.Query(key)
+	if raw == "" {
+		return defaultVal
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil {
+		return defaultVal
+	}
+	return n
+}
+
+func clampLimit(limit, min, max int) int {
+	if limit < min {
+		return min
+	}
+	if limit > max {
+		return max
+	}
+	return limit
 }
 
 // ---------------------------------------------------------------------------
