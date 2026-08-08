@@ -854,10 +854,16 @@ func handleAddWatchlist(c *fiber.Ctx) error {
 	dbErr := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
 		cacheTx := cache.NewCacheTransaction()
 
-		// Determine next rank
+		// Serialize rank assignment per user (advisory lock), then read the
+		// current max so concurrent adds can't produce duplicate ranks.
+		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtext('watchlist'), hashtext(?))", userID).Error; err != nil {
+			return nil, fmt.Errorf("advisory lock: %w", err)
+		}
 		var maxRank int
-		tx.Model(&database.UserWatchlist{}).Where("user_id = ?", userID).
-			Select("COALESCE(MAX(rank), 0)").Scan(&maxRank)
+		if err := tx.Model(&database.UserWatchlist{}).Where("user_id = ?", userID).
+			Select("COALESCE(MAX(rank), 0)").Scan(&maxRank).Error; err != nil {
+			return nil, err
+		}
 
 		for _, m := range req.Movies {
 			mediaType, mediaID, err := resolveByTMDB(c, tx, m.IDs.TMDB)
@@ -1013,10 +1019,30 @@ func handleReorderWatchlist(c *fiber.Ctx) error {
 	dbErr := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
 		cacheTx := cache.NewCacheTransaction()
 
+		// Serialize rank mutations per user so a concurrent add/reorder can't
+		// interleave and produce duplicate or gapped ranks.
+		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtext('watchlist'), hashtext(?))", userID).Error; err != nil {
+			return nil, fmt.Errorf("advisory lock: %w", err)
+		}
+
+		// The payload must be the complete set of the user's watchlist items
+		// (Trakt semantics): same length, every id owned by the user, no dupes.
+		var items []database.UserWatchlist
+		if err := tx.Select("id").Where("user_id = ?", userID).Find(&items).Error; err != nil {
+			return nil, err
+		}
+		owned := make([]int64, len(items))
+		for i, it := range items {
+			owned[i] = it.ID
+		}
+		if err := validateReorder(req.Rank, owned); err != nil {
+			return nil, err
+		}
 		for i, id := range req.Rank {
+			// Ranks are 1-based (Trakt convention).
 			if err := tx.Model(&database.UserWatchlist{}).
 				Where("id = ? AND user_id = ?", id, userID).
-				Update("rank", i).Error; err != nil {
+				Update("rank", i+1).Error; err != nil {
 				return nil, err
 			}
 		}
@@ -1030,6 +1056,9 @@ func handleReorderWatchlist(c *fiber.Ctx) error {
 		return cacheTx, nil
 	})
 	if dbErr != nil {
+		if errors.Is(dbErr, errIncompleteReorder) {
+			return badRequest(c, "rank must contain exactly the current watchlist items, without duplicates")
+		}
 		return internalError(c)
 	}
 
@@ -1322,9 +1351,16 @@ func handleAddFavorites(c *fiber.Ctx) error {
 	dbErr := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
 		cacheTx := cache.NewCacheTransaction()
 
+		// Serialize rank assignment per user (advisory lock), then read the
+		// current max so concurrent adds can't produce duplicate ranks.
+		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtext('favorites'), hashtext(?))", userID).Error; err != nil {
+			return nil, fmt.Errorf("advisory lock: %w", err)
+		}
 		var maxRank int
-		tx.Model(&database.UserFavorite{}).Where("user_id = ?", userID).
-			Select("COALESCE(MAX(rank), 0)").Scan(&maxRank)
+		if err := tx.Model(&database.UserFavorite{}).Where("user_id = ?", userID).
+			Select("COALESCE(MAX(rank), 0)").Scan(&maxRank).Error; err != nil {
+			return nil, err
+		}
 
 		addFavorite := func(tmdbID int, mediaType string) {
 			mtResolved, mediaID, err := resolveByTMDB(c, tx, tmdbID)
@@ -1770,6 +1806,30 @@ func queueEpisodeInvalidations(tx *gorm.DB, cacheTx *cache.CacheTransaction, ep 
 // ============================================================================
 // ERROR HELPERS (match project conventions)
 // ============================================================================
+
+// errIncompleteReorder marks a watchlist reorder whose payload is not the
+// complete set of the user's items (missing/foreign/duplicate ids).
+var errIncompleteReorder = errors.New("reorder payload must be the complete watchlist")
+
+// validateReorder reports whether ids is exactly the set of ownedIDs — same
+// length, every id owned, no duplicates (Trakt reorder semantics).
+func validateReorder(ids, ownedIDs []int64) error {
+	if len(ids) != len(ownedIDs) {
+		return errIncompleteReorder
+	}
+	owned := make(map[int64]bool, len(ownedIDs))
+	for _, id := range ownedIDs {
+		owned[id] = true
+	}
+	seen := make(map[int64]bool, len(ids))
+	for _, id := range ids {
+		if !owned[id] || seen[id] {
+			return errIncompleteReorder
+		}
+		seen[id] = true
+	}
+	return nil
+}
 
 func authRequired(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{

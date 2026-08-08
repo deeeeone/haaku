@@ -34,8 +34,8 @@ Writes use `cache.WithCacheTransaction` with version-counter invalidation (`queu
 - **`handleGetHistoryItem` never validated `media_type` (RESOLVED)** — the route param was used verbatim in the WHERE while `media.ResolveID` may resolve a different type; now the resolved type must match the param or the request returns 400.
 - **`parseWatchedAt` silently fell back to `now` (RESOLVED)** — invalid/unknown timestamps became "now", silently corrupting watch history on client typos. Invalid RFC3339 strings now error and the offending item is reported under `not_found` with `"error": "invalid watched_at"` (batch keeps processing the rest). `"unknown"` semantics (aired_at vs now) still need a spec decision.
 - **`resolveByTMDB` bypasses `media.ResolveID`** — mutates the context (`c.Set("id_type", ...)`) and hand-rolls an `external_ids` lookup + `verifyMediaExists` per item; duplicates the resolver and does an extra query per item (N+1 on bulk adds).
-- **No advisory locks on rank assignment** — `MAX(rank)` + increment in `handleAddWatchlist`/`handleAddFavorites` is racy under concurrency (duplicate ranks); the checklist/patterns say concurrent writes should be advisory-locked.
-- **Reorder is 0-based and partial** — `Update("rank", i)` with `i` from 0 (Trakt ranks are 1-based); a partial `rank` array silently re-ranks only those rows, leaving gaps/duplicates; no validation that all items belong to the user before applying.
+- **No advisory locks on rank assignment (RESOLVED)** — `handleAddWatchlist`/`handleAddFavorites` now take a per-user advisory lock (`pg_advisory_xact_lock(hashtext('watchlist'|'favorites'), hashtext(userID))`) before reading `MAX(rank)`, so concurrent adds can't produce duplicate ranks.
+- **Reorder was 0-based and partial (RESOLVED)** — ranks are now 1-based (`i+1`) and the payload must be the complete set of the user's watchlist (same length, all owned, no dupes via `validateReorder`), else 400; the reorder runs under the same per-user advisory lock so it can't interleave with adds.
 - **`sort_by=title` is wrong** — `order = "media_type, media_id"` (sync.go:781) sorts by type+id, not title; would need a join to media tables.
 - **`"unknown"` watched_at semantics undecided** — `"unknown"` in show/season expansion uses `now` rather than the episode `aired_at`; needs a spec decision (aired_at vs now).
 - **Bulk-add N+1** — per-item `findSeason`/`findEpisode` queries inside the transaction loop; fine for small batches, quadratic-ish for large syncs.
@@ -51,7 +51,7 @@ Writes use `cache.WithCacheTransaction` with version-counter invalidation (`queu
 - [ ] Attach `auth.AuthRequired` at route registration; drop per-handler checks.
 - [x] Validate `media_type` against the resolved type in `handleGetHistoryItem` (400 on mismatch; `parseWatchedAt` now errors on invalid timestamps instead of silently using `now`).
 - [ ] Reuse `media.ResolveID` and batch-resolve bulk add IDs.
-- [ ] Advisory-lock rank assignment; make reorder atomic + validated (1-based, complete set).
+- [x] Advisory-lock rank assignment (watchlist/favorites adds + reorder); reorder is now 1-based and validated as a complete set (400 otherwise).
 - [ ] Fix `sort_by=title` to join titles.
 - [ ] Decide `watched_at` semantics for `"unknown"` (aired_at vs now) and align with spec.
 - [ ] Use shared `internal/httpapi` helpers.
