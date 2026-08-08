@@ -102,7 +102,10 @@ type SyncResponse struct {
 
 // handleCreateSync creates a new batch sync session.
 func handleCreateSync(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(string)
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
 
 	var req SyncCreateRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -136,8 +139,14 @@ func handleCreateSync(c *fiber.Ctx) error {
 
 // handleGetSync returns the progress of a sync session.
 func handleGetSync(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(string)
-	syncID, _ := c.ParamsInt("id")
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+	syncID, err := parseSyncID(c)
+	if err != nil {
+		return err
+	}
 
 	db, err := database.GetDB()
 	if err != nil {
@@ -154,8 +163,14 @@ func handleGetSync(c *fiber.Ctx) error {
 
 // handleGetSyncPaused returns items that couldn't be matched.
 func handleGetSyncPaused(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(string)
-	syncID, _ := c.ParamsInt("id")
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+	syncID, err := parseSyncID(c)
+	if err != nil {
+		return err
+	}
 
 	db, err := database.GetDB()
 	if err != nil {
@@ -175,8 +190,14 @@ func handleGetSyncPaused(c *fiber.Ctx) error {
 
 // handleGetSyncSkipped returns skipped items.
 func handleGetSyncSkipped(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(string)
-	syncID, _ := c.ParamsInt("id")
+	userID, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+	syncID, err := parseSyncID(c)
+	if err != nil {
+		return err
+	}
 
 	db, err := database.GetDB()
 	if err != nil {
@@ -198,6 +219,22 @@ func handleGetSyncSkipped(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+func requireUserID(c *fiber.Ctx) (string, error) {
+	uid, ok := c.Locals("user_id").(string)
+	if !ok || uid == "" {
+		return "", writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+	}
+	return uid, nil
+}
+
+func parseSyncID(c *fiber.Ctx) (int64, error) {
+	id, err := c.ParamsInt("id")
+	if err != nil || id <= 0 {
+		return 0, writeError(c, fiber.StatusBadRequest, "invalid_request", "invalid sync id")
+	}
+	return int64(id), nil
+}
 
 func buildSyncResponse(s *database.SyncSession) SyncResponse {
 	return SyncResponse{

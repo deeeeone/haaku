@@ -37,7 +37,7 @@ Uses the shared `auth.AuthRequired()` middleware on all four routes (one of the 
 
 - [ ] Implement (or explicitly scope) the async sync engine and persist submitted items.
 - [ ] Decide what `/paused` and `/skipped` return once the engine exists; add real pagination.
-- [ ] Replace unchecked `user_id` assert with a safe helper.
-- [ ] Validate `:id<int>` parse and return 400 on failure.
+- [x] Replace unchecked `user_id` assert with a safe helper (`requireUserID`, 401 on missing).
+- [x] Validate `:id<int>` parse and return 400 on failure (`parseSyncID`).
 - [ ] Separate "not found" from other DB errors.
 - [ ] Verify module test coverage (`make test`).
