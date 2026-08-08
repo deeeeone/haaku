@@ -9,10 +9,18 @@ export type TopbarProps = {
   nav?: Array<{ label: string; active?: boolean }>
   /** Hide demo user/profile section. Default: true (hidden). */
   hideUser?: boolean
+  /** Custom user section (e.g. Clerk's <UserButton />). Rendered when provided. */
+  userMenu?: React.ReactNode
   className?: string
 }
 
-export function Topbar({ brand, nav, hideUser = true, className }: TopbarProps) {
+export function Topbar({
+  brand,
+  nav,
+  hideUser = true,
+  userMenu,
+  className,
+}: TopbarProps) {
   return (
     <header
       className={cn(
@@ -71,7 +79,7 @@ export function Topbar({ brand, nav, hideUser = true, className }: TopbarProps) 
             <span className="absolute top-2 right-2.5 size-1.5 rounded-full bg-sf-accent-2" />
           </button>
 
-          {!hideUser && (
+          {userMenu ?? (!hideUser && (
           <Dropdown
             trigger={<ProfilePill name="Alex Rivera" subtitle="Member" />}
             items={[
@@ -80,7 +88,7 @@ export function Topbar({ brand, nav, hideUser = true, className }: TopbarProps) 
               { label: 'Settings', icon: <Settings className="size-4" /> },
             ]}
           />
-          )}
+          ))}
         </div>
       </div>
     </header>

@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router'
+import { useClerk } from '@clerk/clerk-react'
 import {
   Home,
   Search,
@@ -28,6 +29,10 @@ const bottomItems = [
 ]
 
 export function Sidebar() {
+  // Identity comes from the Clerk account (name/username/avatar).
+  const { user } = useClerk()
+  const displayName = user?.fullName || user?.username || 'Account'
+
   return (
     <aside className="sticky top-[--sf-nav-h] self-start hidden h-[calc(100vh-var(--sf-nav-h))] w-[220px] flex-shrink-0 flex-col border-r border-sf-line lg:flex">
       <nav className="flex-1 overflow-y-auto px-3 pt-6">
@@ -39,6 +44,32 @@ export function Sidebar() {
       </nav>
       <div className="flex-shrink-0 border-t border-sf-line px-3 py-4">
         <div className="flex flex-col gap-1">
+          {user && (
+            <Link
+              to="/profile"
+              className="flex items-center gap-3 rounded-sf-sm px-3 py-2.5 transition-colors hover:bg-sf-panel"
+            >
+              {user.imageUrl ? (
+                <img
+                  src={user.imageUrl}
+                  alt=""
+                  className="size-8 flex-shrink-0 rounded-full object-cover ring-1 ring-sf-line"
+                />
+              ) : (
+                <span className="grid size-8 flex-shrink-0 place-items-center rounded-full bg-sf-accent/20 text-sm font-bold text-sf-ink">
+                  {displayName.charAt(0).toUpperCase()}
+                </span>
+              )}
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-semibold text-sf-ink">
+                  {displayName}
+                </span>
+                <span className="block truncate text-xs text-sf-ink-muted">
+                  @{user.username || 'profile'}
+                </span>
+              </span>
+            </Link>
+          )}
           {bottomItems.map((item) => (
             <SidebarLink key={item.to} {...item} />
           ))}
