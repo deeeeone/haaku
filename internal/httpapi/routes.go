@@ -1,6 +1,8 @@
 package httpapi
 
 import (
+	"os"
+
 	"trakt-api/internal/auth"
 	"trakt-api/internal/database"
 	"trakt-api/internal/handlers/activity"
@@ -91,6 +93,24 @@ func RegisterRoutes(app *fiber.App) {
 
 	// Clerk webhook receiver (Phase 2: T2.2 — signature verified, no user auth required)
 	api.Post("/webhooks/clerk", auth.HandleClerkWebhook)
+
+	// Dev-only Clerk webhook simulation: clerk-emulator can't deliver
+	// webhooks in server mode (subscriptions are in-process only), so this
+	// drives the same event pipeline manually. NEVER registered in production.
+	if os.Getenv("APP_ENV") != "production" {
+		api.Post("/dev/clerk-webhook-simulate", auth.HandleClerkWebhookSimulate)
+		openapi.Register(openapi.RouteDef{
+			Method:  "POST",
+			Path:    "/v1/dev/clerk-webhook-simulate",
+			Summary: "Simulate a Clerk webhook event (dev only — emulator cannot deliver webhooks; mirrors the real /v1/webhooks/clerk pipeline)",
+			Tags:    []string{"Webhooks"},
+			Auth:    "none",
+			StatusCodes: map[int]string{
+				200: "Event processed",
+				400: "Invalid payload",
+			},
+		})
+	}
 
 	// Placeholder for v1 route groups (Phase 1+):
 	// Search (public, API key)

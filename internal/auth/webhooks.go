@@ -81,21 +81,9 @@ func HandleClerkWebhook(c *fiber.Ctx) error {
 		})
 	}
 
-	// Parse webhook payload
-	var event ClerkWebhookEvent
-	if err := json.Unmarshal(rawBody, &event); err != nil {
-		slog.Warn("webhook: failed to parse body", "error", err)
-		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
-			"error": fiber.Map{
-				"code":    "invalid_request",
-				"message": "invalid webhook payload",
-			},
-		})
-	}
-
-	// Process event
-	if err := handleWebhookEvent(&event); err != nil {
-		slog.Error("webhook: event processing failed", "type", event.Type, "user_id", event.Data.ID, "error", err)
+	// Process event (shared pipeline — also used by the dev simulate endpoint)
+	if err := handleClerkWebhookPayload(rawBody); err != nil {
+		slog.Error("webhook: event processing failed", "error", err)
 		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{
 			"error": fiber.Map{
 				"code":    "internal",
@@ -105,6 +93,39 @@ func HandleClerkWebhook(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{"status": "ok"})
+}
+
+// HandleClerkWebhookSimulate is a DEV-ONLY endpoint (registered only when
+// APP_ENV != production) that drives the exact same event pipeline as the
+// real Svix-signed webhook. clerk-emulator cannot deliver webhooks in
+// server mode — subscriptions are only registrable in-process — so this is
+// where the user.created / user.updated / user.deleted flow gets exercised
+// against the emulator until real hosted Clerk (with Dashboard webhooks)
+// is wired up.
+//
+// Body mirrors the Clerk payload: {"type":"user.created","data":{...}}
+func HandleClerkWebhookSimulate(c *fiber.Ctx) error {
+	if err := handleClerkWebhookPayload(c.Body()); err != nil {
+		slog.Error("webhook simulate: event processing failed", "error", err)
+		return c.Status(http.StatusBadRequest).JSON(fiber.Map{
+			"error": fiber.Map{
+				"code":    "invalid_request",
+				"message": err.Error(),
+			},
+		})
+	}
+	return c.JSON(fiber.Map{"status": "ok"})
+}
+
+// handleClerkWebhookPayload parses a Clerk-shaped webhook payload and runs
+// it through the event pipeline. Shared by the signed production endpoint
+// and the dev simulation endpoint so both behave identically.
+func handleClerkWebhookPayload(rawBody []byte) error {
+	var event ClerkWebhookEvent
+	if err := json.Unmarshal(rawBody, &event); err != nil {
+		return fmt.Errorf("invalid webhook payload: %w", err)
+	}
+	return handleWebhookEvent(&event)
 }
 
 // ---------------------------------------------------------------------------
