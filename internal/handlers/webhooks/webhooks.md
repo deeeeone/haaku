@@ -28,7 +28,7 @@ Also exports the delivery building blocks for the worker: `EventCatalogV1` (even
 ## Oversights
 
 - **No auth middleware on routes (RESOLVED)** — `RegisterRoutes` (webhooks.go:124-132) attached nothing and `userID(c)` ignored the type-assert `ok` (webhooks.go:204-207), so unauthenticated requests silently operated with `user_id=""` (empty lists / endpoints owned by the empty user) instead of 401. All 7 routes now run `auth.AuthRequired()`; a new `requireUserID` helper fails closed with 401 when the user is missing, replacing the lax `userID` reads.
-- **SSRF guard has DNS-rebinding gap** — `isValidHTTPS` resolves the host to check for private/loopback IPs, but the actual delivery worker will re-resolve later; a rebinding host can pass validation and later point at an internal IP. Also no port/redirect handling, and `url.Parse` permits userinfo/opaque forms. Mitigation: pin the resolved IP or re-validate at delivery time.
+- **SSRF guard has DNS-rebinding gap (RESOLVED)** — `isValidHTTPS` resolved the host to check for private/loopback IPs, but the delivery worker re-resolved at dial time, so a rebinding host could pass validation and later point at an internal IP. Now both validation and delivery share `ResolvePublicIP`/`isBlockedIP`; the worker pins the verified IP in a custom `DialContext` (no re-resolution), refuses to follow redirects (`CheckRedirect` → `ErrUseLastResponse`), rejects userinfo/non-HTTPS URLs, and defaults the dial port to 443.
 - **`hashSecret` is a keyed HMAC with a public static key** — `hmac.New(sha256.New, []byte(secret))` with fixed message `"webhook-secret"` (webhooks.go:217-221) is effectively a plain SHA-256 of the secret; anyone who knows the scheme can brute-force it offline. Use a server-side pepper or proper KDF. Also contradicts "secrets in .env" convention (a static literal key).
 - **Error helpers claim "avoid import cycle"** — `internal/httpapi` does not import handlers (routes.go imports handlers), so `httpapi` helpers could be used; the local `writeError`/`badRequest`/`notFound` duplication is likely unjustified.
 - **DB errors mapped to 400** — `"database unavailable"`/`"failed to list webhooks"` all return 400 `invalid_request`; should be 503/500 per convention.
@@ -42,7 +42,7 @@ Also exports the delivery building blocks for the worker: `EventCatalogV1` (even
 ## Todos
 
 - [x] Attach `auth.AuthRequired` to all routes and make user reads fail closed (`requireUserID`, 401).
-- [ ] Harden SSRF: pin resolved IPs, reject at delivery time (rebinding), handle ports/redirects.
+- [x] Harden SSRF: pin resolved IPs at dial time (ResolvePublicIP), reject userinfo/non-HTTPS, stop following redirects at delivery. Shared `isBlockedIP`/`ResolvePublicIP` helpers in the webhooks package + unit tests.
 - [ ] Replace `hashSecret` with a server-peppered KDF (no static public key).
 - [ ] Map DB failures to 503/500, not 400.
 - [ ] Add pagination to `/deliveries`.

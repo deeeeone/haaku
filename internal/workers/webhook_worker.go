@@ -214,22 +214,30 @@ func deliverWithRetries(db *gorm.DB, ep *database.WebhookEndpoint, eventID, even
 
 // doWebhookPost sends the payload via HTTP POST to the webhook endpoint.
 func doWebhookPost(ep *database.WebhookEndpoint, body string) (int, string, int, error) {
-	// SSRF guard: resolve and verify IP.
+	// SSRF guard: resolve to a verified public IP and PIN it at dial time.
+	// Re-resolving in the transport would let a DNS-rebinding attacker swap in
+	// an internal address after the check.
 	parsed, err := url.Parse(ep.URL)
 	if err != nil {
 		return 0, "", 0, fmt.Errorf("invalid URL: %w", err)
 	}
+	if parsed.Scheme != "https" {
+		return 0, "", 0, fmt.Errorf("URL must use HTTPS")
+	}
+	if parsed.User != nil {
+		return 0, "", 0, fmt.Errorf("URL must not include userinfo")
+	}
 
 	host := parsed.Hostname()
-	ips, err := net.LookupIP(host)
+	port := parsed.Port()
+	if port == "" {
+		port = "443"
+	}
+	pinnedIP, err := webhooks.ResolvePublicIP(host)
 	if err != nil {
-		return 0, "", 0, fmt.Errorf("DNS resolution failed: %w", err)
+		return 0, "", 0, fmt.Errorf("SSRF blocked: %w", err)
 	}
-	for _, ip := range ips {
-		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
-			return 0, "", 0, fmt.Errorf("SSRF blocked: private IP %s", ip.String())
-		}
-	}
+	dialAddr := net.JoinHostPort(pinnedIP.String(), port)
 
 	// HMAC signing.
 	timestamp := time.Now().Unix()
@@ -248,10 +256,19 @@ func doWebhookPost(ep *database.WebhookEndpoint, body string) (int, string, int,
 
 	client := &http.Client{
 		Timeout: totalTimeout,
+		// Never follow redirects: a redirect to an internal URL would be
+		// dialed through the pinned transport to the wrong (public) host, and
+		// following it reopens the SSRF surface. 3xx is treated as a delivery
+		// failure like any non-2xx.
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 		Transport: &http.Transport{
-			DialContext: (&net.Dialer{
-				Timeout: connectTimeout,
-			}).DialContext,
+			DialContext: func(ctx context.Context, network, _ string) (net.Conn, error) {
+				return (&net.Dialer{
+					Timeout: connectTimeout,
+				}).DialContext(ctx, network, dialAddr)
+			},
 		},
 	}
 

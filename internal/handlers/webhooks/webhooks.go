@@ -239,6 +239,33 @@ func generateSecret() (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
+// isBlockedIP reports whether ip must never be dialed (internal/private/
+// special-use ranges). Used by both endpoint validation and the delivery worker.
+func isBlockedIP(ip net.IP) bool {
+	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() ||
+		ip.IsLinkLocalMulticast() || ip.IsUnspecified() || ip.IsMulticast()
+}
+
+// ResolvePublicIP verifies every resolved address for host is public and
+// returns the first one. Callers must dial this exact IP (pinned) rather than
+// re-resolving, otherwise a DNS-rebinding attacker could swap in an internal
+// address after the check.
+func ResolvePublicIP(host string) (net.IP, error) {
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		return nil, err
+	}
+	if len(ips) == 0 {
+		return nil, fmt.Errorf("no IP addresses found for host %q", host)
+	}
+	for _, ip := range ips {
+		if isBlockedIP(ip) {
+			return nil, fmt.Errorf("host %q resolves to a private/internal IP address — not allowed", host)
+		}
+	}
+	return ips[0], nil
+}
+
 func isValidHTTPS(rawURL string) error {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
@@ -250,15 +277,14 @@ func isValidHTTPS(rawURL string) error {
 	if parsed.Host == "" {
 		return fmt.Errorf("URL must include a host")
 	}
-	host := parsed.Hostname()
-	ips, err := net.LookupIP(host)
-	if err != nil {
-		return fmt.Errorf("cannot resolve host %q: %w", host, err)
+	if parsed.User != nil {
+		return fmt.Errorf("URL must not include userinfo")
 	}
-	for _, ip := range ips {
-		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
-			return fmt.Errorf("URL resolves to a private/internal IP address — not allowed")
-		}
+	if parsed.Opaque != "" {
+		return fmt.Errorf("invalid URL form")
+	}
+	if _, err := ResolvePublicIP(parsed.Hostname()); err != nil {
+		return err
 	}
 	return nil
 }
