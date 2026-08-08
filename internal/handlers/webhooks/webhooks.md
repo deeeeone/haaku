@@ -30,14 +30,14 @@ Also exports the delivery building blocks for the worker: `EventCatalogV1` (even
 - **No auth middleware on routes (RESOLVED)** — `RegisterRoutes` (webhooks.go:124-132) attached nothing and `userID(c)` ignored the type-assert `ok` (webhooks.go:204-207), so unauthenticated requests silently operated with `user_id=""` (empty lists / endpoints owned by the empty user) instead of 401. All 7 routes now run `auth.AuthRequired()`; a new `requireUserID` helper fails closed with 401 when the user is missing, replacing the lax `userID` reads.
 - **SSRF guard has DNS-rebinding gap (RESOLVED)** — `isValidHTTPS` resolved the host to check for private/loopback IPs, but the delivery worker re-resolved at dial time, so a rebinding host could pass validation and later point at an internal IP. Now both validation and delivery share `ResolvePublicIP`/`isBlockedIP`; the worker pins the verified IP in a custom `DialContext` (no re-resolution), refuses to follow redirects (`CheckRedirect` → `ErrUseLastResponse`), rejects userinfo/non-HTTPS URLs, and defaults the dial port to 443.
 - **`hashSecret` broke end-to-end verification (RESOLVED)** — stored a keyed HMAC of the secret and the worker signed deliveries with that stored value, but consumers verify with the plaintext shown once (`GenerateHMAC`), so signatures never matched. Also the "key" was a public static string, i.e. an offline-brute-forceable SHA-256. Now secrets are encrypted at rest with AES-256-GCM (`EncryptSecret`/`DecryptSecret`, server key from `WEBHOOK_SECRET_KEY`), the worker decrypts and signs with the plaintext, and consumers' `VerifyHMAC(plaintext)` works end-to-end. Note: this contradicts the planning spec's "hashed at rest" line — flag for a planning-DB note (hash can't be recovered; encryption can).
-- **Error helpers claim "avoid import cycle"** — `internal/httpapi` does not import handlers (routes.go imports handlers), so `httpapi` helpers could be used; the local `writeError`/`badRequest`/`notFound` duplication is likely unjustified.
+- **Error helpers "avoid import cycle" claim (VERIFIED)** — the cycle claim is real: `internal/httpapi/routes.go` imports every handler package to register routes, so a handler importing `httpapi` would form a cycle. The local `writeError`/`badRequest`/`notFound` helpers are therefore justified; sharing would require moving the envelope to a leaf package (e.g. `internal/response`), which is a cross-cutting refactor beyond this batch.
 - **DB errors mapped to 400 (RESOLVED)** — `"database unavailable"` is now 503 `db_unavailable` and query failures are 500 `internal` (matching `reference`/`reports`/`stats` and api-conventions §9); only genuine client errors stay 400.
 - **`handleDeliveries` hard-capped at 100 (RESOLVED)** — now paginated via `?page&limit` (default 25, max 100) with the §7 headers (`X-Pagination-*` + `Link: rel="next"`) and a stable `created_at DESC, id DESC` order.
 - **No cache-tx on create/update/delete/rotate** — plain `db` writes; test-ping is the only mutation that emits an outbox event. No cache invalidation for the list/deliveries reads.
 - **`handleDeliveries` capped at 100 with no pagination** — hard limit, no page/limit params.
 - **Test ping doesn't validate active state or record a delivery** — `ping` outboxed regardless of `ep.Active`; no delivery-log row is created by this handler (the worker presumably does).
 - **`GenerateHMAC` has no timestamp-window check** — the format is `timestamp.body`, but the verification helper just compares bytes; replay protection (clock skew window) must live in the worker and isn't enforced here.
-- **`NewWebhookPayload` ignores the passed `eventID`** — it takes `eventID` but always generates a fresh `uuid.New()` (webhooks.go:617-624); the parameter is dead.
+- **`NewWebhookPayload` ignores the passed `eventID` (RESOLVED)** — the parameter was dead; the function always generated a fresh `uuid.New()`. Now it takes only `(eventType, data)`.
 - **`endpointResponse` returns raw `time.Time`** (RFC3339 in JSON) — fine, but inconsistent with the `.000Z` literals used across other modules.
 
 ## Todos
@@ -47,6 +47,6 @@ Also exports the delivery building blocks for the worker: `EventCatalogV1` (even
 - [x] Replace `hashSecret` with AES-256-GCM encryption at rest (`WEBHOOK_SECRET_KEY`); worker decrypts and signs with the plaintext so consumer verification works. Flag "hashed at rest" spec wording for a planning-DB update.
 - [x] Map DB failures to 503/500, not 400.
 - [x] Add pagination to `/deliveries` (page/limit, §7 headers, stable order).
-- [ ] Use `internal/httpapi` helpers (cycle claim looks wrong — verify).
-- [ ] Remove the dead `eventID` parameter from `NewWebhookPayload`.
+- [x] Remove the dead `eventID` parameter from `NewWebhookPayload`.
+- [ ] Move error envelope to a leaf package so handlers can share it (currently blocked by the httpapi→handlers import cycle in routes.go).
 - [ ] Verify module test coverage (`make test`).

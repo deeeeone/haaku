@@ -150,7 +150,7 @@ func handleWebhookEvent(db *gorm.DB, msg goredis.XMessage) {
 		}
 
 		// Build the payload.
-		whPayload := webhooks.NewWebhookPayload(eventID, canonical, payload)
+		whPayload := webhooks.NewWebhookPayload(canonical, payload)
 
 		bodyBytes, err := json.Marshal(whPayload)
 		if err != nil {

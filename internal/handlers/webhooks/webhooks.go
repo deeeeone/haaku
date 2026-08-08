@@ -824,7 +824,7 @@ type WebhookPayload struct {
 	APIVersion int                    `json:"api_version"`
 }
 
-func NewWebhookPayload(eventID, eventType string, data map[string]interface{}) WebhookPayload {
+func NewWebhookPayload(eventType string, data map[string]interface{}) WebhookPayload {
 	return WebhookPayload{
 		EventID:    uuid.New().String(),
 		Type:       eventType,

@@ -45,5 +45,5 @@ Emits outbox events (`user.followed`, `user.unfollowed`, `user.follow_approved`)
 - [ ] Create inbox notifications on follow/approve.
 - [x] Add pagination + stable ordering to all list endpoints.
 - [ ] Handle all DB errors instead of ignoring them.
-- [ ] Use shared `internal/httpapi` helpers.
+- [ ] Use shared `internal/httpapi` helpers (blocked: `httpapi/routes.go` imports handlers, so handlers importing httpapi would cycle; would need a leaf envelope package).
 - [ ] Verify module test coverage (`make test`).

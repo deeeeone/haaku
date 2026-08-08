@@ -324,7 +324,7 @@ func splitURL(raw string) []string {
 // ---------------------------------------------------------------------------
 
 func TestWebhookPayloadFormat(t *testing.T) {
-	payload := webhooks.NewWebhookPayload("evt_123", "history.added", map[string]interface{}{
+	payload := webhooks.NewWebhookPayload("history.added", map[string]interface{}{
 		"media_type": "movie",
 		"media_id":   float64(12345),
 	})
