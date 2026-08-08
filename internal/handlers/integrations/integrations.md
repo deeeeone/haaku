@@ -30,7 +30,7 @@ All token-management routes are marked Auth-required in OpenAPI; the receiver ro
 
 ## Oversights
 
-- **No auth middleware on token routes** — `RegisterRoutes` mounts handlers bare; relies on `user_id` Local set elsewhere. `userID()` uses the unchecked `, _` form, so an unauthenticated request yields an empty user ID and tokens get created under `""` (orphaned) rather than 401. Must confirm a global auth layer exists; otherwise routes are unauthenticated.
+- **No auth middleware on token routes (RESOLVED)** — `RegisterRoutes` mounted handlers bare; `userID()` used the unchecked `, _` form, so an unauthenticated request yielded an empty user ID and tokens got created under `""` (orphaned) instead of 401. The 3 token-management routes now run `auth.AuthRequired()` and handlers fail closed with 401 on empty user. The receiver route (`RegisterReceiverRoutes`) is deliberately left unauthenticated (token-in-path auth).
 - **All failures mapped to 400** — DB unavailable, generation failure, create failure all return `bad_request` instead of 500/503 `internal`; misuses the 400 status code.
 - **DB failure as `badRequest` in receiver** — `database unavailable` and queue failures return 400 (client error) rather than 5xx.
 - **Local error helpers** — `writeError`/`badRequest`/`notFound` duplicated with a comment claiming "avoid import cycle with httpapi", but other handler packages use httpapi helpers fine; the cycle concern should be verified.
@@ -42,7 +42,7 @@ All token-management routes are marked Auth-required in OpenAPI; the receiver ro
 
 ## Todos
 
-- [ ] Confirm/add `auth.AuthRequired` on token management routes (and prevent empty-user token creation).
+- [x] Add `auth.AuthRequired` on token management routes; fail closed (401) on empty user. Receiver stays public.
 - [ ] Map internal failures to 500/503 and only client mistakes to 400.
 - [ ] Validate/allowlist scopes; reconsider the `*` default.
 - [ ] Decide on token expiry and at-rest hashing.

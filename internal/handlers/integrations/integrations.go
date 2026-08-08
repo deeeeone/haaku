@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"trakt-api/internal/auth"
 	"trakt-api/internal/database"
 	"trakt-api/internal/openapi"
 
@@ -67,9 +68,9 @@ func init() {
 // ---------------------------------------------------------------------------
 
 func RegisterRoutes(api fiber.Router) {
-	api.Post("/integrations", handleCreateToken)
-	api.Get("/integrations", handleListTokens)
-	api.Delete("/integrations/:id", handleRevokeToken)
+	api.Post("/integrations", auth.AuthRequired(), handleCreateToken)
+	api.Get("/integrations", auth.AuthRequired(), handleListTokens)
+	api.Delete("/integrations/:id", auth.AuthRequired(), handleRevokeToken)
 }
 
 // ---------------------------------------------------------------------------
@@ -91,6 +92,10 @@ func badRequest(c *fiber.Ctx, msg string) error {
 
 func notFound(c *fiber.Ctx, msg string) error {
 	return writeError(c, fiber.StatusNotFound, "not_found", msg)
+}
+
+func unauthorized(c *fiber.Ctx) error {
+	return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
 }
 
 // ---------------------------------------------------------------------------
@@ -158,6 +163,11 @@ func toTokenResponse(t *database.IntegrationToken) tokenResponse {
 
 // POST /v1/integrations
 func handleCreateToken(c *fiber.Ctx) error {
+	uid := userID(c)
+	if uid == "" {
+		return unauthorized(c)
+	}
+
 	var req createTokenRequest
 	if err := json.Unmarshal(c.Body(), &req); err != nil {
 		return badRequest(c, "invalid JSON body")
@@ -183,7 +193,7 @@ func handleCreateToken(c *fiber.Ctx) error {
 	}
 
 	tok := database.IntegrationToken{
-		UserID:    userID(c),
+		UserID:    uid,
 		Token:     tokenStr,
 		Name:      req.Name,
 		Scopes:    scopes,
@@ -204,13 +214,18 @@ func handleCreateToken(c *fiber.Ctx) error {
 
 // GET /v1/integrations
 func handleListTokens(c *fiber.Ctx) error {
+	uid := userID(c)
+	if uid == "" {
+		return unauthorized(c)
+	}
+
 	db, err := getDB()
 	if err != nil {
 		return badRequest(c, "database unavailable")
 	}
 
 	var tokens []database.IntegrationToken
-	if err := db.Where("user_id = ?", userID(c)).Order("created_at DESC").Find(&tokens).Error; err != nil {
+	if err := db.Where("user_id = ?", uid).Order("created_at DESC").Find(&tokens).Error; err != nil {
 		return badRequest(c, "failed to list tokens")
 	}
 
@@ -223,6 +238,11 @@ func handleListTokens(c *fiber.Ctx) error {
 
 // DELETE /v1/integrations/:id
 func handleRevokeToken(c *fiber.Ctx) error {
+	uid := userID(c)
+	if uid == "" {
+		return unauthorized(c)
+	}
+
 	id, err := c.ParamsInt("id")
 	if err != nil || id <= 0 {
 		return badRequest(c, "invalid token id")
@@ -233,7 +253,7 @@ func handleRevokeToken(c *fiber.Ctx) error {
 		return badRequest(c, "database unavailable")
 	}
 
-	result := db.Where("id = ? AND user_id = ?", id, userID(c)).Delete(&database.IntegrationToken{})
+	result := db.Where("id = ? AND user_id = ?", id, uid).Delete(&database.IntegrationToken{})
 	if result.Error != nil {
 		return badRequest(c, "failed to revoke token")
 	}

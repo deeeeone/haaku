@@ -27,7 +27,7 @@ Also exports the delivery building blocks for the worker: `EventCatalogV1` (even
 
 ## Oversights
 
-- **No auth middleware on routes** — `RegisterRoutes` (webhooks.go:124-132) attaches nothing; `userID(c)` ignores the type-assert `ok` (webhooks.go:204-207). Unauthenticated requests silently operate with `user_id=""` (empty lists / 404s / ability to create endpoints owned by the empty user) instead of 401. No panic (safe assert), but auth is effectively unenforced.
+- **No auth middleware on routes (RESOLVED)** — `RegisterRoutes` (webhooks.go:124-132) attached nothing and `userID(c)` ignored the type-assert `ok` (webhooks.go:204-207), so unauthenticated requests silently operated with `user_id=""` (empty lists / endpoints owned by the empty user) instead of 401. All 7 routes now run `auth.AuthRequired()`; a new `requireUserID` helper fails closed with 401 when the user is missing, replacing the lax `userID` reads.
 - **SSRF guard has DNS-rebinding gap** — `isValidHTTPS` resolves the host to check for private/loopback IPs, but the actual delivery worker will re-resolve later; a rebinding host can pass validation and later point at an internal IP. Also no port/redirect handling, and `url.Parse` permits userinfo/opaque forms. Mitigation: pin the resolved IP or re-validate at delivery time.
 - **`hashSecret` is a keyed HMAC with a public static key** — `hmac.New(sha256.New, []byte(secret))` with fixed message `"webhook-secret"` (webhooks.go:217-221) is effectively a plain SHA-256 of the secret; anyone who knows the scheme can brute-force it offline. Use a server-side pepper or proper KDF. Also contradicts "secrets in .env" convention (a static literal key).
 - **Error helpers claim "avoid import cycle"** — `internal/httpapi` does not import handlers (routes.go imports handlers), so `httpapi` helpers could be used; the local `writeError`/`badRequest`/`notFound` duplication is likely unjustified.
@@ -41,7 +41,7 @@ Also exports the delivery building blocks for the worker: `EventCatalogV1` (even
 
 ## Todos
 
-- [ ] Attach `auth.AuthRequired` to all routes and make `userID(c)` fail closed (401 on empty).
+- [x] Attach `auth.AuthRequired` to all routes and make user reads fail closed (`requireUserID`, 401).
 - [ ] Harden SSRF: pin resolved IPs, reject at delivery time (rebinding), handle ports/redirects.
 - [ ] Replace `hashSecret` with a server-peppered KDF (no static public key).
 - [ ] Map DB failures to 503/500, not 400.

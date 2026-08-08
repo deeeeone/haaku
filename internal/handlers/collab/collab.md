@@ -26,8 +26,8 @@ Ownership is enforced by checking `lists.id = ? AND lists.user_id = ?`. Register
 
 ## Oversights
 
-- **No auth middleware on any route** — unlike `checkin` (uses `auth.AuthRequired`), collab routes are registered bare. `server.go` has no global auth middleware, so these endpoints are effectively **unauthenticated**.
-- **Unchecked type assertions on `user_id`** — `c.Locals("user_id").(string)` (collab.go:112) without the `ok` form panics when the Local is unset → 500 via Recovery. All four handlers do this.
+- **No auth middleware on any route (RESOLVED)** — collab routes were registered bare with no global auth layer, so the endpoints were effectively unauthenticated. All 4 routes now run `auth.AuthRequired()`.
+- **Unchecked type assertions on `user_id` (RESOLVED)** — `c.Locals("user_id").(string)` (collab.go:112, 146, 221) without the `ok` form panicked → 500 via Recovery when the Local was unset. All handlers now use the checked form and return 401.
 - **`GET /users/me/lists/collaborations` claim mismatch** — comment says "owned + collaborated" but the query only returns `ListCollaborator` rows (collaborated), not lists the user owns. Spec check needed.
 - **Duplicated error helpers** — `writeError`/`badRequest`/`notFound` reimplement the envelope; should use `internal/httpapi`.
 - **Timestamps hand-formatted** — `"2006-01-02T15:04:05.000Z"` string literals duplicated in three handlers instead of a shared `time.Format(time.RFC3339)` helper.
@@ -38,8 +38,7 @@ Ownership is enforced by checking `lists.id = ? AND lists.user_id = ?`. Register
 
 ## Todos
 
-- [ ] Add `auth.AuthRequired` middleware to all collab routes.
-- [ ] Use the `ok` form of type assertions (or shared `getUserID` helper) to avoid panics.
+- [x] Add `auth.AuthRequired` middleware to all collab routes; use checked `user_id` asserts (401 on missing).
 - [ ] Decide owned+collaborated vs collaborated-only semantics for `GET /users/me/lists/collaborations`.
 - [ ] Implement the invite accept/decline flow or explicitly document `AcceptedAt` as future.
 - [ ] Return 403 (not 404) when the list exists but the caller isn't the owner.

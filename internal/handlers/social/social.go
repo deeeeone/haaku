@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"trakt-api/internal/auth"
 	"trakt-api/internal/database"
 	"trakt-api/internal/openapi"
 	"trakt-api/internal/outbox"
@@ -35,18 +36,18 @@ func registerOpenAPIRoutes() {
 // RegisterRoutes wires social routes.
 func RegisterRoutes(api fiber.Router) {
 	// /v1/users/:id/follow
-	api.Post("/users/:id/follow", handleFollow)
-	api.Delete("/users/:id/follow", handleUnfollow)
+	api.Post("/users/:id/follow", auth.AuthRequired(), handleFollow)
+	api.Delete("/users/:id/follow", auth.AuthRequired(), handleUnfollow)
 
-	// /v1/users/:id/followers, /following, /friends
+	// /v1/users/:id/followers, /following, /friends (public reads)
 	api.Get("/users/:id/followers", handleListFollowers)
 	api.Get("/users/:id/following", handleListFollowing)
 	api.Get("/users/:id/friends", handleListFriends)
 
 	// /v1/users/me/follow_requests
-	api.Get("/users/me/follow_requests", handleListFollowRequests)
-	api.Post("/users/me/follow_requests/:follower_id/approve", handleApproveFollowRequest)
-	api.Delete("/users/me/follow_requests/:follower_id", handleDenyFollowRequest)
+	api.Get("/users/me/follow_requests", auth.AuthRequired(), handleListFollowRequests)
+	api.Post("/users/me/follow_requests/:follower_id/approve", auth.AuthRequired(), handleApproveFollowRequest)
+	api.Delete("/users/me/follow_requests/:follower_id", auth.AuthRequired(), handleDenyFollowRequest)
 }
 
 // ---------------------------------------------------------------------------
@@ -85,7 +86,10 @@ type FollowRequestResponse struct {
 
 // handleFollow follows a user. If target has private profile, it creates a pending follow.
 func handleFollow(c *fiber.Ctx) error {
-	followerID := c.Locals("user_id").(string)
+	followerID, ok := c.Locals("user_id").(string)
+	if !ok || followerID == "" {
+		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+	}
 	targetID := c.Params("id")
 
 	if targetID == "" || targetID == followerID {
@@ -148,7 +152,10 @@ func handleFollow(c *fiber.Ctx) error {
 
 // handleUnfollow unfollows a user.
 func handleUnfollow(c *fiber.Ctx) error {
-	followerID := c.Locals("user_id").(string)
+	followerID, ok := c.Locals("user_id").(string)
+	if !ok || followerID == "" {
+		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+	}
 	targetID := c.Params("id")
 
 	if targetID == "" {
@@ -258,7 +265,10 @@ func listFollowRelations(c *fiber.Ctx, targetID, direction string) error {
 
 // handleListFollowRequests lists pending incoming follow requests for the current user.
 func handleListFollowRequests(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(string)
+	userID, ok := c.Locals("user_id").(string)
+	if !ok || userID == "" {
+		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+	}
 
 	db, err := database.GetDB()
 	if err != nil {
@@ -300,7 +310,10 @@ func handleListFollowRequests(c *fiber.Ctx) error {
 
 // handleApproveFollowRequest approves a pending follow request.
 func handleApproveFollowRequest(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(string)
+	userID, ok := c.Locals("user_id").(string)
+	if !ok || userID == "" {
+		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+	}
 	followerID := c.Params("follower_id")
 
 	if followerID == "" {
@@ -331,7 +344,10 @@ func handleApproveFollowRequest(c *fiber.Ctx) error {
 
 // handleDenyFollowRequest denies a pending follow request.
 func handleDenyFollowRequest(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(string)
+	userID, ok := c.Locals("user_id").(string)
+	if !ok || userID == "" {
+		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+	}
 	followerID := c.Params("follower_id")
 
 	if followerID == "" {

@@ -133,6 +133,7 @@ func TestSecurityHeadersPresent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	req.Host = "test"
 
 	resp, err := app.Test(req)
 	if err != nil {
@@ -171,6 +172,7 @@ func TestBodyLimit_AllowsNormalPayload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	req.Host = "test"
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := app.Test(req)
@@ -194,6 +196,7 @@ func TestBodyLimit_WithinLimit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	req.Host = "test"
 	req.Header.Set("Content-Type", "application/octet-stream")
 
 	resp, err := app.Test(req)
@@ -241,6 +244,7 @@ func TestBodyLimit_RejectsOversized(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	req.Host = "test"
 	req.Header.Set("Content-Type", "text/plain")
 
 	_, testErr := app.Test(req)
@@ -265,6 +269,7 @@ func TestTimeout_PassesWithinDeadline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	req.Host = "test"
 
 	resp, err := app.Test(req)
 	if err != nil {
@@ -288,6 +293,7 @@ func TestMetricsEndpoint_ReturnsValidJSON(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	req.Host = "test"
 
 	resp, err := app.Test(req)
 	if err != nil {
@@ -333,6 +339,7 @@ func TestMetricsEndpoint_JSONContentType(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	req.Host = "test"
 
 	resp, err := app.Test(req)
 	if err != nil {
@@ -357,6 +364,7 @@ func TestCORS_NoOriginsConfigured(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	req.Host = "test"
 	req.Header.Set("Origin", "https://evil.example.com")
 
 	resp, err := app.Test(req)
@@ -402,6 +410,7 @@ func TestErrorEnvelope_Format(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	req.Host = "test"
 	req.Header.Set("Content-Type", "text/plain")
 
 	// Fiber's test client returns error when BodyLimit exceeded — verify rejection.

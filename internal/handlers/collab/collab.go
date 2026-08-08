@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"trakt-api/internal/auth"
 	"trakt-api/internal/database"
 	"trakt-api/internal/openapi"
 
@@ -76,13 +77,13 @@ func registerOpenAPIRoutes() {
 // RegisterRoutes wires collaboration routes.
 func RegisterRoutes(api fiber.Router) {
 	// GET /v1/users/me/lists/collaborations
-	api.Get("/users/me/lists/collaborations", handleMyCollaborations)
+	api.Get("/users/me/lists/collaborations", auth.AuthRequired(), handleMyCollaborations)
 
 	// List-scoped collaborators
 	lists := api.Group("/lists")
-	lists.Post("/:id/collaborators", handleInviteCollaborator)
-	lists.Delete("/:id/collaborators/:user_id", handleRemoveCollaborator)
-	lists.Get("/:id/collaborators", handleListCollaborators)
+	lists.Post("/:id/collaborators", auth.AuthRequired(), handleInviteCollaborator)
+	lists.Delete("/:id/collaborators/:user_id", auth.AuthRequired(), handleRemoveCollaborator)
+	lists.Get("/:id/collaborators", auth.AuthRequired(), handleListCollaborators)
 }
 
 // ---------------------------------------------------------------------------
@@ -109,7 +110,10 @@ type InviteCollaboratorRequest struct {
 
 // handleMyCollaborations returns all lists the current user can edit.
 func handleMyCollaborations(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(string)
+	userID, ok := c.Locals("user_id").(string)
+	if !ok || userID == "" {
+		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+	}
 
 	db, err := database.GetDB()
 	if err != nil {
@@ -143,7 +147,10 @@ func handleMyCollaborations(c *fiber.Ctx) error {
 
 // handleInviteCollaborator invites a user to collaborate on a list.
 func handleInviteCollaborator(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(string)
+	userID, ok := c.Locals("user_id").(string)
+	if !ok || userID == "" {
+		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+	}
 	listIDStr := c.Params("id")
 	listID := parseID(listIDStr)
 	if listID == 0 {
@@ -218,7 +225,10 @@ func handleInviteCollaborator(c *fiber.Ctx) error {
 
 // handleRemoveCollaborator removes a collaborator from a list.
 func handleRemoveCollaborator(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(string)
+	userID, ok := c.Locals("user_id").(string)
+	if !ok || userID == "" {
+		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+	}
 	listIDStr := c.Params("id")
 	targetUserID := c.Params("user_id")
 

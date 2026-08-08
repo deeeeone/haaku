@@ -734,6 +734,8 @@ func handleRemoveCollection(c *fiber.Ctx) error {
 			for _, id := range showIDs {
 				queueMediaInvalidation(cacheTx, "show", id)
 			}
+			// EventCollectionAdded's wire value is "collection.updated",
+			// which correctly covers both adds and removals.
 			if err := outbox.PublishEvent(tx, outbox.EventCollectionAdded, userID, map[string]any{
 				"deleted": deleted,
 			}); err != nil {
@@ -827,7 +829,9 @@ func handleAddWatchlist(c *fiber.Ctx) error {
 		return badRequest(c, "invalid JSON body")
 	}
 
-	added, notFound, duplicates := 0, 0, 0
+	addedMovies, addedShows := 0, 0
+	dupMovies, dupShows := 0, 0
+	notFound := 0
 	var movieIDs []int64
 	var showIDs []int64
 	now := time.Now()
@@ -852,10 +856,10 @@ func handleAddWatchlist(c *fiber.Ctx) error {
 				Notes: m.Notes, ListedAt: now,
 			})
 			if result.RowsAffected > 0 {
-				added++
+				addedMovies++
 				movieIDs = append(movieIDs, mediaID)
 			} else {
-				duplicates++
+				dupMovies++
 				maxRank-- // rollback rank increment
 			}
 		}
@@ -871,15 +875,15 @@ func handleAddWatchlist(c *fiber.Ctx) error {
 				Notes: s.Notes, ListedAt: now,
 			})
 			if result.RowsAffected > 0 {
-				added++
+				addedShows++
 				showIDs = append(showIDs, mediaID)
 			} else {
-				duplicates++
+				dupShows++
 				maxRank--
 			}
 		}
 
-		if added > 0 {
+		if addedMovies+addedShows > 0 {
 			queueUserInvalidation(cacheTx, userID)
 			for _, id := range movieIDs {
 				queueMediaInvalidation(cacheTx, "movie", id)
@@ -888,8 +892,8 @@ func handleAddWatchlist(c *fiber.Ctx) error {
 				queueMediaInvalidation(cacheTx, "show", id)
 			}
 			if err := outbox.PublishEvent(tx, outbox.EventWatchlistAdded, userID, map[string]any{
-				"movies_added": len(movieIDs),
-				"shows_added":  len(showIDs),
+				"movies_added": addedMovies,
+				"shows_added":  addedShows,
 			}); err != nil {
 				return nil, err
 			}
@@ -902,9 +906,9 @@ func handleAddWatchlist(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{
-		"added":      fiber.Map{"movies": 0, "episodes": 0},
+		"added":      fiber.Map{"movies": addedMovies, "shows": addedShows},
 		"not_found":  fiber.Map{"movies": make([]interface{}, 0), "shows": make([]interface{}, 0)},
-		"duplicates": fiber.Map{"movies": duplicates, "episodes": 0},
+		"duplicates": fiber.Map{"movies": dupMovies, "shows": dupShows},
 	})
 }
 
@@ -1004,11 +1008,8 @@ func handleReorderWatchlist(c *fiber.Ctx) error {
 
 		if len(req.Rank) > 0 {
 			queueUserInvalidation(cacheTx, userID)
-			if err := outbox.PublishEvent(tx, outbox.EventWatchlistAdded, userID, map[string]any{
-				"reordered": len(req.Rank),
-			}); err != nil {
-				return nil, err
-			}
+			// No event: the webhook catalog has no reorder event, and
+			// "watchlist.added"/"watchlist.removed" would be misleading.
 		}
 
 		return cacheTx, nil
@@ -1086,7 +1087,8 @@ func handleAddRatings(c *fiber.Ctx) error {
 		return badRequest(c, "invalid JSON body")
 	}
 
-	added, notFound := 0, 0
+	addedMovies, addedShows, addedSeasons, addedEpisodes := 0, 0, 0, 0
+	notFound := 0
 	var mediaRefs []mediaRef
 	now := time.Now()
 
@@ -1110,7 +1112,16 @@ func handleAddRatings(c *fiber.Ctx) error {
 				UserID: userID, MediaType: mediaTypeResolved, MediaID: mediaID,
 				Rating: rating, RatedAt: now, UpdatedAt: now,
 			})
-			added++
+			switch mediaTypeResolved {
+			case "movie":
+				addedMovies++
+			case "show":
+				addedShows++
+			case "season":
+				addedSeasons++
+			case "episode":
+				addedEpisodes++
+			}
 			mediaRefs = append(mediaRefs, mediaRef{mediaType: mediaTypeResolved, mediaID: mediaID})
 		}
 
@@ -1127,13 +1138,13 @@ func handleAddRatings(c *fiber.Ctx) error {
 			upsertRating(e.IDs, e.Rating)
 		}
 
-		if added > 0 {
+		if addedMovies+addedShows+addedSeasons+addedEpisodes > 0 {
 			queueUserInvalidation(cacheTx, userID)
 			for _, r := range mediaRefs {
 				queueResolvedInvalidation(tx, cacheTx, r.mediaType, r.mediaID)
 			}
 			if err := outbox.PublishEvent(tx, outbox.EventRatingAdded, userID, map[string]any{
-				"added": added,
+				"added": addedMovies + addedShows + addedSeasons + addedEpisodes,
 			}); err != nil {
 				return nil, err
 			}
@@ -1146,7 +1157,7 @@ func handleAddRatings(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{
-		"added":     fiber.Map{"movies": added, "shows": 0, "seasons": 0, "episodes": 0},
+		"added":     fiber.Map{"movies": addedMovies, "shows": addedShows, "seasons": addedSeasons, "episodes": addedEpisodes},
 		"not_found": fiber.Map{"movies": make([]interface{}, 0)},
 	})
 }
@@ -1221,11 +1232,8 @@ func handleRemoveRatings(c *fiber.Ctx) error {
 			for _, r := range mediaRefs {
 				queueResolvedInvalidation(tx, cacheTx, r.mediaType, r.mediaID)
 			}
-			if err := outbox.PublishEvent(tx, outbox.EventRatingAdded, userID, map[string]any{
-				"deleted": deleted,
-			}); err != nil {
-				return nil, err
-			}
+			// No event: the webhook catalog has no "rating.removed", and
+			// publishing "rating.added" on a removal would be misleading.
 		}
 
 		return cacheTx, nil
@@ -1289,7 +1297,9 @@ func handleAddFavorites(c *fiber.Ctx) error {
 		return badRequest(c, "invalid JSON body")
 	}
 
-	added, notFound, duplicates := 0, 0, 0
+	addedMovies, addedShows := 0, 0
+	dupMovies, dupShows := 0, 0
+	notFound := 0
 	var movieIDs []int64
 	var showIDs []int64
 	now := time.Now()
@@ -1313,14 +1323,19 @@ func handleAddFavorites(c *fiber.Ctx) error {
 				Rank: maxRank, FavoritedAt: now,
 			})
 			if result.RowsAffected > 0 {
-				added++
 				if mediaType == "movie" {
+					addedMovies++
 					movieIDs = append(movieIDs, mediaID)
 				} else {
+					addedShows++
 					showIDs = append(showIDs, mediaID)
 				}
 			} else {
-				duplicates++
+				if mediaType == "movie" {
+					dupMovies++
+				} else {
+					dupShows++
+				}
 				maxRank--
 			}
 		}
@@ -1332,7 +1347,7 @@ func handleAddFavorites(c *fiber.Ctx) error {
 			addFavorite(s.IDs.TMDB, "show")
 		}
 
-		if added > 0 {
+		if addedMovies+addedShows > 0 {
 			queueUserInvalidation(cacheTx, userID)
 			for _, id := range movieIDs {
 				queueMediaInvalidation(cacheTx, "movie", id)
@@ -1341,7 +1356,7 @@ func handleAddFavorites(c *fiber.Ctx) error {
 				queueMediaInvalidation(cacheTx, "show", id)
 			}
 			if err := outbox.PublishEvent(tx, outbox.EventFavoriteAdded, userID, map[string]any{
-				"added": added,
+				"added": addedMovies + addedShows,
 			}); err != nil {
 				return nil, err
 			}
@@ -1354,9 +1369,9 @@ func handleAddFavorites(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{
-		"added":      fiber.Map{"movies": 0, "shows": 0},
+		"added":      fiber.Map{"movies": addedMovies, "shows": addedShows},
 		"not_found":  fiber.Map{"movies": make([]interface{}, 0), "shows": make([]interface{}, 0)},
-		"duplicates": fiber.Map{"movies": duplicates, "shows": duplicates},
+		"duplicates": fiber.Map{"movies": dupMovies, "shows": dupShows},
 	})
 }
 
@@ -1414,11 +1429,8 @@ func handleRemoveFavorites(c *fiber.Ctx) error {
 			for _, id := range showIDs {
 				queueMediaInvalidation(cacheTx, "show", id)
 			}
-			if err := outbox.PublishEvent(tx, outbox.EventFavoriteAdded, userID, map[string]any{
-				"deleted": deleted,
-			}); err != nil {
-				return nil, err
-			}
+			// No event: the webhook catalog has no "favorite.removed", and
+			// publishing "favorite.added" on a removal would be misleading.
 		}
 
 		return cacheTx, nil

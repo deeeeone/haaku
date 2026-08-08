@@ -12,6 +12,7 @@ import (
 	"net/url"
 	"time"
 
+	"trakt-api/internal/auth"
 	"trakt-api/internal/database"
 	"trakt-api/internal/openapi"
 	"trakt-api/internal/outbox"
@@ -122,13 +123,13 @@ func init() {
 // ---------------------------------------------------------------------------
 
 func RegisterRoutes(api fiber.Router) {
-	api.Get("/webhooks", handleListEndpoints)
-	api.Post("/webhooks", handleCreateEndpoint)
-	api.Put("/webhooks/:id", handleUpdateEndpoint)
-	api.Delete("/webhooks/:id", handleDeleteEndpoint)
-	api.Post("/webhooks/:id/rotate-secret", handleRotateSecret)
-	api.Post("/webhooks/:id/test", handleTestPing)
-	api.Get("/webhooks/:id/deliveries", handleDeliveries)
+	api.Get("/webhooks", auth.AuthRequired(), handleListEndpoints)
+	api.Post("/webhooks", auth.AuthRequired(), handleCreateEndpoint)
+	api.Put("/webhooks/:id", auth.AuthRequired(), handleUpdateEndpoint)
+	api.Delete("/webhooks/:id", auth.AuthRequired(), handleDeleteEndpoint)
+	api.Post("/webhooks/:id/rotate-secret", auth.AuthRequired(), handleRotateSecret)
+	api.Post("/webhooks/:id/test", auth.AuthRequired(), handleTestPing)
+	api.Get("/webhooks/:id/deliveries", auth.AuthRequired(), handleDeliveries)
 }
 
 // ---------------------------------------------------------------------------
@@ -150,6 +151,21 @@ func badRequest(c *fiber.Ctx, msg string) error {
 
 func notFound(c *fiber.Ctx, msg string) error {
 	return writeError(c, fiber.StatusNotFound, "not_found", msg)
+}
+
+func unauthorized(c *fiber.Ctx) error {
+	return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+}
+
+// requireUserID returns the authenticated user ID or writes a 401 when the
+// auth middleware did not set one (defense in depth — routes also run
+// auth.AuthRequired).
+func requireUserID(c *fiber.Ctx) (string, error) {
+	uid, ok := c.Locals("user_id").(string)
+	if !ok || uid == "" {
+		return "", unauthorized(c)
+	}
+	return uid, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -200,11 +216,6 @@ type deliveryResponse struct {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-func userID(c *fiber.Ctx) string {
-	id, _ := c.Locals("user_id").(string)
-	return id
-}
 
 func getDB() (*gorm.DB, error) {
 	db, err := database.GetDB()
@@ -284,13 +295,18 @@ func toDeliveryResponse(d *database.WebhookDelivery) deliveryResponse {
 
 // GET /v1/webhooks
 func handleListEndpoints(c *fiber.Ctx) error {
+	uid, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
 	db, err := getDB()
 	if err != nil {
 		return badRequest(c, "database unavailable")
 	}
 
 	var endpoints []database.WebhookEndpoint
-	if err := db.Where("user_id = ?", userID(c)).Order("created_at DESC").Find(&endpoints).Error; err != nil {
+	if err := db.Where("user_id = ?", uid).Order("created_at DESC").Find(&endpoints).Error; err != nil {
 		return badRequest(c, "failed to list webhooks")
 	}
 
@@ -303,6 +319,11 @@ func handleListEndpoints(c *fiber.Ctx) error {
 
 // POST /v1/webhooks
 func handleCreateEndpoint(c *fiber.Ctx) error {
+	uid, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
 	var req createEndpointRequest
 	if err := json.Unmarshal(c.Body(), &req); err != nil {
 		return badRequest(c, "invalid JSON body")
@@ -342,7 +363,7 @@ func handleCreateEndpoint(c *fiber.Ctx) error {
 	}
 
 	ep := database.WebhookEndpoint{
-		UserID:     userID(c),
+		UserID:     uid,
 		URL:        req.URL,
 		Events:     database.StringSlice(req.Events),
 		SecretHash: hashSecret(secret),
@@ -364,6 +385,11 @@ func handleCreateEndpoint(c *fiber.Ctx) error {
 
 // PUT /v1/webhooks/:id
 func handleUpdateEndpoint(c *fiber.Ctx) error {
+	uid, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
 	id, err := c.ParamsInt("id")
 	if err != nil || id <= 0 {
 		return badRequest(c, "invalid endpoint id")
@@ -375,7 +401,7 @@ func handleUpdateEndpoint(c *fiber.Ctx) error {
 	}
 
 	var ep database.WebhookEndpoint
-	if err := db.Where("id = ? AND user_id = ?", id, userID(c)).First(&ep).Error; err != nil {
+	if err := db.Where("id = ? AND user_id = ?", id, uid).First(&ep).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return notFound(c, "webhook endpoint not found")
 		}
@@ -422,6 +448,11 @@ func handleUpdateEndpoint(c *fiber.Ctx) error {
 
 // DELETE /v1/webhooks/:id
 func handleDeleteEndpoint(c *fiber.Ctx) error {
+	uid, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
 	id, err := c.ParamsInt("id")
 	if err != nil || id <= 0 {
 		return badRequest(c, "invalid endpoint id")
@@ -432,7 +463,7 @@ func handleDeleteEndpoint(c *fiber.Ctx) error {
 		return badRequest(c, "database unavailable")
 	}
 
-	result := db.Where("id = ? AND user_id = ?", id, userID(c)).Delete(&database.WebhookEndpoint{})
+	result := db.Where("id = ? AND user_id = ?", id, uid).Delete(&database.WebhookEndpoint{})
 	if result.Error != nil {
 		return badRequest(c, "failed to delete webhook endpoint")
 	}
@@ -445,6 +476,11 @@ func handleDeleteEndpoint(c *fiber.Ctx) error {
 
 // POST /v1/webhooks/:id/rotate-secret
 func handleRotateSecret(c *fiber.Ctx) error {
+	uid, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
 	id, err := c.ParamsInt("id")
 	if err != nil || id <= 0 {
 		return badRequest(c, "invalid endpoint id")
@@ -456,7 +492,7 @@ func handleRotateSecret(c *fiber.Ctx) error {
 	}
 
 	var ep database.WebhookEndpoint
-	if err := db.Where("id = ? AND user_id = ?", id, userID(c)).First(&ep).Error; err != nil {
+	if err := db.Where("id = ? AND user_id = ?", id, uid).First(&ep).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return notFound(c, "webhook endpoint not found")
 		}
@@ -480,6 +516,11 @@ func handleRotateSecret(c *fiber.Ctx) error {
 
 // POST /v1/webhooks/:id/test
 func handleTestPing(c *fiber.Ctx) error {
+	uid, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
 	id, err := c.ParamsInt("id")
 	if err != nil || id <= 0 {
 		return badRequest(c, "invalid endpoint id")
@@ -491,7 +532,7 @@ func handleTestPing(c *fiber.Ctx) error {
 	}
 
 	var ep database.WebhookEndpoint
-	if err := db.Where("id = ? AND user_id = ?", id, userID(c)).First(&ep).Error; err != nil {
+	if err := db.Where("id = ? AND user_id = ?", id, uid).First(&ep).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return notFound(c, "webhook endpoint not found")
 		}
@@ -502,7 +543,7 @@ func handleTestPing(c *fiber.Ctx) error {
 		"ping":    true,
 		"sent_to": ep.URL,
 	}
-	if err := outbox.PublishEvent(db, "ping", userID(c), payload); err != nil {
+	if err := outbox.PublishEvent(db, "ping", uid, payload); err != nil {
 		return badRequest(c, "failed to queue ping event")
 	}
 
@@ -511,6 +552,11 @@ func handleTestPing(c *fiber.Ctx) error {
 
 // GET /v1/webhooks/:id/deliveries
 func handleDeliveries(c *fiber.Ctx) error {
+	uid, err := requireUserID(c)
+	if err != nil {
+		return err
+	}
+
 	id, err := c.ParamsInt("id")
 	if err != nil || id <= 0 {
 		return badRequest(c, "invalid endpoint id")
@@ -522,7 +568,7 @@ func handleDeliveries(c *fiber.Ctx) error {
 	}
 
 	var ep database.WebhookEndpoint
-	if err := db.Where("id = ? AND user_id = ?", id, userID(c)).First(&ep).Error; err != nil {
+	if err := db.Where("id = ? AND user_id = ?", id, uid).First(&ep).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return notFound(c, "webhook endpoint not found")
 		}

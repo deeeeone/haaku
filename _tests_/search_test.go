@@ -33,6 +33,7 @@ func doTestRequest(t *testing.T, app *fiber.App, method, path string) *http.Resp
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
 	}
+	req.Host = "test"
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := app.Test(req)

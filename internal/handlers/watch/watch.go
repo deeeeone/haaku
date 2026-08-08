@@ -3,6 +3,7 @@ package watch
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"strings"
 	"time"
 
@@ -142,7 +143,9 @@ func handleMovieWatch(c *fiber.Ctx) error {
 		return notFound(c, "movie has no TMDB ID")
 	}
 
-	return serveWatchProviders(c, movie.Metadata, country, func() (*tmdb.WatchProvidersResponse, error) {
+	return serveWatchProviders(c, movie.Metadata, country, func() error {
+		return db.Model(&movie).Update("metadata", movie.Metadata).Error
+	}, func() (*tmdb.WatchProvidersResponse, error) {
 		client, cerr := getTMDBClient()
 		if cerr != nil {
 			return nil, cerr
@@ -182,7 +185,9 @@ func handleShowWatch(c *fiber.Ctx) error {
 		return notFound(c, "show has no TMDB ID")
 	}
 
-	return serveWatchProviders(c, show.Metadata, country, func() (*tmdb.WatchProvidersResponse, error) {
+	return serveWatchProviders(c, show.Metadata, country, func() error {
+		return db.Model(&show).Update("metadata", show.Metadata).Error
+	}, func() (*tmdb.WatchProvidersResponse, error) {
 		client, cerr := getTMDBClient()
 		if cerr != nil {
 			return nil, cerr
@@ -192,10 +197,13 @@ func handleShowWatch(c *fiber.Ctx) error {
 }
 
 // serveWatchProviders handles cache lookup and fallback to TMDB for watch providers.
+// persist persists an updated metadata map back to the DB row (best-effort) after
+// a fresh TMDB fetch.
 func serveWatchProviders(
 	c *fiber.Ctx,
 	metadata database.JSONMap,
 	country string,
+	persist func() error,
 	fetchFresh func() (*tmdb.WatchProvidersResponse, error),
 ) error {
 	// Try cache first.
@@ -228,6 +236,12 @@ func serveWatchProviders(
 
 	// Store in metadata.
 	storeCachedProviders(metadata, cached)
+
+	// Persist the updated metadata so the cache survives across restarts.
+	// Best-effort: a write failure must not fail the response.
+	if err := persist(); err != nil {
+		log.Printf("[watch] failed to persist watch providers cache: %v", err)
+	}
 
 	// Return requested country.
 	countryResult, ok := cached.Results[strings.ToUpper(country)]

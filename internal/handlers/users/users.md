@@ -22,13 +22,13 @@ Uses shared `auth.PrivacyFilter` for the public route; local `requireAuth` elsew
 | Me profile get/update | Done |
 | Public profile + privacy filter | Done |
 | Settings get/update | Done |
-| Avatar upload (validation + S3) | Partial (S3 is a stub) |
+| Avatar upload (validation + S3) | Partial (fails closed — 501 until real S3 client) |
 | Account deletion | Partial (no async cleanup) |
 | Block/unblock | Done |
 
 ## Oversights
 
-- **`uploadToS3` is a stub** — validates then discards the file and returns a placeholder URL (`fmt.Sprintf("%s/%s/%s", endpoint, bucket, key)`, users.go:607-616). Files are never stored; `db.Model(...).Update("avatar_url", avatarURL)` then points at a URL that doesn't exist. TODO admits no real S3 client (dep not approved).
+- **`uploadToS3` was a stub (RESOLVED — fail-closed)** — it validated then discarded the file and returned a placeholder URL (`fmt.Sprintf("%s/%s/%s", endpoint, bucket, key)`, users.go:607-616), and the handler persisted it to `avatar_url`, so users got a URL pointing at a file that was never stored. `uploadToS3` now returns an error and the handler returns **501 `{"error":{"code":"not_implemented","message":"..."}}`** without touching `avatar_url` (no placeholder URL is ever persisted). A real S3/MinIO client still needs an approved dependency.
 - **Block/unblock not wrapped in cache-tx** — plain `db` writes + outbox published outside a transaction (users.go:452-466); follows deletion is 2 separate deletes (no transaction), matching `social`'s pattern rather than the checkin/scrobble standard. Raw string event names (`"user.blocked"`/`"user.unblocked"`).
 - **No outbox/notification on delete-account** — `pending_deletion` status set, no `account.deletion_scheduled` event, no cache invalidation for the user's cached profiles.
 - **`handleUpdateMe` ignores the post-update `db.First` error** — a failed re-fetch returns the pre-update row with a 200.
@@ -41,7 +41,8 @@ Uses shared `auth.PrivacyFilter` for the public route; local `requireAuth` elsew
 
 ## Todos
 
-- [ ] Implement real S3/MinIO upload (or gate the endpoint until the dep is approved — currently returns 200 with a fake URL).
+- [x] Gate avatar upload until S3 is implemented — endpoint now fails closed with 501 `not_implemented` (no fake URL persisted).
+- [ ] Implement real S3/MinIO upload once the dependency is approved.
 - [ ] Wrap block/unblock/delete-account in `cache.WithCacheTransaction` with version invalidation + in-tx outbox; use typed event constants.
 - [ ] Emit account-deletion outbox event and invalidate cached profiles.
 - [ ] Handle the post-update re-fetch error in `handleUpdateMe`.

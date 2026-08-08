@@ -313,7 +313,8 @@ func handleScrobblePause(c *fiber.Ctx) error {
 			return nil, fmt.Errorf("advisory lock: %w", err)
 		}
 
-		// Write pause session
+		// Write pause session with the same 5h expiry as start so a later
+		// stop can distinguish a live session from an expired one.
 		session := &database.ScrobbleSession{
 			UserID:    userID,
 			MediaType: mediaType,
@@ -322,6 +323,7 @@ func handleScrobblePause(c *fiber.Ctx) error {
 			EpisodeID: episodeID,
 			Action:    "pause",
 			Progress:  req.Progress,
+			ExpiresAt: time.Now().Add(scrobbleSessionTimeout),
 		}
 		if err := tx.Create(session).Error; err != nil {
 			return nil, fmt.Errorf("create session: %w", err)

@@ -592,18 +592,9 @@ func handleGetListItems(c *fiber.Ctx) error {
 	var total int64
 	query.Model(&database.ListItem{}).Count(&total)
 
-	// Determine sort order
-	sortCol := "rank"
-	sortDir := "ASC"
-	if list.SortBy != "" {
-		sortCol = list.SortBy
-	}
-	if list.SortHow != "" {
-		sortDir = strings.ToUpper(list.SortHow)
-		if sortDir != "ASC" && sortDir != "DESC" {
-			sortDir = "ASC"
-		}
-	}
+	// Determine sort order via allowlist — never interpolate user input
+	// (List.SortBy) directly into ORDER BY.
+	sortCol, sortDir := resolveListItemSort(list.SortBy, list.SortHow)
 
 	var items []database.ListItem
 	if err := query.Order(fmt.Sprintf("%s %s", sortCol, sortDir)).
@@ -634,6 +625,31 @@ func handleGetListItems(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(resp)
+}
+
+// listItemSortColumns maps user-facing sort keys to allowlisted SQL columns
+// on list_items. Never interpolate user input into ORDER BY directly.
+var listItemSortColumns = map[string]string{
+	"rank":       "rank",
+	"added":      "added_at",
+	"media_type": "media_type",
+	"media_id":   "media_id",
+	"notes":      "notes",
+}
+
+// resolveListItemSort maps a user-supplied sort key to an allowlisted SQL
+// column and direction. Unknown keys fall back to "rank"; sort_how is
+// normalized to ASC/DESC.
+func resolveListItemSort(sortBy, sortHow string) (string, string) {
+	col, ok := listItemSortColumns[sortBy]
+	if !ok {
+		col = "rank"
+	}
+	dir := "ASC"
+	if strings.ToUpper(sortHow) == "DESC" {
+		dir = "DESC"
+	}
+	return col, dir
 }
 
 func resolveItemByTMDB(db *gorm.DB, mediaType string, tmdbID int) (int64, error) {

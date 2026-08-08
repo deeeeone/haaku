@@ -25,7 +25,7 @@ Emits outbox events (`user.followed`, `user.unfollowed`, `user.follow_approved`)
 
 ## Oversights
 
-- **CRITICAL: no auth middleware on any route** — unlike `reports`/`scrobble`, `RegisterRoutes` attaches no `requireAuth`, and every handler reads `c.Locals("user_id").(string)` with an **unchecked type assertion** (social.go:88, 151, 261, 303, 334). An unauthenticated request → `nil` interface → panic on the assert → 500 via Recovery, not 401. Auth-"required" endpoints (follow, follow_requests, approve, deny) are effectively open and crash-prone.
+- **CRITICAL: no auth middleware on any route (RESOLVED)** — `RegisterRoutes` attached no `requireAuth`, and every handler read `c.Locals("user_id").(string)` with an **unchecked type assertion** (social.go:88, 151, 261, 303, 334), so an unauthenticated request hit `nil` → panic on the assert → 500 via Recovery, not 401. Now the 5 auth-required endpoints (follow, unfollow, follow_requests, approve, deny) run `auth.AuthRequired()` middleware, the 3 public read routes (followers/following/friends) stay unauthenticated per OpenAPI, and every handler uses the checked form returning 401 `unauthorized` when the user is missing.
 - **No `cache.WithCacheTransaction`, no advisory locks** — mutations run on plain `db` (Create/Update/Delete) with no transaction/cache invalidation. Outbox events published directly with `db`, not within the write transaction (compare `checkin`/`scrobble`).
 - **Raw event-name strings** — `"user.followed"`, `"user.unfollowed"`, `"user.follow_approved"` are literals, not outbox constants (checkin uses `outbox.EventCheckinCreated`). Drift/typo risk; verify these names exist in `internal/outbox`.
 - **No `notifications.CreateNotification`** — approval/follow events are outboxed but no notification record is created for the target (spec likely wants inbox notifications).
@@ -39,7 +39,7 @@ Emits outbox events (`user.followed`, `user.unfollowed`, `user.follow_approved`)
 
 ## Todos
 
-- [ ] Attach auth middleware (`auth.AuthRequired`) to all mutation routes; use safe `user_id` extraction (drop unchecked asserts).
+- [x] Attach `auth.AuthRequired` to all mutation routes; drop unchecked asserts (fail closed with 401). Public reads (followers/following/friends) stay open.
 - [ ] Wrap follow/unfollow/approve/deny in `cache.WithCacheTransaction` with version-counter invalidation and in-tx outbox publish.
 - [ ] Define typed outbox constants for follow events (or reuse existing ones).
 - [ ] Create inbox notifications on follow/approve.

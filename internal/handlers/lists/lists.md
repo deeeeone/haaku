@@ -48,7 +48,7 @@ Writes go through `cache.WithCacheTransaction` with list/user version-key bumps 
 
 - **`requireAuth` hand-rolled** — duplicate of the pattern in every other package; should be `auth.AuthRequired`. Note the double-check: most write handlers also re-check `uid == ""`.
 - **Local error helpers** — full local set (`authRequired`/`badRequest`/`notFound`/`forbidden`/`internalError`) instead of `internal/httpapi`.
-- **SQL-injection exposure in sort ordering** — `handleGetListItems` does `fmt.Sprintf("%s %s", sortCol, sortDir)` (lists.go:609) with `sortCol` coming straight from the stored `List.SortBy` (no allowlist, unlike smart lists). An owner can store an arbitrary `sort_by` that becomes raw SQL on every items read. Should use `sanitizeSortColumn`.
+- **SQL-injection exposure in sort ordering (RESOLVED)** — `handleGetListItems` did `fmt.Sprintf("%s %s", sortCol, sortDir)` (lists.go:609) with `sortCol` coming straight from the stored `List.SortBy` (no allowlist, unlike smart lists); an owner could store an arbitrary `sort_by` that becomes raw SQL on every items read. New `resolveListItemSort(sortBy, sortHow)` maps sort keys through an allowlist (`rank`, `added_at`, `media_type`, `media_id`, `notes`), falls back to `rank` for unknown keys, and normalizes direction to ASC/DESC (lists.go:598-625). Unit-tested in `internal/handlers/lists/lists_test.go`.
 - **Trending score SQL injection** — `handleGetTrendingLists` embeds a fixed expression (safe) but note it's a hardcoded PG expression; acceptable.
 - **`generateSlug` userID slicing** — `userID[0:8]` panics if user id is shorter than 8 chars (e.g. empty or short test ids). No length guard.
 - **Smart-list pagination is per-type, not global** — each media type queries with its own `OFFSET/LIMIT`, then results are concatenated; global pagination is wrong (offset applies per table, `total_count` is summed). Page 2 may repeat/drop items.
@@ -61,7 +61,7 @@ Writes go through `cache.WithCacheTransaction` with list/user version-key bumps 
 
 ## Todos
 
-- [ ] Fix SQL injection in `handleGetListItems` ordering — reuse `sanitizeSortColumn` and validate sort direction.
+- [x] Fix SQL injection in `handleGetListItems` ordering — `resolveListItemSort` allowlist + unit test (lists_test.go).
 - [ ] Guard `userID[0:8]` in `generateSlug` against short/empty ids.
 - [ ] Fix smart-list pagination to page over the combined result set, not per-type.
 - [ ] Paginate `GET /lists/{id}/comments`.

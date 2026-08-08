@@ -27,7 +27,7 @@ Best-practices module: uses shared `auth.AuthRequired`, `cache.WithCacheTransact
 
 ## Oversights
 
-- **BUG: pause sessions never set `ExpiresAt`** — `handleScrobblePause` creates a `ScrobbleSession` with zero `ExpiresAt` (scrobble.go:317-325), but `handleScrobbleStop` reads the latest start/pause session and treats `time.Now().After(ExpiresAt)` as expired (scrobble.go:406). If the latest session is a pause, its zero `ExpiresAt` makes the stop always return 410 `session_expired`. The pause path must carry the original session expiry.
+- **BUG (RESOLVED): pause sessions never set `ExpiresAt`** — `handleScrobblePause` created a `ScrobbleSession` with zero `ExpiresAt`, but `handleScrobbleStop` reads the latest start/pause session and treats `time.Now().After(ExpiresAt)` as expired, so every pause→stop returned 410. Fixed: pause now sets `ExpiresAt: time.Now().Add(scrobbleSessionTimeout)` (scrobble.go:317-327).
 - **`queueScrobbleInvalidation` uses `BuildMediaVersionKey(mediaType, mediaID, nil, nil)`** — for episode scrobbles `mediaID` is the episode; the season/show-level version key context (nil season/episode ids) may not invalidate cached season/show responses. Verify version-key semantics for episodes.
 - **Start returns hardcoded `"id": 0`** — session ID not exposed even though the stop response does return `session.ID`. Inconsistent.
 - **`handleGetPlayback` response lacks media enrichment** — unlike `progress` (`/sync/playback/movies|episodes`) which enriches with movie/show info, this aggregate endpoint returns bare `{media_type, media_id, progress, paused_at}`. Two playback endpoints with divergent shapes.
@@ -41,7 +41,7 @@ Best-practices module: uses shared `auth.AuthRequired`, `cache.WithCacheTransact
 
 ## Todos
 
-- [ ] Fix the pause-session `ExpiresAt` bug (410 on every pause→stop).
+- [x] Fix the pause-session `ExpiresAt` bug (410 on every pause→stop) — pause now carries `ExpiresAt: now+5h`.
 - [ ] Verify/invalidate season+show version keys on episode scrobbles.
 - [ ] Return real session ID from start (or drop `id` from the response).
 - [ ] Align `/sync/playback` response shape with `progress` module or document the difference.

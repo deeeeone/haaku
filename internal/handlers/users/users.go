@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -385,7 +384,9 @@ func handleUploadAvatar(c *fiber.Ctx) error {
 	key := fmt.Sprintf("users/%s/avatar%s", userID, ext)
 	avatarURL, err := uploadToS3(key, mimeType, src, file.Size)
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to store avatar: "+err.Error())
+		// Fail closed: never store a fake URL in avatar_url. A real S3/MinIO
+		// client needs an approved dependency — until then this is a 501.
+		return writeError(c, fiber.StatusNotImplemented, "not_implemented", "avatar upload is not available yet")
 	}
 
 	// Update user's avatar_url.
@@ -601,24 +602,13 @@ func writeError(c *fiber.Ctx, status int, code, message string) error {
 // uploadToS3 stores a file in S3/MinIO and returns the public URL.
 // Uses environment variables: S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET.
 //
-// TODO: Replace with real S3/MinIO client (aws-sdk-go-v2 or minio-go) when the
-// dependency is approved. Currently returns a placeholder URL using the
-// configured endpoint/bucket.
+// NOT IMPLEMENTED: a real S3/MinIO client (aws-sdk-go-v2 or minio-go) requires
+// an approved dependency. Until then this fails closed instead of returning a
+// fake URL — callers must surface a 501, never persist a placeholder.
 func uploadToS3(key, contentType string, body io.Reader, size int64) (string, error) {
+	_ = key
 	_ = contentType
 	_ = body
 	_ = size
-
-	s3Endpoint := envDefault("S3_ENDPOINT", "http://localhost:9000")
-	s3Bucket := envDefault("S3_BUCKET", "avatars")
-
-	return fmt.Sprintf("%s/%s/%s", strings.TrimRight(s3Endpoint, "/"), s3Bucket, key), nil
-}
-
-// envDefault reads an env var with a fallback.
-func envDefault(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
+	return "", errors.New("S3/MinIO client not implemented")
 }

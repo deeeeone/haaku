@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"time"
 
+	"trakt-api/internal/auth"
 	"trakt-api/internal/database"
 	"trakt-api/internal/openapi"
 
@@ -59,14 +60,14 @@ func registerOpenAPIRoutes() {
 // RegisterRoutes wires all recommendation route handlers.
 func RegisterRoutes(api fiber.Router) {
 	recs := api.Group("/recommendations")
-	recs.Get("/movies", handlePersonalizedMovies)
-	recs.Get("/shows", handlePersonalizedShows)
+	recs.Get("/movies", auth.AuthRequired(), handlePersonalizedMovies)
+	recs.Get("/shows", auth.AuthRequired(), handlePersonalizedShows)
 
 	social := api.Group("/social_recommendations")
-	social.Get("/movies", handleSocialMovies)
-	social.Get("/shows", handleSocialShows)
+	social.Get("/movies", auth.AuthRequired(), handleSocialMovies)
+	social.Get("/shows", auth.AuthRequired(), handleSocialShows)
 
-	api.Get("/media/anticipated", handleAnticipated)
+	api.Get("/media/anticipated", auth.AuthRequired(), handleAnticipated)
 }
 
 // ============================================================================

@@ -26,13 +26,10 @@ Writes use `cache.WithCacheTransaction` with version-counter invalidation (`queu
 
 ## Oversights
 
-- **WRONG OUTBOX EVENT NAMES on removals/reorder** — copy-paste bugs:
-  - `handleRemoveCollection` publishes `EventCollectionAdded` with `{"deleted": ...}` (sync.go:737).
-  - `handleRemoveRatings` publishes `EventRatingAdded` (sync.go:1224).
-  - `handleRemoveFavorites` publishes `EventFavoriteAdded` (sync.go:1417).
-  - `handleReorderWatchlist` publishes `EventWatchlistAdded` (sync.go:1007).
-  - Each should have a corresponding `*Removed`/reorder event (check `internal/outbox` for existing constants).
-- **Hardcoded `0` in add responses** — `handleAddWatchlist` returns `"added":{"movies":0,"episodes":0}` (sync.go:905) instead of the real count; `handleAddFavorites` returns `"movies":0,"shows":0` (sync.go:1357) with `added` unused; `handleAddRatings` lumps ALL adds into `"movies"` (sync.go:1149).
+- **WRONG OUTBOX EVENT NAMES on removals/reorder (RESOLVED)** — copy-paste bugs:
+  - `handleRemoveCollection` publishes `EventCollectionAdded` with `{"deleted": ...}` (sync.go:737) — **kept as-is**: the webhook catalog defines `collection.updated` as the add+remove event, so this is the correct constant (comment added).
+  - `handleRemoveRatings` published `EventRatingAdded`, `handleRemoveFavorites` published `EventFavoriteAdded`, `handleReorderWatchlist` published `EventWatchlistAdded` (sync.go) — **fixed**: the webhook catalog (`trakt-killer-plan/03-api/webhooks.md`) defines no rating/favorite removal or watchlist-reorder events, so these handlers now emit nothing.
+- **Hardcoded `0` in add responses (RESOLVED)** — `handleAddWatchlist` returned `"added":{"movies":0,"episodes":0}` instead of real counts; `handleAddFavorites` returned `"movies":0,"shows":0` with `added` unused; `handleAddRatings` lumped ALL adds into `"movies"`. Now all three track real per-type `added`/`duplicates` (`addedMovies/Shows`, `dupMovies/Shows`, `addedSeasons/Episodes`) and return them.
 - **No requireAuth middleware on routes** — `RegisterRoutes` attaches nothing; each handler repeats the `c.Locals("user_id")` check. Inconsistent with `scrobble` (which wraps `auth.AuthRequired`).
 - **`handleGetHistoryItem` never validates `media_type`** — the route param is used verbatim in the WHERE (sync.go:173) while `media.ResolveID` may resolve a different type (e.g. show id passed with `media_type=movie` matches nothing or wrong rows).
 - **`resolveByTMDB` bypasses `media.ResolveID`** — mutates the context (`c.Set("id_type", ...)`) and hand-rolls an `external_ids` lookup + `verifyMediaExists` per item; duplicates the resolver and does an extra query per item (N+1 on bulk adds).
@@ -48,8 +45,8 @@ Writes use `cache.WithCacheTransaction` with version-counter invalidation (`queu
 
 ## Todos
 
-- [ ] Fix outbox event names on collection/ratings/favorites remove + watchlist reorder.
-- [ ] Return real `added` counts in watchlist/favorites/ratings add responses.
+- [x] Fix outbox event names on collection/ratings/favorites remove + watchlist reorder (removals/reorder now emit nothing; collection keeps `collection.updated`).
+- [x] Return real `added`/`duplicates` counts in watchlist/favorites/ratings add responses.
 - [ ] Attach `auth.AuthRequired` at route registration; drop per-handler checks.
 - [ ] Validate `media_type` against the resolved type in `handleGetHistoryItem`.
 - [ ] Reuse `media.ResolveID` and batch-resolve bulk add IDs.
