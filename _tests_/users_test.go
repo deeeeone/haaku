@@ -2,10 +2,14 @@ package tests
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
-	_ "trakt-api/internal/handlers/users"
+	"trakt-api/internal/handlers/users"
 	"trakt-api/internal/openapi"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 // ---------------------------------------------------------------------------
@@ -57,8 +61,7 @@ func TestUsersRoutesHaveCorrectTags(t *testing.T) {
 }
 
 // TestUsersRoutesAuthAnnotations verifies auth annotations on users routes.
-func TestUsersRoutesAuthAnnotations(t *testing.T) {
-	routes := openapi.AllRoutes()
+func TestUsersRoutesAuthAnnotations(t *testing.T) {	routes := openapi.AllRoutes()
 
 	requiredAuth := map[string]bool{
 		"/v1/users/me":          true,
@@ -454,5 +457,52 @@ func TestAccountDeletionStatus(t *testing.T) {
 	}
 	if pendingDeletion != "pending_deletion" {
 		t.Errorf("deletion status = %q, want 'pending_deletion'", pendingDeletion)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Route precedence: /users/me must not be swallowed by /users/:id
+// ---------------------------------------------------------------------------
+
+// TestUsersMeRoutePrecedence verifies /users/me resolves to the auth-required
+// me handler, not the public /users/:id handler. With no auth, the me handler
+// returns 401; the public profile handler would NOT 401 (it only hits the DB).
+func TestUsersMeRoutePrecedence(t *testing.T) {
+	app := fiber.New()
+	users.RegisterRoutes(app.Group("/v1"))
+
+	cases := []struct {
+		name   string
+		method string
+		path   string
+		want   int
+	}{
+		{"me no trailing slash", "GET", "/v1/users/me", http.StatusUnauthorized},
+		{"me trailing slash", "GET", "/v1/users/me/", http.StatusUnauthorized},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			req := httptest.NewRequest(tc.method, tc.path, nil)
+			resp, err := app.Test(req, -1)
+			if err != nil {
+				t.Fatalf("request failed: %v", err)
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != tc.want {
+				t.Errorf("%s %s: got %d, want %d (would mean /users/:id swallowed /users/me)",
+					tc.method, tc.path, resp.StatusCode, tc.want)
+			}
+		})
+	}
+
+	// A real :id path must NOT require auth (public profile route).
+	req := httptest.NewRequest("GET", "/v1/users/someuser", nil)
+	resp, err := app.Test(req, -1)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusUnauthorized {
+		t.Error("GET /users/someuser returned 401 — public /users/:id route not reachable")
 	}
 }

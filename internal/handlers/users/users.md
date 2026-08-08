@@ -47,7 +47,7 @@ Uses shared `auth.PrivacyFilter` for the public route; local `requireAuth` elsew
 - [ ] Emit account-deletion outbox event and invalidate cached profiles.
 - [ ] Handle the post-update re-fetch error in `handleUpdateMe`.
 - [ ] Backfill notification settings symmetrically in `parseSettings`.
-- [ ] Verify `/users/me` vs `/users/:id` route precedence (trailing-slash issue).
+- [x] Verify `/users/me` vs `/users/:id` route precedence (trailing-slash issue) — static route wins; added TestUsersMeRoutePrecedence regression test.
 - [ ] Wire real stats + recent activity into the public profile.
 - [ ] Use shared `auth.AuthRequired` / `internal/httpapi` helpers.
 - [ ] Verify module test coverage (`make test`).
