@@ -29,9 +29,9 @@ Emits outbox events (`user.followed`, `user.unfollowed`, `user.follow_approved`)
 - **No `cache.WithCacheTransaction`, no advisory locks (RESOLVED for cache-tx)** — mutations ran on plain `db` with outbox events published outside the write transaction. Now follow/unfollow/approve/deny run inside `cache.WithCacheTransaction`: DB commits first, then async cache invalidation; outbox events are published in-tx (roll back with the write). Both users' version counters (`BuildUserVersionKey`) are bumped on every mutation. Advisory locks on follow still pending (todo).
 - **Raw event-name strings (RESOLVED)** — `"user.followed"`, `"user.unfollowed"`, `"user.follow_approved"` were literals AND wrong: the webhook catalog (`trakt-killer-plan/03-api/webhooks.md`) defines `follow.created` / `follow.approved` / `follow.removed`. Now `outbox.EventFollowCreated/Approved/Removed` are used, matching the catalog (payload includes `actor` + `target`).
 - **No `notifications.CreateNotification`** — approval/follow events are outboxed but no notification record is created for the target (spec likely wants inbox notifications).
+- **No pagination (RESOLVED)** — followers/following/friends/requests were unbounded lists (charter: unlimited data → must paginate). All four now paginate per §7 (`?page&limit`, default 25/max 100) with `X-Pagination-*` headers + `Link: rel="next"`.
+- **No ordering (RESOLVED)** — lists were unordered. All four now order by `created_at DESC, id ASC` (id tiebreaker keeps pages stable).
 - **Unchecked errors throughout** — `listFollowRelations` ignores `Count` error; `resolveUserStubs` ignores `Find` error; several handlers ignore `db.Exec`/`Find` errors and return empty lists on failure.
-- **No pagination** — followers/following/friends/requests are unbounded lists (charter: unlimited data → must paginate).
-- **No ordering** — `Find` without `Order` on follower/following lists; order is undefined.
 - **`handleUnfollow` doesn't guard self-follow** (`targetID == followerID`) while `handleFollow` does.
 - **`handleFollow` returns 201 for already-following** — arguably should be 200 or an idempotent 201; at least it diverges from REST semantics.
 - **Local error helpers** (`writeError`/`badRequest`/`notFound`) duplicated from `internal/httpapi`; hand-rolled timestamp literals.
@@ -43,7 +43,7 @@ Emits outbox events (`user.followed`, `user.unfollowed`, `user.follow_approved`)
 - [x] Wrap follow/unfollow/approve/deny in `cache.WithCacheTransaction` with version-counter invalidation and in-tx outbox publish.
 - [x] Define typed outbox constants for follow events — `EventFollowCreated/Approved/Removed` matching the webhook catalog (`follow.created` / `follow.approved` / `follow.removed`); old `user.*` names were drift. Advisory locks on follow still pending.
 - [ ] Create inbox notifications on follow/approve.
-- [ ] Add pagination + stable ordering to all list endpoints.
+- [x] Add pagination + stable ordering to all list endpoints.
 - [ ] Handle all DB errors instead of ignoring them.
 - [ ] Use shared `internal/httpapi` helpers.
 - [ ] Verify module test coverage (`make test`).

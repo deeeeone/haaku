@@ -2,6 +2,7 @@ package social
 
 import (
 	"errors"
+	"strconv"
 	"time"
 
 	"trakt-api/internal/auth"
@@ -243,7 +244,7 @@ func handleListFollowing(c *fiber.Ctx) error {
 	return listFollowRelations(c, targetID, "following")
 }
 
-// handleListFriends lists mutual follows (friends).
+// handleListFriends lists mutual follows (friends), paginated per §7.
 func handleListFriends(c *fiber.Ctx) error {
 	targetID := c.Params("id")
 
@@ -252,13 +253,22 @@ func handleListFriends(c *fiber.Ctx) error {
 		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
+	page, limit := pagination(c)
+
 	// Mutual follows: people that target follows AND who follow target.
-	var rows []database.UserFollow
-	if err := db.Raw(`
-		SELECT f1.* FROM user_follows f1
+	const mutual = `
+		FROM user_follows f1
 		INNER JOIN user_follows f2 ON f1.follower_id = f2.following_id AND f1.following_id = f2.follower_id
-		WHERE f1.follower_id = ? AND f1.approved_at IS NOT NULL AND f2.approved_at IS NOT NULL`,
-		targetID).Scan(&rows).Error; err != nil {
+		WHERE f1.follower_id = ? AND f1.approved_at IS NOT NULL AND f2.approved_at IS NOT NULL`
+
+	var total int64
+	if err := db.Raw("SELECT COUNT(*)"+mutual, targetID).Scan(&total).Error; err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to fetch friends")
+	}
+
+	var rows []database.UserFollow
+	if err := db.Raw("SELECT f1.*"+mutual+" ORDER BY f1.created_at DESC, f1.id ASC LIMIT ? OFFSET ?",
+		targetID, limit, (page-1)*limit).Scan(&rows).Error; err != nil {
 		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to fetch friends")
 	}
 
@@ -268,10 +278,12 @@ func handleListFriends(c *fiber.Ctx) error {
 	}
 
 	users := resolveUserStubs(db, userIDs)
+	setPaginationHeaders(c, page, limit, totalPages(total, limit), total, len(users))
 	return c.JSON(users)
 }
 
-// listFollowRelations returns followers or following for a user.
+// listFollowRelations returns followers or following for a user, paginated
+// per api-conventions.md §7 with a stable created_at DESC, id ASC order.
 func listFollowRelations(c *fiber.Ctx, targetID, direction string) error {
 	db, err := database.GetDB()
 	if err != nil {
@@ -280,27 +292,45 @@ func listFollowRelations(c *fiber.Ctx, targetID, direction string) error {
 
 	// Verify user exists.
 	var count int64
-	db.Model(&database.User{}).Where("id = ?", targetID).Count(&count)
+	if err := db.Model(&database.User{}).Where("id = ?", targetID).Count(&count).Error; err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+	}
 	if count == 0 {
 		return notFound(c, "user not found")
 	}
 
-	var userIDs []string
+	page, limit := pagination(c)
+
+	query := db.Where("approved_at IS NOT NULL")
 	if direction == "followers" {
-		var follows []database.UserFollow
-		db.Where("following_id = ? AND approved_at IS NOT NULL", targetID).Find(&follows)
-		for _, f := range follows {
-			userIDs = append(userIDs, f.FollowerID)
-		}
+		query = query.Where("following_id = ?", targetID)
 	} else {
-		var follows []database.UserFollow
-		db.Where("follower_id = ? AND approved_at IS NOT NULL", targetID).Find(&follows)
-		for _, f := range follows {
+		query = query.Where("follower_id = ?", targetID)
+	}
+
+	var total int64
+	if err := query.Model(&database.UserFollow{}).Count(&total).Error; err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+	}
+
+	var follows []database.UserFollow
+	if err := query.Order("created_at DESC, id ASC").
+		Offset((page - 1) * limit).Limit(limit).
+		Find(&follows).Error; err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+	}
+
+	userIDs := make([]string, 0, len(follows))
+	for _, f := range follows {
+		if direction == "followers" {
+			userIDs = append(userIDs, f.FollowerID)
+		} else {
 			userIDs = append(userIDs, f.FollowingID)
 		}
 	}
 
 	users := resolveUserStubs(db, userIDs)
+	setPaginationHeaders(c, page, limit, totalPages(total, limit), total, len(users))
 	return c.JSON(users)
 }
 
@@ -320,8 +350,20 @@ func handleListFollowRequests(c *fiber.Ctx) error {
 		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
+	page, limit := pagination(c)
+
+	var total int64
+	if err := db.Model(&database.UserFollow{}).
+		Where("following_id = ? AND approved_at IS NULL", userID).
+		Count(&total).Error; err != nil {
+		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to fetch follow requests")
+	}
+
 	var follows []database.UserFollow
-	if err := db.Where("following_id = ? AND approved_at IS NULL", userID).Find(&follows).Error; err != nil {
+	if err := db.Where("following_id = ? AND approved_at IS NULL", userID).
+		Order("created_at DESC, id ASC").
+		Offset((page - 1) * limit).Limit(limit).
+		Find(&follows).Error; err != nil {
 		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to fetch follow requests")
 	}
 
@@ -350,6 +392,7 @@ func handleListFollowRequests(c *fiber.Ctx) error {
 		})
 	}
 
+	setPaginationHeaders(c, page, limit, totalPages(total, limit), total, len(resp))
 	return c.JSON(resp)
 }
 
@@ -511,4 +554,53 @@ func badRequest(c *fiber.Ctx, msg string) error {
 
 func notFound(c *fiber.Ctx, msg string) error {
 	return writeError(c, fiber.StatusNotFound, "not_found", msg)
+}
+
+// ---------------------------------------------------------------------------
+// PAGINATION (api-conventions.md §7): ?page&limit, default 25, max 100.
+// ---------------------------------------------------------------------------
+
+func pagination(c *fiber.Ctx) (page, limit int) {
+	page = queryInt(c, "page", 1)
+	if page < 1 {
+		page = 1
+	}
+	limit = queryInt(c, "limit", 25)
+	if limit < 1 {
+		limit = 1
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	return page, limit
+}
+
+func queryInt(c *fiber.Ctx, key string, fallback int) int {
+	raw := c.Query(key)
+	if raw == "" {
+		return fallback
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil {
+		return fallback
+	}
+	return n
+}
+
+func totalPages(total int64, limit int) int64 {
+	if total == 0 {
+		return 0
+	}
+	return (total-1)/int64(limit) + 1
+}
+
+func setPaginationHeaders(c *fiber.Ctx, page, limit int, pages int64, total int64, itemsCount int) {
+	c.Set("X-Pagination-Page", strconv.Itoa(page))
+	c.Set("X-Pagination-Limit", strconv.Itoa(limit))
+	c.Set("X-Pagination-Total-Pages", strconv.FormatInt(pages, 10))
+	c.Set("X-Pagination-Total-Items", strconv.FormatInt(total, 10))
+	c.Set("X-Pagination-Items-Count", strconv.Itoa(itemsCount))
+	if page < int(pages) {
+		c.Set("Link", `<`+c.Path()+"?page="+strconv.Itoa(page+1)+`&limit=`+strconv.Itoa(limit)+`>; rel="next"`)
+	}
 }
