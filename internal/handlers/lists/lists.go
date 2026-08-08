@@ -192,7 +192,14 @@ func generateSlug(name, userID string) string {
 	if slug == "" {
 		slug = "list"
 	}
-	return fmt.Sprintf("%s-%s", slug, userID[0:8])
+	suffix := userID
+	if len(userID) > 8 {
+		suffix = userID[:8]
+	}
+	if suffix == "" {
+		return slug
+	}
+	return fmt.Sprintf("%s-%s", slug, suffix)
 }
 
 func handleCreateList(c *fiber.Ctx) error {

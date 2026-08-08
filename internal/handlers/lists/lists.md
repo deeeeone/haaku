@@ -62,7 +62,7 @@ Writes go through `cache.WithCacheTransaction` with list/user version-key bumps 
 ## Todos
 
 - [x] Fix SQL injection in `handleGetListItems` ordering — `resolveListItemSort` allowlist + unit test (lists_test.go).
-- [ ] Guard `userID[0:8]` in `generateSlug` against short/empty ids.
+- [x] Guard `userID[0:8]` in `generateSlug` against short/empty ids (length-safe suffix + tests).
 - [ ] Fix smart-list pagination to page over the combined result set, not per-type.
 - [ ] Paginate `GET /lists/{id}/comments`.
 - [ ] Ensure unique constraint exists for list likes; consider a DB-level check.
