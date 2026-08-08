@@ -1,0 +1,46 @@
+# Reference Handler (`internal/handlers/reference`)
+
+## What it does
+
+Public (no-auth) read-only reference data endpoints, most proxying TMDB with a 24h Redis cache:
+
+- `GET /v1/genres/:type` — genres for `movies`/`shows`, slugified (`slugify`: lowercase, space→`-`, `&`→`and`).
+- `GET /v1/languages/:type` — TMDB languages (English name + ISO code).
+- `GET /v1/countries/:type` — TMDB countries.
+- `GET /v1/networks` — `SELECT DISTINCT network FROM shows` (DB, not TMDB).
+- `GET /v1/certifications/:type` — TMDB certifications grouped by country.
+
+Cache keys `reference:{category}:{type}`, TTL 24h. TMDB client lazily initialized via `getTMDBClient()`. Registered with OpenAPI.
+
+## Completion
+
+| Piece | Status |
+|---|---|
+| OpenAPI registration (5 routes) | Done |
+| Genres (movies/shows) + slugify | Done |
+| Languages / Countries | Done |
+| Networks (DB distinct) | Done |
+| Certifications grouped by country | Done |
+| Redis cache (24h, graceful degradation) | Done |
+
+## Oversights
+
+- **`getTMDBClient` lazy init has no `sync.Once`** — same race as `media.getTMDB`; concurrent first requests can construct two clients or leak an error. (reference.go:105-110)
+- **Local error helpers duplicate `internal/httpapi`** — `writeError`/`badRequest` comment even admits "mirror httpapi exported variants". Should import the shared package.
+- **Cache failure semantics inconsistent** — `getCached` falls through to upstream on Redis error (good), but a marshaled `[]` (empty upstream) is cached as a real value; an empty TMDB response would pin empty results for 24h.
+- **No cache on networks DB query** — it's cached, but the query runs `DISTINCT network` full scan each cold miss; no partial-network index.
+- **`slugify` is naive** — non-ASCII names (e.g. French/Japanese genres) produce slugs with characters not typical of TMDB slugs; no `unicode`, no existing-slug mapping. Genre slug drift vs TMDB `slug` field.
+- **`handleCertifications` doesn't sort groups** — map iteration order is random per request; `groups` order is nondeterministic (cache serializes whichever order first hit, so it becomes stable after first fill — but non-deterministic which one).
+- **Type validation duplicated** 4× (same `strings.ToLower` + allowlist in every handler) — could be one middleware/helper.
+- **`/v1/networks` uses `db.Raw` with `network != ''`** — null networks silently excluded; also `NetworkItem` has only name (fine per spec, but the DB `network` field may be a JSON list of networks, not a single value — verify schema).
+- **No `db == nil` check in genre/language/country/cert handlers** — they don't need DB, so fine; only `handleNetworks` guards it.
+
+## Todos
+
+- [ ] Add `sync.Once` (or init at startup) to `getTMDBClient`.
+- [ ] Use shared `internal/httpapi` error helpers.
+- [ ] Sort certification country groups deterministically.
+- [ ] Decide slug strategy (unicode-aware / upstream TMDB slug) — confirm genre slugs against spec.
+- [ ] Verify `shows.network` column type (scalar vs JSON list) against the schema; fix `DISTINCT network` query accordingly.
+- [ ] Consider avoiding caching empty upstream results.
+- [ ] Verify module test coverage (`make test`).

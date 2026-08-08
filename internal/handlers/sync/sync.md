@@ -1,0 +1,60 @@
+# Sync Handler (`internal/handlers/sync`)
+
+## What it does
+
+The sync workhorse — 17 endpoints over five collections (all auth-required, per-handler checks):
+
+- **History** (4): GET paginated (+ `type`, `start_at`, `end_at` filters), GET single item, POST add (movies + shows expanded to episodes by season, all-episode expansion), POST remove (by IDs or media objects).
+- **Collection** (3): GET, POST add, POST remove (movies/shows).
+- **Watchlist** (4): GET (+`sort_by` rank/listed/title), POST add (assigns incrementing rank), POST remove, PUT reorder.
+- **Ratings** (3): GET, POST upsert (`OnConflict` on user+media), POST remove.
+- **Favorites** (3): GET, POST add (ranked), POST remove.
+
+Writes use `cache.WithCacheTransaction` with version-counter invalidation (`queueUserInvalidation`/`queueMediaInvalidation`/`queueEpisodeInvalidations`) and outbox events (`EventHistoryAdded`, `EventCollectionAdded`, `EventWatchlistAdded`, `EventRatingAdded`, `EventFavoriteAdded`). Batch responses follow the Trakt `added/not_found/duplicates` shape.
+
+## Completion
+
+| Piece | Status |
+|---|---|
+| OpenAPI registration (17 routes) | Done |
+| History GET/add/remove (show→episode expansion) | Done |
+| Collection GET/add/remove | Done |
+| Watchlist GET/add/remove/reorder | Done |
+| Ratings GET/upsert/remove | Done |
+| Favorites GET/add/remove | Done |
+| Cache-tx + version invalidation + outbox | Done |
+
+## Oversights
+
+- **WRONG OUTBOX EVENT NAMES on removals/reorder** — copy-paste bugs:
+  - `handleRemoveCollection` publishes `EventCollectionAdded` with `{"deleted": ...}` (sync.go:737).
+  - `handleRemoveRatings` publishes `EventRatingAdded` (sync.go:1224).
+  - `handleRemoveFavorites` publishes `EventFavoriteAdded` (sync.go:1417).
+  - `handleReorderWatchlist` publishes `EventWatchlistAdded` (sync.go:1007).
+  - Each should have a corresponding `*Removed`/reorder event (check `internal/outbox` for existing constants).
+- **Hardcoded `0` in add responses** — `handleAddWatchlist` returns `"added":{"movies":0,"episodes":0}` (sync.go:905) instead of the real count; `handleAddFavorites` returns `"movies":0,"shows":0` (sync.go:1357) with `added` unused; `handleAddRatings` lumps ALL adds into `"movies"` (sync.go:1149).
+- **No requireAuth middleware on routes** — `RegisterRoutes` attaches nothing; each handler repeats the `c.Locals("user_id")` check. Inconsistent with `scrobble` (which wraps `auth.AuthRequired`).
+- **`handleGetHistoryItem` never validates `media_type`** — the route param is used verbatim in the WHERE (sync.go:173) while `media.ResolveID` may resolve a different type (e.g. show id passed with `media_type=movie` matches nothing or wrong rows).
+- **`resolveByTMDB` bypasses `media.ResolveID`** — mutates the context (`c.Set("id_type", ...)`) and hand-rolls an `external_ids` lookup + `verifyMediaExists` per item; duplicates the resolver and does an extra query per item (N+1 on bulk adds).
+- **No advisory locks on rank assignment** — `MAX(rank)` + increment in `handleAddWatchlist`/`handleAddFavorites` is racy under concurrency (duplicate ranks); the checklist/patterns say concurrent writes should be advisory-locked.
+- **Reorder is 0-based and partial** — `Update("rank", i)` with `i` from 0 (Trakt ranks are 1-based); a partial `rank` array silently re-ranks only those rows, leaving gaps/duplicates; no validation that all items belong to the user before applying.
+- **`sort_by=title` is wrong** — `order = "media_type, media_id"` (sync.go:781) sorts by type+id, not title; would need a join to media tables.
+- **`parseWatchedAt` silently falls back to `now`** — invalid/unknown timestamps become "now" instead of erroring or using `released`; `"unknown"` in show/season expansion also uses `now` rather than the episode `aired_at`.
+- **Bulk-add N+1** — per-item `findSeason`/`findEpisode` queries inside the transaction loop; fine for small batches, quadratic-ish for large syncs.
+- **No pagination on `handleGetHistoryItem`** — returns all history rows for one item.
+- **No episode support in collection/watchlist/favorites** — Trakt allows episodes in watchlist; only movies/shows handled here.
+- **Error helpers (`authRequired`/`badRequest`/`internalError`) duplicated** — "match project conventions" per comment, but the shared package exists.
+- **Mixed timestamp formats** — RFC3339 here vs `.000Z` literals elsewhere in the codebase.
+
+## Todos
+
+- [ ] Fix outbox event names on collection/ratings/favorites remove + watchlist reorder.
+- [ ] Return real `added` counts in watchlist/favorites/ratings add responses.
+- [ ] Attach `auth.AuthRequired` at route registration; drop per-handler checks.
+- [ ] Validate `media_type` against the resolved type in `handleGetHistoryItem`.
+- [ ] Reuse `media.ResolveID` and batch-resolve bulk add IDs.
+- [ ] Advisory-lock rank assignment; make reorder atomic + validated (1-based, complete set).
+- [ ] Fix `sort_by=title` to join titles.
+- [ ] Decide `watched_at` semantics for `"unknown"` (aired_at vs now) and align with spec.
+- [ ] Use shared `internal/httpapi` helpers.
+- [ ] Verify module test coverage (`make test`).
