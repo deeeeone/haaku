@@ -3,6 +3,7 @@ package scrobble
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"trakt-api/internal/auth"
@@ -196,10 +197,11 @@ func resolveScrobbleItem(c *fiber.Ctx, req *scrobbleRequest) (string, int64, *in
 // ---------------------------------------------------------------------------
 
 // handleScrobbleStart handles POST /v1/scrobble/start
-// queueScrobbleInvalidation bumps the user's version counter and the media
-// entity's version counter so cached scrobble/playback/activity responses
-// are invalidated in O(1).
-func queueScrobbleInvalidation(cacheTx *cache.CacheTransaction, userID, mediaType string, mediaID int64) {
+// queueScrobbleInvalidation bumps the user's version counter, the media
+// entity's version counter, and — for episode scrobbles — the show's episode
+// slot, so cached scrobble/playback/activity and show/episode responses are
+// invalidated in O(1).
+func queueScrobbleInvalidation(tx *gorm.DB, cacheTx *cache.CacheTransaction, userID, mediaType string, mediaID int64) {
 	uvk := redis.BuildUserVersionKey(userID)
 	cacheTx.AddInvalidation(uvk, map[string]interface{}{
 		"user_id":      userID,
@@ -211,6 +213,33 @@ func queueScrobbleInvalidation(cacheTx *cache.CacheTransaction, userID, mediaTyp
 		"media_id":     mediaID,
 		"media_type":   mediaType,
 		"version_key":  mvk,
+		"version_only": true,
+	})
+
+	if mediaType == "episode" {
+		queueEpisodeShowSlotInvalidation(tx, cacheTx, mediaID)
+	}
+}
+
+// queueEpisodeShowSlotInvalidation bumps the show's version slot for the given
+// episode so the cached show response (which embeds that episode's watch state)
+// is invalidated without blowing away the whole show. Best-effort: a lookup
+// miss just skips the slot bump.
+func queueEpisodeShowSlotInvalidation(tx *gorm.DB, cacheTx *cache.CacheTransaction, episodeID int64) {
+	var ep database.Episode
+	if err := tx.Select("id", "show_id", "season_id", "episode_number").First(&ep, episodeID).Error; err != nil {
+		return
+	}
+	seasonNum := 0
+	var season database.Season
+	if err := tx.Select("season_number").Where("id = ?", ep.SeasonID).First(&season).Error; err == nil {
+		seasonNum = season.SeasonNumber
+	}
+	vk := redis.BuildMediaVersionKey("show", ep.ShowID, &seasonNum, &ep.EpisodeNumber)
+	cacheTx.AddInvalidation(vk, map[string]interface{}{
+		"media_id":     ep.ShowID,
+		"media_type":   "show",
+		"version_key":  vk,
 		"version_only": true,
 	})
 }
@@ -266,7 +295,7 @@ func handleScrobbleStart(c *fiber.Ctx) error {
 			return nil, fmt.Errorf("create session: %w", err)
 		}
 
-		queueScrobbleInvalidation(cacheTx, userID, mediaType, mediaID)
+		queueScrobbleInvalidation(tx, cacheTx, userID, mediaType, mediaID)
 		if err := outbox.PublishEvent(tx, outbox.EventScrobbleStart, userID, map[string]any{
 			"action":     "start",
 			"media_type": mediaType,
@@ -343,7 +372,7 @@ func handleScrobblePause(c *fiber.Ctx) error {
 			return nil, fmt.Errorf("save playback: %w", err)
 		}
 
-		queueScrobbleInvalidation(cacheTx, userID, mediaType, mediaID)
+		queueScrobbleInvalidation(tx, cacheTx, userID, mediaType, mediaID)
 		if err := outbox.PublishEvent(tx, outbox.EventScrobblePause, userID, map[string]any{
 			"action":     "pause",
 			"media_type": mediaType,
@@ -450,7 +479,7 @@ func handleScrobbleStop(c *fiber.Ctx) error {
 				WatchedAt: session.CreatedAt.Format(time.RFC3339),
 			}
 
-			queueScrobbleInvalidation(cacheTx, userID, mediaType, mediaID)
+			queueScrobbleInvalidation(tx, cacheTx, userID, mediaType, mediaID)
 			if err := outbox.PublishEvent(tx, outbox.EventScrobbleStop, userID, map[string]any{
 				"action":     "scrobble",
 				"media_type": mediaType,
@@ -516,7 +545,7 @@ func handleScrobbleStop(c *fiber.Ctx) error {
 			return nil, fmt.Errorf("save playback: %w", err)
 		}
 
-		queueScrobbleInvalidation(cacheTx, userID, mediaType, mediaID)
+		queueScrobbleInvalidation(tx, cacheTx, userID, mediaType, mediaID)
 		if err := outbox.PublishEvent(tx, outbox.EventScrobbleStop, userID, map[string]any{
 			"action":     "stop",
 			"media_type": mediaType,
@@ -559,6 +588,20 @@ func (e *scrobbleSessionExpiredError) Error() string {
 // Playback handlers (T3.3)
 // ---------------------------------------------------------------------------
 
+// validMediaTypes lists the media types accepted by playback routes (and the
+// values written by resolveScrobbleItem).
+var validMediaTypes = map[string]bool{"movie": true, "show": true, "episode": true}
+
+// parsePlaybackMediaID strictly parses a playback media_id. Unlike fmt.Sscanf
+// it rejects partial parses ("12abc") and non-positive values.
+func parsePlaybackMediaID(s string) (int64, error) {
+	id, err := strconv.ParseInt(s, 10, 64)
+	if err != nil || id <= 0 {
+		return 0, fmt.Errorf("invalid media_id %q", s)
+	}
+	return id, nil
+}
+
 // handleGetPlayback handles GET /v1/sync/playback
 func handleGetPlayback(c *fiber.Ctx) error {
 	userID := getUserID(c)
@@ -571,7 +614,11 @@ func handleGetPlayback(c *fiber.Ctx) error {
 		return writeAPIError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
-	mediaTypeFilter := c.Query("type") // optional filter: movie, episode
+	mediaTypeFilter := c.Query("type") // optional filter: movie, show, episode
+
+	if mediaTypeFilter != "" && !validMediaTypes[mediaTypeFilter] {
+		return writeAPIError(c, fiber.StatusBadRequest, "invalid_request", "invalid media_type")
+	}
 
 	var playback []database.UserPlayback
 	query := db.Where("user_id = ?", userID)
@@ -603,14 +650,16 @@ func handleDeletePlayback(c *fiber.Ctx) error {
 	}
 
 	mediaType := c.Params("media_type")
-	mediaIDStr := c.Params("media_id")
+	if !validMediaTypes[mediaType] {
+		return writeAPIError(c, fiber.StatusBadRequest, "invalid_request", "invalid media_type")
+	}
 
-	var mediaID int64
-	if _, err := fmt.Sscanf(mediaIDStr, "%d", &mediaID); err != nil {
+	mediaID, err := parsePlaybackMediaID(c.Params("media_id"))
+	if err != nil {
 		return writeAPIError(c, fiber.StatusBadRequest, "invalid_request", "invalid media_id")
 	}
 
-	err := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
 		cacheTx := cache.NewCacheTransaction()
 
 		result := tx.Where("user_id = ? AND media_type = ? AND media_id = ?", userID, mediaType, mediaID).
