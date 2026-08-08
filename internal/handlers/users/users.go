@@ -3,11 +3,7 @@ package users
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
-	"net/http"
-	"path/filepath"
-	"strings"
+	"log/slog"
 	"time"
 
 	"trakt-api/internal/auth"
@@ -26,12 +22,11 @@ func init() {
 func registerOpenAPIRoutes() {
 	routes := []openapi.RouteDef{
 		{Method: "GET", Path: "/v1/users/me", Summary: "Get current user profile", Tags: []string{"Users"}, Auth: "required", StatusCodes: map[int]string{200: "User profile", 401: "Unauthorized"}},
-		{Method: "PUT", Path: "/v1/users/me", Summary: "Update current user profile", Tags: []string{"Users"}, Auth: "required", StatusCodes: map[int]string{200: "Updated profile", 400: "Invalid request", 401: "Unauthorized"}},
+		{Method: "PUT", Path: "/v1/users/me", Summary: "Update current user profile (bio/location/timezone/language/privacy — name & avatar are Clerk-managed)", Tags: []string{"Users"}, Auth: "required", StatusCodes: map[int]string{200: "Updated profile", 400: "Invalid request", 401: "Unauthorized"}},
 		{Method: "GET", Path: "/v1/users/{id}", Summary: "Get public user profile", Tags: []string{"Users"}, Auth: "optional", StatusCodes: map[int]string{200: "Public profile", 403: "Private profile", 404: "Not found"}},
 		{Method: "GET", Path: "/v1/users/me/settings", Summary: "Get user settings", Tags: []string{"Users"}, Auth: "required", StatusCodes: map[int]string{200: "Settings", 401: "Unauthorized"}},
 		{Method: "PUT", Path: "/v1/users/me/settings", Summary: "Update user settings", Tags: []string{"Users"}, Auth: "required", StatusCodes: map[int]string{200: "Updated settings", 400: "Invalid request", 401: "Unauthorized"}},
-		{Method: "POST", Path: "/v1/users/me/avatar", Summary: "Upload avatar image", Tags: []string{"Users"}, Auth: "required", StatusCodes: map[int]string{200: "Avatar URL", 400: "Invalid file", 401: "Unauthorized"}},
-		{Method: "DELETE", Path: "/v1/users/me", Summary: "Delete account", Tags: []string{"Users"}, Auth: "required", StatusCodes: map[int]string{204: "Deletion scheduled", 401: "Unauthorized"}},
+		{Method: "DELETE", Path: "/v1/users/me", Summary: "Delete account (deletes Clerk user; local data wiped)", Tags: []string{"Users"}, Auth: "required", StatusCodes: map[int]string{204: "Deletion scheduled", 401: "Unauthorized"}},
 		{Method: "POST", Path: "/v1/users/{id}/block", Summary: "Block a user", Tags: []string{"Users"}, Auth: "required", StatusCodes: map[int]string{204: "Blocked", 400: "Invalid request", 404: "User not found", 401: "Unauthorized"}},
 		{Method: "DELETE", Path: "/v1/users/{id}/block", Summary: "Unblock a user", Tags: []string{"Users"}, Auth: "required", StatusCodes: map[int]string{204: "Unblocked", 404: "Block not found", 401: "Unauthorized"}},
 	}
@@ -50,7 +45,6 @@ func RegisterRoutes(api fiber.Router) {
 	me.Put("/", requireAuth, handleUpdateMe)
 	me.Get("/settings", requireAuth, handleGetSettings)
 	me.Put("/settings", requireAuth, handleUpdateSettings)
-	me.Post("/avatar", requireAuth, handleUploadAvatar)
 	me.Delete("/", requireAuth, handleDeleteAccount)
 
 	// /users/:id routes (public, privacy-filtered)
@@ -119,8 +113,10 @@ type StatsSummary struct {
 }
 
 // UpdateProfileRequest is the body for PUT /users/me.
+// NOTE: name and avatar_url are intentionally absent — they are mirrored
+// from the Clerk account (webhook/lazy sync) and never edited through the
+// app. Bio/location/timezone/language/privacy are user-authored content.
 type UpdateProfileRequest struct {
-	Name      *string `json:"name,omitempty"`
 	Bio       *string `json:"bio,omitempty"`
 	Location  *string `json:"location,omitempty"`
 	Timezone  *string `json:"timezone,omitempty"`
@@ -156,10 +152,8 @@ type UpdateSettingsRequest struct {
 	Notifications *NotificationSettings `json:"notifications,omitempty"`
 }
 
-// AvatarResponse is returned after a successful avatar upload.
-type AvatarResponse struct {
-	AvatarURL string `json:"avatar_url"`
-}
+// AvatarResponse is no longer used — avatars come from Clerk. Removed with
+// the /users/me/avatar endpoint (2026-08, Clerk-managed identity).
 
 // ---------------------------------------------------------------------------
 // Handlers
@@ -200,9 +194,6 @@ func handleUpdateMe(c *fiber.Ctx) error {
 	}
 
 	updates := map[string]interface{}{}
-	if req.Name != nil {
-		updates["name"] = *req.Name
-	}
 	if req.Bio != nil {
 		updates["bio"] = *req.Bio
 	}
@@ -249,6 +240,12 @@ func handleGetUser(c *fiber.Ctx) error {
 			return writeError(c, fiber.StatusNotFound, "not_found", "user not found")
 		}
 		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+	}
+
+	// Deleted/pending-deletion accounts are gone for everyone (rows from the
+	// pre-wipe soft-delete era; DeleteUserData hard-deletes now).
+	if user.Status == "deleted" || user.Status == "pending_deletion" {
+		return writeError(c, fiber.StatusNotFound, "not_found", "user not found")
 	}
 
 	resp := buildPublicProfileResponse(&user)
@@ -333,88 +330,31 @@ func handleUpdateSettings(c *fiber.Ctx) error {
 	return c.JSON(current)
 }
 
-// handleUploadAvatar handles multipart avatar upload.
-func handleUploadAvatar(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(string)
-
-	file, err := c.FormFile("avatar")
-	if err != nil {
-		return writeError(c, fiber.StatusBadRequest, "invalid_request", "avatar file is required (multipart field 'avatar')")
-	}
-
-	// Validate file type.
-	ext := strings.ToLower(filepath.Ext(file.Filename))
-	allowedExts := map[string]string{
-		".jpg":  "image/jpeg",
-		".jpeg": "image/jpeg",
-		".png":  "image/png",
-		".webp": "image/webp",
-	}
-	mimeType, ok := allowedExts[ext]
-	if !ok {
-		return writeError(c, fiber.StatusBadRequest, "invalid_request", "avatar must be a JPEG, PNG, or WebP image")
-	}
-
-	// Validate size (max 5MB).
-	const maxSize = 5 * 1024 * 1024
-	if file.Size > maxSize {
-		return writeError(c, fiber.StatusBadRequest, "invalid_request", "avatar must be under 5MB")
-	}
-
-	// Open the uploaded file.
-	src, err := file.Open()
-	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to read uploaded file")
-	}
-	defer src.Close()
-
-	// Verify MIME type from content.
-	buf := make([]byte, 512)
-	n, _ := src.Read(buf)
-	detectedType := http.DetectContentType(buf[:n])
-	if detectedType != mimeType && !(mimeType == "image/webp" && strings.HasPrefix(detectedType, "image/")) {
-		return writeError(c, fiber.StatusBadRequest, "invalid_request",
-			fmt.Sprintf("file content does not match extension: expected %s, got %s", mimeType, detectedType))
-	}
-
-	// Reset file reader for upload.
-	src.Seek(0, 0)
-
-	// Upload to S3/MinIO.
-	key := fmt.Sprintf("users/%s/avatar%s", userID, ext)
-	avatarURL, err := uploadToS3(key, mimeType, src, file.Size)
-	if err != nil {
-		// Fail closed: never store a fake URL in avatar_url. A real S3/MinIO
-		// client needs an approved dependency — until then this is a 501.
-		return writeError(c, fiber.StatusNotImplemented, "not_implemented", "avatar upload is not available yet")
-	}
-
-	// Update user's avatar_url.
-	db, dbErr := database.GetDB()
-	if dbErr != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
-	}
-	if err := db.Model(&database.User{}).Where("id = ?", userID).Update("avatar_url", avatarURL).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to update avatar URL")
-	}
-
-	return c.JSON(AvatarResponse{AvatarURL: avatarURL})
-}
-
-// handleDeleteAccount marks the user's account for deletion.
+// handleDeleteAccount deletes the user's Clerk account (identity source of
+// truth) and wipes the local mirror + all owned data in one transaction.
+// The user.deleted webhook would do the same if it fires later — idempotent.
 func handleDeleteAccount(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
+
+	clerk := auth.GetClerk()
+	if clerk == nil {
+		return writeError(c, fiber.StatusInternalServerError, "internal", "account deletion unavailable")
+	}
+	if err := clerk.DeleteUser(userID); err != nil {
+		slog.Error("delete account: Clerk delete failed", "user_id", userID, "error", err)
+		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to delete account")
+	}
 
 	db, err := database.GetDB()
 	if err != nil {
 		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
-
-	if err := db.Model(&database.User{}).Where("id = ?", userID).Update("status", "pending_deletion").Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to schedule deletion")
+	if err := database.DeleteUserData(db, userID); err != nil {
+		slog.Error("delete account: local wipe failed", "user_id", userID, "error", err)
+		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to delete account data")
 	}
 
-	// TODO: trigger async cleanup (Phase 2+)
+	slog.Info("account deleted (Clerk + local wipe)", "user_id", userID)
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
@@ -593,22 +533,4 @@ func writeError(c *fiber.Ctx, status int, code, message string) error {
 			"message": message,
 		},
 	})
-}
-
-// ---------------------------------------------------------------------------
-// S3/MinIO upload
-// ---------------------------------------------------------------------------
-
-// uploadToS3 stores a file in S3/MinIO and returns the public URL.
-// Uses environment variables: S3_ENDPOINT, S3_ACCESS_KEY, S3_SECRET_KEY, S3_BUCKET.
-//
-// NOT IMPLEMENTED: a real S3/MinIO client (aws-sdk-go-v2 or minio-go) requires
-// an approved dependency. Until then this fails closed instead of returning a
-// fake URL — callers must surface a 501, never persist a placeholder.
-func uploadToS3(key, contentType string, body io.Reader, size int64) (string, error) {
-	_ = key
-	_ = contentType
-	_ = body
-	_ = size
-	return "", errors.New("S3/MinIO client not implemented")
 }

@@ -26,10 +26,11 @@ import (
 
 // ClerkClient wraps the Clerk API for JWT verification, user fetching, and webhooks.
 type ClerkClient struct {
-	BaseURL    string
-	SecretKey  string
-	httpClient *http.Client
-	jwks       *jwksCache
+	BaseURL       string
+	SecretKey     string
+	WebhookSecret string
+	httpClient    *http.Client
+	jwks          *jwksCache
 }
 
 // ClerkUser is the Clerk user profile as returned by the Clerk API.
@@ -79,15 +80,28 @@ type jwkKey struct {
 
 var clerkClient *ClerkClient
 
+// identityRefreshInterval bounds how often the lazy on-auth refresh calls
+// the Clerk Backend API per user. Real-time updates come from the Clerk
+// webhook; this is the zero-config fallback that keeps the identity mirror
+// fresh even when the webhook isn't configured.
+const identityRefreshInterval = time.Hour
+
 // InitClerk initializes the Clerk client singleton. Call once at startup.
 func InitClerk(cfg *config.Config) {
 	if cfg.ClerkSecret == "" {
 		slog.Warn("Clerk secret key not set — auth will reject all tokens")
 	}
+	webhookSecret := cfg.ClerkWebhookSecret
+	if webhookSecret == "" {
+		// Dev convenience: clerk-emulator signs webhooks with the same
+		// secret as the API. Production MUST set CLERK_WEBHOOK_SECRET.
+		webhookSecret = cfg.ClerkSecret
+	}
 	clerkClient = &ClerkClient{
-		BaseURL:    strings.TrimRight(cfg.ClerkBaseURL, "/"),
-		SecretKey:  cfg.ClerkSecret,
-		httpClient: &http.Client{Timeout: 10 * time.Second},
+		BaseURL:       strings.TrimRight(cfg.ClerkBaseURL, "/"),
+		SecretKey:     cfg.ClerkSecret,
+		WebhookSecret: webhookSecret,
+		httpClient:    &http.Client{Timeout: 10 * time.Second},
 		jwks: &jwksCache{
 			keys: make(map[string]*rsa.PublicKey),
 			ttl:  5 * time.Minute,
@@ -257,7 +271,9 @@ func (c *ClerkClient) VerifySessionToken(token string) (string, error) {
 	return userID, nil
 }
 
-// ensureUserInDB checks if a user exists locally; if not, fetches from Clerk and upserts.
+// ensureUserInDB checks if a user exists locally; if not, fetches from Clerk
+// and upserts. Existing users get a lazy identity refresh (name/username/
+// avatar are Clerk-managed) at most once per identityRefreshInterval.
 func (c *ClerkClient) ensureUserInDB(userID string) {
 	db, err := database.GetDB()
 	if err != nil {
@@ -267,27 +283,39 @@ func (c *ClerkClient) ensureUserInDB(userID string) {
 
 	var existing database.User
 	result := db.Where("id = ?", userID).First(&existing)
-	if result.Error == nil {
-		return // Already exists
-	}
-	if result.Error != gorm.ErrRecordNotFound {
-		slog.Warn("self-healing: db lookup failed", "user_id", userID, "error", result.Error)
+	if result.Error != nil {
+		if result.Error != gorm.ErrRecordNotFound {
+			slog.Warn("self-healing: db lookup failed", "user_id", userID, "error", result.Error)
+			return
+		}
+		// Never seen before — fetch from Clerk and create.
+		cu, err := c.GetUser(userID)
+		if err != nil {
+			slog.Warn("self-healing: Clerk fetch failed", "user_id", userID, "error", err)
+			return
+		}
+		if err := upsertUserFromClerk(db, cu); err != nil {
+			slog.Warn("self-healing: upsert failed", "user_id", userID, "error", err)
+			return
+		}
+		slog.Info("self-healing: user synced from Clerk", "user_id", userID)
 		return
 	}
 
-	// Fetch from Clerk and upsert
+	// Existing user — refresh identity when stale (or never synced: NULL
+	// ClerkSyncedAt covers every pre-existing row after deploy).
+	lastSync := existing.ClerkSyncedAt
+	if lastSync != nil && time.Since(*lastSync) < identityRefreshInterval {
+		return
+	}
 	cu, err := c.GetUser(userID)
 	if err != nil {
-		slog.Warn("self-healing: Clerk fetch failed", "user_id", userID, "error", err)
+		slog.Warn("self-healing: Clerk refresh failed", "user_id", userID, "error", err)
 		return
 	}
-
 	if err := upsertUserFromClerk(db, cu); err != nil {
-		slog.Warn("self-healing: upsert failed", "user_id", userID, "error", err)
-		return
+		slog.Warn("self-healing: refresh upsert failed", "user_id", userID, "error", err)
 	}
-
-	slog.Info("self-healing: user synced from Clerk", "user_id", userID)
 }
 
 // ---------------------------------------------------------------------------
@@ -359,6 +387,31 @@ func (c *ClerkClient) UpdateUserMetadata(userID string, metadata map[string]any)
 	return nil
 }
 
+// DeleteUser permanently deletes a Clerk user via the Backend API. Called
+// when a user deletes their account in-app — the user.deleted webhook then
+// wipes the local mirror (and is a no-op if we already wiped it).
+func (c *ClerkClient) DeleteUser(userID string) error {
+	url := c.BaseURL + "/v1/users/" + userID
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	if err != nil {
+		return fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+c.SecretKey)
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("api call: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("clerk api error %d: %s", resp.StatusCode, string(body))
+	}
+	return nil
+}
+
 // ExtractPrimaryEmail returns the primary email address from a ClerkUser, or empty string.
 func (cu *ClerkUser) ExtractPrimaryEmail() string {
 	if cu.PrimaryEmailAddressID == "" {
@@ -388,14 +441,17 @@ func (cu *ClerkUser) DisplayName() string {
 // ---------------------------------------------------------------------------
 
 // upsertUserFromClerk creates or updates a local User record from a ClerkUser.
+// Identity fields (username, email, name, avatar) are mirrors of Clerk and
+// must never be edited through the app; bio/privacy/role/plan are ours.
 func upsertUserFromClerk(db *gorm.DB, cu *ClerkUser) error {
 	user := database.User{
-		ID:        cu.ID,
-		Username:  cu.Username,
-		Email:     cu.ExtractPrimaryEmail(),
-		Name:      cu.DisplayName(),
-		AvatarURL: cu.ImageURL,
-		Status:    "active",
+		ID:            cu.ID,
+		Username:      cu.Username,
+		Email:         cu.ExtractPrimaryEmail(),
+		Name:          cu.DisplayName(),
+		AvatarURL:     cu.ImageURL,
+		Status:        "active", // resurrection-safe: re-created accounts reactivate
+		ClerkSyncedAt: timePtr(time.Now()),
 	}
 	// If username is empty, derive from email or use ID
 	if user.Username == "" {
@@ -408,3 +464,6 @@ func upsertUserFromClerk(db *gorm.DB, cu *ClerkUser) error {
 	}
 	return db.Where(database.User{ID: cu.ID}).Assign(user).FirstOrCreate(&user).Error
 }
+
+// timePtr returns a pointer to t.
+func timePtr(t time.Time) *time.Time { return &t }

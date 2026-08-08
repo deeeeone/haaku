@@ -17,11 +17,10 @@ func TestUsersRoutesRegistered(t *testing.T) {
 	routes := openapi.AllRoutes()
 
 	expectedPaths := map[string]bool{
-		"/v1/users/me":           true,
-		"/v1/users/{id}":         true,
-		"/v1/users/me/settings":  true,
-		"/v1/users/me/avatar":    true,
-		"/v1/users/{id}/block":   true,
+		"/v1/users/me":          true,
+		"/v1/users/{id}":        true,
+		"/v1/users/me/settings": true,
+		"/v1/users/{id}/block":  true,
 	}
 
 	found := make(map[string]bool)
@@ -41,11 +40,10 @@ func TestUsersRoutesHaveCorrectTags(t *testing.T) {
 	routes := openapi.AllRoutes()
 
 	usersPaths := map[string]bool{
-		"/v1/users/me":           true,
-		"/v1/users/{id}":         true,
-		"/v1/users/me/settings":  true,
-		"/v1/users/me/avatar":    true,
-		"/v1/users/{id}/block":   true,
+		"/v1/users/me":          true,
+		"/v1/users/{id}":        true,
+		"/v1/users/me/settings": true,
+		"/v1/users/{id}/block":  true,
 	}
 
 	for _, r := range routes {
@@ -65,7 +63,6 @@ func TestUsersRoutesAuthAnnotations(t *testing.T) {
 	requiredAuth := map[string]bool{
 		"/v1/users/me":          true,
 		"/v1/users/me/settings": true,
-		"/v1/users/me/avatar":   true,
 		"/v1/users/{id}/block":  true,
 	}
 	optionalAuth := map[string]bool{
@@ -95,20 +92,20 @@ func TestUsersRoutesAuthAnnotations(t *testing.T) {
 // TestProfileResponseJSON verifies the ProfileResponse JSON shape.
 func TestProfileResponseJSON(t *testing.T) {
 	resp := map[string]interface{}{
-		"id":          "user_abc123",
-		"username":    "testuser",
-		"name":        "Test User",
-		"bio":         "A test bio",
-		"avatar_url":  "https://example.com/avatar.jpg",
-		"location":    "San Francisco",
-		"timezone":    "America/Los_Angeles",
-		"language":    "en",
-		"is_private":  false,
-		"is_admin":    false,
+		"id":           "user_abc123",
+		"username":     "testuser",
+		"name":         "Test User",
+		"bio":          "A test bio",
+		"avatar_url":   "https://example.com/avatar.jpg",
+		"location":     "San Francisco",
+		"timezone":     "America/Los_Angeles",
+		"language":     "en",
+		"is_private":   false,
+		"is_admin":     false,
 		"is_moderator": false,
-		"status":      "active",
-		"plan":        "free",
-		"created_at":  "2024-01-15T10:30:00.000Z",
+		"status":       "active",
+		"plan":         "free",
+		"created_at":   "2024-01-15T10:30:00.000Z",
 	}
 
 	data, err := json.Marshal(resp)
@@ -133,13 +130,13 @@ func TestProfileResponseJSON(t *testing.T) {
 // TestPublicProfileResponseJSON verifies the public profile response shape.
 func TestPublicProfileResponseJSON(t *testing.T) {
 	resp := map[string]interface{}{
-		"id":          "user_abc123",
-		"username":    "testuser",
-		"name":        "Test User",
-		"bio":         "A test bio",
-		"avatar_url":  "https://example.com/avatar.jpg",
-		"location":    "San Francisco",
-		"is_private":  false,
+		"id":         "user_abc123",
+		"username":   "testuser",
+		"name":       "Test User",
+		"bio":        "A test bio",
+		"avatar_url": "https://example.com/avatar.jpg",
+		"location":   "San Francisco",
+		"is_private": false,
 		"stats_summary": map[string]interface{}{
 			"watched":   0,
 			"lists":     0,
@@ -249,77 +246,6 @@ func TestDefaultSettingsValues(t *testing.T) {
 				t.Errorf("settings.privacy.%s has invalid value %q, want one of: public, friends, private", k, str)
 			}
 		}
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Avatar validation tests
-// ---------------------------------------------------------------------------
-
-// TestAvatarAllowedExtensions verifies allowed image extensions.
-func TestAvatarAllowedExtensions(t *testing.T) {
-	allowed := map[string]bool{
-		".jpg":  true,
-		".jpeg": true,
-		".png":  true,
-		".webp": true,
-	}
-
-	// Valid extensions.
-	for _, ext := range []string{".jpg", ".jpeg", ".png", ".webp"} {
-		if !allowed[ext] {
-			t.Errorf("extension %q should be allowed", ext)
-		}
-	}
-
-	// Invalid extensions.
-	for _, ext := range []string{".gif", ".bmp", ".tiff", ".svg", ".exe", ""} {
-		if allowed[ext] {
-			t.Errorf("extension %q should not be allowed", ext)
-		}
-	}
-}
-
-// TestAvatarSizeLimit verifies the 5MB size limit.
-func TestAvatarSizeLimit(t *testing.T) {
-	const maxSize int64 = 5 * 1024 * 1024
-
-	if maxSize != 5242880 {
-		t.Errorf("max avatar size = %d, want 5242880 (5MB)", maxSize)
-	}
-
-	// Verify 5MB+1 is rejected.
-	oversized := maxSize + 1
-	if oversized <= maxSize {
-		t.Error("oversized check is broken")
-	}
-
-	// Verify exactly 5MB is allowed.
-	exact := maxSize
-	if exact > maxSize {
-		t.Error("exact 5MB should be allowed")
-	}
-}
-
-// TestAvatarResponseShape verifies the avatar upload response shape.
-func TestAvatarResponseShape(t *testing.T) {
-	resp := map[string]interface{}{
-		"avatar_url": "https://example.com/avatars/user_abc/avatar.jpg",
-	}
-
-	data, err := json.Marshal(resp)
-	if err != nil {
-		t.Fatalf("failed to marshal avatar response: %v", err)
-	}
-
-	var parsed map[string]interface{}
-	if err := json.Unmarshal(data, &parsed); err != nil {
-		t.Fatalf("failed to unmarshal: %v", err)
-	}
-
-	url, ok := parsed["avatar_url"].(string)
-	if !ok || url == "" {
-		t.Error("avatar response missing 'avatar_url' field")
 	}
 }
 
@@ -467,9 +393,9 @@ func TestSettingsParsingPartial(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 // TestUpdateProfileRequestShape verifies the update profile request shape.
+// NOTE: name and avatar are NOT updatable — they are Clerk-managed identity.
 func TestUpdateProfileRequestShape(t *testing.T) {
 	req := map[string]interface{}{
-		"name":       "New Name",
 		"bio":        "New bio",
 		"location":   "New Location",
 		"timezone":   "UTC",
@@ -487,10 +413,16 @@ func TestUpdateProfileRequestShape(t *testing.T) {
 		t.Fatalf("failed to unmarshal: %v", err)
 	}
 
-	updatableFields := []string{"name", "bio", "location", "timezone", "language", "is_private"}
+	updatableFields := []string{"bio", "location", "timezone", "language", "is_private"}
 	for _, field := range updatableFields {
 		if _, ok := parsed[field]; !ok {
 			t.Errorf("update request missing field %q", field)
+		}
+	}
+	// Identity fields must NOT be updatable through the profile endpoint.
+	for _, field := range []string{"name", "avatar_url", "username"} {
+		if _, ok := parsed[field]; ok {
+			t.Errorf("identity field %q must not be in the update request", field)
 		}
 	}
 }

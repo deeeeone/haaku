@@ -23,6 +23,7 @@ type User struct {
 	Status          string         `gorm:"type:text;default:active" json:"status"`
 	Plan            string         `gorm:"type:text;default:free" json:"plan"`
 	ClerkSyncStatus string         `gorm:"type:text;default:pending" json:"clerk_sync_status,omitempty"`
+	ClerkSyncedAt   *time.Time     `json:"clerk_synced_at,omitempty"` // last successful Clerk identity sync
 	Timezone        string         `gorm:"type:text" json:"timezone,omitempty"`
 	Language        string         `gorm:"type:text" json:"language,omitempty"`
 	Settings        string         `gorm:"type:jsonb;default:'{}'" json:"settings,omitempty"`

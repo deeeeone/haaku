@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"trakt-api/internal/database"
 	"trakt-api/internal/openapi"
@@ -69,7 +71,7 @@ func HandleClerkWebhook(c *fiber.Ctx) error {
 	rawBody := c.Body()
 
 	// Verify Svix webhook signature
-	if err := verifySvixSignature(clerk.SecretKey, c, rawBody); err != nil {
+	if err := verifySvixSignature(clerk.WebhookSecret, c, rawBody); err != nil {
 		slog.Warn("webhook: invalid signature", "error", err)
 		return c.Status(http.StatusUnauthorized).JSON(fiber.Map{
 			"error": fiber.Map{
@@ -140,18 +142,28 @@ func handleUserUpdated(db *gorm.DB, cu *ClerkUser) error {
 
 func handleUserDeleted(db *gorm.DB, cu *ClerkUser) error {
 	slog.Info("webhook: user.deleted", "user_id", cu.ID)
-	return db.Model(&database.User{}).
-		Where("id = ?", cu.ID).
-		Update("status", "deleted").Error
+	// Identity lives in Clerk; wipe the local mirror and every row the user
+	// owned so no PII or content survives account deletion.
+	if err := database.DeleteUserData(db, cu.ID); err != nil {
+		return fmt.Errorf("delete user data: %w", err)
+	}
+	slog.Info("webhook: user data wiped", "user_id", cu.ID)
+	return nil
 }
 
 // ---------------------------------------------------------------------------
 // Svix signature verification
 // ---------------------------------------------------------------------------
 
+// webhookTimestampTolerance is how far (seconds) a webhook timestamp may
+// drift from the server clock before the signature is rejected. Matches
+// Svix's default grace window and provides replay protection.
+const webhookTimestampTolerance = 300
+
 // verifySvixSignature verifies the Svix-compatible webhook signature headers.
 // Headers used: svix-id, svix-timestamp, svix-signature.
-// The signing secret is the Clerk secret key's raw bytes.
+// The signing secret is CLERK_WEBHOOK_SECRET (falls back to the API secret
+// key for the dev clerk-emulator).
 func verifySvixSignature(secret string, c *fiber.Ctx, body []byte) error {
 	svixID := c.Get("svix-id")
 	svixTimestamp := c.Get("svix-timestamp")
@@ -161,7 +173,17 @@ func verifySvixSignature(secret string, c *fiber.Ctx, body []byte) error {
 		return fmt.Errorf("missing svix headers")
 	}
 
-	// Parse signatures (comma-separated: "v1,<base64>,v1,<base64>")
+	// Reject stale timestamps (replay protection).
+	ts, err := strconv.ParseInt(svixTimestamp, 10, 64)
+	if err != nil {
+		return fmt.Errorf("invalid svix timestamp")
+	}
+	now := time.Now().Unix()
+	if now-ts > webhookTimestampTolerance || ts-now > webhookTimestampTolerance {
+		return fmt.Errorf("svix timestamp outside tolerance window")
+	}
+
+	// Parse signatures (space-separated groups: "v1,<base64> v1,<base64>").
 	parts := splitSvixSignatures(svixSignature)
 	if len(parts) == 0 {
 		return fmt.Errorf("no signatures in svix-signature header")
@@ -175,7 +197,7 @@ func verifySvixSignature(secret string, c *fiber.Ctx, body []byte) error {
 	mac.Write([]byte(signedContent))
 	expectedSig := base64.StdEncoding.EncodeToString(mac.Sum(nil))
 
-	// Check each signature
+	// Check each signature (constant-time compare)
 	for _, sig := range parts {
 		if len(sig) < 3 {
 			continue // Skip malformed
@@ -185,7 +207,7 @@ func verifySvixSignature(secret string, c *fiber.Ctx, body []byte) error {
 		if len(sigParts) != 2 {
 			continue
 		}
-		if sigParts[1] == expectedSig {
+		if hmac.Equal([]byte(sigParts[1]), []byte(expectedSig)) {
 			return nil // Valid
 		}
 	}

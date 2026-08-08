@@ -23,6 +23,10 @@ type Config struct {
 	TMDBAPIToken string // TMDB v4 read-access token; sent as Authorization Bearer to api.themoviedb.org/4
 	ClerkBaseURL string // Clerk API base URL (clerk-emulator in dev)
 	ClerkSecret  string // Clerk secret key (*** in dev)
+	// ClerkWebhookSecret is the Svix signing secret for webhook payloads.
+	// Separate from the API secret key. Falls back to ClerkSecret when unset
+	// (dev convenience — clerk-emulator reuses one secret).
+	ClerkWebhookSecret string
 
 	// Admin/mod whitelists (pattern: theintrodb-api)
 	AdminUserIDs []string
@@ -51,15 +55,16 @@ func Load() (*Config, error) {
 	_ = godotenv.Load()
 
 	cfg := &Config{
-		Env:          getEnv("APP_ENV", "development"),
-		Port:         getEnv("PORT", "8080"),
-		DatabaseURL:  os.Getenv("DATABASE_URL"),
-		RedisURL:     getEnv("REDIS_URL", "redis://localhost:6379"),
-		TMDBAPIToken: os.Getenv("TMDB_API_TOKEN"),
-		ClerkBaseURL: getEnv("CLERK_API_BASE_URL", "http://localhost:4000"),
-		ClerkSecret:  os.Getenv("CLERK_SECRET_KEY"),
-		AdminUserIDs: splitCSV(os.Getenv("ADMIN_USER_IDS")),
-		ModUserIDs:   splitCSV(os.Getenv("MOD_USER_IDS")),
+		Env:                getEnv("APP_ENV", "development"),
+		Port:               getEnv("PORT", "8080"),
+		DatabaseURL:        os.Getenv("DATABASE_URL"),
+		RedisURL:           getEnv("REDIS_URL", "redis://localhost:6379"),
+		TMDBAPIToken:       os.Getenv("TMDB_API_TOKEN"),
+		ClerkBaseURL:       getEnv("CLERK_API_BASE_URL", "http://localhost:4000"),
+		ClerkSecret:        os.Getenv("CLERK_SECRET_KEY"),
+		ClerkWebhookSecret: os.Getenv("CLERK_WEBHOOK_SECRET"),
+		AdminUserIDs:       splitCSV(os.Getenv("ADMIN_USER_IDS")),
+		ModUserIDs:         splitCSV(os.Getenv("MOD_USER_IDS")),
 
 		// Rate limiting (Phase 9d) — ON by default (primary abuse control);
 		// set RATE_LIMIT_ENABLED=false for local dev without Redis.
