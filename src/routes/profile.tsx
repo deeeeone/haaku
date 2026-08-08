@@ -100,7 +100,7 @@ function ProfilePage() {
     enabled: !!api,
   })
 
-  const displayName = (profile as Record<string, unknown>)?.display_name as string | undefined
+  const displayName = (profile as Record<string, unknown>)?.name as string | undefined
   const username = (profile as Record<string, unknown>)?.username as string | undefined
   const bio = (profile as Record<string, unknown>)?.bio as string | undefined
   const avatarUrl = (profile as Record<string, unknown>)?.avatar_url as string | undefined

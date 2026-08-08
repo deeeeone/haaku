@@ -1,8 +1,8 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { useAuth, useClerk } from '@clerk/clerk-react'
+import { useClerk } from '@clerk/clerk-react'
 import {
   User,
   Lock,
@@ -10,7 +10,6 @@ import {
   Shield,
   AlertTriangle,
   Trash2,
-  Upload,
   Save,
 } from 'lucide-react'
 import { useApi } from '@/api/client'
@@ -42,8 +41,9 @@ export const Route = createFileRoute('/settings/')({
 function SettingsIndexPage() {
   const api = useApi()
   const queryClient = useQueryClient()
-  const { user } = useClerk()
-  const { getToken } = useAuth()
+  // Identity (name, username, avatar) lives in the Clerk account — the
+  // profile API serves a synced mirror. Editing happens in Clerk.
+  const { user, openUserProfile } = useClerk()
 
   const { data: profile } = useQuery({
     queryKey: ['settings', 'profile'],
@@ -65,12 +65,10 @@ function SettingsIndexPage() {
     enabled: !!api,
   })
 
-  const [displayName, setDisplayName] = useState('')
   const [bio, setBio] = useState('')
   const [profileInitialized, setProfileInitialized] = useState(false)
 
   if (profile && !profileInitialized) {
-    setDisplayName((profile.display_name as string) ?? '')
     setBio((profile.bio as string) ?? '')
     setProfileInitialized(true)
   }
@@ -91,8 +89,9 @@ function SettingsIndexPage() {
   const updateProfileMutation = useMutation({
     mutationFn: async () => {
       if (!api) throw new Error('Not authenticated')
+      // bio/location are user-authored; name/avatar are Clerk-managed.
       await api.PUT('/v1/users/me', {
-        body: { display_name: displayName, bio },
+        body: { bio },
       } as never)
     },
     onSuccess: () => {
@@ -135,29 +134,7 @@ function SettingsIndexPage() {
     },
   })
 
-  const avatarInputRef = useRef<HTMLInputElement>(null)
-
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || !api) return
-    try {
-      const token = await getToken()
-      const headers: Record<string, string> = {}
-      if (token) headers['Authorization'] = `Bearer ${token}`
-      const formData = new FormData()
-      formData.append('avatar', file)
-      const res = await fetch(
-        `${import.meta.env.VITE_API_URL}/v1/users/me/avatar`,
-        { method: 'POST', headers, body: formData }
-      )
-      if (!res.ok) throw new Error('Upload failed')
-      toast.success('Avatar updated')
-      queryClient.invalidateQueries({ queryKey: ['settings', 'profile'] })
-      queryClient.invalidateQueries({ queryKey: ['profile', 'me'] })
-    } catch {
-      toast.error('Failed to upload avatar')
-    }
-  }
+  const displayName = user?.fullName || (profile?.name as string) || ''
 
   return (
     <div className="space-y-8">
@@ -166,7 +143,9 @@ function SettingsIndexPage() {
         <Card>
           <CardHeader>
             <CardTitle>Avatar</CardTitle>
-            <CardDescription>Upload a profile picture</CardDescription>
+            <CardDescription>
+              Your photo comes from your Clerk account
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-4">
@@ -184,18 +163,10 @@ function SettingsIndexPage() {
               <Button
                 variant="glass"
                 size="sm"
-                onClick={() => avatarInputRef.current?.click()}
+                onClick={() => openUserProfile()}
               >
-                <Upload className="size-4" />
-                Upload
+                Edit in Clerk
               </Button>
-              <input
-                ref={avatarInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleAvatarUpload}
-              />
             </div>
           </CardContent>
         </Card>
@@ -203,14 +174,22 @@ function SettingsIndexPage() {
         <Card className="mt-4">
           <CardHeader>
             <CardTitle>Display Name</CardTitle>
-            <CardDescription>How others see you</CardDescription>
+            <CardDescription>
+              Managed in your Clerk account — changes appear here and on your
+              public profile automatically
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <Input
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder="Display name"
-            />
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-sf-ink">{displayName || 'No name set'}</p>
+              <Button
+                variant="glass"
+                size="sm"
+                onClick={() => openUserProfile()}
+              >
+                Edit in Clerk
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
