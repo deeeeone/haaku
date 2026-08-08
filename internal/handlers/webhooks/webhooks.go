@@ -1,15 +1,19 @@
 package webhooks
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"net/url"
+	"os"
 	"time"
 
 	"trakt-api/internal/auth"
@@ -157,6 +161,10 @@ func unauthorized(c *fiber.Ctx) error {
 	return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
 }
 
+func serverError(c *fiber.Ctx, msg string) error {
+	return writeError(c, fiber.StatusInternalServerError, "internal_error", msg)
+}
+
 // requireUserID returns the authenticated user ID or writes a 401 when the
 // auth middleware did not set one (defense in depth — routes also run
 // auth.AuthRequired).
@@ -225,10 +233,73 @@ func getDB() (*gorm.DB, error) {
 	return db, nil
 }
 
-func hashSecret(secret string) string {
-	h := hmac.New(sha256.New, []byte(secret))
-	h.Write([]byte("webhook-secret"))
-	return hex.EncodeToString(h.Sum(nil))
+// SecretKeyFromEnv returns the AES-256 key used to encrypt webhook secrets at
+// rest. Required: WEBHOOK_SECRET_KEY (32 bytes, hex-encoded).
+func SecretKeyFromEnv() ([]byte, error) {
+	raw := os.Getenv("WEBHOOK_SECRET_KEY")
+	if raw == "" {
+		return nil, errors.New("WEBHOOK_SECRET_KEY is not set")
+	}
+	key, err := hex.DecodeString(raw)
+	if err != nil {
+		return nil, fmt.Errorf("WEBHOOK_SECRET_KEY must be hex-encoded: %w", err)
+	}
+	if len(key) != 32 {
+		return nil, errors.New("WEBHOOK_SECRET_KEY must be 32 bytes (64 hex chars)")
+	}
+	return key, nil
+}
+
+// EncryptSecret encrypts a webhook secret at rest with AES-256-GCM. Output is
+// base64(nonce || ciphertext). The stored value must be recoverable so the
+// delivery worker can sign requests with the plaintext consumers verify.
+func EncryptSecret(secret string) (string, error) {
+	key, err := SecretKeyFromEnv()
+	if err != nil {
+		return "", err
+	}
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", err
+	}
+	aead, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+	nonce := make([]byte, aead.NonceSize())
+	if _, err := rand.Read(nonce); err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(aead.Seal(nonce, nonce, []byte(secret), nil)), nil
+}
+
+// DecryptSecret reverses EncryptSecret.
+func DecryptSecret(stored string) (string, error) {
+	key, err := SecretKeyFromEnv()
+	if err != nil {
+		return "", err
+	}
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", err
+	}
+	aead, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+	raw, err := base64.StdEncoding.DecodeString(stored)
+	if err != nil {
+		return "", fmt.Errorf("webhook secret is not a valid encrypted blob: %w", err)
+	}
+	if len(raw) < aead.NonceSize() {
+		return "", errors.New("webhook secret blob is too short")
+	}
+	nonce, ct := raw[:aead.NonceSize()], raw[aead.NonceSize():]
+	pt, err := aead.Open(nil, nonce, ct, nil)
+	if err != nil {
+		return "", fmt.Errorf("webhook secret decryption failed (key changed or legacy value): %w", err)
+	}
+	return string(pt), nil
 }
 
 func generateSecret() (string, error) {
@@ -388,11 +459,16 @@ func handleCreateEndpoint(c *fiber.Ctx) error {
 		return badRequest(c, "database unavailable")
 	}
 
+	encSecret, err := EncryptSecret(secret)
+	if err != nil {
+		return serverError(c, "failed to store webhook secret securely")
+	}
+
 	ep := database.WebhookEndpoint{
 		UserID:     uid,
 		URL:        req.URL,
 		Events:     database.StringSlice(req.Events),
-		SecretHash: hashSecret(secret),
+		SecretHash: encSecret,
 		Active:     true,
 		CreatedAt:  time.Now().UTC(),
 		UpdatedAt:  time.Now().UTC(),
@@ -530,7 +606,12 @@ func handleRotateSecret(c *fiber.Ctx) error {
 		return badRequest(c, "failed to generate secret")
 	}
 
-	ep.SecretHash = hashSecret(secret)
+	encSecret, err := EncryptSecret(secret)
+	if err != nil {
+		return serverError(c, "failed to store webhook secret securely")
+	}
+
+	ep.SecretHash = encSecret
 	ep.UpdatedAt = time.Now().UTC()
 
 	if err := db.Save(&ep).Error; err != nil {

@@ -3,9 +3,6 @@ package workers
 import (
 	"bytes"
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -239,9 +236,15 @@ func doWebhookPost(ep *database.WebhookEndpoint, body string) (int, string, int,
 	}
 	dialAddr := net.JoinHostPort(pinnedIP.String(), port)
 
-	// HMAC signing.
+	// HMAC signing with the recoverable (decrypted) secret, so consumers can
+	// verify with the plaintext shown once at creation/rotation.
+	secret, err := webhooks.DecryptSecret(ep.SecretHash)
+	if err != nil {
+		log.Printf("[webhook-worker] endpoint %d: %v", ep.ID, err)
+		return 0, "", 0, fmt.Errorf("cannot decrypt webhook secret: %w", err)
+	}
 	timestamp := time.Now().Unix()
-	sig := computeHMAC(ep.SecretHash, timestamp, body)
+	sig := webhooks.GenerateHMAC(secret, timestamp, body)
 	sigHeader := fmt.Sprintf("t=%d,v1=%s", timestamp, sig)
 
 	start := time.Now()
@@ -288,13 +291,6 @@ func doWebhookPost(ep *database.WebhookEndpoint, body string) (int, string, int,
 	}
 
 	return resp.StatusCode, respStr, durMs, nil
-}
-
-// computeHMAC signs the payload using HMAC-SHA256.
-func computeHMAC(secretHash string, timestamp int64, body string) string {
-	mac := hmac.New(sha256.New, []byte(secretHash))
-	mac.Write([]byte(fmt.Sprintf("%d.%s", timestamp, body)))
-	return hex.EncodeToString(mac.Sum(nil))
 }
 
 // recordDelivery writes a webhook_deliveries row.
