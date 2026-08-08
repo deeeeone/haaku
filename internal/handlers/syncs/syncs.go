@@ -1,11 +1,14 @@
 package syncs
 
 import (
+	"errors"
+
 	"trakt-api/internal/auth"
 	"trakt-api/internal/database"
 	"trakt-api/internal/openapi"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 )
 
 func init() {
@@ -155,7 +158,10 @@ func handleGetSync(c *fiber.Ctx) error {
 
 	var session database.SyncSession
 	if err := db.Where("id = ? AND user_id = ?", syncID, userID).First(&session).Error; err != nil {
-		return writeError(c, fiber.StatusNotFound, "not_found", "sync session not found")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return writeError(c, fiber.StatusNotFound, "not_found", "sync session not found")
+		}
+		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	return c.JSON(buildSyncResponse(&session))
@@ -179,7 +185,10 @@ func handleGetSyncPaused(c *fiber.Ctx) error {
 
 	var session database.SyncSession
 	if err := db.Where("id = ? AND user_id = ?", syncID, userID).First(&session).Error; err != nil {
-		return writeError(c, fiber.StatusNotFound, "not_found", "sync session not found")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return writeError(c, fiber.StatusNotFound, "not_found", "sync session not found")
+		}
+		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	return c.JSON(fiber.Map{
@@ -206,7 +215,10 @@ func handleGetSyncSkipped(c *fiber.Ctx) error {
 
 	var session database.SyncSession
 	if err := db.Where("id = ? AND user_id = ?", syncID, userID).First(&session).Error; err != nil {
-		return writeError(c, fiber.StatusNotFound, "not_found", "sync session not found")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return writeError(c, fiber.StatusNotFound, "not_found", "sync session not found")
+		}
+		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	// Minimal: return empty for now; skipped items require full sync engine (Phase 3+).

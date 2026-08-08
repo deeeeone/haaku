@@ -39,5 +39,5 @@ Uses the shared `auth.AuthRequired()` middleware on all four routes (one of the 
 - [ ] Decide what `/paused` and `/skipped` return once the engine exists; add real pagination.
 - [x] Replace unchecked `user_id` assert with a safe helper (`requireUserID`, 401 on missing).
 - [x] Validate `:id<int>` parse and return 400 on failure (`parseSyncID`).
-- [ ] Separate "not found" from other DB errors.
+- [x] Separate "not found" from other DB errors — `First` failures that aren't `gorm.ErrRecordNotFound` now return 500 `internal` instead of 404.
 - [ ] Verify module test coverage (`make test`).
