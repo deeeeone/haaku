@@ -26,9 +26,9 @@ This is the **only** recommendations implementation (the `discovery` module's re
 - **Anticipated `watchlist_count`/`score` ordering** — in the combined branch (`mediaType` empty) the inner CTEs each compute `COUNT(*) OVER()` before `UNION ALL`, so `full_count` is the per-type count, not the combined total; the outer wrapper re-orders by `score` but the reported `row_count` is misleading when both types are returned.
 - **Unbounded `fetchTopGenres` query** — union of 6 per-user subqueries scanned per request; no cache. Every personalized call re-aggregates the user's full history. No Redis cache despite the pattern in `media`/`lists`.
 - **`jsonb_array_elements_text` cross join** — `JOIN jsonb_array_elements_text(movies.genres) AS g ON TRUE` on the movies table; combined with `DISTINCT` this is functional but expensive (full-table expansion before filtering). No index-friendly path.
-- **`safeDateString(nil)` returns `""`** but the response omits nothing; combined with `released,omitempty` semantics it's fine, yet `first_aired`/`release_date` zero-dates silently become empty strings.
+- **`Date.String()` (nil) returns `""`** — shared `database.Date.String()` is nil-safe; combined with `released,omitempty` semantics it's fine, yet `first_aired`/`release_date` zero-dates silently become empty strings.
 - **Cutoff is `time.Now()` (server clock)** — 90-day window is per-request; fine for a wall-clock read but untestable; no injection of `now()`.
-- **Local helpers** — `parsePagination`, `safeStrings`, `safeDateString`, `imageURL`, `authRequired`, `internalError` all duplicated instead of shared packages.
+- **Local helpers (RESOLVED)** — `parsePagination` (shared), `authRequired` (shared middleware), `internalError` (response helpers), and `safeStrings`/`safeDateString`/`imageURL` (now `database.StringSlice.Values`, `database.Date.String`, `database.JSONMap.StringValue`; Batch 4).
 - **Hardcoded score weights** (0.7/0.3) and `popularity DESC` fallback — not spec-driven constants.
 - **No `extended`/limit validation against spec** — `limit` clamped to 100 but the API convention may cap differently (check `03-api/api-conventions.md`).
 - **No exclusion of already-anticipated hidden items in `handleAnticipated`** — personalization/social exclude `user_hidden`, but anticipated does not.
@@ -43,5 +43,5 @@ This is the **only** recommendations implementation (the `discovery` module's re
 - [ ] Respect `user_hidden` in `handleAnticipated`.
 - [x] Replace error + pagination helpers with `internal/response` (Batch 0).
 - [x] Swap local `authRequired` for shared `auth.AuthRequired` (Batch 1).
-- [ ] Consolidate remaining local `safeStrings`/`safeDateString`/`imageURL` into shared helpers.
+- [x] `safeStrings`/`safeDateString`/`imageURL` consolidated into `database` package methods (`StringSlice.Values`, `Date.String`, `JSONMap.StringValue`; Batch 4).
 - [ ] Verify module test coverage (`make test`).

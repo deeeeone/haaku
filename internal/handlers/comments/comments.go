@@ -3,6 +3,7 @@ package comments
 import (
 	"errors"
 	"strconv"
+	"strings"
 	"time"
 
 	"trakt-api/internal/database"
@@ -889,41 +890,17 @@ func parseID(c *fiber.Ctx) (int64, error) {
 }
 
 func parseCSV(s string) []string {
-	var parts []string
-	for _, p := range splitByComma(s) {
-		trimmed := trimSpace(p)
-		if trimmed != "" {
-			parts = append(parts, trimmed)
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
 		}
 	}
-	if len(parts) == 0 {
+	if len(out) == 0 {
 		return []string{s}
 	}
-	return parts
-}
-
-func splitByComma(s string) []string {
-	var parts []string
-	start := 0
-	for i := 0; i < len(s); i++ {
-		if s[i] == ',' {
-			parts = append(parts, s[start:i])
-			start = i + 1
-		}
-	}
-	parts = append(parts, s[start:])
-	return parts
-}
-
-func trimSpace(s string) string {
-	start, end := 0, len(s)
-	for start < end && (s[start] == ' ' || s[start] == '\t') {
-		start++
-	}
-	for end > start && (s[end-1] == ' ' || s[end-1] == '\t') {
-		end--
-	}
-	return s[start:end]
+	return out
 }
 
 func toCommentResponses(comments []database.Comment) []commentResponse {

@@ -211,11 +211,11 @@ func handlePersonalizedMovies(c *fiber.Ctx) error {
 			Title:      m.Title,
 			Overview:   m.Overview,
 			Popularity: m.Popularity,
-			Genres:     safeStrings(m.Genres),
-			Released:   safeDateString(m.Released),
+			Genres:     m.Genres.Values(),
+			Released:   m.Released.String(),
 			Runtime:    m.Runtime,
 			RatingAvg:  m.RatingAvg,
-			Poster:     imageURL(m.Images, "poster"),
+			Poster:     m.Images.StringValue("poster"),
 		})
 	}
 	if results == nil {
@@ -296,12 +296,12 @@ func handlePersonalizedShows(c *fiber.Ctx) error {
 			Title:        s.Title,
 			Overview:     s.Overview,
 			Popularity:   s.Popularity,
-			Genres:       safeStrings(s.Genres),
-			FirstAired:   safeDateString(s.FirstAired),
+			Genres:       s.Genres.Values(),
+			FirstAired:   s.FirstAired.String(),
 			Status:       s.Status,
 			EpisodeCount: s.EpisodeCount,
 			RatingAvg:    s.RatingAvg,
-			Poster:       imageURL(s.Images, "poster"),
+			Poster:       s.Images.StringValue("poster"),
 		})
 	}
 	if results == nil {
@@ -392,11 +392,11 @@ func handleSocialMovies(c *fiber.Ctx) error {
 			Title:       r.Title,
 			Overview:    r.Overview,
 			Popularity:  r.Popularity,
-			Genres:      safeStrings(r.Genres),
-			Released:    safeDateString(r.Released),
+			Genres:      r.Genres.Values(),
+			Released:    r.Released.String(),
 			FriendCount: r.FriendCount,
 			RatingAvg:   r.RatingAvg,
-			Poster:      imageURL(r.Images, "poster"),
+			Poster:      r.Images.StringValue("poster"),
 		})
 		if total == 0 && r.FullCount > 0 {
 			total = int64(r.FullCount)
@@ -490,12 +490,12 @@ func handleSocialShows(c *fiber.Ctx) error {
 			Title:       r.Title,
 			Overview:    r.Overview,
 			Popularity:  r.Popularity,
-			Genres:      safeStrings(r.Genres),
-			FirstAired:  safeDateString(r.FirstAired),
+			Genres:      r.Genres.Values(),
+			FirstAired:  r.FirstAired.String(),
 			Status:      r.Status,
 			FriendCount: r.FriendCount,
 			RatingAvg:   r.RatingAvg,
-			Poster:      imageURL(r.Images, "poster"),
+			Poster:      r.Images.StringValue("poster"),
 		})
 		if total == 0 && r.FullCount > 0 {
 			total = int64(r.FullCount)
@@ -690,13 +690,13 @@ func handleAnticipated(c *fiber.Ctx) error {
 			Title:          r.Title,
 			Overview:       r.Overview,
 			Popularity:     r.Popularity,
-			Genres:         safeStrings(r.Genres),
+			Genres:         r.Genres.Values(),
 			WatchlistCount: r.WatchlistCount,
 			Score:          r.Score,
-			ReleaseDate:    safeDateString(r.ReleaseDate),
-			NextAirDate:    safeDateString(r.NextAirDate),
+			ReleaseDate:    r.ReleaseDate.String(),
+			NextAirDate:    r.NextAirDate.String(),
 			Status:         r.Status,
-			Poster:         imageURL(r.Images, "poster"),
+			Poster:         r.Images.StringValue("poster"),
 		})
 		if total == 0 && r.FullCount > 0 {
 			total = int64(r.FullCount)
@@ -783,40 +783,6 @@ func fetchTopGenres(db *gorm.DB, userID string, n int) ([]string, error) {
 		genres = make([]string, 0)
 	}
 	return genres, nil
-}
-
-// safeStrings converts a database.StringSlice to a plain []string, never nil.
-func safeStrings(s database.StringSlice) []string {
-	if s == nil {
-		return make([]string, 0)
-	}
-	out := make([]string, len(s))
-	copy(out, s)
-	return out
-}
-
-// safeDateString formats a *database.Date to string, returns "" for nil/zero.
-func safeDateString(d *database.Date) string {
-	if d == nil {
-		return ""
-	}
-	return d.String()
-}
-
-// imageURL extracts an image path from the JSONMap images object.
-func imageURL(images database.JSONMap, key string) string {
-	if images == nil {
-		return ""
-	}
-	v, ok := images[key]
-	if !ok || v == nil {
-		return ""
-	}
-	s, ok := v.(string)
-	if !ok {
-		return ""
-	}
-	return s
 }
 
 // ============================================================================

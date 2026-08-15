@@ -39,6 +39,23 @@ func (j *JSONMap) Scan(value interface{}) error {
 	return json.Unmarshal(bytes, j)
 }
 
+// StringValue returns the string value for key, or "" when absent, nil, or
+// not a string. Safe on a nil map.
+func (j JSONMap) StringValue(key string) string {
+	if j == nil {
+		return ""
+	}
+	v, ok := j[key]
+	if !ok || v == nil {
+		return ""
+	}
+	s, ok := v.(string)
+	if !ok {
+		return ""
+	}
+	return s
+}
+
 // StringSlice is a []string that implements sql.Scanner and driver.Valuer
 // for GORM compatibility with both PostgreSQL jsonb arrays and SQLite TEXT columns.
 type StringSlice []string
@@ -69,6 +86,16 @@ func (s *StringSlice) Scan(value interface{}) error {
 		return nil
 	}
 	return json.Unmarshal(bytes, (*[]string)(s))
+}
+
+// Values returns the slice as a plain []string, never nil.
+func (s StringSlice) Values() []string {
+	if s == nil {
+		return make([]string, 0)
+	}
+	out := make([]string, len(s))
+	copy(out, s)
+	return out
 }
 
 // --- Media (cached from TMDB — our source of truth after ingest) ---

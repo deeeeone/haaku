@@ -27,7 +27,7 @@ Registers OpenAPI metadata for all endpoints. Uses `comment_type`/`media_type` C
 ## Oversights
 
 - **`writeError` duplicated** — local envelope helper instead of `internal/httpapi`.
-- **Hand-rolled CSV splitter and trimmer** — `splitByComma`/`trimSpace` reimplement `strings.Split`/`strings.TrimSpace`.
+- **Hand-rolled CSV splitter and trimmer (RESOLVED)** — `splitByComma`/`trimSpace` replaced with stdlib `strings.Split`/`strings.TrimSpace` (Batch 4).
 - **`user_id` unchecked type assertions** (e.g. comments.go:326) — protected by the shared `auth.AuthRequired()` middleware on write routes, so OK today, but panics if a route is ever mounted without the guard.
 - **No reply-count decrement on delete** — deleting a comment that has replies (when allowed, i.e. ≤14 days) leaves the parent's `reply_count` stale; replies themselves are orphaned (no cascade handling).
 - **Like/reaction/reply counter increments are non-transactional** — `UpdateColumn("reply_count", +1)` after insert and full `COUNT` recalc on like are separate statements from the write; race-prone. Should use `WithCacheTransaction`.
@@ -41,7 +41,7 @@ Registers OpenAPI metadata for all endpoints. Uses `comment_type`/`media_type` C
 ## Todos
 
 - [x] Replace local error helpers with `internal/response` (Batch 0).
-- [ ] Consolidate local CSV helpers (`parseCSV`/`splitByComma`/`trimSpace`) into stdlib-based shared helpers.
+- [x] `parseCSV` is stdlib-based (`strings.Split`/`strings.TrimSpace`); the hand-rolled `splitByComma`/`trimSpace` helpers were deleted (Batch 4).
 - [ ] Handle reply_count on delete (decrement and/or cascade) and orphaned replies.
 - [ ] Wrap write flows in `cache.WithCacheTransaction` + cache/version invalidation and outbox events.
 - [ ] Paginate `GET /{id}/likes`.

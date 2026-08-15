@@ -3,7 +3,9 @@ package watch
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -238,7 +240,9 @@ func serveWatchProviders(
 	}
 
 	// Store in metadata.
-	storeCachedProviders(metadata, cached)
+	if err := storeCachedProviders(metadata, cached); err != nil {
+		log.Printf("[watch] failed to cache watch providers: %v", err)
+	}
 
 	// Persist the updated metadata so the cache survives across restarts.
 	// Best-effort: a write failure must not fail the response.
@@ -289,17 +293,24 @@ func loadCachedProviders(metadata database.JSONMap) (*cachedWatchProviders, bool
 	return &cached, true
 }
 
-// storeCachedProviders stores watch provider data in metadata.
-func storeCachedProviders(metadata database.JSONMap, cached cachedWatchProviders) {
+// --- Helpers ---
+
+func storeCachedProviders(metadata database.JSONMap, cached cachedWatchProviders) error {
 	if metadata == nil {
-		return
+		return nil
 	}
 
 	// Re-marshal through JSON for clean storage.
-	data, _ := json.Marshal(cached)
+	data, err := json.Marshal(cached)
+	if err != nil {
+		return fmt.Errorf("marshal cached watch providers: %w", err)
+	}
 	var raw map[string]any
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return fmt.Errorf("unmarshal cached watch providers: %w", err)
+	}
 	metadata["watch_providers"] = raw
+	return nil
 }
 
 // convertToResponse transforms TMDB country providers into the API response shape.
@@ -346,9 +357,9 @@ func convertToResponse(cp cachedCountryResult) WatchResponse {
 func cpLink(tmdbID int, mediaType, country string) string {
 	country = strings.ToUpper(country)
 	if mediaType == "show" {
-		return "https://www.themoviedb.org/tv/" + itoa(tmdbID) + "/watch?locale=" + country
+		return "https://www.themoviedb.org/tv/" + strconv.Itoa(tmdbID) + "/watch?locale=" + country
 	}
-	return "https://www.themoviedb.org/movie/" + itoa(tmdbID) + "/watch?locale=" + country
+	return "https://www.themoviedb.org/movie/" + strconv.Itoa(tmdbID) + "/watch?locale=" + country
 }
 
 // defaultResponse returns an empty watch providers response with just the link.
@@ -364,30 +375,6 @@ func parseCountry(c *fiber.Ctx) (string, error) {
 		return "", response.BadRequest(c, "invalid country code: must be a 2-letter ISO code")
 	}
 	return country, nil
-}
-
-// --- Helpers ---
-
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	neg := n < 0
-	if neg {
-		n = -n
-	}
-	var buf [20]byte
-	i := len(buf)
-	for n > 0 {
-		i--
-		buf[i] = byte('0' + n%10)
-		n /= 10
-	}
-	if neg {
-		i--
-		buf[i] = '-'
-	}
-	return string(buf[i:])
 }
 
 // --- Error helpers ---

@@ -2,6 +2,7 @@ package collab
 
 import (
 	"errors"
+	"strconv"
 	"time"
 
 	"trakt-api/internal/auth"
@@ -306,12 +307,9 @@ func handleListCollaborators(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 
 func parseID(s string) int64 {
-	var id int64
-	for _, ch := range s {
-		if ch < '0' || ch > '9' {
-			return 0
-		}
-		id = id*10 + int64(ch-'0')
+	id, err := strconv.ParseInt(s, 10, 64)
+	if err != nil {
+		return 0
 	}
 	return id
 }

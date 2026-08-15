@@ -26,8 +26,8 @@ Both use `media.ResolveID` (numeric/slug), load the row from DB, then fetch prov
 - **Only 3 of TMDB's provider categories mapped** — `flatrate`/`rent`/`buy` are mapped but `ads`, `free`, and `cinema` are dropped (TMDB returns those for some titles/countries).
 - **Country-miss still does a full TMDB fetch per request** — even with a working cache, a requested country absent from cached results triggers a refetch of the whole provider set every time for that country (no negative caching).
 - **`cpLink` hardcodes `https://www.themoviedb.org/...`** — returns a TMDB link, not a trakt-killer link; for a country with no providers this just links off-site. Also `cpLink(resp.ID, "movie", country)` passes a hardcoded `"movie"` even for shows at watch.go:235 (the show branch is reachable and would emit the wrong `/movie/` link when `country` is missing from results).
-- **`itoa` hand-rolled** instead of `strconv.Itoa` (watch.go:354).
-- **`storeCachedProviders` swallows marshal errors** (`data, _ := ...`).
+- **`itoa` hand-rolled (RESOLVED)** — replaced with `strconv.Itoa` (Batch 4).
+- **`storeCachedProviders` swallows marshal errors (RESOLVED)** — now returns the error and the caller logs it (best-effort, same as `persist()`; Batch 4).
 - **No Redis layer** — the design choice (metadata column) differs from the Redis-keyed caching used elsewhere; combined with the persistence bug, effectively no caching at all.
 - **Local error helpers** (`notFound`/`badRequest`) duplicated from `internal/httpapi`.
 - **Provider order from TMDB preserved, no sorting** — acceptable, but TMDB order can vary.
@@ -39,6 +39,6 @@ Both use `media.ResolveID` (numeric/slug), load the row from DB, then fetch prov
 - [ ] Map `ads`/`free`/`cinema` provider categories or document their exclusion.
 - [ ] Fix the `cpLink` hardcoded `"movie"` in the show country-miss path.
 - [ ] Add negative caching for missing countries to avoid repeated full refetches.
-- [ ] Replace `itoa` with `strconv.Itoa`; handle marshal errors in `storeCachedProviders`.
+- [x] `itoa` replaced with `strconv.Itoa`; `storeCachedProviders` now handles marshal errors (Batch 4).
 - [x] Use shared `internal/response` helpers.
 - [ ] Verify module test coverage (`make test`).

@@ -33,7 +33,7 @@ Ownership is enforced by checking `lists.id = ? AND lists.user_id = ?`. Register
 - **Timestamps hand-formatted (RESOLVED)** — now emitted via shared `response.FormatTime` (`.000Z` millisecond precision; Batch 3).
 - **No invite acceptance flow** — `AcceptedAt` is stored/returned but no endpoint ever sets it (no accept/decline endpoint, no notification on invite).
 - **Owner lookup treats 404 as "list not found"** — a list owned by someone else returns `not_found` instead of `forbidden`. Spec distinguishes 403 for non-owners.
-- **Raw `parseID`** — hand-rolled numeric parser instead of `strconv.ParseInt`.
+- **Raw `parseID` (RESOLVED)** — now `strconv.ParseInt` (returns 0 on non-numeric; Batch 4).
 - **Plain writes, no cache-tx/advisory lock** — collab changes don't invalidate list cache version keys (conventions require `WithCacheTransaction` + version counters).
 
 ## Todos
@@ -44,5 +44,5 @@ Ownership is enforced by checking `lists.id = ? AND lists.user_id = ?`. Register
 - [ ] Return 403 (not 404) when the list exists but the caller isn't the owner.
 - [ ] Route writes through `cache.WithCacheTransaction` with list version-key invalidation.
 - [x] Replace local error helpers with shared `internal/response` (Batch 0).
-- [ ] Consolidate the remaining local `parseID` into a shared ID-parsing util.
+- [ ] Consolidate the identical fiber.Ctx `parseID` copies in episodes/seasons/comments into a shared helper (collab's string `parseID` now uses `strconv.ParseInt`; Batch 4).
 - [ ] Verify module test coverage (`make test`).
