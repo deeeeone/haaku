@@ -45,7 +45,7 @@ Behavior:
 
 ## Todos
 
-- [ ] Replace local error helpers with `internal/httpapi` constructors; drop unused `notFound`.
+- [x] Replace local error helpers with `internal/response` constructors; unused `notFound` dropped.
 - [ ] Remove the double auth check (either middleware or handler-level, not both).
 - [ ] Replace `deriveTarget` with a route param or per-target handlers.
 - [ ] Batch-fetch shows/seasons to kill the N+1 loop.

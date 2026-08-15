@@ -43,7 +43,7 @@ Key mechanics:
 
 ## Todos
 
-- [ ] Replace `writeAPIError` with `internal/httpapi` error constructors.
+- [x] Replace `writeAPIError` with `internal/response` error constructors.
 - [ ] Use a typed sentinel error for "already checked in" instead of string comparison.
 - [ ] Map resolve/DB errors to proper status codes (404 for missing season/episode, 500 for DB failures) instead of blanket 400.
 - [ ] Don't leak wrapped error details in client-facing messages; log them server-side.

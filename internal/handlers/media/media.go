@@ -9,6 +9,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -96,7 +97,7 @@ func handleGetMovie(c *fiber.Ctx) error {
 		return err
 	}
 	if mediaType != "movie" {
-		return notFound(c, "not a movie")
+		return response.NotFound(c, "not a movie")
 	}
 
 	db, dbErr := database.GetDB()
@@ -107,7 +108,7 @@ func handleGetMovie(c *fiber.Ctx) error {
 	var movie database.Movie
 	if err := db.First(&movie, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "movie not found")
+			return response.NotFound(c, "movie not found")
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
@@ -153,7 +154,7 @@ func handleGetMovieRatingSummary(c *fiber.Ctx) error {
 	var movie database.Movie
 	if err := db.First(&movie, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "movie not found")
+			return response.NotFound(c, "movie not found")
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
@@ -206,7 +207,7 @@ func handleGetShow(c *fiber.Ctx) error {
 		return err
 	}
 	if mediaType != "show" {
-		return notFound(c, "not a show")
+		return response.NotFound(c, "not a show")
 	}
 
 	db, dbErr := database.GetDB()
@@ -217,7 +218,7 @@ func handleGetShow(c *fiber.Ctx) error {
 	var show database.Show
 	if err := db.First(&show, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "show not found")
+			return response.NotFound(c, "show not found")
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
@@ -241,7 +242,7 @@ func handleGetShowSeasons(c *fiber.Ctx) error {
 		return err
 	}
 	if mediaType != "show" {
-		return notFound(c, "not a show")
+		return response.NotFound(c, "not a show")
 	}
 
 	db, dbErr := database.GetDB()
@@ -268,12 +269,12 @@ func handleGetShowSeason(c *fiber.Ctx) error {
 		return err
 	}
 	if showMediaType != "show" {
-		return notFound(c, "not a show")
+		return response.NotFound(c, "not a show")
 	}
 
 	seasonNum, err := strconv.Atoi(c.Params("season"))
 	if err != nil {
-		return badRequest(c, "invalid season number")
+		return response.BadRequest(c, "invalid season number")
 	}
 
 	db, dbErr := database.GetDB()
@@ -285,7 +286,7 @@ func handleGetShowSeason(c *fiber.Ctx) error {
 	if err := db.Where("show_id = ? AND season_number = ?", showID, seasonNum).
 		First(&season).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "season not found")
+			return response.NotFound(c, "season not found")
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
@@ -299,12 +300,12 @@ func handleGetShowSeasonEpisodes(c *fiber.Ctx) error {
 		return err
 	}
 	if showMediaType != "show" {
-		return notFound(c, "not a show")
+		return response.NotFound(c, "not a show")
 	}
 
 	seasonNum, err := strconv.Atoi(c.Params("season"))
 	if err != nil {
-		return badRequest(c, "invalid season number")
+		return response.BadRequest(c, "invalid season number")
 	}
 
 	db, dbErr := database.GetDB()
@@ -316,12 +317,12 @@ func handleGetShowSeasonEpisodes(c *fiber.Ctx) error {
 	if err := db.Where("show_id = ? AND season_number = ?", showID, seasonNum).
 		First(&season).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "season not found")
+			return response.NotFound(c, "season not found")
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
 
-	page, limit := parsePagination(c)
+	page, limit := response.ParsePagination(c, 25)
 
 	var episodes []database.Episode
 	if err := db.Where("season_id = ?", season.ID).
@@ -346,16 +347,16 @@ func handleGetShowEpisode(c *fiber.Ctx) error {
 		return err
 	}
 	if showMediaType != "show" {
-		return notFound(c, "not a show")
+		return response.NotFound(c, "not a show")
 	}
 
 	seasonNum, err := strconv.Atoi(c.Params("season"))
 	if err != nil {
-		return badRequest(c, "invalid season number")
+		return response.BadRequest(c, "invalid season number")
 	}
 	episodeNum, err := strconv.Atoi(c.Params("episode"))
 	if err != nil {
-		return badRequest(c, "invalid episode number")
+		return response.BadRequest(c, "invalid episode number")
 	}
 
 	db, dbErr := database.GetDB()
@@ -367,7 +368,7 @@ func handleGetShowEpisode(c *fiber.Ctx) error {
 	if err := db.Where("show_id = ? AND season_number = ?", showID, seasonNum).
 		First(&season).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "season not found")
+			return response.NotFound(c, "season not found")
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
@@ -376,7 +377,7 @@ func handleGetShowEpisode(c *fiber.Ctx) error {
 	if err := db.Where("season_id = ? AND episode_number = ?", season.ID, episodeNum).
 		First(&episode).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "episode not found")
+			return response.NotFound(c, "episode not found")
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
@@ -419,7 +420,7 @@ func handleGetShowRatingSummary(c *fiber.Ctx) error {
 	var show database.Show
 	if err := db.First(&show, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "show not found")
+			return response.NotFound(c, "show not found")
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
@@ -469,7 +470,7 @@ func handleGetPerson(c *fiber.Ctx) error {
 		return err
 	}
 	if mediaType != "person" {
-		return notFound(c, "not a person")
+		return response.NotFound(c, "not a person")
 	}
 
 	db, dbErr := database.GetDB()
@@ -480,7 +481,7 @@ func handleGetPerson(c *fiber.Ctx) error {
 	var person database.Person
 	if err := db.First(&person, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "person not found")
+			return response.NotFound(c, "person not found")
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
@@ -603,26 +604,4 @@ func creditToResponse(cr database.Credit) CreditResponse {
 		SeriesRegular: cr.SeriesRegular,
 		EpisodeCount:  cr.EpisodeCount,
 	}
-}
-
-// parsePagination extracts page and limit from query params.
-func parsePagination(c *fiber.Ctx) (page, limit int) {
-	page = 1
-	limit = 25
-
-	if p := c.Query("page"); p != "" {
-		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
-			page = parsed
-		}
-	}
-	if l := c.Query("limit"); l != "" {
-		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
-			if parsed > 100 {
-				parsed = 100
-			}
-			limit = parsed
-		}
-	}
-
-	return
 }

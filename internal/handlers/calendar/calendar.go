@@ -1,7 +1,6 @@
 package calendar
 
 import (
-	"strconv"
 	"time"
 
 	"trakt-api/internal/database"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -153,7 +153,7 @@ func handleCalendarShows(c *fiber.Ctx) error {
 	// Validate start_date.
 	startDate, err := time.Parse("2006-01-02", startDateStr)
 	if err != nil {
-		return badRequest(c, "invalid start_date format, expected YYYY-MM-DD")
+		return response.BadRequest(c, "invalid start_date format, expected YYYY-MM-DD")
 	}
 
 	// Parse and clamp days.
@@ -162,7 +162,7 @@ func handleCalendarShows(c *fiber.Ctx) error {
 
 	// Validate type filter.
 	if typeFilter != "" && typeFilter != "new" && typeFilter != "premieres" && typeFilter != "finale" {
-		return badRequest(c, "invalid type filter, expected new, premieres, or finale")
+		return response.BadRequest(c, "invalid type filter, expected new, premieres, or finale")
 	}
 
 	// Auth check for non-all targets.
@@ -180,7 +180,7 @@ func handleCalendarShows(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "database unavailable")
 	}
 
-	page, limit := parsePagination(c)
+	page, limit := response.ParsePagination(c, 25)
 
 	// Build the base episode query.
 	query := db.Table("episodes e").
@@ -432,28 +432,6 @@ func clampDays(input string) int {
 	return d
 }
 
-// parsePagination extracts page and limit from query params (same as media package).
-func parsePagination(c *fiber.Ctx) (page, limit int) {
-	page = 1
-	limit = 25
-
-	if p := c.Query("page"); p != "" {
-		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
-			page = parsed
-		}
-	}
-	if l := c.Query("limit"); l != "" {
-		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
-			if parsed > 100 {
-				parsed = 100
-			}
-			limit = parsed
-		}
-	}
-
-	return
-}
-
 // buildEpisode constructs a media.EpisodeResponse from a database.Episode.
 func buildEpisode(e *database.Episode) media.EpisodeResponse {
 	resp := media.EpisodeResponse{
@@ -489,24 +467,6 @@ func buildShowIDs(s *database.Show) media.IDs {
 }
 
 // --- Error helpers ---
-
-func notFound(c *fiber.Ctx, msg string) error {
-	return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    "not_found",
-			"message": msg,
-		},
-	})
-}
-
-func badRequest(c *fiber.Ctx, msg string) error {
-	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    "invalid_request",
-			"message": msg,
-		},
-	})
-}
 
 func authRequired(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{

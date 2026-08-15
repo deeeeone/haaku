@@ -16,6 +16,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -109,15 +110,6 @@ type playbackResponse struct {
 func getUserID(c *fiber.Ctx) string {
 	uid, _ := c.Locals("user_id").(string)
 	return uid
-}
-
-func writeAPIError(c *fiber.Ctx, status int, code, message string) error {
-	return c.Status(status).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    code,
-			"message": message,
-		},
-	})
 }
 
 // resolveScrobbleItem resolves the media type/id from a scrobble request body.
@@ -248,17 +240,17 @@ func queueEpisodeShowSlotInvalidation(tx *gorm.DB, cacheTx *cache.CacheTransacti
 func handleScrobbleStart(c *fiber.Ctx) error {
 	var req scrobbleRequest
 	if err := json.Unmarshal(c.Body(), &req); err != nil {
-		return writeAPIError(c, fiber.StatusBadRequest, "invalid_request", "invalid JSON body")
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid JSON body")
 	}
 
 	userID := getUserID(c)
 	if userID == "" {
-		return writeAPIError(c, fiber.StatusUnauthorized, "unauthorized", "user not authenticated")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "user not authenticated")
 	}
 
 	mediaType, mediaID, seasonID, episodeID, err := resolveScrobbleItem(c, &req)
 	if err != nil {
-		return writeAPIError(c, fiber.StatusBadRequest, "invalid_request", err.Error())
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", err.Error())
 	}
 
 	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
@@ -308,7 +300,7 @@ func handleScrobbleStart(c *fiber.Ctx) error {
 	})
 
 	if err != nil {
-		return writeAPIError(c, fiber.StatusInternalServerError, "internal", err.Error())
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", err.Error())
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
@@ -322,17 +314,17 @@ func handleScrobbleStart(c *fiber.Ctx) error {
 func handleScrobblePause(c *fiber.Ctx) error {
 	var req scrobbleRequest
 	if err := json.Unmarshal(c.Body(), &req); err != nil {
-		return writeAPIError(c, fiber.StatusBadRequest, "invalid_request", "invalid JSON body")
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid JSON body")
 	}
 
 	userID := getUserID(c)
 	if userID == "" {
-		return writeAPIError(c, fiber.StatusUnauthorized, "unauthorized", "user not authenticated")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "user not authenticated")
 	}
 
 	mediaType, mediaID, seasonID, episodeID, err := resolveScrobbleItem(c, &req)
 	if err != nil {
-		return writeAPIError(c, fiber.StatusBadRequest, "invalid_request", err.Error())
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", err.Error())
 	}
 
 	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
@@ -385,7 +377,7 @@ func handleScrobblePause(c *fiber.Ctx) error {
 	})
 
 	if err != nil {
-		return writeAPIError(c, fiber.StatusInternalServerError, "internal", err.Error())
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", err.Error())
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
@@ -398,22 +390,22 @@ func handleScrobblePause(c *fiber.Ctx) error {
 func handleScrobbleStop(c *fiber.Ctx) error {
 	var req scrobbleRequest
 	if err := json.Unmarshal(c.Body(), &req); err != nil {
-		return writeAPIError(c, fiber.StatusBadRequest, "invalid_request", "invalid JSON body")
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid JSON body")
 	}
 
 	userID := getUserID(c)
 	if userID == "" {
-		return writeAPIError(c, fiber.StatusUnauthorized, "unauthorized", "user not authenticated")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "user not authenticated")
 	}
 
 	mediaType, mediaID, seasonID, episodeID, err := resolveScrobbleItem(c, &req)
 	if err != nil {
-		return writeAPIError(c, fiber.StatusBadRequest, "invalid_request", err.Error())
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", err.Error())
 	}
 
 	// <1% → 422 error
 	if req.Progress < 1.0 {
-		return writeAPIError(c, fiber.StatusUnprocessableEntity, "unprocessable", "progress too low — must be ≥1%")
+		return response.WriteError(c, fiber.StatusUnprocessableEntity, "unprocessable", "progress too low — must be ≥1%")
 	}
 
 	// ≥80% → scrobble, 1–79% → pause
@@ -500,10 +492,10 @@ func handleScrobbleStop(c *fiber.Ctx) error {
 				})
 			}
 			if _, ok := err.(*scrobbleSessionExpiredError); ok {
-				return writeAPIError(c, fiber.StatusGone, "session_expired",
+				return response.WriteError(c, fiber.StatusGone, "session_expired",
 					"scrobble session expired after 5 hours of inactivity — restart watching to begin a new session")
 			}
-			return writeAPIError(c, fiber.StatusInternalServerError, "internal", err.Error())
+			return response.WriteError(c, fiber.StatusInternalServerError, "internal", err.Error())
 		}
 
 		return c.JSON(scrobbleResp)
@@ -558,7 +550,7 @@ func handleScrobbleStop(c *fiber.Ctx) error {
 	})
 
 	if err != nil {
-		return writeAPIError(c, fiber.StatusInternalServerError, "internal", err.Error())
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", err.Error())
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
@@ -606,18 +598,18 @@ func parsePlaybackMediaID(s string) (int64, error) {
 func handleGetPlayback(c *fiber.Ctx) error {
 	userID := getUserID(c)
 	if userID == "" {
-		return writeAPIError(c, fiber.StatusUnauthorized, "unauthorized", "user not authenticated")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "user not authenticated")
 	}
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return writeAPIError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	mediaTypeFilter := c.Query("type") // optional filter: movie, show, episode
 
 	if mediaTypeFilter != "" && !validMediaTypes[mediaTypeFilter] {
-		return writeAPIError(c, fiber.StatusBadRequest, "invalid_request", "invalid media_type")
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid media_type")
 	}
 
 	var playback []database.UserPlayback
@@ -626,7 +618,7 @@ func handleGetPlayback(c *fiber.Ctx) error {
 		query = query.Where("media_type = ?", mediaTypeFilter)
 	}
 	if err := query.Order("paused_at DESC").Find(&playback).Error; err != nil {
-		return writeAPIError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	result := make([]playbackResponse, 0, len(playback))
@@ -646,17 +638,17 @@ func handleGetPlayback(c *fiber.Ctx) error {
 func handleDeletePlayback(c *fiber.Ctx) error {
 	userID := getUserID(c)
 	if userID == "" {
-		return writeAPIError(c, fiber.StatusUnauthorized, "unauthorized", "user not authenticated")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "user not authenticated")
 	}
 
 	mediaType := c.Params("media_type")
 	if !validMediaTypes[mediaType] {
-		return writeAPIError(c, fiber.StatusBadRequest, "invalid_request", "invalid media_type")
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid media_type")
 	}
 
 	mediaID, err := parsePlaybackMediaID(c.Params("media_id"))
 	if err != nil {
-		return writeAPIError(c, fiber.StatusBadRequest, "invalid_request", "invalid media_id")
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid media_id")
 	}
 
 	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
@@ -681,9 +673,9 @@ func handleDeletePlayback(c *fiber.Ctx) error {
 	})
 	if err != nil {
 		if err == errPlaybackNotFound {
-			return writeAPIError(c, fiber.StatusNotFound, "not_found", "playback position not found")
+			return response.WriteError(c, fiber.StatusNotFound, "not_found", "playback position not found")
 		}
-		return writeAPIError(c, fiber.StatusInternalServerError, "internal", "database error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database error")
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)

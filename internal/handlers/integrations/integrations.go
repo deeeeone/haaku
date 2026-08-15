@@ -14,6 +14,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/response"
 )
 
 // ---------------------------------------------------------------------------
@@ -76,27 +77,6 @@ func RegisterRoutes(api fiber.Router) {
 // ---------------------------------------------------------------------------
 // Local error helpers (avoid import cycle with httpapi)
 // ---------------------------------------------------------------------------
-
-func writeError(c *fiber.Ctx, status int, code, message string) error {
-	return c.Status(status).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    code,
-			"message": message,
-		},
-	})
-}
-
-func badRequest(c *fiber.Ctx, msg string) error {
-	return writeError(c, fiber.StatusBadRequest, "invalid_request", msg)
-}
-
-func notFound(c *fiber.Ctx, msg string) error {
-	return writeError(c, fiber.StatusNotFound, "not_found", msg)
-}
-
-func unauthorized(c *fiber.Ctx) error {
-	return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
-}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -165,26 +145,26 @@ func toTokenResponse(t *database.IntegrationToken) tokenResponse {
 func handleCreateToken(c *fiber.Ctx) error {
 	uid := userID(c)
 	if uid == "" {
-		return unauthorized(c)
+		return response.Unauthorized(c)
 	}
 
 	var req createTokenRequest
 	if err := json.Unmarshal(c.Body(), &req); err != nil {
-		return badRequest(c, "invalid JSON body")
+		return response.BadRequest(c, "invalid JSON body")
 	}
 
 	if req.Name == "" {
-		return badRequest(c, "name is required")
+		return response.BadRequest(c, "name is required")
 	}
 
 	tokenStr, err := generateToken()
 	if err != nil {
-		return badRequest(c, "failed to generate token")
+		return response.BadRequest(c, "failed to generate token")
 	}
 
 	db, err := getDB()
 	if err != nil {
-		return badRequest(c, "database unavailable")
+		return response.BadRequest(c, "database unavailable")
 	}
 
 	scopes := database.StringSlice(req.Scopes)
@@ -202,7 +182,7 @@ func handleCreateToken(c *fiber.Ctx) error {
 	}
 
 	if err := db.Create(&tok).Error; err != nil {
-		return badRequest(c, "failed to create integration token")
+		return response.BadRequest(c, "failed to create integration token")
 	}
 
 	resp := createTokenResponse{
@@ -216,17 +196,17 @@ func handleCreateToken(c *fiber.Ctx) error {
 func handleListTokens(c *fiber.Ctx) error {
 	uid := userID(c)
 	if uid == "" {
-		return unauthorized(c)
+		return response.Unauthorized(c)
 	}
 
 	db, err := getDB()
 	if err != nil {
-		return badRequest(c, "database unavailable")
+		return response.BadRequest(c, "database unavailable")
 	}
 
 	var tokens []database.IntegrationToken
 	if err := db.Where("user_id = ?", uid).Order("created_at DESC").Find(&tokens).Error; err != nil {
-		return badRequest(c, "failed to list tokens")
+		return response.BadRequest(c, "failed to list tokens")
 	}
 
 	results := make([]tokenResponse, len(tokens))
@@ -240,25 +220,25 @@ func handleListTokens(c *fiber.Ctx) error {
 func handleRevokeToken(c *fiber.Ctx) error {
 	uid := userID(c)
 	if uid == "" {
-		return unauthorized(c)
+		return response.Unauthorized(c)
 	}
 
 	id, err := c.ParamsInt("id")
 	if err != nil || id <= 0 {
-		return badRequest(c, "invalid token id")
+		return response.BadRequest(c, "invalid token id")
 	}
 
 	db, err := getDB()
 	if err != nil {
-		return badRequest(c, "database unavailable")
+		return response.BadRequest(c, "database unavailable")
 	}
 
 	result := db.Where("id = ? AND user_id = ?", id, uid).Delete(&database.IntegrationToken{})
 	if result.Error != nil {
-		return badRequest(c, "failed to revoke token")
+		return response.BadRequest(c, "failed to revoke token")
 	}
 	if result.RowsAffected == 0 {
-		return notFound(c, "integration token not found")
+		return response.NotFound(c, "integration token not found")
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)

@@ -10,6 +10,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -43,7 +44,7 @@ func RegisterRoutes(api fiber.Router) {
 func requireAuth(c *fiber.Ctx) error {
 	userID, ok := c.Locals("user_id").(string)
 	if !ok || userID == "" {
-		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
 	}
 	return c.Next()
 }
@@ -120,24 +121,24 @@ func handleReportContent(c *fiber.Ctx, mediaType string) error {
 	userID := c.Locals("user_id").(string)
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
-		return badRequest(c, "invalid media id")
+		return response.BadRequest(c, "invalid media id")
 	}
 
 	var req reportRequest
 	if err := c.BodyParser(&req); err != nil {
-		return badRequest(c, "invalid request body")
+		return response.BadRequest(c, "invalid request body")
 	}
 
 	reason := strings.ToLower(strings.TrimSpace(req.Reason))
 	if !validReportReasons[reason] {
-		return badRequest(c, "invalid reason: must be one of spam, spoiler, offensive, incorrect, duplicate, other")
+		return response.BadRequest(c, "invalid reason: must be one of spam, spoiler, offensive, incorrect, duplicate, other")
 	}
 
 	description := strings.TrimSpace(req.Description)
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	// Check for duplicate report.
@@ -145,10 +146,10 @@ func handleReportContent(c *fiber.Ctx, mediaType string) error {
 	result := db.Where("reporter_id = ? AND media_type = ? AND media_id = ?", userID, mediaType, id).
 		First(&existing)
 	if result.Error == nil {
-		return badRequest(c, "you have already reported this content")
+		return response.BadRequest(c, "you have already reported this content")
 	}
 	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	report := database.ContentReport{
@@ -160,7 +161,7 @@ func handleReportContent(c *fiber.Ctx, mediaType string) error {
 	}
 
 	if err := db.Create(&report).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to create report")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to create report")
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(toReportResponse(&report))
@@ -169,16 +170,3 @@ func handleReportContent(c *fiber.Ctx, mediaType string) error {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-func writeError(c *fiber.Ctx, status int, code, message string) error {
-	return c.Status(status).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    code,
-			"message": message,
-		},
-	})
-}
-
-func badRequest(c *fiber.Ctx, msg string) error {
-	return writeError(c, fiber.StatusBadRequest, "invalid_request", msg)
-}

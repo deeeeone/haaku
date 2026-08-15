@@ -10,6 +10,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -71,7 +72,7 @@ func RegisterRoutes(api fiber.Router) {
 func requireAuth(c *fiber.Ctx) error {
 	userID, ok := c.Locals("user_id").(string)
 	if !ok || userID == "" {
-		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
 	}
 	return c.Next()
 }
@@ -201,14 +202,14 @@ var allowedReportReasons = map[string]bool{
 func handleTrending(c *fiber.Ctx) error {
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	commentType := c.Query("comment_type", "shout,review")
 	mediaType := c.Query("media_type", "movie,show")
 
-	page := queryInt(c, "page", 1)
-	limit := clampLimit(queryInt(c, "limit", 20), 1, 100)
+	page := response.QueryInt(c, "page", 1)
+	limit := response.ClampLimit(response.QueryInt(c, "limit", 20), 1, 100)
 
 	var totalCount int64
 	query := db.Model(&database.Comment{}).
@@ -235,14 +236,14 @@ func handleTrending(c *fiber.Ctx) error {
 func handleRecent(c *fiber.Ctx) error {
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	commentType := c.Query("comment_type", "shout,review")
 	mediaType := c.Query("media_type", "movie,show")
 
-	page := queryInt(c, "page", 1)
-	limit := clampLimit(queryInt(c, "limit", 20), 1, 100)
+	page := response.QueryInt(c, "page", 1)
+	limit := response.ClampLimit(response.QueryInt(c, "limit", 20), 1, 100)
 
 	var totalCount int64
 	query := db.Model(&database.Comment{}).
@@ -268,14 +269,14 @@ func handleRecent(c *fiber.Ctx) error {
 func handleUpdates(c *fiber.Ctx) error {
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	commentType := c.Query("comment_type", "shout,review")
 	mediaType := c.Query("media_type", "movie,show")
 
-	page := queryInt(c, "page", 1)
-	limit := clampLimit(queryInt(c, "limit", 20), 1, 100)
+	page := response.QueryInt(c, "page", 1)
+	limit := response.ClampLimit(response.QueryInt(c, "limit", 20), 1, 100)
 
 	var totalCount int64
 	query := db.Model(&database.Comment{}).
@@ -302,7 +303,7 @@ func handleUpdates(c *fiber.Ctx) error {
 func handleGetComment(c *fiber.Ctx) error {
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	id, parseErr := parseID(c)
@@ -313,9 +314,9 @@ func handleGetComment(c *fiber.Ctx) error {
 	var comment database.Comment
 	if err := db.First(&comment, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return writeError(c, fiber.StatusNotFound, "not_found", "comment not found")
+			return response.WriteError(c, fiber.StatusNotFound, "not_found", "comment not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	return c.JSON(toCommentResponse(&comment))
@@ -327,15 +328,15 @@ func handleCreateComment(c *fiber.Ctx) error {
 
 	var req commentCreateRequest
 	if err := c.BodyParser(&req); err != nil {
-		return writeError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
 	}
 	if req.Comment == "" {
-		return writeError(c, fiber.StatusBadRequest, "invalid_request", "comment body is required")
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "comment body is required")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	comment := database.Comment{
@@ -370,7 +371,7 @@ func handleCreateComment(c *fiber.Ctx) error {
 	}
 
 	if err := db.Create(&comment).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to create comment")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to create comment")
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(toCommentResponse(&comment))
@@ -382,15 +383,15 @@ func handleEditComment(c *fiber.Ctx) error {
 
 	var req commentEditRequest
 	if err := c.BodyParser(&req); err != nil {
-		return writeError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
 	}
 	if req.Comment == "" {
-		return writeError(c, fiber.StatusBadRequest, "invalid_request", "comment body is required")
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "comment body is required")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	id, parseErr := parseID(c)
@@ -401,13 +402,13 @@ func handleEditComment(c *fiber.Ctx) error {
 	var comment database.Comment
 	if err := db.First(&comment, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return writeError(c, fiber.StatusNotFound, "not_found", "comment not found")
+			return response.WriteError(c, fiber.StatusNotFound, "not_found", "comment not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	if comment.UserID != userID {
-		return writeError(c, fiber.StatusForbidden, "forbidden", "you can only edit your own comments")
+		return response.WriteError(c, fiber.StatusForbidden, "forbidden", "you can only edit your own comments")
 	}
 
 	now := time.Now()
@@ -421,7 +422,7 @@ func handleEditComment(c *fiber.Ctx) error {
 	}
 
 	if err := db.Model(&comment).Updates(updates).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to update comment")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to update comment")
 	}
 
 	// Reload to get updated values
@@ -435,7 +436,7 @@ func handleDeleteComment(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	id, parseErr := parseID(c)
@@ -446,9 +447,9 @@ func handleDeleteComment(c *fiber.Ctx) error {
 	var comment database.Comment
 	if err := db.First(&comment, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return writeError(c, fiber.StatusNotFound, "not_found", "comment not found")
+			return response.WriteError(c, fiber.StatusNotFound, "not_found", "comment not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	if comment.UserID != userID {
@@ -457,18 +458,18 @@ func handleDeleteComment(c *fiber.Ctx) error {
 		var user database.User
 		db.First(&user, "id = ?", userID)
 		if !user.IsModerator && !user.IsAdmin {
-			return writeError(c, fiber.StatusForbidden, "forbidden", "you can only delete your own comments")
+			return response.WriteError(c, fiber.StatusForbidden, "forbidden", "you can only delete your own comments")
 		}
 	}
 
 	// Only allow delete if < 14 days old OR 0 replies
 	age := time.Since(comment.CreatedAt)
 	if age > 14*24*time.Hour && comment.ReplyCount > 0 {
-		return writeError(c, fiber.StatusConflict, "conflict", "comment is older than 14 days and has replies — cannot delete")
+		return response.WriteError(c, fiber.StatusConflict, "conflict", "comment is older than 14 days and has replies — cannot delete")
 	}
 
 	if err := db.Delete(&comment).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to delete comment")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to delete comment")
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
@@ -478,7 +479,7 @@ func handleDeleteComment(c *fiber.Ctx) error {
 func handleGetReplies(c *fiber.Ctx) error {
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	id, parseErr := parseID(c)
@@ -489,13 +490,13 @@ func handleGetReplies(c *fiber.Ctx) error {
 	var parent database.Comment
 	if err := db.First(&parent, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return writeError(c, fiber.StatusNotFound, "not_found", "comment not found")
+			return response.WriteError(c, fiber.StatusNotFound, "not_found", "comment not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
-	page := queryInt(c, "page", 1)
-	limit := clampLimit(queryInt(c, "limit", 20), 1, 100)
+	page := response.QueryInt(c, "page", 1)
+	limit := response.ClampLimit(response.QueryInt(c, "limit", 20), 1, 100)
 
 	var totalCount int64
 	db.Model(&database.Comment{}).Where("parent_id = ?", id).Count(&totalCount)
@@ -521,15 +522,15 @@ func handleCreateReply(c *fiber.Ctx) error {
 
 	var req replyCreateRequest
 	if err := c.BodyParser(&req); err != nil {
-		return writeError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
 	}
 	if req.Comment == "" {
-		return writeError(c, fiber.StatusBadRequest, "invalid_request", "comment body is required")
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "comment body is required")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	id, parseErr := parseID(c)
@@ -540,14 +541,14 @@ func handleCreateReply(c *fiber.Ctx) error {
 	var parent database.Comment
 	if err := db.First(&parent, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return writeError(c, fiber.StatusNotFound, "not_found", "comment not found")
+			return response.WriteError(c, fiber.StatusNotFound, "not_found", "comment not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	// 404 if parent is itself a reply (no nested replies)
 	if parent.ParentID != nil {
-		return writeError(c, fiber.StatusNotFound, "not_found", "cannot reply to a reply")
+		return response.WriteError(c, fiber.StatusNotFound, "not_found", "cannot reply to a reply")
 	}
 
 	reply := database.Comment{
@@ -567,7 +568,7 @@ func handleCreateReply(c *fiber.Ctx) error {
 	}
 
 	if err := db.Create(&reply).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to create reply")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to create reply")
 	}
 
 	// Increment parent's reply count
@@ -582,7 +583,7 @@ func handleLikeComment(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	id, parseErr := parseID(c)
@@ -593,9 +594,9 @@ func handleLikeComment(c *fiber.Ctx) error {
 	var comment database.Comment
 	if err := db.First(&comment, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return writeError(c, fiber.StatusNotFound, "not_found", "comment not found")
+			return response.WriteError(c, fiber.StatusNotFound, "not_found", "comment not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	// Upsert the like
@@ -608,7 +609,7 @@ func handleLikeComment(c *fiber.Ctx) error {
 	// Try to create; if conflict, that's fine (idempotent)
 	result := db.Where("comment_id = ? AND user_id = ?", id, userID).FirstOrCreate(&like)
 	if result.Error != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to like comment")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to like comment")
 	}
 
 	// Update like_count to be accurate
@@ -625,7 +626,7 @@ func handleUnlikeComment(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	id, parseErr := parseID(c)
@@ -636,9 +637,9 @@ func handleUnlikeComment(c *fiber.Ctx) error {
 	var comment database.Comment
 	if err := db.First(&comment, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return writeError(c, fiber.StatusNotFound, "not_found", "comment not found")
+			return response.WriteError(c, fiber.StatusNotFound, "not_found", "comment not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	db.Where("comment_id = ? AND user_id = ?", id, userID).Delete(&database.CommentLike{})
@@ -655,7 +656,7 @@ func handleUnlikeComment(c *fiber.Ctx) error {
 func handleGetLikes(c *fiber.Ctx) error {
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	id, parseErr := parseID(c)
@@ -666,9 +667,9 @@ func handleGetLikes(c *fiber.Ctx) error {
 	var comment database.Comment
 	if err := db.First(&comment, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return writeError(c, fiber.StatusNotFound, "not_found", "comment not found")
+			return response.WriteError(c, fiber.StatusNotFound, "not_found", "comment not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	var likes []database.CommentLike
@@ -686,7 +687,7 @@ func handleGetLikes(c *fiber.Ctx) error {
 func handleGetReactions(c *fiber.Ctx) error {
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	id, parseErr := parseID(c)
@@ -697,9 +698,9 @@ func handleGetReactions(c *fiber.Ctx) error {
 	var comment database.Comment
 	if err := db.First(&comment, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return writeError(c, fiber.StatusNotFound, "not_found", "comment not found")
+			return response.WriteError(c, fiber.StatusNotFound, "not_found", "comment not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	var results []struct {
@@ -726,15 +727,15 @@ func handleAddReaction(c *fiber.Ctx) error {
 
 	var req reactionRequest
 	if err := c.BodyParser(&req); err != nil {
-		return writeError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
 	}
 	if !allowedReactions[req.Reaction] {
-		return writeError(c, fiber.StatusBadRequest, "invalid_request", "invalid reaction type; allowed: 👍🔥😂😮😢😡")
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid reaction type; allowed: 👍🔥😂😮😢😡")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	id, parseErr := parseID(c)
@@ -745,9 +746,9 @@ func handleAddReaction(c *fiber.Ctx) error {
 	var comment database.Comment
 	if err := db.First(&comment, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return writeError(c, fiber.StatusNotFound, "not_found", "comment not found")
+			return response.WriteError(c, fiber.StatusNotFound, "not_found", "comment not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	reaction := database.CommentReaction{
@@ -760,7 +761,7 @@ func handleAddReaction(c *fiber.Ctx) error {
 	result := db.Where("comment_id = ? AND user_id = ? AND reaction_type = ?",
 		id, userID, req.Reaction).FirstOrCreate(&reaction)
 	if result.Error != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to add reaction")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to add reaction")
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"status": "reaction_added"})
@@ -772,12 +773,12 @@ func handleRemoveReaction(c *fiber.Ctx) error {
 
 	var req reactionRequest
 	if err := c.BodyParser(&req); err != nil {
-		return writeError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	id, parseErr := parseID(c)
@@ -788,9 +789,9 @@ func handleRemoveReaction(c *fiber.Ctx) error {
 	var comment database.Comment
 	if err := db.First(&comment, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return writeError(c, fiber.StatusNotFound, "not_found", "comment not found")
+			return response.WriteError(c, fiber.StatusNotFound, "not_found", "comment not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	db.Where("comment_id = ? AND user_id = ? AND reaction_type = ?",
@@ -805,15 +806,15 @@ func handleReportComment(c *fiber.Ctx) error {
 
 	var req reportRequest
 	if err := c.BodyParser(&req); err != nil {
-		return writeError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
 	}
 	if !allowedReportReasons[req.Reason] {
-		return writeError(c, fiber.StatusBadRequest, "invalid_request", "invalid report reason")
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid report reason")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	id, parseErr := parseID(c)
@@ -824,15 +825,15 @@ func handleReportComment(c *fiber.Ctx) error {
 	var comment database.Comment
 	if err := db.First(&comment, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return writeError(c, fiber.StatusNotFound, "not_found", "comment not found")
+			return response.WriteError(c, fiber.StatusNotFound, "not_found", "comment not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	// Prevent duplicate reports from the same user
 	var existing database.CommentReport
 	if err := db.Where("comment_id = ? AND reporter_id = ?", id, userID).First(&existing).Error; err == nil {
-		return writeError(c, fiber.StatusConflict, "conflict", "you have already reported this comment")
+		return response.WriteError(c, fiber.StatusConflict, "conflict", "you have already reported this comment")
 	}
 
 	report := database.CommentReport{
@@ -843,7 +844,7 @@ func handleReportComment(c *fiber.Ctx) error {
 	}
 
 	if err := db.Create(&report).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to submit report")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to submit report")
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"status": "reported"})
@@ -853,7 +854,7 @@ func handleReportComment(c *fiber.Ctx) error {
 func handleGetCommentItem(c *fiber.Ctx) error {
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	id, parseErr := parseID(c)
@@ -864,9 +865,9 @@ func handleGetCommentItem(c *fiber.Ctx) error {
 	var comment database.Comment
 	if err := db.First(&comment, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return writeError(c, fiber.StatusNotFound, "not_found", "comment not found")
+			return response.WriteError(c, fiber.StatusNotFound, "not_found", "comment not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	return c.JSON(itemResponse{
@@ -884,31 +885,9 @@ func parseID(c *fiber.Ctx) (int64, error) {
 	idStr := c.Params("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		return 0, writeError(c, fiber.StatusBadRequest, "invalid_request", "invalid comment ID")
+		return 0, response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid comment ID")
 	}
 	return id, nil
-}
-
-func queryInt(c *fiber.Ctx, key string, defaultVal int) int {
-	v := c.Query(key)
-	if v == "" {
-		return defaultVal
-	}
-	iv, err := strconv.Atoi(v)
-	if err != nil || iv < 1 {
-		return defaultVal
-	}
-	return iv
-}
-
-func clampLimit(limit, min, max int) int {
-	if limit < min {
-		return min
-	}
-	if limit > max {
-		return max
-	}
-	return limit
 }
 
 func parseCSV(s string) []string {
@@ -955,13 +934,4 @@ func toCommentResponses(comments []database.Comment) []commentResponse {
 		out[i] = toCommentResponse(&c)
 	}
 	return out
-}
-
-func writeError(c *fiber.Ctx, status int, code, message string) error {
-	return c.Status(status).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    code,
-			"message": message,
-		},
-	})
 }

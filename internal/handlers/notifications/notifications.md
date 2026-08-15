@@ -39,6 +39,7 @@ All routes auth-required via hand-rolled `requireAuth`. Registers OpenAPI metada
 - [ ] Add a notification-settings update endpoint (spec check).
 - [ ] Enforce notification preferences in `CreateNotification` (respect follows/replies/list_invite).
 - [ ] Move `CreateNotification` into the outbox/cache-tx flow.
-- [ ] Replace local helpers with shared packages (`auth.AuthRequired`, `internal/httpapi`).
+- [x] Replace local error/pagination helpers with `internal/response` (Batch 0).
+- [ ] Swap `requireAuth` for shared `auth.AuthRequired` (Batch 1).
 - [ ] Consider cursor pagination for the inbox.
 - [ ] Verify module test coverage (`make test`).

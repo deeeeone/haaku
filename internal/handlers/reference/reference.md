@@ -38,7 +38,7 @@ Cache keys `reference:{category}:{type}`, TTL 24h. TMDB client lazily initialize
 ## Todos
 
 - [ ] Add `sync.Once` (or init at startup) to `getTMDBClient`.
-- [ ] Use shared `internal/httpapi` error helpers.
+- [x] Use shared `internal/response` error helpers.
 - [ ] Sort certification country groups deterministically.
 - [ ] Decide slug strategy (unicode-aware / upstream TMDB slug) — confirm genre slugs against spec.
 - [ ] Verify `shows.network` column type (scalar vs JSON list) against the schema; fix `DISTINCT network` query accordingly.

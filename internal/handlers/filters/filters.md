@@ -35,7 +35,8 @@ All routes are auth-required (hand-rolled `requireAuth`). Registers OpenAPI meta
 ## Todos
 
 - [ ] Swap `requireAuth` for shared `auth.AuthRequired`.
-- [ ] Use `internal/httpapi` error constructors + `time.RFC3339` formatting.
+- [x] Use `internal/response` error constructors (Batch 0).
+- [ ] Use `time.RFC3339` instead of the hand-rolled timestamp literal.
 - [ ] Validate section against a defined allowlist (spec).
 - [ ] Decide 403-vs-404 for cross-user delete; align with conventions.
 - [ ] Optionally enforce uniqueness on (user, section, name) and harden the 20-cap.

@@ -13,6 +13,7 @@ import (
 	redisPkg "trakt-api/redis"
 
 	"github.com/gofiber/fiber/v2"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -219,7 +220,7 @@ func setCache(c *fiber.Ctx, key string, v interface{}) {
 func handleGenres(c *fiber.Ctx) error {
 	refType := strings.ToLower(c.Params("type"))
 	if refType != "movies" && refType != "shows" {
-		return badRequest(c, "type must be 'movies' or 'shows'")
+		return response.BadRequest(c, "type must be 'movies' or 'shows'")
 	}
 
 	key := cacheKey("genres", refType)
@@ -232,14 +233,14 @@ func handleGenres(c *fiber.Ctx) error {
 
 	client, err := getTMDBClient()
 	if err != nil {
-		return writeError(c, fiber.StatusServiceUnavailable, "tmdb_unavailable", "TMDB client unavailable")
+		return response.WriteError(c, fiber.StatusServiceUnavailable, "tmdb_unavailable", "TMDB client unavailable")
 	}
 
 	if refType == "movies" {
 		gl, err := client.GetMovieGenres()
 		if err != nil {
 			log.Printf("[reference] TMDB genres/movies error: %v", err)
-			return writeError(c, fiber.StatusBadGateway, "upstream_error", "Failed to fetch genres from TMDB")
+			return response.WriteError(c, fiber.StatusBadGateway, "upstream_error", "Failed to fetch genres from TMDB")
 		}
 		items = make([]GenreItem, len(gl.Genres))
 		for i, g := range gl.Genres {
@@ -249,7 +250,7 @@ func handleGenres(c *fiber.Ctx) error {
 		gl, err := client.GetTVGenres()
 		if err != nil {
 			log.Printf("[reference] TMDB genres/shows error: %v", err)
-			return writeError(c, fiber.StatusBadGateway, "upstream_error", "Failed to fetch genres from TMDB")
+			return response.WriteError(c, fiber.StatusBadGateway, "upstream_error", "Failed to fetch genres from TMDB")
 		}
 		items = make([]GenreItem, len(gl.Genres))
 		for i, g := range gl.Genres {
@@ -265,7 +266,7 @@ func handleGenres(c *fiber.Ctx) error {
 func handleLanguages(c *fiber.Ctx) error {
 	refType := strings.ToLower(c.Params("type"))
 	if refType != "movies" && refType != "shows" {
-		return badRequest(c, "type must be 'movies' or 'shows'")
+		return response.BadRequest(c, "type must be 'movies' or 'shows'")
 	}
 
 	key := cacheKey("languages", refType)
@@ -277,13 +278,13 @@ func handleLanguages(c *fiber.Ctx) error {
 
 	client, err := getTMDBClient()
 	if err != nil {
-		return writeError(c, fiber.StatusServiceUnavailable, "tmdb_unavailable", "TMDB client unavailable")
+		return response.WriteError(c, fiber.StatusServiceUnavailable, "tmdb_unavailable", "TMDB client unavailable")
 	}
 
 	langs, err := client.GetConfigLanguages()
 	if err != nil {
 		log.Printf("[reference] TMDB languages error: %v", err)
-		return writeError(c, fiber.StatusBadGateway, "upstream_error", "Failed to fetch languages from TMDB")
+		return response.WriteError(c, fiber.StatusBadGateway, "upstream_error", "Failed to fetch languages from TMDB")
 	}
 
 	items = make([]LanguageItem, len(langs))
@@ -299,7 +300,7 @@ func handleLanguages(c *fiber.Ctx) error {
 func handleCountries(c *fiber.Ctx) error {
 	refType := strings.ToLower(c.Params("type"))
 	if refType != "movies" && refType != "shows" {
-		return badRequest(c, "type must be 'movies' or 'shows'")
+		return response.BadRequest(c, "type must be 'movies' or 'shows'")
 	}
 
 	key := cacheKey("countries", refType)
@@ -311,13 +312,13 @@ func handleCountries(c *fiber.Ctx) error {
 
 	client, err := getTMDBClient()
 	if err != nil {
-		return writeError(c, fiber.StatusServiceUnavailable, "tmdb_unavailable", "TMDB client unavailable")
+		return response.WriteError(c, fiber.StatusServiceUnavailable, "tmdb_unavailable", "TMDB client unavailable")
 	}
 
 	countries, err := client.GetConfigCountries()
 	if err != nil {
 		log.Printf("[reference] TMDB countries error: %v", err)
-		return writeError(c, fiber.StatusBadGateway, "upstream_error", "Failed to fetch countries from TMDB")
+		return response.WriteError(c, fiber.StatusBadGateway, "upstream_error", "Failed to fetch countries from TMDB")
 	}
 
 	items = make([]CountryItem, len(countries))
@@ -340,13 +341,13 @@ func handleNetworks(c *fiber.Ctx) error {
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil || db == nil {
-		return writeError(c, fiber.StatusServiceUnavailable, "db_unavailable", "Database unavailable")
+		return response.WriteError(c, fiber.StatusServiceUnavailable, "db_unavailable", "Database unavailable")
 	}
 
 	var networks []string
 	if err := db.Raw("SELECT DISTINCT network FROM shows WHERE network != ''").Scan(&networks).Error; err != nil {
 		log.Printf("[reference] DB networks query error: %v", err)
-		return writeError(c, fiber.StatusInternalServerError, "db_error", "Failed to query networks")
+		return response.WriteError(c, fiber.StatusInternalServerError, "db_error", "Failed to query networks")
 	}
 
 	items = make([]NetworkItem, len(networks))
@@ -362,7 +363,7 @@ func handleNetworks(c *fiber.Ctx) error {
 func handleCertifications(c *fiber.Ctx) error {
 	refType := strings.ToLower(c.Params("type"))
 	if refType != "movies" && refType != "shows" {
-		return badRequest(c, "type must be 'movies' or 'shows'")
+		return response.BadRequest(c, "type must be 'movies' or 'shows'")
 	}
 
 	key := cacheKey("certifications", refType)
@@ -374,7 +375,7 @@ func handleCertifications(c *fiber.Ctx) error {
 
 	client, err := getTMDBClient()
 	if err != nil {
-		return writeError(c, fiber.StatusServiceUnavailable, "tmdb_unavailable", "TMDB client unavailable")
+		return response.WriteError(c, fiber.StatusServiceUnavailable, "tmdb_unavailable", "TMDB client unavailable")
 	}
 
 	var resp *tmdb.CertificationsResponse
@@ -385,7 +386,7 @@ func handleCertifications(c *fiber.Ctx) error {
 	}
 	if err != nil {
 		log.Printf("[reference] TMDB certifications error: %v", err)
-		return writeError(c, fiber.StatusBadGateway, "upstream_error", "Failed to fetch certifications from TMDB")
+		return response.WriteError(c, fiber.StatusBadGateway, "upstream_error", "Failed to fetch certifications from TMDB")
 	}
 
 	groups = make([]CertGroup, 0, len(resp.Certifications))
@@ -411,16 +412,3 @@ func handleCertifications(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 // Local error helpers (mirror httpapi exported variants for convenience)
 // ---------------------------------------------------------------------------
-
-func badRequest(c *fiber.Ctx, msg string) error {
-	return writeError(c, fiber.StatusBadRequest, "invalid_request", msg)
-}
-
-func writeError(c *fiber.Ctx, status int, code, message string) error {
-	return c.Status(status).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    code,
-			"message": message,
-		},
-	})
-}

@@ -36,5 +36,5 @@ Both return plain JSON arrays with `progress` + `paused_at` and enriched media i
 - [ ] Remove the redundant per-handler auth check; use `auth.AuthRequired`.
 - [ ] Reuse `media.BuildMovieResponse` / media builders for response enrichment.
 - [ ] Clarify paused-vs-expired semantics and filter accordingly.
-- [ ] Replace local helpers with shared packages.
+- [x] Replace local error helpers with `internal/response` (Batch 0); auth swap tracked at the item above.
 - [ ] Verify module test coverage (`make test`).

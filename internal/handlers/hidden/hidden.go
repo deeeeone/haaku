@@ -8,6 +8,7 @@ import (
 	"trakt-api/internal/openapi"
 
 	"github.com/gofiber/fiber/v2"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -113,19 +114,19 @@ func handleListHidden(c *fiber.Ctx) error {
 	section := c.Params("section")
 
 	if !validSections[section] {
-		return badRequest(c, "invalid section: "+section)
+		return response.BadRequest(c, "invalid section: "+section)
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	var items []database.UserHidden
 	if err := db.Where("user_id = ? AND section = ?", userID, section).
 		Order("hidden_at DESC").
 		Find(&items).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to fetch hidden items")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to fetch hidden items")
 	}
 
 	resp := make([]HiddenItemResponse, 0, len(items))
@@ -148,21 +149,21 @@ func handleAddHidden(c *fiber.Ctx) error {
 	section := c.Params("section")
 
 	if !validSections[section] {
-		return badRequest(c, "invalid section: "+section)
+		return response.BadRequest(c, "invalid section: "+section)
 	}
 
 	var req AddHiddenRequest
 	if err := c.BodyParser(&req); err != nil {
-		return badRequest(c, "invalid request body")
+		return response.BadRequest(c, "invalid request body")
 	}
 
 	if req.MediaType == "" || req.MediaID == 0 {
-		return badRequest(c, "media_type and media_id are required")
+		return response.BadRequest(c, "media_type and media_id are required")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	item := database.UserHidden{
@@ -182,7 +183,7 @@ func handleAddHidden(c *fiber.Ctx) error {
 	}).FirstOrCreate(&item)
 
 	if result.Error != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to hide item")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to hide item")
 	}
 
 	// Publish outbox event (best-effort, non-blocking).
@@ -203,21 +204,21 @@ func handleRemoveHidden(c *fiber.Ctx) error {
 	section := c.Params("section")
 
 	if !validSections[section] {
-		return badRequest(c, "invalid section: "+section)
+		return response.BadRequest(c, "invalid section: "+section)
 	}
 
 	var req RemoveHiddenRequest
 	if err := c.BodyParser(&req); err != nil {
-		return badRequest(c, "invalid request body")
+		return response.BadRequest(c, "invalid request body")
 	}
 
 	if req.MediaType == "" || req.MediaID == 0 {
-		return badRequest(c, "media_type and media_id are required")
+		return response.BadRequest(c, "media_type and media_id are required")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	result := db.Where("user_id = ? AND section = ? AND media_type = ? AND media_id = ?",
@@ -225,11 +226,11 @@ func handleRemoveHidden(c *fiber.Ctx) error {
 		Delete(&database.UserHidden{})
 
 	if result.Error != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to remove hidden item")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to remove hidden item")
 	}
 
 	if result.RowsAffected == 0 {
-		return notFound(c, "hidden item not found")
+		return response.NotFound(c, "hidden item not found")
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
@@ -238,20 +239,3 @@ func handleRemoveHidden(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-func writeError(c *fiber.Ctx, status int, code, message string) error {
-	return c.Status(status).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    code,
-			"message": message,
-		},
-	})
-}
-
-func badRequest(c *fiber.Ctx, msg string) error {
-	return writeError(c, fiber.StatusBadRequest, "invalid_request", msg)
-}
-
-func notFound(c *fiber.Ctx, msg string) error {
-	return writeError(c, fiber.StatusNotFound, "not_found", msg)
-}

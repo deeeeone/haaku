@@ -15,6 +15,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/response"
 )
 
 // tmdbClientSingleton holds the lazily-initialized TMDB client.
@@ -185,7 +186,7 @@ func handleMovieAliases(c *fiber.Ctx) error {
 
 	raw, err := callTMDB(fmt.Sprintf("/movie/%d/alternative_titles", tmdbID))
 	if err != nil {
-		return writeTranslationError(c, err.Error())
+		return response.InternalError(c, err.Error())
 	}
 
 	aliases := parseAliases(raw)
@@ -207,7 +208,7 @@ func handleShowAliases(c *fiber.Ctx) error {
 
 	raw, err := callTMDB(fmt.Sprintf("/tv/%d/alternative_titles", tmdbID))
 	if err != nil {
-		return writeTranslationError(c, err.Error())
+		return response.InternalError(c, err.Error())
 	}
 
 	aliases := parseAliases(raw)
@@ -226,12 +227,12 @@ func proxyTranslations(c *fiber.Ctx, cacheKey, lang, tmdbPath string) error {
 
 	raw, err := callTMDB(tmdbPath)
 	if err != nil {
-		return writeTranslationError(c, err.Error())
+		return response.InternalError(c, err.Error())
 	}
 
 	trans, err := filterTranslations(raw, lang)
 	if err != nil {
-		return writeTranslationError(c, "failed to parse translations")
+		return response.InternalError(c, "failed to parse translations")
 	}
 
 	setCachedTranslations(cacheKey, trans)
@@ -320,13 +321,13 @@ func resolveMovieTmdbID(c *fiber.Ctx) (int, error) {
 	var movie database.Movie
 	if err := db.First(&movie, internalID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return 0, notFound(c, "movie not found")
+			return 0, response.NotFound(c, "movie not found")
 		}
 		return 0, fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
 
 	if movie.TmdbID == 0 {
-		return 0, notFound(c, "movie has no TMDB ID")
+		return 0, response.NotFound(c, "movie has no TMDB ID")
 	}
 	return movie.TmdbID, nil
 }
@@ -345,13 +346,13 @@ func resolveShowTmdbID(c *fiber.Ctx) (int, error) {
 	var show database.Show
 	if err := db.First(&show, internalID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return 0, notFound(c, "show not found")
+			return 0, response.NotFound(c, "show not found")
 		}
 		return 0, fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
 
 	if show.TmdbID == 0 {
-		return 0, notFound(c, "show has no TMDB ID")
+		return 0, response.NotFound(c, "show has no TMDB ID")
 	}
 	return show.TmdbID, nil
 }
@@ -418,12 +419,3 @@ func setCachedAliases(key string, aliases []AliasResponse) {
 // ---------------------------------------------------------------------------
 // Error helpers
 // ---------------------------------------------------------------------------
-
-func writeTranslationError(c *fiber.Ctx, msg string) error {
-	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    "internal",
-			"message": msg,
-		},
-	})
-}

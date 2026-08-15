@@ -9,6 +9,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -40,7 +41,7 @@ func RegisterRoutes(api fiber.Router) {
 func requireAuth(c *fiber.Ctx) error {
 	userID, ok := c.Locals("user_id").(string)
 	if !ok || userID == "" {
-		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
 	}
 	return c.Next()
 }
@@ -84,19 +85,19 @@ func handleListFilters(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 	section := c.Params("section")
 	if section == "" {
-		return badRequest(c, "section is required")
+		return response.BadRequest(c, "section is required")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	var filters []database.SavedFilter
 	if err := db.Where("user_id = ? AND section = ?", userID, section).
 		Order("created_at ASC").
 		Find(&filters).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to fetch filters")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to fetch filters")
 	}
 
 	resp := make([]filterResponse, len(filters))
@@ -113,15 +114,15 @@ func handleSaveFilter(c *fiber.Ctx) error {
 
 	var req filterSaveRequest
 	if err := c.BodyParser(&req); err != nil {
-		return badRequest(c, "invalid request body")
+		return response.BadRequest(c, "invalid request body")
 	}
 	if req.Section == "" || req.Name == "" {
-		return badRequest(c, "section and name are required")
+		return response.BadRequest(c, "section and name are required")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	// Check count — max 20 per user per section.
@@ -130,7 +131,7 @@ func handleSaveFilter(c *fiber.Ctx) error {
 		Where("user_id = ? AND section = ?", userID, req.Section).
 		Count(&count)
 	if count >= 20 {
-		return badRequest(c, "maximum of 20 saved filters per section reached")
+		return response.BadRequest(c, "maximum of 20 saved filters per section reached")
 	}
 
 	filter := req.Filter
@@ -146,7 +147,7 @@ func handleSaveFilter(c *fiber.Ctx) error {
 	}
 
 	if err := db.Create(&saved).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to save filter")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to save filter")
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(toFilterResponse(&saved))
@@ -157,28 +158,28 @@ func handleDeleteFilter(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
-		return badRequest(c, "invalid filter id")
+		return response.BadRequest(c, "invalid filter id")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	// Verify owner before deleting.
 	var f database.SavedFilter
 	if err := db.First(&f, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "filter not found")
+			return response.NotFound(c, "filter not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 	if f.UserID != userID {
-		return notFound(c, "filter not found")
+		return response.NotFound(c, "filter not found")
 	}
 
 	if err := db.Delete(&f).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to delete filter")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to delete filter")
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
@@ -187,20 +188,3 @@ func handleDeleteFilter(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-func writeError(c *fiber.Ctx, status int, code, message string) error {
-	return c.Status(status).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    code,
-			"message": message,
-		},
-	})
-}
-
-func badRequest(c *fiber.Ctx, msg string) error {
-	return writeError(c, fiber.StatusBadRequest, "invalid_request", msg)
-}
-
-func notFound(c *fiber.Ctx, msg string) error {
-	return writeError(c, fiber.StatusNotFound, "not_found", msg)
-}

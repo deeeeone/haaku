@@ -40,6 +40,6 @@ All handlers verify the episode exists before serving sub-resources. Registers O
 - [ ] Reuse the media package episode/season builders (or the `comments` package's response type) instead of local duplicates.
 - [ ] Populate external IDs (tmdb/imdb) in episode/season `IDs`.
 - [ ] Fix `total_count` on the lists endpoint to reflect only visible lists (or filter in SQL).
-- [ ] Consolidate error + pagination helpers into shared packages.
+- [x] Consolidate error + pagination helpers into `internal/response`.
 - [ ] Consider caching stats/ratings.
 - [ ] Verify module test coverage (`make test`).

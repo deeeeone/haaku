@@ -8,6 +8,7 @@ import (
 	"trakt-api/internal/outbox"
 
 	"github.com/gofiber/fiber/v2"
+	"trakt-api/internal/response"
 )
 
 // ---------------------------------------------------------------------------
@@ -38,33 +39,33 @@ func RegisterReceiverRoutes(api fiber.Router) {
 func handleReceiveEvent(c *fiber.Ctx) error {
 	tokenStr := c.Params("token")
 	if tokenStr == "" {
-		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "invalid or expired token")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "invalid or expired token")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return badRequest(c, "database unavailable")
+		return response.BadRequest(c, "database unavailable")
 	}
 
 	tok, err := LookupToken(db, tokenStr)
 	if err != nil {
-		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "invalid or expired token")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "invalid or expired token")
 	}
 	if tok == nil || !tok.Active {
-		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "invalid or expired token")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "invalid or expired token")
 	}
 
 	var payload map[string]interface{}
 	if err := json.Unmarshal(c.Body(), &payload); err != nil {
-		return badRequest(c, "invalid JSON payload")
+		return response.BadRequest(c, "invalid JSON payload")
 	}
 
 	if payload["event"] == nil && payload["type"] == nil {
-		return badRequest(c, "payload must contain an 'event' or 'type' field")
+		return response.BadRequest(c, "payload must contain an 'event' or 'type' field")
 	}
 
 	if err := outbox.PublishEvent(db, "integration.received", tok.UserID, payload); err != nil {
-		return badRequest(c, "failed to queue event")
+		return response.BadRequest(c, "failed to queue event")
 	}
 
 	return c.Status(fiber.StatusAccepted).JSON(fiber.Map{"status": "accepted"})

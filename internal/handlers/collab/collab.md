@@ -43,5 +43,6 @@ Ownership is enforced by checking `lists.id = ? AND lists.user_id = ?`. Register
 - [ ] Implement the invite accept/decline flow or explicitly document `AcceptedAt` as future.
 - [ ] Return 403 (not 404) when the list exists but the caller isn't the owner.
 - [ ] Route writes through `cache.WithCacheTransaction` with list version-key invalidation.
-- [ ] Replace local error/timestamp/parse helpers with shared `internal/httpapi` + stdlib.
+- [x] Replace local error helpers with shared `internal/response` (Batch 0).
+- [ ] Consolidate the remaining local `parseID` into a shared ID-parsing util.
 - [ ] Verify module test coverage (`make test`).

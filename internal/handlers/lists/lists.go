@@ -18,6 +18,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -150,7 +151,7 @@ func handleGetUserLists(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	query := db.Where("user_id = ?", targetUserID)
@@ -162,7 +163,7 @@ func handleGetUserLists(c *fiber.Ctx) error {
 
 	var lists []database.List
 	if err := query.Order("created_at DESC").Find(&lists).Error; err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 	if lists == nil {
 		lists = make([]database.List, 0)
@@ -210,10 +211,10 @@ func handleCreateList(c *fiber.Ctx) error {
 
 	var req createListRequest
 	if err := c.BodyParser(&req); err != nil {
-		return badRequest(c, "invalid request body")
+		return response.BadRequest(c, "invalid request body")
 	}
 	if strings.TrimSpace(req.Name) == "" {
-		return badRequest(c, "name is required")
+		return response.BadRequest(c, "name is required")
 	}
 
 	privacy := "public"
@@ -221,7 +222,7 @@ func handleCreateList(c *fiber.Ctx) error {
 		privacy = req.Privacy
 	}
 	if privacy != "public" && privacy != "link_only" && privacy != "private" {
-		return badRequest(c, "privacy must be public, link_only, or private")
+		return response.BadRequest(c, "privacy must be public, link_only, or private")
 	}
 
 	allowComments := true
@@ -285,7 +286,7 @@ func handleCreateList(c *fiber.Ctx) error {
 		return cacheTx, nil
 	})
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(list)
@@ -298,7 +299,7 @@ func handleGetList(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	var list database.List
@@ -306,23 +307,23 @@ func handleGetList(c *fiber.Ctx) error {
 	if id, parseErr := strconv.ParseInt(idParam, 10, 64); parseErr == nil {
 		if err := db.First(&list, id).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return notFound(c, "list not found")
+				return response.NotFound(c, "list not found")
 			}
-			return internalError(c)
+			return response.InternalError(c)
 		}
 	} else {
 		if err := db.Where("slug = ?", idParam).First(&list).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				return notFound(c, "list not found")
+				return response.NotFound(c, "list not found")
 			}
-			return internalError(c)
+			return response.InternalError(c)
 		}
 	}
 
 	// Privacy check
 	currentUserID := userID(c)
 	if list.Privacy == "private" && currentUserID != list.UserID {
-		return forbidden(c, "this list is private")
+		return response.Forbidden(c, "this list is private")
 	}
 
 	return c.JSON(list)
@@ -348,36 +349,36 @@ func handleUpdateList(c *fiber.Ctx) error {
 	idParam := c.Params("id")
 	listID, parseErr := strconv.ParseInt(idParam, 10, 64)
 	if parseErr != nil {
-		return badRequest(c, "invalid list id")
+		return response.BadRequest(c, "invalid list id")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	var list database.List
 	if err := db.First(&list, listID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "list not found")
+			return response.NotFound(c, "list not found")
 		}
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	// Ownership check
 	if list.UserID != uid {
-		return forbidden(c, "you do not have permission to edit this list")
+		return response.Forbidden(c, "you do not have permission to edit this list")
 	}
 
 	var req updateListRequest
 	if err := c.BodyParser(&req); err != nil {
-		return badRequest(c, "invalid request body")
+		return response.BadRequest(c, "invalid request body")
 	}
 
 	updates := map[string]interface{}{}
 	if req.Name != nil {
 		if strings.TrimSpace(*req.Name) == "" {
-			return badRequest(c, "name cannot be empty")
+			return response.BadRequest(c, "name cannot be empty")
 		}
 		updates["name"] = strings.TrimSpace(*req.Name)
 	}
@@ -386,7 +387,7 @@ func handleUpdateList(c *fiber.Ctx) error {
 	}
 	if req.Privacy != nil {
 		if *req.Privacy != "public" && *req.Privacy != "link_only" && *req.Privacy != "private" {
-			return badRequest(c, "privacy must be public, link_only, or private")
+			return response.BadRequest(c, "privacy must be public, link_only, or private")
 		}
 		updates["privacy"] = *req.Privacy
 	}
@@ -407,7 +408,7 @@ func handleUpdateList(c *fiber.Ctx) error {
 	}
 
 	if len(updates) == 0 {
-		return badRequest(c, "no fields to update")
+		return response.BadRequest(c, "no fields to update")
 	}
 
 	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
@@ -433,7 +434,7 @@ func handleUpdateList(c *fiber.Ctx) error {
 		return cacheTx, nil
 	})
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	// Re-fetch
@@ -450,24 +451,24 @@ func handleDeleteList(c *fiber.Ctx) error {
 	idParam := c.Params("id")
 	listID, parseErr := strconv.ParseInt(idParam, 10, 64)
 	if parseErr != nil {
-		return badRequest(c, "invalid list id")
+		return response.BadRequest(c, "invalid list id")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	var list database.List
 	if err := db.First(&list, listID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "list not found")
+			return response.NotFound(c, "list not found")
 		}
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	if list.UserID != uid {
-		return forbidden(c, "you do not have permission to delete this list")
+		return response.Forbidden(c, "you do not have permission to delete this list")
 	}
 
 	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
@@ -491,7 +492,7 @@ func handleDeleteList(c *fiber.Ctx) error {
 		return cacheTx, nil
 	})
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
@@ -565,31 +566,31 @@ func handleGetListItems(c *fiber.Ctx) error {
 	idParam := c.Params("id")
 	listID, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		return badRequest(c, "invalid list id")
+		return response.BadRequest(c, "invalid list id")
 	}
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	// Verify list exists and check privacy
 	var list database.List
 	if err := db.First(&list, listID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "list not found")
+			return response.NotFound(c, "list not found")
 		}
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	currentUserID := userID(c)
 	if list.Privacy == "private" && currentUserID != list.UserID {
-		return forbidden(c, "this list is private")
+		return response.Forbidden(c, "this list is private")
 	}
 
 	// Parse filters
 	mediaType := c.Query("type", "")
-	page, limit := parsePagination(c)
+	page, limit := response.ParsePagination(c, 25)
 
 	query := db.Where("list_id = ?", listID)
 	if mediaType != "" {
@@ -608,7 +609,7 @@ func handleGetListItems(c *fiber.Ctx) error {
 		Offset((page - 1) * limit).
 		Limit(limit).
 		Find(&items).Error; err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 	if items == nil {
 		items = make([]database.ListItem, 0)
@@ -679,30 +680,30 @@ func handleAddListItems(c *fiber.Ctx) error {
 	idParam := c.Params("id")
 	listID, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		return badRequest(c, "invalid list id")
+		return response.BadRequest(c, "invalid list id")
 	}
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	var list database.List
 	if err := db.First(&list, listID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "list not found")
+			return response.NotFound(c, "list not found")
 		}
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	// Only owner can add items
 	if list.UserID != uid {
-		return forbidden(c, "you do not have permission to modify this list")
+		return response.Forbidden(c, "you do not have permission to modify this list")
 	}
 
 	var req addItemsRequest
 	if err := c.BodyParser(&req); err != nil {
-		return badRequest(c, "invalid request body")
+		return response.BadRequest(c, "invalid request body")
 	}
 
 	result := addItemsResponse{
@@ -773,7 +774,7 @@ func handleAddListItems(c *fiber.Ctx) error {
 		return cacheTx, nil
 	})
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(result)
@@ -788,29 +789,29 @@ func handleRemoveListItems(c *fiber.Ctx) error {
 	idParam := c.Params("id")
 	listID, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		return badRequest(c, "invalid list id")
+		return response.BadRequest(c, "invalid list id")
 	}
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	var list database.List
 	if err := db.First(&list, listID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "list not found")
+			return response.NotFound(c, "list not found")
 		}
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	if list.UserID != uid {
-		return forbidden(c, "you do not have permission to modify this list")
+		return response.Forbidden(c, "you do not have permission to modify this list")
 	}
 
 	var req removeItemsRequest
 	if err := c.BodyParser(&req); err != nil {
-		return badRequest(c, "invalid request body")
+		return response.BadRequest(c, "invalid request body")
 	}
 
 	removed := 0
@@ -854,7 +855,7 @@ func handleRemoveListItems(c *fiber.Ctx) error {
 		return cacheTx, nil
 	})
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	return c.JSON(removeItemsResponse{Removed: removed})
@@ -869,33 +870,33 @@ func handleReorderListItems(c *fiber.Ctx) error {
 	idParam := c.Params("id")
 	listID, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		return badRequest(c, "invalid list id")
+		return response.BadRequest(c, "invalid list id")
 	}
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	var list database.List
 	if err := db.First(&list, listID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "list not found")
+			return response.NotFound(c, "list not found")
 		}
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	if list.UserID != uid {
-		return forbidden(c, "you do not have permission to modify this list")
+		return response.Forbidden(c, "you do not have permission to modify this list")
 	}
 
 	var req reorderRequest
 	if err := c.BodyParser(&req); err != nil {
-		return badRequest(c, "invalid request body")
+		return response.BadRequest(c, "invalid request body")
 	}
 
 	if len(req.Order) == 0 {
-		return badRequest(c, "order array must not be empty")
+		return response.BadRequest(c, "order array must not be empty")
 	}
 
 	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
@@ -922,7 +923,7 @@ func handleReorderListItems(c *fiber.Ctx) error {
 		return cacheTx, nil
 	})
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	return c.JSON(fiber.Map{"status": "reordered", "count": len(req.Order)})
@@ -941,25 +942,25 @@ func handleGetListLikes(c *fiber.Ctx) error {
 	idParam := c.Params("id")
 	listID, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		return badRequest(c, "invalid list id")
+		return response.BadRequest(c, "invalid list id")
 	}
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	var list database.List
 	if err := db.First(&list, listID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "list not found")
+			return response.NotFound(c, "list not found")
 		}
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	var likes []database.ListLike
 	if err := db.Where("list_id = ?", listID).Order("created_at DESC").Find(&likes).Error; err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 	if likes == nil {
 		likes = make([]database.ListLike, 0)
@@ -985,20 +986,20 @@ func handleLikeList(c *fiber.Ctx) error {
 	idParam := c.Params("id")
 	listID, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		return badRequest(c, "invalid list id")
+		return response.BadRequest(c, "invalid list id")
 	}
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	var list database.List
 	if err := db.First(&list, listID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "list not found")
+			return response.NotFound(c, "list not found")
 		}
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
@@ -1019,7 +1020,7 @@ func handleLikeList(c *fiber.Ctx) error {
 		return cacheTx, nil
 	})
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	return c.JSON(fiber.Map{"liked": true})
@@ -1034,7 +1035,7 @@ func handleUnlikeList(c *fiber.Ctx) error {
 	idParam := c.Params("id")
 	listID, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		return badRequest(c, "invalid list id")
+		return response.BadRequest(c, "invalid list id")
 	}
 
 	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
@@ -1050,7 +1051,7 @@ func handleUnlikeList(c *fiber.Ctx) error {
 		return cacheTx, nil
 	})
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	return c.JSON(fiber.Map{"liked": false})
@@ -1064,25 +1065,25 @@ func handleGetListComments(c *fiber.Ctx) error {
 	idParam := c.Params("id")
 	listID, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		return badRequest(c, "invalid list id")
+		return response.BadRequest(c, "invalid list id")
 	}
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	var list database.List
 	if err := db.First(&list, listID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "list not found")
+			return response.NotFound(c, "list not found")
 		}
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	var comments []database.ListComment
 	if err := db.Where("list_id = ?", listID).Order("created_at ASC").Find(&comments).Error; err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 	if comments == nil {
 		comments = make([]database.ListComment, 0)
@@ -1098,11 +1099,11 @@ func handleGetListComments(c *fiber.Ctx) error {
 func handleGetPopularLists(c *fiber.Ctx) error {
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	period := c.Query("period", "all")
-	page, limit := parsePagination(c)
+	page, limit := response.ParsePagination(c, 25)
 
 	query := db.Where("privacy = ?", "public")
 
@@ -1123,7 +1124,7 @@ func handleGetPopularLists(c *fiber.Ctx) error {
 		Offset((page - 1) * limit).
 		Limit(limit).
 		Find(&lists).Error; err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 	if lists == nil {
 		lists = make([]database.List, 0)
@@ -1140,10 +1141,10 @@ func handleGetPopularLists(c *fiber.Ctx) error {
 func handleGetTrendingLists(c *fiber.Ctx) error {
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
-	page, limit := parsePagination(c)
+	page, limit := response.ParsePagination(c, 25)
 
 	// Trending = recently created public lists with most likes (momentum).
 	// Simplified: sorts by recent created_at with some like weight.
@@ -1156,7 +1157,7 @@ func handleGetTrendingLists(c *fiber.Ctx) error {
 		Offset((page - 1) * limit).
 		Limit(limit).
 		Find(&lists).Error; err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 	if lists == nil {
 		lists = make([]database.List, 0)
@@ -1187,12 +1188,12 @@ func handleGetSmartLists(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	var lists []database.SmartList
 	if err := db.Where("user_id = ?", uid).Order("created_at DESC").Find(&lists).Error; err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 	if lists == nil {
 		lists = make([]database.SmartList, 0)
@@ -1209,10 +1210,10 @@ func handleCreateSmartList(c *fiber.Ctx) error {
 
 	var req smartListRequest
 	if err := c.BodyParser(&req); err != nil {
-		return badRequest(c, "invalid request body")
+		return response.BadRequest(c, "invalid request body")
 	}
 	if strings.TrimSpace(req.Name) == "" {
-		return badRequest(c, "name is required")
+		return response.BadRequest(c, "name is required")
 	}
 
 	sl := database.SmartList{
@@ -1236,7 +1237,7 @@ func handleCreateSmartList(c *fiber.Ctx) error {
 		return cacheTx, nil
 	})
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(sl)
@@ -1251,24 +1252,24 @@ func handleGetSmartList(c *fiber.Ctx) error {
 	idParam := c.Params("id")
 	slID, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		return badRequest(c, "invalid smart list id")
+		return response.BadRequest(c, "invalid smart list id")
 	}
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	var sl database.SmartList
 	if err := db.First(&sl, slID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "smart list not found")
+			return response.NotFound(c, "smart list not found")
 		}
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	if sl.UserID != uid {
-		return forbidden(c, "you do not have access to this smart list")
+		return response.Forbidden(c, "you do not have access to this smart list")
 	}
 
 	return c.JSON(sl)
@@ -1283,29 +1284,29 @@ func handleUpdateSmartList(c *fiber.Ctx) error {
 	idParam := c.Params("id")
 	slID, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		return badRequest(c, "invalid smart list id")
+		return response.BadRequest(c, "invalid smart list id")
 	}
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	var sl database.SmartList
 	if err := db.First(&sl, slID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "smart list not found")
+			return response.NotFound(c, "smart list not found")
 		}
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	if sl.UserID != uid {
-		return forbidden(c, "you do not have access to this smart list")
+		return response.Forbidden(c, "you do not have access to this smart list")
 	}
 
 	var req smartListRequest
 	if err := c.BodyParser(&req); err != nil {
-		return badRequest(c, "invalid request body")
+		return response.BadRequest(c, "invalid request body")
 	}
 
 	updates := map[string]interface{}{}
@@ -1317,7 +1318,7 @@ func handleUpdateSmartList(c *fiber.Ctx) error {
 	}
 
 	if len(updates) == 0 {
-		return badRequest(c, "no fields to update")
+		return response.BadRequest(c, "no fields to update")
 	}
 
 	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
@@ -1330,7 +1331,7 @@ func handleUpdateSmartList(c *fiber.Ctx) error {
 		return cacheTx, nil
 	})
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	db.First(&sl, slID)
@@ -1346,24 +1347,24 @@ func handleDeleteSmartList(c *fiber.Ctx) error {
 	idParam := c.Params("id")
 	slID, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		return badRequest(c, "invalid smart list id")
+		return response.BadRequest(c, "invalid smart list id")
 	}
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	var sl database.SmartList
 	if err := db.First(&sl, slID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "smart list not found")
+			return response.NotFound(c, "smart list not found")
 		}
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	if sl.UserID != uid {
-		return forbidden(c, "you do not have access to this smart list")
+		return response.Forbidden(c, "you do not have access to this smart list")
 	}
 
 	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
@@ -1376,7 +1377,7 @@ func handleDeleteSmartList(c *fiber.Ctx) error {
 		return cacheTx, nil
 	})
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
@@ -1392,34 +1393,34 @@ func handleGetSmartListItems(c *fiber.Ctx) error {
 	idParam := c.Params("id")
 	slID, err := strconv.ParseInt(idParam, 10, 64)
 	if err != nil {
-		return badRequest(c, "invalid smart list id")
+		return response.BadRequest(c, "invalid smart list id")
 	}
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	var sl database.SmartList
 	if err := db.First(&sl, slID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "smart list not found")
+			return response.NotFound(c, "smart list not found")
 		}
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	if sl.UserID != uid {
-		return forbidden(c, "you do not have access to this smart list")
+		return response.Forbidden(c, "you do not have access to this smart list")
 	}
 
 	mediaTypeFilter := c.Query("type", "")
 	sortBy := c.Query("sort_by", "popularity")
-	page, limit := parsePagination(c)
+	page, limit := response.ParsePagination(c, 25)
 
 	// Build query from filter DSL
 	results, total, err := resolveSmartListQuery(db, sl.Filters, uid, mediaTypeFilter, sortBy, page, limit)
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	return c.JSON(fiber.Map{
@@ -1670,24 +1671,6 @@ func sanitizeSortColumn(col string) string {
 // HELPERS
 // ============================================================================
 
-func parsePagination(c *fiber.Ctx) (page, limit int) {
-	page, limit = 1, 25
-	if p := c.Query("page"); p != "" {
-		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
-			page = parsed
-		}
-	}
-	if l := c.Query("limit"); l != "" {
-		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
-			if parsed > 100 {
-				parsed = 100
-			}
-			limit = parsed
-		}
-	}
-	return
-}
-
 func toFloat64(v interface{}) (float64, bool) {
 	switch val := v.(type) {
 	case float64:
@@ -1713,29 +1696,5 @@ func toFloat64(v interface{}) (float64, bool) {
 func authRequired(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 		"error": fiber.Map{"code": "unauthorized", "message": "invalid or expired token"},
-	})
-}
-
-func badRequest(c *fiber.Ctx, msg string) error {
-	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-		"error": fiber.Map{"code": "invalid_request", "message": msg},
-	})
-}
-
-func notFound(c *fiber.Ctx, msg string) error {
-	return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-		"error": fiber.Map{"code": "not_found", "message": msg},
-	})
-}
-
-func forbidden(c *fiber.Ctx, msg string) error {
-	return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
-		"error": fiber.Map{"code": "forbidden", "message": msg},
-	})
-}
-
-func internalError(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-		"error": fiber.Map{"code": "internal", "message": "internal server error"},
 	})
 }

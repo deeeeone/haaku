@@ -2,7 +2,6 @@ package notifications
 
 import (
 	"encoding/json"
-	"strconv"
 	"time"
 
 	"trakt-api/internal/database"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -38,7 +38,7 @@ func RegisterRoutes(api fiber.Router) {
 func requireAuth(c *fiber.Ctx) error {
 	userID, ok := c.Locals("user_id").(string)
 	if !ok || userID == "" {
-		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
 	}
 	return c.Next()
 }
@@ -104,11 +104,11 @@ func handleGetInbox(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
-	page := queryInt(c, "page", 1)
-	limit := clampLimit(queryInt(c, "limit", 20), 1, 100)
+	page := response.QueryInt(c, "page", 1)
+	limit := response.ClampLimit(response.QueryInt(c, "limit", 20), 1, 100)
 
 	// Unread count
 	var unreadCount int64
@@ -150,7 +150,7 @@ func handleMarkRead(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	var req markReadRequest
@@ -163,13 +163,13 @@ func handleMarkRead(c *fiber.Ctx) error {
 		if dbErr := db.Model(&database.Notification{}).
 			Where("id IN ? AND user_id = ?", req.IDs, userID).
 			Update("read", true).Error; dbErr != nil {
-			return writeError(c, fiber.StatusInternalServerError, "internal", "failed to mark as read")
+			return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to mark as read")
 		}
 	} else {
 		if dbErr := db.Model(&database.Notification{}).
 			Where("user_id = ? AND read = false", userID).
 			Update("read", true).Error; dbErr != nil {
-			return writeError(c, fiber.StatusInternalServerError, "internal", "failed to mark as read")
+			return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to mark as read")
 		}
 	}
 
@@ -182,12 +182,12 @@ func handleGetSettings(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	var user database.User
 	if err := db.First(&user, "id = ?", userID).Error; err != nil {
-		return writeError(c, fiber.StatusNotFound, "not_found", "user not found")
+		return response.WriteError(c, fiber.StatusNotFound, "not_found", "user not found")
 	}
 
 	settings := parseNotifSettings(user.Settings)
@@ -262,35 +262,4 @@ func CreateNotification(db *gorm.DB, userID, notifType, actorID string, payload 
 	}
 
 	return db.Create(&notif).Error
-}
-
-func queryInt(c *fiber.Ctx, key string, defaultVal int) int {
-	v := c.Query(key)
-	if v == "" {
-		return defaultVal
-	}
-	iv, err := strconv.Atoi(v)
-	if err != nil || iv < 1 {
-		return defaultVal
-	}
-	return iv
-}
-
-func clampLimit(limit, min, max int) int {
-	if limit < min {
-		return min
-	}
-	if limit > max {
-		return max
-	}
-	return limit
-}
-
-func writeError(c *fiber.Ctx, status int, code, message string) error {
-	return c.Status(status).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    code,
-			"message": message,
-		},
-	})
 }

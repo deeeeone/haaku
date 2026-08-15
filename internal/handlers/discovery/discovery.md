@@ -33,7 +33,7 @@ Registers OpenAPI metadata for all six endpoints. Reuses `media.BuildMovieRespon
 
 - [ ] Decide trending-vs-popular semantics (need a real trending signal or drop the distinction).
 - [ ] Implement recommendations or mark the routes as `not-implemented` in OpenAPI.
-- [ ] Use `internal/httpapi` error constructors instead of `fiber.NewError`.
+- [x] Use `internal/response` error constructors instead of `fiber.NewError`.
 - [ ] Align response envelope with the API conventions (add counts/pagination metadata if the spec requires).
 - [ ] Add caching for hot public listings.
 - [ ] Cross-check the endpoint set against the roadmap (T1.7).

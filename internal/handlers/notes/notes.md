@@ -40,6 +40,6 @@ All routes are auth-required via a hand-rolled `requireAuth`. Registers OpenAPI 
 - [ ] Make the upsert atomic (DB unique constraint + `OnConflict` upsert) or advisory-locked.
 - [ ] Reconcile 403-vs-404 for cross-user access against the spec/docs.
 - [ ] Add note-length and `media_type` validation.
-- [ ] Replace local helpers with `internal/httpapi` + stdlib.
+- [x] Replace local error/pagination helpers with `internal/response` (Batch 0).
 - [ ] Route writes through `WithCacheTransaction` per conventions.
 - [ ] Verify module test coverage (`make test`).

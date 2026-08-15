@@ -44,7 +44,7 @@ Also registers OpenAPI route metadata (via `openapi.Register`) and exposes `Regi
 
 ## Todos
 
-- [ ] Switch to shared `internal/httpapi` error constructors (remove local `writeError`).
+- [x] Switch to shared `internal/response` error constructors (local `writeError` removed).
 - [ ] Move auth guard to a shared middleware package.
 - [ ] Return 400 on malformed `start_at` and on unknown `type` values.
 - [ ] Confirm pagination metadata contract against `api-conventions.md` and align response shape.

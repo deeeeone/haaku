@@ -14,6 +14,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -104,26 +105,26 @@ func queueFollowInvalidation(cacheTx *cache.CacheTransaction, userA, userB strin
 func handleFollow(c *fiber.Ctx) error {
 	followerID, ok := c.Locals("user_id").(string)
 	if !ok || followerID == "" {
-		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
 	}
 	targetID := c.Params("id")
 
 	if targetID == "" || targetID == followerID {
-		return badRequest(c, "invalid target user id")
+		return response.BadRequest(c, "invalid target user id")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	// Verify target exists.
 	var target database.User
 	if err := db.First(&target, "id = ?", targetID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "user not found")
+			return response.NotFound(c, "user not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	// Check if already following.
@@ -175,7 +176,7 @@ func handleFollow(c *fiber.Ctx) error {
 		return cacheTx, nil
 	})
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to follow user")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to follow user")
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(resp)
@@ -185,16 +186,16 @@ func handleFollow(c *fiber.Ctx) error {
 func handleUnfollow(c *fiber.Ctx) error {
 	followerID, ok := c.Locals("user_id").(string)
 	if !ok || followerID == "" {
-		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
 	}
 	targetID := c.Params("id")
 
 	if targetID == "" {
-		return badRequest(c, "invalid target user id")
+		return response.BadRequest(c, "invalid target user id")
 	}
 
 	if _, err := database.GetDB(); err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	err := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
@@ -220,9 +221,9 @@ func handleUnfollow(c *fiber.Ctx) error {
 	})
 	if err != nil {
 		if errors.Is(err, errNotFollowing) {
-			return notFound(c, "not following this user")
+			return response.NotFound(c, "not following this user")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to unfollow user")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to unfollow user")
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
@@ -250,10 +251,10 @@ func handleListFriends(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
-	page, limit := pagination(c)
+	page, limit := response.ParsePagination(c, 25)
 
 	// Mutual follows: people that target follows AND who follow target.
 	const mutual = `
@@ -263,13 +264,13 @@ func handleListFriends(c *fiber.Ctx) error {
 
 	var total int64
 	if err := db.Raw("SELECT COUNT(*)"+mutual, targetID).Scan(&total).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to fetch friends")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to fetch friends")
 	}
 
 	var rows []database.UserFollow
 	if err := db.Raw("SELECT f1.*"+mutual+" ORDER BY f1.created_at DESC, f1.id ASC LIMIT ? OFFSET ?",
 		targetID, limit, (page-1)*limit).Scan(&rows).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to fetch friends")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to fetch friends")
 	}
 
 	userIDs := make([]string, 0, len(rows))
@@ -287,19 +288,19 @@ func handleListFriends(c *fiber.Ctx) error {
 func listFollowRelations(c *fiber.Ctx, targetID, direction string) error {
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	// Verify user exists.
 	var count int64
 	if err := db.Model(&database.User{}).Where("id = ?", targetID).Count(&count).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 	if count == 0 {
-		return notFound(c, "user not found")
+		return response.NotFound(c, "user not found")
 	}
 
-	page, limit := pagination(c)
+	page, limit := response.ParsePagination(c, 25)
 
 	query := db.Where("approved_at IS NOT NULL")
 	if direction == "followers" {
@@ -310,14 +311,14 @@ func listFollowRelations(c *fiber.Ctx, targetID, direction string) error {
 
 	var total int64
 	if err := query.Model(&database.UserFollow{}).Count(&total).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	var follows []database.UserFollow
 	if err := query.Order("created_at DESC, id ASC").
 		Offset((page - 1) * limit).Limit(limit).
 		Find(&follows).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	userIDs := make([]string, 0, len(follows))
@@ -342,21 +343,21 @@ func listFollowRelations(c *fiber.Ctx, targetID, direction string) error {
 func handleListFollowRequests(c *fiber.Ctx) error {
 	userID, ok := c.Locals("user_id").(string)
 	if !ok || userID == "" {
-		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
-	page, limit := pagination(c)
+	page, limit := response.ParsePagination(c, 25)
 
 	var total int64
 	if err := db.Model(&database.UserFollow{}).
 		Where("following_id = ? AND approved_at IS NULL", userID).
 		Count(&total).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to fetch follow requests")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to fetch follow requests")
 	}
 
 	var follows []database.UserFollow
@@ -364,7 +365,7 @@ func handleListFollowRequests(c *fiber.Ctx) error {
 		Order("created_at DESC, id ASC").
 		Offset((page - 1) * limit).Limit(limit).
 		Find(&follows).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to fetch follow requests")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to fetch follow requests")
 	}
 
 	// Collect follower IDs.
@@ -400,16 +401,16 @@ func handleListFollowRequests(c *fiber.Ctx) error {
 func handleApproveFollowRequest(c *fiber.Ctx) error {
 	userID, ok := c.Locals("user_id").(string)
 	if !ok || userID == "" {
-		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
 	}
 	followerID := c.Params("follower_id")
 
 	if followerID == "" {
-		return badRequest(c, "invalid follower id")
+		return response.BadRequest(c, "invalid follower id")
 	}
 
 	if _, err := database.GetDB(); err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	err := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
@@ -438,9 +439,9 @@ func handleApproveFollowRequest(c *fiber.Ctx) error {
 	})
 	if err != nil {
 		if errors.Is(err, errRequestNotFound) {
-			return notFound(c, "follow request not found")
+			return response.NotFound(c, "follow request not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to approve follow request")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to approve follow request")
 	}
 
 	return c.JSON(fiber.Map{"status": "approved"})
@@ -450,16 +451,16 @@ func handleApproveFollowRequest(c *fiber.Ctx) error {
 func handleDenyFollowRequest(c *fiber.Ctx) error {
 	userID, ok := c.Locals("user_id").(string)
 	if !ok || userID == "" {
-		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
 	}
 	followerID := c.Params("follower_id")
 
 	if followerID == "" {
-		return badRequest(c, "invalid follower id")
+		return response.BadRequest(c, "invalid follower id")
 	}
 
 	if _, err := database.GetDB(); err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	err := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
@@ -479,9 +480,9 @@ func handleDenyFollowRequest(c *fiber.Ctx) error {
 	})
 	if err != nil {
 		if errors.Is(err, errRequestNotFound) {
-			return notFound(c, "follow request not found")
+			return response.NotFound(c, "follow request not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to deny follow request")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to deny follow request")
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
@@ -539,53 +540,9 @@ func resolveUserStubs(db *gorm.DB, userIDs []string) []UserProfileStub {
 	return stubs
 }
 
-func writeError(c *fiber.Ctx, status int, code, message string) error {
-	return c.Status(status).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    code,
-			"message": message,
-		},
-	})
-}
-
-func badRequest(c *fiber.Ctx, msg string) error {
-	return writeError(c, fiber.StatusBadRequest, "invalid_request", msg)
-}
-
-func notFound(c *fiber.Ctx, msg string) error {
-	return writeError(c, fiber.StatusNotFound, "not_found", msg)
-}
-
 // ---------------------------------------------------------------------------
 // PAGINATION (api-conventions.md §7): ?page&limit, default 25, max 100.
 // ---------------------------------------------------------------------------
-
-func pagination(c *fiber.Ctx) (page, limit int) {
-	page = queryInt(c, "page", 1)
-	if page < 1 {
-		page = 1
-	}
-	limit = queryInt(c, "limit", 25)
-	if limit < 1 {
-		limit = 1
-	}
-	if limit > 100 {
-		limit = 100
-	}
-	return page, limit
-}
-
-func queryInt(c *fiber.Ctx, key string, fallback int) int {
-	raw := c.Query(key)
-	if raw == "" {
-		return fallback
-	}
-	n, err := strconv.Atoi(raw)
-	if err != nil {
-		return fallback
-	}
-	return n
-}
 
 func totalPages(total int64, limit int) int64 {
 	if total == 0 {

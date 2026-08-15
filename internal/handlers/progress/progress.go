@@ -6,6 +6,7 @@ import (
 	"trakt-api/internal/openapi"
 
 	"github.com/gofiber/fiber/v2"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -107,7 +108,7 @@ func handlePlaybackMovies(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	// Query user_playback joined with movies.
@@ -128,7 +129,7 @@ func handlePlaybackMovies(c *fiber.Ctx) error {
 		Where("up.user_id = ?", userID).
 		Order("up.paused_at DESC").
 		Find(&rows).Error; err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	resp := make([]MoviePlaybackResponse, 0, len(rows))
@@ -165,7 +166,7 @@ func handlePlaybackEpisodes(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	// Query user_playback joined with episodes, seasons, and shows.
@@ -189,7 +190,7 @@ func handlePlaybackEpisodes(c *fiber.Ctx) error {
 		Where("up.user_id = ?", userID).
 		Order("up.paused_at DESC").
 		Find(&rows).Error; err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	resp := make([]EpisodePlaybackResponse, 0, len(rows))
@@ -227,11 +228,5 @@ func handlePlaybackEpisodes(c *fiber.Ctx) error {
 func authRequired(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 		"error": fiber.Map{"code": "unauthorized", "message": "invalid or expired token"},
-	})
-}
-
-func internalError(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-		"error": fiber.Map{"code": "internal", "message": "internal server error"},
 	})
 }

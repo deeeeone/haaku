@@ -1,7 +1,6 @@
 package recommendations
 
 import (
-	"strconv"
 	"time"
 
 	"trakt-api/internal/auth"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -156,16 +156,16 @@ func handlePersonalizedMovies(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	genreFilter := c.Query("genre", "")
-	page, limit := parsePagination(c)
+	page, limit := response.ParsePagination(c, 20)
 
 	// Step 1: Get user's top 5 genres from history + favorites + ratings.
 	topGenres, err := fetchTopGenres(db, userID, 5)
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	if len(topGenres) == 0 {
@@ -193,7 +193,7 @@ func handlePersonalizedMovies(c *fiber.Ctx) error {
 
 	// Count total
 	if err := baseQuery.Distinct("movies.id").Count(&total).Error; err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	// Fetch page
@@ -203,7 +203,7 @@ func handlePersonalizedMovies(c *fiber.Ctx) error {
 		Offset((page - 1) * limit).
 		Limit(limit).
 		Find(&movies).Error; err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	results := make([]recMovieItem, 0, len(movies))
@@ -241,16 +241,16 @@ func handlePersonalizedShows(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	genreFilter := c.Query("genre", "")
-	page, limit := parsePagination(c)
+	page, limit := response.ParsePagination(c, 20)
 
 	// Step 1: Get user's top 5 genres.
 	topGenres, err := fetchTopGenres(db, userID, 5)
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	if len(topGenres) == 0 {
@@ -282,7 +282,7 @@ func handlePersonalizedShows(c *fiber.Ctx) error {
 	}
 
 	if err := baseQuery.Distinct("shows.id").Count(&total).Error; err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	if err := baseQuery.
@@ -291,7 +291,7 @@ func handlePersonalizedShows(c *fiber.Ctx) error {
 		Offset((page - 1) * limit).
 		Limit(limit).
 		Find(&shows).Error; err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	results := make([]recShowItem, 0, len(shows))
@@ -334,10 +334,10 @@ func handleSocialMovies(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
-	page, limit := parsePagination(c)
+	page, limit := response.ParsePagination(c, 20)
 	cutoff := time.Now().AddDate(0, 0, -90)
 
 	// Use raw SQL for efficiency with subqueries.
@@ -389,7 +389,7 @@ func handleSocialMovies(c *fiber.Ctx) error {
 	`
 
 	if err := db.Raw(sql, userID, cutoff, userID, limit, (page-1)*limit).Scan(&rows).Error; err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	total := int64(0)
@@ -431,10 +431,10 @@ func handleSocialShows(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
-	page, limit := parsePagination(c)
+	page, limit := response.ParsePagination(c, 20)
 	cutoff := time.Now().AddDate(0, 0, -90)
 
 	type row struct {
@@ -490,7 +490,7 @@ func handleSocialShows(c *fiber.Ctx) error {
 	`
 
 	if err := db.Raw(sql, userID, cutoff, userID, limit, (page-1)*limit).Scan(&rows).Error; err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	total := int64(0)
@@ -537,11 +537,11 @@ func handleAnticipated(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	mediaType := c.Query("type", "")
-	page, limit := parsePagination(c)
+	page, limit := response.ParsePagination(c, 20)
 
 	type row struct {
 		MediaType      string  `json:"media_type"`
@@ -694,7 +694,7 @@ func handleAnticipated(c *fiber.Ctx) error {
 	}
 
 	if err := db.Raw(sql, args...).Scan(&rows).Error; err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	total := int64(0)
@@ -802,24 +802,6 @@ func fetchTopGenres(db *gorm.DB, userID string, n int) ([]string, error) {
 	return genres, nil
 }
 
-func parsePagination(c *fiber.Ctx) (page, limit int) {
-	page, limit = 1, 20
-	if p := c.Query("page"); p != "" {
-		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
-			page = parsed
-		}
-	}
-	if l := c.Query("limit"); l != "" {
-		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
-			if parsed > 100 {
-				parsed = 100
-			}
-			limit = parsed
-		}
-	}
-	return
-}
-
 // safeStrings converts a database.StringSlice to a plain []string, never nil.
 func safeStrings(s database.StringSlice) []string {
 	if s == nil {
@@ -861,11 +843,5 @@ func imageURL(images database.JSONMap, key string) string {
 func authRequired(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 		"error": fiber.Map{"code": "unauthorized", "message": "invalid or expired token"},
-	})
-}
-
-func internalError(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-		"error": fiber.Map{"code": "internal", "message": "internal server error"},
 	})
 }

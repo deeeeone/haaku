@@ -9,6 +9,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -112,16 +113,16 @@ func handleCreateSync(c *fiber.Ctx) error {
 
 	var req SyncCreateRequest
 	if err := c.BodyParser(&req); err != nil {
-		return writeError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
 	}
 
 	if req.Kind != "history" && req.Kind != "ratings" {
-		return writeError(c, fiber.StatusBadRequest, "invalid_request", "kind must be 'history' or 'ratings'")
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "kind must be 'history' or 'ratings'")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	session := database.SyncSession{
@@ -132,7 +133,7 @@ func handleCreateSync(c *fiber.Ctx) error {
 	}
 
 	if err := db.Create(&session).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to create sync session")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to create sync session")
 	}
 
 	// TODO: enqueue async processing (Phase 3+).
@@ -153,15 +154,15 @@ func handleGetSync(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	var session database.SyncSession
 	if err := db.Where("id = ? AND user_id = ?", syncID, userID).First(&session).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return writeError(c, fiber.StatusNotFound, "not_found", "sync session not found")
+			return response.WriteError(c, fiber.StatusNotFound, "not_found", "sync session not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	return c.JSON(buildSyncResponse(&session))
@@ -180,15 +181,15 @@ func handleGetSyncPaused(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	var session database.SyncSession
 	if err := db.Where("id = ? AND user_id = ?", syncID, userID).First(&session).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return writeError(c, fiber.StatusNotFound, "not_found", "sync session not found")
+			return response.WriteError(c, fiber.StatusNotFound, "not_found", "sync session not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	return c.JSON(fiber.Map{
@@ -210,15 +211,15 @@ func handleGetSyncSkipped(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	var session database.SyncSession
 	if err := db.Where("id = ? AND user_id = ?", syncID, userID).First(&session).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return writeError(c, fiber.StatusNotFound, "not_found", "sync session not found")
+			return response.WriteError(c, fiber.StatusNotFound, "not_found", "sync session not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	// Minimal: return empty for now; skipped items require full sync engine (Phase 3+).
@@ -235,7 +236,7 @@ func handleGetSyncSkipped(c *fiber.Ctx) error {
 func requireUserID(c *fiber.Ctx) (string, error) {
 	uid, ok := c.Locals("user_id").(string)
 	if !ok || uid == "" {
-		return "", writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+		return "", response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
 	}
 	return uid, nil
 }
@@ -243,7 +244,7 @@ func requireUserID(c *fiber.Ctx) (string, error) {
 func parseSyncID(c *fiber.Ctx) (int64, error) {
 	id, err := c.ParamsInt("id")
 	if err != nil || id <= 0 {
-		return 0, writeError(c, fiber.StatusBadRequest, "invalid_request", "invalid sync id")
+		return 0, response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid sync id")
 	}
 	return int64(id), nil
 }
@@ -260,13 +261,4 @@ func buildSyncResponse(s *database.SyncSession) SyncResponse {
 		CreatedAt:      s.CreatedAt.Format("2006-01-02T15:04:05.000Z"),
 		UpdatedAt:      s.UpdatedAt.Format("2006-01-02T15:04:05.000Z"),
 	}
-}
-
-func writeError(c *fiber.Ctx, status int, code, message string) error {
-	return c.Status(status).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    code,
-			"message": message,
-		},
-	})
 }

@@ -38,6 +38,6 @@ Reuses media builders (`SeasonResponse`, `ShowResponse`, `RatingSummary`). No au
 - [ ] Handle errors in `querySeasonStats`/`queryRatingDistribution` (return error, 500 on failure).
 - [ ] Reuse shared `media` season builder instead of the local `buildFullSeasonResponse`.
 - [ ] Consolidate the detail query (single joined query or batch).
-- [ ] Use shared `internal/httpapi` helpers.
+- [x] Use shared `internal/response` helpers.
 - [ ] Verify season rating storage semantics against the data model.
 - [ ] Verify module test coverage (`make test`).

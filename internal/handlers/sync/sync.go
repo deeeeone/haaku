@@ -16,6 +16,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -97,11 +98,11 @@ func handleGetHistory(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	mediaType := c.Query("type", "") // movie,episode or empty=all
-	page, limit := parsePaginationSync(c)
+	page, limit := response.ParsePagination(c, 25)
 	startAt := c.Query("start_at")
 	endAt := c.Query("end_at")
 
@@ -130,7 +131,7 @@ func handleGetHistory(c *fiber.Ctx) error {
 		Offset((page - 1) * limit).
 		Limit(limit).
 		Find(&items).Error; err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	results := make([]historyResponse, 0, len(items))
@@ -164,19 +165,19 @@ func handleGetHistoryItem(c *fiber.Ctx) error {
 		return err
 	}
 	if resolvedMT != mt {
-		return badRequest(c, "media_type does not match the resolved media id")
+		return response.BadRequest(c, "media_type does not match the resolved media id")
 	}
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	var items []database.UserHistory
 	if err := db.Where("user_id = ? AND media_type = ? AND media_id = ?", userID, mt, mediaID).
 		Order("watched_at DESC").
 		Find(&items).Error; err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	results := make([]historyResponse, 0, len(items))
@@ -251,7 +252,7 @@ func handleAddHistory(c *fiber.Ctx) error {
 
 	var req historyAddRequest
 	if err := c.BodyParser(&req); err != nil {
-		return badRequest(c, "invalid JSON body")
+		return response.BadRequest(c, "invalid JSON body")
 	}
 
 	resp := historyAddResponse{}
@@ -422,7 +423,7 @@ func handleAddHistory(c *fiber.Ctx) error {
 		return cacheTx, nil
 	})
 	if dbErr != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	return c.JSON(resp)
@@ -442,7 +443,7 @@ func handleRemoveHistory(c *fiber.Ctx) error {
 		Episodes []historyEpisode `json:"episodes,omitempty"`
 	}
 	if err := c.BodyParser(&req); err != nil {
-		return badRequest(c, "invalid JSON body")
+		return response.BadRequest(c, "invalid JSON body")
 	}
 
 	deleted := 0
@@ -567,7 +568,7 @@ func handleRemoveHistory(c *fiber.Ctx) error {
 		return cacheTx, nil
 	})
 	if dbErr != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	return c.JSON(fiber.Map{"deleted": deleted})
@@ -585,7 +586,7 @@ func handleGetCollection(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	var items []database.UserCollection
@@ -594,12 +595,12 @@ func handleGetCollection(c *fiber.Ctx) error {
 		query = query.Where("media_type = ?", mt)
 	}
 
-	page, limit := parsePaginationSync(c)
+	page, limit := response.ParsePagination(c, 25)
 	var total int64
 	query.Model(&database.UserCollection{}).Count(&total)
 
 	if err := query.Offset((page - 1) * limit).Limit(limit).Find(&items).Error; err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	results := buildCollectionResponses(items)
@@ -622,7 +623,7 @@ func handleAddCollection(c *fiber.Ctx) error {
 		Shows  []historyShow  `json:"shows,omitempty"`
 	}
 	if err := c.BodyParser(&req); err != nil {
-		return badRequest(c, "invalid JSON body")
+		return response.BadRequest(c, "invalid JSON body")
 	}
 
 	added, notFound, duplicates := 0, 0, 0
@@ -685,7 +686,7 @@ func handleAddCollection(c *fiber.Ctx) error {
 		return cacheTx, nil
 	})
 	if dbErr != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	return c.JSON(fiber.Map{
@@ -706,7 +707,7 @@ func handleRemoveCollection(c *fiber.Ctx) error {
 		Shows  []historyShow  `json:"shows,omitempty"`
 	}
 	if err := c.BodyParser(&req); err != nil {
-		return badRequest(c, "invalid JSON body")
+		return response.BadRequest(c, "invalid JSON body")
 	}
 
 	deleted := 0
@@ -761,7 +762,7 @@ func handleRemoveCollection(c *fiber.Ctx) error {
 		return cacheTx, nil
 	})
 	if dbErr != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	return c.JSON(fiber.Map{"deleted": deleted})
@@ -779,7 +780,7 @@ func handleGetWatchlist(c *fiber.Ctx) error {
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	sortBy := c.Query("sort_by", "rank")
@@ -800,7 +801,7 @@ func handleGetWatchlist(c *fiber.Ctx) error {
 		order = "rank ASC"
 	}
 
-	page, limit := parsePaginationSync(c)
+	page, limit := response.ParsePagination(c, 25)
 
 	var items []database.UserWatchlist
 	query := db.Where("user_id = ?", userID)
@@ -812,7 +813,7 @@ func handleGetWatchlist(c *fiber.Ctx) error {
 	query.Model(&database.UserWatchlist{}).Count(&total)
 
 	if err := query.Order(order).Offset((page - 1) * limit).Limit(limit).Find(&items).Error; err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	results := buildWatchlistResponses(items)
@@ -841,7 +842,7 @@ func handleAddWatchlist(c *fiber.Ctx) error {
 		} `json:"shows,omitempty"`
 	}
 	if err := c.BodyParser(&req); err != nil {
-		return badRequest(c, "invalid JSON body")
+		return response.BadRequest(c, "invalid JSON body")
 	}
 
 	addedMovies, addedShows := 0, 0
@@ -923,7 +924,7 @@ func handleAddWatchlist(c *fiber.Ctx) error {
 		return cacheTx, nil
 	})
 	if dbErr != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	return c.JSON(fiber.Map{
@@ -944,7 +945,7 @@ func handleRemoveWatchlist(c *fiber.Ctx) error {
 		Shows  []historyShow  `json:"shows,omitempty"`
 	}
 	if err := c.BodyParser(&req); err != nil {
-		return badRequest(c, "invalid JSON body")
+		return response.BadRequest(c, "invalid JSON body")
 	}
 
 	deleted := 0
@@ -997,7 +998,7 @@ func handleRemoveWatchlist(c *fiber.Ctx) error {
 		return cacheTx, nil
 	})
 	if dbErr != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	return c.JSON(fiber.Map{"deleted": deleted})
@@ -1013,7 +1014,7 @@ func handleReorderWatchlist(c *fiber.Ctx) error {
 		Rank []int64 `json:"rank"`
 	}
 	if err := c.BodyParser(&req); err != nil {
-		return badRequest(c, "invalid JSON body")
+		return response.BadRequest(c, "invalid JSON body")
 	}
 
 	dbErr := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
@@ -1057,9 +1058,9 @@ func handleReorderWatchlist(c *fiber.Ctx) error {
 	})
 	if dbErr != nil {
 		if errors.Is(dbErr, errIncompleteReorder) {
-			return badRequest(c, "rank must contain exactly the current watchlist items, without duplicates")
+			return response.BadRequest(c, "rank must contain exactly the current watchlist items, without duplicates")
 		}
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	return c.JSON(fiber.Map{"success": true, "count": len(req.Rank)})
@@ -1077,10 +1078,10 @@ func handleGetRatings(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
-	page, limit := parsePaginationSync(c)
+	page, limit := response.ParsePagination(c, 25)
 	query := db.Where("user_id = ?", userID)
 	if mt := c.Query("type"); mt != "" {
 		query = query.Where("media_type = ?", mt)
@@ -1091,7 +1092,7 @@ func handleGetRatings(c *fiber.Ctx) error {
 
 	var items []database.UserRating
 	if err := query.Order("rated_at DESC").Offset((page - 1) * limit).Limit(limit).Find(&items).Error; err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	results := buildRatingResponses(items)
@@ -1128,7 +1129,7 @@ func handleAddRatings(c *fiber.Ctx) error {
 		} `json:"episodes,omitempty"`
 	}
 	if err := c.BodyParser(&req); err != nil {
-		return badRequest(c, "invalid JSON body")
+		return response.BadRequest(c, "invalid JSON body")
 	}
 
 	addedMovies, addedShows, addedSeasons, addedEpisodes := 0, 0, 0, 0
@@ -1197,7 +1198,7 @@ func handleAddRatings(c *fiber.Ctx) error {
 		return cacheTx, nil
 	})
 	if dbErr != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	return c.JSON(fiber.Map{
@@ -1219,7 +1220,7 @@ func handleRemoveRatings(c *fiber.Ctx) error {
 		Episodes []historyEpisode `json:"episodes,omitempty"`
 	}
 	if err := c.BodyParser(&req); err != nil {
-		return badRequest(c, "invalid JSON body")
+		return response.BadRequest(c, "invalid JSON body")
 	}
 
 	deleted := 0
@@ -1283,7 +1284,7 @@ func handleRemoveRatings(c *fiber.Ctx) error {
 		return cacheTx, nil
 	})
 	if dbErr != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	return c.JSON(fiber.Map{"deleted": deleted})
@@ -1301,10 +1302,10 @@ func handleGetFavorites(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
-	page, limit := parsePaginationSync(c)
+	page, limit := response.ParsePagination(c, 25)
 	query := db.Where("user_id = ?", userID)
 	if mt := c.Query("type"); mt != "" {
 		query = query.Where("media_type = ?", mt)
@@ -1315,7 +1316,7 @@ func handleGetFavorites(c *fiber.Ctx) error {
 
 	var items []database.UserFavorite
 	if err := query.Order("rank ASC, favorited_at DESC").Offset((page - 1) * limit).Limit(limit).Find(&items).Error; err != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	results := buildFavoriteResponses(items)
@@ -1338,7 +1339,7 @@ func handleAddFavorites(c *fiber.Ctx) error {
 		Shows  []historyShow  `json:"shows,omitempty"`
 	}
 	if err := c.BodyParser(&req); err != nil {
-		return badRequest(c, "invalid JSON body")
+		return response.BadRequest(c, "invalid JSON body")
 	}
 
 	addedMovies, addedShows := 0, 0
@@ -1416,7 +1417,7 @@ func handleAddFavorites(c *fiber.Ctx) error {
 		return cacheTx, nil
 	})
 	if dbErr != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	return c.JSON(fiber.Map{
@@ -1437,7 +1438,7 @@ func handleRemoveFavorites(c *fiber.Ctx) error {
 		Shows  []historyShow  `json:"shows,omitempty"`
 	}
 	if err := c.BodyParser(&req); err != nil {
-		return badRequest(c, "invalid JSON body")
+		return response.BadRequest(c, "invalid JSON body")
 	}
 
 	deleted := 0
@@ -1487,7 +1488,7 @@ func handleRemoveFavorites(c *fiber.Ctx) error {
 		return cacheTx, nil
 	})
 	if dbErr != nil {
-		return internalError(c)
+		return response.InternalError(c)
 	}
 
 	return c.JSON(fiber.Map{"deleted": deleted})
@@ -1718,24 +1719,6 @@ func findAllEpisodesInShow(db *gorm.DB, showID int64) []database.Episode {
 	return episodes
 }
 
-func parsePaginationSync(c *fiber.Ctx) (page, limit int) {
-	page, limit = 1, 25
-	if p := c.Query("page"); p != "" {
-		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
-			page = parsed
-		}
-	}
-	if l := c.Query("limit"); l != "" {
-		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
-			if parsed > 100 {
-				parsed = 100
-			}
-			limit = parsed
-		}
-	}
-	return
-}
-
 // ============================================================================
 // CACHE INVALIDATION + OUTBOX (engineering-patterns.md)
 // ============================================================================
@@ -1834,17 +1817,5 @@ func validateReorder(ids, ownedIDs []int64) error {
 func authRequired(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 		"error": fiber.Map{"code": "unauthorized", "message": "invalid or expired token"},
-	})
-}
-
-func badRequest(c *fiber.Ctx, msg string) error {
-	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-		"error": fiber.Map{"code": "invalid_request", "message": msg},
-	})
-}
-
-func internalError(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-		"error": fiber.Map{"code": "internal", "message": "internal server error"},
 	})
 }

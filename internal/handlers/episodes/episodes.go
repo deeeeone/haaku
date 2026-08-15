@@ -10,6 +10,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -73,15 +74,15 @@ func handleGetEpisode(c *fiber.Ctx) error {
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	var episode database.Episode
 	if err := db.First(&episode, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "episode not found")
+			return response.NotFound(c, "episode not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	resp := EpisodeDetailResponse{
@@ -118,16 +119,16 @@ func handleGetEpisodeStats(c *fiber.Ctx) error {
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	// Verify episode exists.
 	var episode database.Episode
 	if err := db.First(&episode, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "episode not found")
+			return response.NotFound(c, "episode not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	stats := queryEpisodeStats(db, id)
@@ -143,16 +144,16 @@ func handleGetEpisodeRatings(c *fiber.Ctx) error {
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	// Verify episode exists.
 	var episode database.Episode
 	if err := db.First(&episode, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "episode not found")
+			return response.NotFound(c, "episode not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	return c.JSON(queryRatingDistribution(db, "episode", id))
@@ -167,16 +168,16 @@ func handleGetEpisodeComments(c *fiber.Ctx) error {
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	// Verify episode exists.
 	var episode database.Episode
 	if err := db.First(&episode, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "episode not found")
+			return response.NotFound(c, "episode not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	return queryMediaComments(c, db, "episode", id)
@@ -191,19 +192,19 @@ func handleGetEpisodeLists(c *fiber.Ctx) error {
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	// Verify episode exists.
 	var episode database.Episode
 	if err := db.First(&episode, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "episode not found")
+			return response.NotFound(c, "episode not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
-	page, limit := parsePaginationHelper(c)
+	page, limit := response.ParsePagination(c, 25)
 
 	var totalCount int64
 	db.Model(&database.ListItem{}).Where("media_type = ? AND media_id = ?", "episode", id).Count(&totalCount)
@@ -246,7 +247,7 @@ func parseID(c *fiber.Ctx) (int64, error) {
 	idStr := c.Params("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		return 0, badRequest(c, "invalid episode id")
+		return 0, response.BadRequest(c, "invalid episode id")
 	}
 	return id, nil
 }
@@ -299,7 +300,7 @@ func queryRatingDistribution(db *gorm.DB, mediaType string, mediaID int64) *medi
 }
 
 func queryMediaComments(c *fiber.Ctx, db *gorm.DB, mediaType string, mediaID int64) error {
-	page, limit := parsePaginationHelper(c)
+	page, limit := response.ParsePagination(c, 25)
 
 	var totalCount int64
 	db.Model(&database.Comment{}).Where("media_type = ? AND media_id = ?", mediaType, mediaID).Count(&totalCount)
@@ -355,24 +356,6 @@ func queryMediaComments(c *fiber.Ctx, db *gorm.DB, mediaType string, mediaID int
 	})
 }
 
-func parsePaginationHelper(c *fiber.Ctx) (page, limit int) {
-	page, limit = 1, 25
-	if p := c.Query("page"); p != "" {
-		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
-			page = parsed
-		}
-	}
-	if l := c.Query("limit"); l != "" {
-		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
-			if parsed > 100 {
-				parsed = 100
-			}
-			limit = parsed
-		}
-	}
-	return
-}
-
 func buildFullEpisodeResponse(e *database.Episode) media.EpisodeResponse {
 	resp := media.EpisodeResponse{
 		IDs:            buildEpisodeIDs(e),
@@ -422,20 +405,3 @@ func buildSeasonIDs(s *database.Season) media.IDs {
 // ---------------------------------------------------------------------------
 // Error helpers
 // ---------------------------------------------------------------------------
-
-func writeError(c *fiber.Ctx, status int, code, message string) error {
-	return c.Status(status).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    code,
-			"message": message,
-		},
-	})
-}
-
-func notFound(c *fiber.Ctx, msg string) error {
-	return writeError(c, fiber.StatusNotFound, "not_found", msg)
-}
-
-func badRequest(c *fiber.Ctx, msg string) error {
-	return writeError(c, fiber.StatusBadRequest, "invalid_request", msg)
-}

@@ -41,5 +41,6 @@ This is the **only** recommendations implementation (the `discovery` module's re
 - [ ] Replace `jsonb_array_elements_text` cross join with a GIN-indexed containment query where possible.
 - [ ] Make the score weights / popularity fallback config or spec constants.
 - [ ] Respect `user_hidden` in `handleAnticipated`.
-- [ ] Replace local helpers with shared packages (`auth.AuthRequired`, `internal/httpapi`).
+- [x] Replace error + pagination helpers with `internal/response` (Batch 0).
+- [ ] Consolidate remaining local `safeStrings`/`safeDateString`/`imageURL` and swap `authRequired` for `auth.AuthRequired`.
 - [ ] Verify module test coverage (`make test`).

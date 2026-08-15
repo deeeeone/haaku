@@ -1,7 +1,6 @@
 package updates
 
 import (
-	"strconv"
 	"time"
 
 	"trakt-api/internal/database"
@@ -9,6 +8,7 @@ import (
 	"trakt-api/internal/openapi"
 
 	"github.com/gofiber/fiber/v2"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -78,7 +78,7 @@ func RegisterRoutes(api fiber.Router) {
 func handleMovieUpdates(c *fiber.Ctx) error {
 	startDate, err := time.Parse("2006-01-02", c.Params("start_date"))
 	if err != nil {
-		return badRequest(c, "invalid start_date format, expected YYYY-MM-DD")
+		return response.BadRequest(c, "invalid start_date format, expected YYYY-MM-DD")
 	}
 
 	db, dbErr := database.GetDB()
@@ -86,7 +86,7 @@ func handleMovieUpdates(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "database unavailable")
 	}
 
-	page, limit := parsePagination(c)
+	page, limit := response.ParsePagination(c, 25)
 	extended := getExtended(c)
 
 	var movies []database.Movie
@@ -110,7 +110,7 @@ func handleMovieUpdates(c *fiber.Ctx) error {
 func handleShowUpdates(c *fiber.Ctx) error {
 	startDate, err := time.Parse("2006-01-02", c.Params("start_date"))
 	if err != nil {
-		return badRequest(c, "invalid start_date format, expected YYYY-MM-DD")
+		return response.BadRequest(c, "invalid start_date format, expected YYYY-MM-DD")
 	}
 
 	db, dbErr := database.GetDB()
@@ -118,7 +118,7 @@ func handleShowUpdates(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "database unavailable")
 	}
 
-	page, limit := parsePagination(c)
+	page, limit := response.ParsePagination(c, 25)
 	extended := getExtended(c)
 
 	var shows []database.Show
@@ -142,7 +142,7 @@ func handleShowUpdates(c *fiber.Ctx) error {
 func handlePeopleUpdates(c *fiber.Ctx) error {
 	startDate, err := time.Parse("2006-01-02", c.Params("start_date"))
 	if err != nil {
-		return badRequest(c, "invalid start_date format, expected YYYY-MM-DD")
+		return response.BadRequest(c, "invalid start_date format, expected YYYY-MM-DD")
 	}
 
 	db, dbErr := database.GetDB()
@@ -150,7 +150,7 @@ func handlePeopleUpdates(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "database unavailable")
 	}
 
-	page, limit := parsePagination(c)
+	page, limit := response.ParsePagination(c, 25)
 
 	var people []database.Person
 	if err := db.Where("updated_at >= ?", startDate).
@@ -172,28 +172,6 @@ func handlePeopleUpdates(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-// parsePagination extracts page and limit from query params.
-func parsePagination(c *fiber.Ctx) (page, limit int) {
-	page = 1
-	limit = 25
-
-	if p := c.Query("page"); p != "" {
-		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
-			page = parsed
-		}
-	}
-	if l := c.Query("limit"); l != "" {
-		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
-			if parsed > 100 {
-				parsed = 100
-			}
-			limit = parsed
-		}
-	}
-
-	return
-}
 
 // getExtended returns the extended level from query params, defaulting to "min".
 func getExtended(c *fiber.Ctx) string {
@@ -366,21 +344,3 @@ func buildShowIDs(s *database.Show) media.IDs {
 }
 
 // --- Error helpers ---
-
-func notFound(c *fiber.Ctx, msg string) error {
-	return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    "not_found",
-			"message": msg,
-		},
-	})
-}
-
-func badRequest(c *fiber.Ctx, msg string) error {
-	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    "invalid_request",
-			"message": msg,
-		},
-	})
-}

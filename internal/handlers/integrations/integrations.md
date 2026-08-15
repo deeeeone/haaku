@@ -33,7 +33,7 @@ All token-management routes are marked Auth-required in OpenAPI; the receiver ro
 - **No auth middleware on token routes (RESOLVED)** — `RegisterRoutes` mounted handlers bare; `userID()` used the unchecked `, _` form, so an unauthenticated request yielded an empty user ID and tokens got created under `""` (orphaned) instead of 401. The 3 token-management routes now run `auth.AuthRequired()` and handlers fail closed with 401 on empty user. The receiver route (`RegisterReceiverRoutes`) is deliberately left unauthenticated (token-in-path auth).
 - **All failures mapped to 400** — DB unavailable, generation failure, create failure all return `bad_request` instead of 500/503 `internal`; misuses the 400 status code.
 - **DB failure as `badRequest` in receiver** — `database unavailable` and queue failures return 400 (client error) rather than 5xx.
-- **Local error helpers** — `writeError`/`badRequest`/`notFound` duplicated with a comment claiming "avoid import cycle with httpapi", but other handler packages use httpapi helpers fine; the cycle concern should be verified.
+- **Local error helpers (RESOLVED)** — `writeError`/`badRequest`/`notFound` duplicated with a comment claiming "avoid import cycle with httpapi". The cycle claim was verified real (httpapi/routes.go imports all handlers); the envelope moved to the leaf package `internal/response` (Batch 0) and the locals are gone.
 - **Scopes are unvalidated** — arbitrary scope strings accepted; no allowlist or mapping to real permissions. `*` default is broad.
 - **No token expiry** — tokens are active until revoked; consider expiry per spec.
 - **Token stored in plaintext** — only hashing is absent; revoke is a soft delete flag (`Active`), not a hard delete. Consider hashing tokens at rest and hard-deleting.
@@ -46,5 +46,5 @@ All token-management routes are marked Auth-required in OpenAPI; the receiver ro
 - [ ] Map internal failures to 500/503 and only client mistakes to 400.
 - [ ] Validate/allowlist scopes; reconsider the `*` default.
 - [ ] Decide on token expiry and at-rest hashing.
-- [ ] Replace local error helpers with `internal/httpapi` (verify the import-cycle claim).
+- [x] Replace local error helpers with `internal/response` (import-cycle claim verified; envelope moved to the leaf package).
 - [ ] Verify module test coverage (`make test`).

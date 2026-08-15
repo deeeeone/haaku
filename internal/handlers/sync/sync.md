@@ -54,5 +54,5 @@ Writes use `cache.WithCacheTransaction` with version-counter invalidation (`queu
 - [x] Advisory-lock rank assignment (watchlist/favorites adds + reorder); reorder is now 1-based and validated as a complete set (400 otherwise).
 - [ ] Fix `sort_by=title` to join titles.
 - [ ] Decide `watched_at` semantics for `"unknown"` (aired_at vs now) and align with spec.
-- [ ] Use shared `internal/httpapi` helpers.
+- [x] Use shared `internal/response` error helpers (Batch 0); per-handler `authRequired` is tracked at the route-attachment item above.
 - [ ] Verify module test coverage (`make test`).

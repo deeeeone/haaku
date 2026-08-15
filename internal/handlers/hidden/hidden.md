@@ -36,7 +36,8 @@ Section allowlist enforced server-side: `calendar`, `progress_watched`, `progres
 
 - [ ] Implement or remove the outbox-event stub.
 - [ ] Invalidate user/feed version keys on hide/unhide.
-- [ ] Use `internal/httpapi` error constructors + `time.RFC3339`.
+- [x] Use `internal/response` error constructors (Batch 0).
+- [ ] Use `time.RFC3339` instead of the hand-rolled timestamp literal.
 - [ ] Validate `media_type` against the spec's allowed values.
 - [ ] Confirm 201-vs-200 semantics for idempotent re-hide.
 - [ ] Verify module test coverage (`make test`).

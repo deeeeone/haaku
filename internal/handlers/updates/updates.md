@@ -39,5 +39,5 @@ Each paginates (`page`/`limit`, default 25, max 100) and honors `extended` (min/
 - [ ] Consider supporting timestamp `start_date` and an `end_date` filter per spec.
 - [ ] Return `[]` (never `null`) for empty result sets.
 - [ ] Add pagination metadata to the response.
-- [ ] Remove dead `notFound` helper.
+- [x] Remove dead `notFound` helper.
 - [ ] Verify module test coverage (`make test`).

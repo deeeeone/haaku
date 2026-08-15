@@ -46,5 +46,5 @@ Best-practices module: uses shared `auth.AuthRequired`, `cache.WithCacheTransact
 - [x] Use `strconv.ParseInt` (via `parsePlaybackMediaID`) and validate `media_type` in playback GET/DELETE — `"12abc"` no longer parses as 12; non-movie/show/episode types return 400. Unit tests added.
 - [ ] Return real session ID from start (or drop `id` from the response).
 - [ ] Align `/sync/playback` response shape with `progress` module or document the difference.
-- [ ] Replace `writeAPIError` with shared `internal/httpapi`.
+- [x] Replace `writeAPIError` with shared `internal/response`.
 - [ ] Add test coverage for the 1–79% and ≥80% stop paths, expiry, and cooldown (`make test`).

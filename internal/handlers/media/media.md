@@ -51,6 +51,6 @@ The **shared media-read foundation** for the API (4 files). Provides movie/show/
 - [ ] Populate TMDB/IMDB for season/episode/person IDs from `external_ids`.
 - [ ] Use `sync.Once` for the TMDB client singleton.
 - [ ] Sanitize/log TMDB upstream errors instead of echoing raw text.
-- [ ] Replace duplicated error helpers with `internal/httpapi`.
+- [x] Replace duplicated error helpers with `internal/response`.
 - [ ] Reconsider always-embedded seasons on show detail.
 - [ ] Verify module test coverage (`make test`).

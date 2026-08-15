@@ -8,6 +8,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/response"
 )
 
 // ResolveID resolves a route param to a canonical media ID and type.
@@ -32,7 +33,7 @@ func ResolveID(c *fiber.Ctx, param string) (mediaType string, id int64, err erro
 	if isNumeric(param) {
 		id, err := strconv.ParseInt(param, 10, 64)
 		if err != nil {
-			return "", 0, notFound(c, "media not found")
+			return "", 0, response.NotFound(c, "media not found")
 		}
 		// Determine media type by querying both tables.
 		mt, found, dbErr := findMediaTypeByID(id)
@@ -40,7 +41,7 @@ func ResolveID(c *fiber.Ctx, param string) (mediaType string, id int64, err erro
 			return "", 0, dbErr
 		}
 		if !found {
-			return "", 0, notFound(c, "media not found")
+			return "", 0, response.NotFound(c, "media not found")
 		}
 		return mt, id, nil
 	}
@@ -69,7 +70,7 @@ func resolveByExternalID(c *fiber.Ctx, externalID string, idType string) (string
 	case "tmdb", "imdb", "tvdb":
 		// valid
 	default:
-		return "", 0, badRequest(c, "invalid id_type: must be tmdb, imdb, or tvdb")
+		return "", 0, response.BadRequest(c, "invalid id_type: must be tmdb, imdb, or tvdb")
 	}
 
 	db, dbErr := database.GetDB()
@@ -80,7 +81,7 @@ func resolveByExternalID(c *fiber.Ctx, externalID string, idType string) (string
 	var ext database.ExternalID
 	if err := db.Where("source = ? AND external_id = ?", idType, externalID).First(&ext).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", 0, notFound(c, "media not found")
+			return "", 0, response.NotFound(c, "media not found")
 		}
 		return "", 0, fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
@@ -89,7 +90,7 @@ func resolveByExternalID(c *fiber.Ctx, externalID string, idType string) (string
 	if _, found, verr := findMediaTypeByID(ext.MediaID); verr != nil {
 		return "", 0, verr
 	} else if !found {
-		return "", 0, notFound(c, "media not found")
+		return "", 0, response.NotFound(c, "media not found")
 	}
 
 	return ext.MediaType, ext.MediaID, nil
@@ -105,7 +106,7 @@ func resolveBySlug(c *fiber.Ctx, slug string) (string, int64, error) {
 	var ext database.ExternalID
 	if err := db.Where("source = ? AND external_id = ?", "slug", slug).First(&ext).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return "", 0, notFound(c, "media not found")
+			return "", 0, response.NotFound(c, "media not found")
 		}
 		return "", 0, fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
@@ -114,7 +115,7 @@ func resolveBySlug(c *fiber.Ctx, slug string) (string, int64, error) {
 	if _, found, verr := findMediaTypeByID(ext.MediaID); verr != nil {
 		return "", 0, verr
 	} else if !found {
-		return "", 0, notFound(c, "media not found")
+		return "", 0, response.NotFound(c, "media not found")
 	}
 
 	return ext.MediaType, ext.MediaID, nil
@@ -157,21 +158,3 @@ func findMediaTypeByID(id int64) (string, bool, error) {
 }
 
 // --- Error helpers (thin wrappers around httpapi) ---
-
-func notFound(c *fiber.Ctx, msg string) error {
-	return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    "not_found",
-			"message": msg,
-		},
-	})
-}
-
-func badRequest(c *fiber.Ctx, msg string) error {
-	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    "invalid_request",
-			"message": msg,
-		},
-	})
-}

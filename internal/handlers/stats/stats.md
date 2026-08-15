@@ -33,6 +33,6 @@ Single endpoint: `GET /v1/users/:id/stats` — public user statistics (plays, mi
 - [ ] Surface recompute failures (503/500) instead of returning zeroed stats.
 - [ ] Align staleness with the user version counter (invalidate on writes via outbox).
 - [ ] Handle non-404 DB errors separately from "not found".
-- [ ] Use shared `internal/httpapi` helpers.
+- [x] Use shared `internal/response` helpers.
 - [ ] Verify stats engine output matches the spec'd fields.
 - [ ] Verify module test coverage (`make test`).

@@ -10,6 +10,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -69,15 +70,15 @@ func handleGetSeason(c *fiber.Ctx) error {
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	var season database.Season
 	if err := db.First(&season, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "season not found")
+			return response.NotFound(c, "season not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	resp := SeasonDetailResponse{
@@ -107,15 +108,15 @@ func handleGetSeasonStats(c *fiber.Ctx) error {
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	var season database.Season
 	if err := db.First(&season, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "season not found")
+			return response.NotFound(c, "season not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	stats := querySeasonStats(db, id)
@@ -131,15 +132,15 @@ func handleGetSeasonRatings(c *fiber.Ctx) error {
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	var season database.Season
 	if err := db.First(&season, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "season not found")
+			return response.NotFound(c, "season not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	return c.JSON(queryRatingDistribution(db, "season", id))
@@ -153,7 +154,7 @@ func parseID(c *fiber.Ctx) (int64, error) {
 	idStr := c.Params("id")
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
-		return 0, badRequest(c, "invalid season id")
+		return 0, response.BadRequest(c, "invalid season id")
 	}
 	return id, nil
 }
@@ -233,20 +234,3 @@ func buildFullSeasonResponse(s *database.Season) media.SeasonResponse {
 // ---------------------------------------------------------------------------
 // Error helpers
 // ---------------------------------------------------------------------------
-
-func writeError(c *fiber.Ctx, status int, code, message string) error {
-	return c.Status(status).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    code,
-			"message": message,
-		},
-	})
-}
-
-func notFound(c *fiber.Ctx, msg string) error {
-	return writeError(c, fiber.StatusNotFound, "not_found", msg)
-}
-
-func badRequest(c *fiber.Ctx, msg string) error {
-	return writeError(c, fiber.StatusBadRequest, "invalid_request", msg)
-}

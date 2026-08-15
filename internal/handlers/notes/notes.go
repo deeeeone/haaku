@@ -10,6 +10,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -45,7 +46,7 @@ func RegisterRoutes(api fiber.Router) {
 func requireAuth(c *fiber.Ctx) error {
 	userID, ok := c.Locals("user_id").(string)
 	if !ok || userID == "" {
-		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
 	}
 	return c.Next()
 }
@@ -103,15 +104,15 @@ func handleCreateNote(c *fiber.Ctx) error {
 
 	var req noteCreateRequest
 	if err := c.BodyParser(&req); err != nil {
-		return badRequest(c, "invalid request body")
+		return response.BadRequest(c, "invalid request body")
 	}
 	if req.MediaType == "" || req.MediaID == 0 || req.Note == "" {
-		return badRequest(c, "media_type, media_id, and note are required")
+		return response.BadRequest(c, "media_type, media_id, and note are required")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	now := time.Now()
@@ -121,7 +122,7 @@ func handleCreateNote(c *fiber.Ctx) error {
 	result := db.Where("user_id = ? AND media_type = ? AND media_id = ?", userID, req.MediaType, req.MediaID).First(&existing)
 
 	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
@@ -135,7 +136,7 @@ func handleCreateNote(c *fiber.Ctx) error {
 			UpdatedAt: now,
 		}
 		if err := db.Create(&note).Error; err != nil {
-			return writeError(c, fiber.StatusInternalServerError, "internal", "failed to create note")
+			return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to create note")
 		}
 		return c.Status(fiber.StatusOK).JSON(toNoteResponse(&note))
 	}
@@ -144,7 +145,7 @@ func handleCreateNote(c *fiber.Ctx) error {
 	existing.Note = req.Note
 	existing.UpdatedAt = now
 	if err := db.Save(&existing).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to update note")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to update note")
 	}
 
 	return c.Status(fiber.StatusOK).JSON(toNoteResponse(&existing))
@@ -155,24 +156,24 @@ func handleGetNote(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
-		return badRequest(c, "invalid note id")
+		return response.BadRequest(c, "invalid note id")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	var note database.UserNote
 	if err := db.First(&note, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "note not found")
+			return response.NotFound(c, "note not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	if note.UserID != userID {
-		return notFound(c, "note not found")
+		return response.NotFound(c, "note not found")
 	}
 
 	return c.JSON(toNoteResponse(&note))
@@ -183,38 +184,38 @@ func handleUpdateNote(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
-		return badRequest(c, "invalid note id")
+		return response.BadRequest(c, "invalid note id")
 	}
 
 	var req noteUpdateRequest
 	if err := c.BodyParser(&req); err != nil {
-		return badRequest(c, "invalid request body")
+		return response.BadRequest(c, "invalid request body")
 	}
 	if req.Note == "" {
-		return badRequest(c, "note is required")
+		return response.BadRequest(c, "note is required")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	var note database.UserNote
 	if err := db.First(&note, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "note not found")
+			return response.NotFound(c, "note not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	if note.UserID != userID {
-		return notFound(c, "note not found")
+		return response.NotFound(c, "note not found")
 	}
 
 	note.Note = req.Note
 	note.UpdatedAt = time.Now()
 	if err := db.Save(&note).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to update note")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to update note")
 	}
 
 	return c.JSON(toNoteResponse(&note))
@@ -225,20 +226,20 @@ func handleDeleteNote(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
-		return badRequest(c, "invalid note id")
+		return response.BadRequest(c, "invalid note id")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	result := db.Where("id = ? AND user_id = ?", id, userID).Delete(&database.UserNote{})
 	if result.Error != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to delete note")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to delete note")
 	}
 	if result.RowsAffected == 0 {
-		return notFound(c, "note not found")
+		return response.NotFound(c, "note not found")
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
@@ -250,11 +251,11 @@ func handleListNotes(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
-	page := queryInt(c, "page", 1)
-	limit := clampLimit(queryInt(c, "limit", 20), 1, 100)
+	page := response.QueryInt(c, "page", 1)
+	limit := response.ClampLimit(response.QueryInt(c, "limit", 20), 1, 100)
 	mediaType := c.Query("media_type", "")
 
 	query := db.Model(&database.UserNote{}).Where("user_id = ?", userID)
@@ -287,42 +288,3 @@ func handleListNotes(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-func queryInt(c *fiber.Ctx, key string, defaultVal int) int {
-	val := c.Query(key, "")
-	if val == "" {
-		return defaultVal
-	}
-	iv, err := strconv.Atoi(val)
-	if err != nil || iv < 1 {
-		return defaultVal
-	}
-	return iv
-}
-
-func clampLimit(limit, min, max int) int {
-	if limit < min {
-		return min
-	}
-	if limit > max {
-		return max
-	}
-	return limit
-}
-
-func writeError(c *fiber.Ctx, status int, code, message string) error {
-	return c.Status(status).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    code,
-			"message": message,
-		},
-	})
-}
-
-func badRequest(c *fiber.Ctx, msg string) error {
-	return writeError(c, fiber.StatusBadRequest, "invalid_request", msg)
-}
-
-func notFound(c *fiber.Ctx, msg string) error {
-	return writeError(c, fiber.StatusNotFound, "not_found", msg)
-}

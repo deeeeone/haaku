@@ -14,6 +14,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -118,7 +119,7 @@ func handleMovieWatch(c *fiber.Ctx) error {
 		return err
 	}
 	if mediaType != "movie" {
-		return notFound(c, "not a movie")
+		return response.NotFound(c, "not a movie")
 	}
 
 	country, cerr := parseCountry(c)
@@ -134,13 +135,13 @@ func handleMovieWatch(c *fiber.Ctx) error {
 	var movie database.Movie
 	if err := db.First(&movie, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "movie not found")
+			return response.NotFound(c, "movie not found")
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
 
 	if movie.TmdbID == 0 {
-		return notFound(c, "movie has no TMDB ID")
+		return response.NotFound(c, "movie has no TMDB ID")
 	}
 
 	return serveWatchProviders(c, movie.Metadata, country, func() error {
@@ -160,7 +161,7 @@ func handleShowWatch(c *fiber.Ctx) error {
 		return err
 	}
 	if mediaType != "show" {
-		return notFound(c, "not a show")
+		return response.NotFound(c, "not a show")
 	}
 
 	country, cerr := parseCountry(c)
@@ -176,13 +177,13 @@ func handleShowWatch(c *fiber.Ctx) error {
 	var show database.Show
 	if err := db.First(&show, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "show not found")
+			return response.NotFound(c, "show not found")
 		}
 		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
 
 	if show.TmdbID == 0 {
-		return notFound(c, "show has no TMDB ID")
+		return response.NotFound(c, "show has no TMDB ID")
 	}
 
 	return serveWatchProviders(c, show.Metadata, country, func() error {
@@ -358,7 +359,7 @@ func parseCountry(c *fiber.Ctx) (string, error) {
 	country := strings.TrimSpace(c.Query("country", "us"))
 	country = strings.ToUpper(country)
 	if len(country) != 2 {
-		return "", badRequest(c, "invalid country code: must be a 2-letter ISO code")
+		return "", response.BadRequest(c, "invalid country code: must be a 2-letter ISO code")
 	}
 	return country, nil
 }
@@ -388,21 +389,3 @@ func itoa(n int) string {
 }
 
 // --- Error helpers ---
-
-func notFound(c *fiber.Ctx, msg string) error {
-	return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    "not_found",
-			"message": msg,
-		},
-	})
-}
-
-func badRequest(c *fiber.Ctx, msg string) error {
-	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    "invalid_request",
-			"message": msg,
-		},
-	})
-}

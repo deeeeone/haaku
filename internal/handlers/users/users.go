@@ -13,6 +13,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -64,7 +65,7 @@ func RegisterRoutes(api fiber.Router) {
 func requireAuth(c *fiber.Ctx) error {
 	userID, ok := c.Locals("user_id").(string)
 	if !ok || userID == "" {
-		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
 	}
 	return c.Next()
 }
@@ -165,15 +166,15 @@ func handleGetMe(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	var user database.User
 	if err := db.First(&user, "id = ?", userID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return writeError(c, fiber.StatusNotFound, "not_found", "user not found")
+			return response.WriteError(c, fiber.StatusNotFound, "not_found", "user not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	return c.JSON(buildProfileResponse(&user))
@@ -185,12 +186,12 @@ func handleUpdateMe(c *fiber.Ctx) error {
 
 	var req UpdateProfileRequest
 	if err := c.BodyParser(&req); err != nil {
-		return writeError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	updates := map[string]interface{}{}
@@ -211,11 +212,11 @@ func handleUpdateMe(c *fiber.Ctx) error {
 	}
 
 	if len(updates) == 0 {
-		return writeError(c, fiber.StatusBadRequest, "invalid_request", "no fields to update")
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "no fields to update")
 	}
 
 	if err := db.Model(&database.User{}).Where("id = ?", userID).Updates(updates).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to update profile")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to update profile")
 	}
 
 	// Fetch updated user.
@@ -231,21 +232,21 @@ func handleGetUser(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	var user database.User
 	if err := db.First(&user, "id = ?", userID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return writeError(c, fiber.StatusNotFound, "not_found", "user not found")
+			return response.WriteError(c, fiber.StatusNotFound, "not_found", "user not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	// Deleted/pending-deletion accounts are gone for everyone (rows from the
 	// pre-wipe soft-delete era; DeleteUserData hard-deletes now).
 	if user.Status == "deleted" || user.Status == "pending_deletion" {
-		return writeError(c, fiber.StatusNotFound, "not_found", "user not found")
+		return response.WriteError(c, fiber.StatusNotFound, "not_found", "user not found")
 	}
 
 	resp := buildPublicProfileResponse(&user)
@@ -272,15 +273,15 @@ func handleGetSettings(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	var user database.User
 	if err := db.First(&user, "id = ?", userID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return writeError(c, fiber.StatusNotFound, "not_found", "user not found")
+			return response.WriteError(c, fiber.StatusNotFound, "not_found", "user not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	settings := parseSettings(user.Settings)
@@ -293,20 +294,20 @@ func handleUpdateSettings(c *fiber.Ctx) error {
 
 	var req UpdateSettingsRequest
 	if err := c.BodyParser(&req); err != nil {
-		return writeError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	var user database.User
 	if err := db.First(&user, "id = ?", userID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return writeError(c, fiber.StatusNotFound, "not_found", "user not found")
+			return response.WriteError(c, fiber.StatusNotFound, "not_found", "user not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	current := parseSettings(user.Settings)
@@ -320,11 +321,11 @@ func handleUpdateSettings(c *fiber.Ctx) error {
 
 	settingsJSON, err := json.Marshal(current)
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to serialize settings")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to serialize settings")
 	}
 
 	if err := db.Model(&user).Update("settings", string(settingsJSON)).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to update settings")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to update settings")
 	}
 
 	return c.JSON(current)
@@ -338,20 +339,20 @@ func handleDeleteAccount(c *fiber.Ctx) error {
 
 	clerk := auth.GetClerk()
 	if clerk == nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "account deletion unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "account deletion unavailable")
 	}
 	if err := clerk.DeleteUser(userID); err != nil {
 		slog.Error("delete account: Clerk delete failed", "user_id", userID, "error", err)
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to delete account")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to delete account")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 	if err := database.DeleteUserData(db, userID); err != nil {
 		slog.Error("delete account: local wipe failed", "user_id", userID, "error", err)
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to delete account data")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to delete account data")
 	}
 
 	slog.Info("account deleted (Clerk + local wipe)", "user_id", userID)
@@ -362,26 +363,26 @@ func handleDeleteAccount(c *fiber.Ctx) error {
 func handleBlockUser(c *fiber.Ctx) error {
 	userID, ok := c.Locals("user_id").(string)
 	if !ok || userID == "" {
-		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
 	}
 
 	targetID := c.Params("id")
 	if targetID == "" || targetID == userID {
-		return writeError(c, fiber.StatusBadRequest, "invalid_request", "invalid target user id")
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid target user id")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	// Verify target exists.
 	var target database.User
 	if err := db.First(&target, "id = ?", targetID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return writeError(c, fiber.StatusNotFound, "not_found", "user not found")
+			return response.WriteError(c, fiber.StatusNotFound, "not_found", "user not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	block := database.UserBlock{
@@ -396,7 +397,7 @@ func handleBlockUser(c *fiber.Ctx) error {
 	}).FirstOrCreate(&block)
 
 	if result.Error != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to block user")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to block user")
 	}
 
 	// Remove any existing follow relationship in both directions.
@@ -413,25 +414,25 @@ func handleBlockUser(c *fiber.Ctx) error {
 func handleUnblockUser(c *fiber.Ctx) error {
 	userID, ok := c.Locals("user_id").(string)
 	if !ok || userID == "" {
-		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
 	}
 
 	targetID := c.Params("id")
 	if targetID == "" {
-		return writeError(c, fiber.StatusBadRequest, "invalid_request", "invalid target user id")
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid target user id")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	result := db.Where("blocker_id = ? AND blocked_id = ?", userID, targetID).Delete(&database.UserBlock{})
 	if result.Error != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to unblock user")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to unblock user")
 	}
 	if result.RowsAffected == 0 {
-		return writeError(c, fiber.StatusNotFound, "not_found", "block not found")
+		return response.WriteError(c, fiber.StatusNotFound, "not_found", "block not found")
 	}
 
 	_ = outbox.PublishEvent(db, "user.unblocked", userID, map[string]any{"unblocked_id": targetID})
@@ -525,12 +526,3 @@ func buildPublicProfileResponse(u *database.User) PublicProfileResponse {
 // ---------------------------------------------------------------------------
 // Error helper
 // ---------------------------------------------------------------------------
-
-func writeError(c *fiber.Ctx, status int, code, message string) error {
-	return c.Status(status).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    code,
-			"message": message,
-		},
-	})
-}

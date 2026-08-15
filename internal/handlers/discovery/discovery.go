@@ -1,13 +1,12 @@
 package discovery
 
 import (
-	"strconv"
-
 	"trakt-api/internal/database"
 	"trakt-api/internal/handlers/media"
 	"trakt-api/internal/openapi"
 
 	"github.com/gofiber/fiber/v2"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -70,10 +69,10 @@ func handleShowsPopular(c *fiber.Ctx) error {
 func moviesList(c *fiber.Ctx, _ string) error {
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "database unavailable")
+		return response.InternalError(c, "database unavailable")
 	}
 
-	page, limit := parsePagination(c)
+	page, limit := response.ParsePagination(c, 20)
 	extended := media.GetExtended(c)
 
 	var movies []database.Movie
@@ -81,7 +80,7 @@ func moviesList(c *fiber.Ctx, _ string) error {
 		Offset((page - 1) * limit).
 		Limit(limit).
 		Find(&movies).Error; err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
+		return response.InternalError(c, "database query error")
 	}
 
 	resp := make([]media.MovieResponse, 0, len(movies))
@@ -96,10 +95,10 @@ func moviesList(c *fiber.Ctx, _ string) error {
 func showsList(c *fiber.Ctx, _ string) error {
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "database unavailable")
+		return response.InternalError(c, "database unavailable")
 	}
 
-	page, limit := parsePagination(c)
+	page, limit := response.ParsePagination(c, 20)
 	extended := media.GetExtended(c)
 
 	var shows []database.Show
@@ -107,7 +106,7 @@ func showsList(c *fiber.Ctx, _ string) error {
 		Offset((page - 1) * limit).
 		Limit(limit).
 		Find(&shows).Error; err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
+		return response.InternalError(c, "database query error")
 	}
 
 	resp := make([]media.ShowResponse, 0, len(shows))
@@ -133,26 +132,3 @@ func handleShowsRecommendations(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-// parsePagination extracts page and limit from query params.
-// Defaults: page=1, limit=20, max limit=100.
-func parsePagination(c *fiber.Ctx) (page, limit int) {
-	page = 1
-	limit = 20
-
-	if p := c.Query("page"); p != "" {
-		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
-			page = parsed
-		}
-	}
-	if l := c.Query("limit"); l != "" {
-		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
-			if parsed > 100 {
-				parsed = 100
-			}
-			limit = parsed
-		}
-	}
-
-	return
-}

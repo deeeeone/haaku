@@ -1,13 +1,13 @@
 package activity
 
 import (
-	"strconv"
 	"time"
 
 	"trakt-api/internal/database"
 	"trakt-api/internal/openapi"
 
 	"github.com/gofiber/fiber/v2"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -32,7 +32,7 @@ func RegisterRoutes(api fiber.Router) {
 func requireAuth(c *fiber.Ctx) error {
 	userID, ok := c.Locals("user_id").(string)
 	if !ok || userID == "" {
-		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
 	}
 	return c.Next()
 }
@@ -86,11 +86,11 @@ func handleGetActivity(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
-	page := queryInt(c, "page", 1)
-	limit := clampLimit(queryInt(c, "limit", 20), 1, 100)
+	page := response.QueryInt(c, "page", 1)
+	limit := response.ClampLimit(response.QueryInt(c, "limit", 20), 1, 100)
 	feedType := c.Query("type", "friends")
 
 	// Collect actor IDs from the social graph
@@ -178,34 +178,3 @@ func handleGetActivity(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-func queryInt(c *fiber.Ctx, key string, defaultVal int) int {
-	v := c.Query(key)
-	if v == "" {
-		return defaultVal
-	}
-	iv, err := strconv.Atoi(v)
-	if err != nil || iv < 1 {
-		return defaultVal
-	}
-	return iv
-}
-
-func clampLimit(limit, min, max int) int {
-	if limit < min {
-		return min
-	}
-	if limit > max {
-		return max
-	}
-	return limit
-}
-
-func writeError(c *fiber.Ctx, status int, code, message string) error {
-	return c.Status(status).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    code,
-			"message": message,
-		},
-	})
-}

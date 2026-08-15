@@ -11,6 +11,7 @@ import (
 	projredis "trakt-api/redis"
 
 	"github.com/gofiber/fiber/v2"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -51,25 +52,25 @@ func RegisterRoutes(api fiber.Router) {
 func handleGetUserStats(c *fiber.Ctx) error {
 	userID := c.Params("id")
 	if userID == "" {
-		return badRequest(c, "user id is required")
+		return response.BadRequest(c, "user id is required")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	// Check if user exists.
 	var user database.User
 	if err := db.First(&user, "id = ?", userID).Error; err != nil {
-		return notFound(c, "user not found")
+		return response.NotFound(c, "user not found")
 	}
 
 	// Try fetching cached stats.
 	cachedStats, err := statsengine.GetUserStats(db, userID)
 	if err != nil {
 		log.Printf("[stats] failed to fetch cached stats for %s: %v", userID, err)
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to fetch stats")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to fetch stats")
 	}
 
 	// Recompute if no stats or stale > 1h.
@@ -146,21 +147,4 @@ func isStale(t *time.Time) bool {
 		return true
 	}
 	return time.Since(*t) > time.Hour
-}
-
-func writeError(c *fiber.Ctx, status int, code, message string) error {
-	return c.Status(status).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    code,
-			"message": message,
-		},
-	})
-}
-
-func badRequest(c *fiber.Ctx, msg string) error {
-	return writeError(c, fiber.StatusBadRequest, "invalid_request", msg)
-}
-
-func notFound(c *fiber.Ctx, msg string) error {
-	return writeError(c, fiber.StatusNotFound, "not_found", msg)
 }

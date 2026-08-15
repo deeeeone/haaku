@@ -66,7 +66,8 @@ Writes go through `cache.WithCacheTransaction` with list/user version-key bumps 
 - [ ] Fix smart-list pagination to page over the combined result set, not per-type.
 - [ ] Paginate `GET /lists/{id}/comments`.
 - [ ] Ensure unique constraint exists for list likes; consider a DB-level check.
-- [ ] Replace local auth/error helpers with shared packages.
+- [x] Replace local error helpers with `internal/response` (Batch 0).
+- [ ] Replace local `authRequired`/`requireAuth` with `auth.AuthRequired` (Batch 1).
 - [ ] Consider response mapping for `database.List` leaks in likes/popular/trending/items-extended.
 - [ ] Verify the `genres::jsonb ? ?` filter matches the column type.
 - [ ] Verify module test coverage (`make test`).

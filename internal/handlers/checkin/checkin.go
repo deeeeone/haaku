@@ -15,6 +15,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -102,15 +103,6 @@ func getUserID(c *fiber.Ctx) string {
 	return uid
 }
 
-func writeAPIError(c *fiber.Ctx, status int, code, message string) error {
-	return c.Status(status).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    code,
-			"message": message,
-		},
-	})
-}
-
 // resolveCheckinItem resolves the checkin item to media type/id.
 func resolveCheckinItem(c *fiber.Ctx, req *checkinRequest) (string, int64, *int64, *int64, error) {
 	if req.Episode != nil {
@@ -180,23 +172,23 @@ func defaultCheckinDuration() time.Duration {
 func handleCheckinCreate(c *fiber.Ctx) error {
 	var req checkinRequest
 	if err := json.Unmarshal(c.Body(), &req); err != nil {
-		return writeAPIError(c, fiber.StatusBadRequest, "invalid_request", "invalid JSON body")
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid JSON body")
 	}
 
 	userID := getUserID(c)
 	if userID == "" {
-		return writeAPIError(c, fiber.StatusUnauthorized, "unauthorized", "user not authenticated")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "user not authenticated")
 	}
 
 	mediaType, mediaID, seasonID, episodeID, err := resolveCheckinItem(c, &req)
 	if err != nil {
-		return writeAPIError(c, fiber.StatusBadRequest, "invalid_request", err.Error())
+		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", err.Error())
 	}
 
 	expiresAt := time.Now().Add(defaultCheckinDuration())
 	now := time.Now()
 
-	var response *checkinResponse
+	var result *checkinResponse
 	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
 		cacheTx := cache.NewCacheTransaction()
 
@@ -229,16 +221,16 @@ func handleCheckinCreate(c *fiber.Ctx) error {
 			return nil, fmt.Errorf("create checkin: %w", err)
 		}
 
-		response = &checkinResponse{
+		result = &checkinResponse{
 			ID:        checkin.ID,
 			ExpiresAt: expiresAt.Format(time.RFC3339),
 			WatchedAt: now.Format(time.RFC3339),
 			Message:   req.Message,
 		}
 		if mediaType == "movie" {
-			response.Movie = &checkinMediaRef{IDs: mediaRefIDs{TMDB: int(mediaID)}}
+			result.Movie = &checkinMediaRef{IDs: mediaRefIDs{TMDB: int(mediaID)}}
 		} else if mediaType == "episode" {
-			response.Episode = &checkinMediaRef{IDs: mediaRefIDs{TMDB: int(mediaID)}}
+			result.Episode = &checkinMediaRef{IDs: mediaRefIDs{TMDB: int(mediaID)}}
 		}
 
 		uvk := redis.BuildUserVersionKey(userID)
@@ -267,19 +259,19 @@ func handleCheckinCreate(c *fiber.Ctx) error {
 
 	if err != nil {
 		if err.Error() == "already checked in" {
-			return writeAPIError(c, fiber.StatusConflict, "conflict", "you already have an active checkin")
+			return response.WriteError(c, fiber.StatusConflict, "conflict", "you already have an active checkin")
 		}
-		return writeAPIError(c, fiber.StatusInternalServerError, "internal", err.Error())
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", err.Error())
 	}
 
-	return c.JSON(response)
+	return c.JSON(result)
 }
 
 // handleCheckinDelete handles DELETE /v1/checkin
 func handleCheckinDelete(c *fiber.Ctx) error {
 	userID := getUserID(c)
 	if userID == "" {
-		return writeAPIError(c, fiber.StatusUnauthorized, "unauthorized", "user not authenticated")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "user not authenticated")
 	}
 
 	err := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
@@ -312,7 +304,7 @@ func handleCheckinDelete(c *fiber.Ctx) error {
 	})
 
 	if err != nil {
-		return writeAPIError(c, fiber.StatusInternalServerError, "internal", err.Error())
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", err.Error())
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
@@ -322,12 +314,12 @@ func handleCheckinDelete(c *fiber.Ctx) error {
 func handleCheckinGet(c *fiber.Ctx) error {
 	userID := getUserID(c)
 	if userID == "" {
-		return writeAPIError(c, fiber.StatusUnauthorized, "unauthorized", "user not authenticated")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "user not authenticated")
 	}
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return writeAPIError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	now := time.Now()

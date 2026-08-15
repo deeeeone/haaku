@@ -49,5 +49,6 @@ Uses shared `auth.PrivacyFilter` for the public route; local `requireAuth` elsew
 - [ ] Backfill notification settings symmetrically in `parseSettings`.
 - [x] Verify `/users/me` vs `/users/:id` route precedence (trailing-slash issue) — static route wins; added TestUsersMeRoutePrecedence regression test.
 - [ ] Wire real stats + recent activity into the public profile.
-- [ ] Use shared `auth.AuthRequired` / `internal/httpapi` helpers.
+- [x] Use shared `internal/response` error helpers (Batch 0).
+- [ ] Swap local `requireAuth` for shared `auth.AuthRequired` (Batch 1).
 - [ ] Verify module test coverage (`make test`).

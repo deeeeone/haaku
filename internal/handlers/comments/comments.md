@@ -40,7 +40,8 @@ Registers OpenAPI metadata for all endpoints. Uses `comment_type`/`media_type` C
 
 ## Todos
 
-- [ ] Replace local error/CSV helpers with `internal/httpapi` + stdlib.
+- [x] Replace local error helpers with `internal/response` (Batch 0).
+- [ ] Consolidate local CSV helpers (`parseCSV`/`splitByComma`/`trimSpace`) into stdlib-based shared helpers.
 - [ ] Handle reply_count on delete (decrement and/or cascade) and orphaned replies.
 - [ ] Wrap write flows in `cache.WithCacheTransaction` + cache/version invalidation and outbox events.
 - [ ] Paginate `GET /{id}/likes`.

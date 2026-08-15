@@ -40,5 +40,5 @@ Both use `media.ResolveID` (numeric/slug), load the row from DB, then fetch prov
 - [ ] Fix the `cpLink` hardcoded `"movie"` in the show country-miss path.
 - [ ] Add negative caching for missing countries to avoid repeated full refetches.
 - [ ] Replace `itoa` with `strconv.Itoa`; handle marshal errors in `storeCachedProviders`.
-- [ ] Use shared `internal/httpapi` helpers.
+- [x] Use shared `internal/response` helpers.
 - [ ] Verify module test coverage (`make test`).

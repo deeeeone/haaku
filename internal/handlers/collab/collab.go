@@ -10,6 +10,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/response"
 )
 
 func init() {
@@ -112,18 +113,18 @@ type InviteCollaboratorRequest struct {
 func handleMyCollaborations(c *fiber.Ctx) error {
 	userID, ok := c.Locals("user_id").(string)
 	if !ok || userID == "" {
-		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	// Find lists where user is a collaborator.
 	var collabs []database.ListCollaborator
 	if err := db.Where("user_id = ?", userID).Find(&collabs).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to fetch collaborations")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to fetch collaborations")
 	}
 
 	// Build response.
@@ -149,57 +150,57 @@ func handleMyCollaborations(c *fiber.Ctx) error {
 func handleInviteCollaborator(c *fiber.Ctx) error {
 	userID, ok := c.Locals("user_id").(string)
 	if !ok || userID == "" {
-		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
 	}
 	listIDStr := c.Params("id")
 	listID := parseID(listIDStr)
 	if listID == 0 {
-		return badRequest(c, "invalid list id")
+		return response.BadRequest(c, "invalid list id")
 	}
 
 	var req InviteCollaboratorRequest
 	if err := c.BodyParser(&req); err != nil {
-		return badRequest(c, "invalid request body")
+		return response.BadRequest(c, "invalid request body")
 	}
 	if req.Username == "" {
-		return badRequest(c, "username is required")
+		return response.BadRequest(c, "username is required")
 	}
 	if req.Role != "editor" && req.Role != "viewer" {
-		return badRequest(c, "role must be 'editor' or 'viewer'")
+		return response.BadRequest(c, "role must be 'editor' or 'viewer'")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	// Verify list exists and current user is the owner.
 	var listCount int64
 	if err := db.Table("lists").Where("id = ? AND user_id = ?", listID, userID).Count(&listCount).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 	if listCount == 0 {
-		return notFound(c, "list not found")
+		return response.NotFound(c, "list not found")
 	}
 
 	// Resolve username to user ID.
 	var targetUser database.User
 	if err := db.Where("username = ?", req.Username).First(&targetUser).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return notFound(c, "user not found")
+			return response.NotFound(c, "user not found")
 		}
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
 	// Don't allow inviting yourself.
 	if targetUser.ID == userID {
-		return badRequest(c, "cannot invite yourself")
+		return response.BadRequest(c, "cannot invite yourself")
 	}
 
 	// Check if already a collaborator.
 	var existing database.ListCollaborator
 	if err := db.Where("list_id = ? AND user_id = ?", listID, targetUser.ID).First(&existing).Error; err == nil {
-		return badRequest(c, "user is already a collaborator")
+		return response.BadRequest(c, "user is already a collaborator")
 	}
 
 	now := time.Now()
@@ -211,7 +212,7 @@ func handleInviteCollaborator(c *fiber.Ctx) error {
 	}
 
 	if err := db.Create(&collab).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to add collaborator")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to add collaborator")
 	}
 
 	resp := CollaboratorResponse{
@@ -227,39 +228,39 @@ func handleInviteCollaborator(c *fiber.Ctx) error {
 func handleRemoveCollaborator(c *fiber.Ctx) error {
 	userID, ok := c.Locals("user_id").(string)
 	if !ok || userID == "" {
-		return writeError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
 	}
 	listIDStr := c.Params("id")
 	targetUserID := c.Params("user_id")
 
 	listID := parseID(listIDStr)
 	if listID == 0 {
-		return badRequest(c, "invalid list id")
+		return response.BadRequest(c, "invalid list id")
 	}
 	if targetUserID == "" {
-		return badRequest(c, "user_id is required")
+		return response.BadRequest(c, "user_id is required")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	// Verify list exists and current user is the owner.
 	var listCount int64
 	if err := db.Table("lists").Where("id = ? AND user_id = ?", listID, userID).Count(&listCount).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 	if listCount == 0 {
-		return notFound(c, "list not found")
+		return response.NotFound(c, "list not found")
 	}
 
 	result := db.Where("list_id = ? AND user_id = ?", listID, targetUserID).Delete(&database.ListCollaborator{})
 	if result.Error != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to remove collaborator")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to remove collaborator")
 	}
 	if result.RowsAffected == 0 {
-		return notFound(c, "collaborator not found")
+		return response.NotFound(c, "collaborator not found")
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
@@ -270,17 +271,17 @@ func handleListCollaborators(c *fiber.Ctx) error {
 	listIDStr := c.Params("id")
 	listID := parseID(listIDStr)
 	if listID == 0 {
-		return badRequest(c, "invalid list id")
+		return response.BadRequest(c, "invalid list id")
 	}
 
 	db, err := database.GetDB()
 	if err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
 	var collabs []database.ListCollaborator
 	if err := db.Where("list_id = ?", listID).Find(&collabs).Error; err != nil {
-		return writeError(c, fiber.StatusInternalServerError, "internal", "failed to fetch collaborators")
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to fetch collaborators")
 	}
 
 	resp := make([]CollaboratorResponse, 0, len(collabs))
@@ -313,21 +314,4 @@ func parseID(s string) int64 {
 		id = id*10 + int64(ch-'0')
 	}
 	return id
-}
-
-func writeError(c *fiber.Ctx, status int, code, message string) error {
-	return c.Status(status).JSON(fiber.Map{
-		"error": fiber.Map{
-			"code":    code,
-			"message": message,
-		},
-	})
-}
-
-func badRequest(c *fiber.Ctx, msg string) error {
-	return writeError(c, fiber.StatusBadRequest, "invalid_request", msg)
-}
-
-func notFound(c *fiber.Ctx, msg string) error {
-	return writeError(c, fiber.StatusNotFound, "not_found", msg)
 }
