@@ -11,16 +11,16 @@ func TestIsBlockedIP(t *testing.T) {
 		ip   string
 		want bool
 	}{
-		{"127.0.0.1", true},     // loopback
-		{"::1", true},           // loopback
-		{"10.0.0.1", true},      // private RFC1918
-		{"172.16.0.1", true},    // private RFC1918
-		{"192.168.1.1", true},   // private RFC1918
+		{"127.0.0.1", true},       // loopback
+		{"::1", true},             // loopback
+		{"10.0.0.1", true},        // private RFC1918
+		{"172.16.0.1", true},      // private RFC1918
+		{"192.168.1.1", true},     // private RFC1918
 		{"169.254.169.254", true}, // link-local (metadata service)
-		{"0.0.0.0", true},       // unspecified
-		{"224.0.0.1", true},     // multicast
-		{"8.8.8.8", false},      // public
-		{"1.1.1.1", false},      // public
+		{"0.0.0.0", true},         // unspecified
+		{"224.0.0.1", true},       // multicast
+		{"8.8.8.8", false},        // public
+		{"1.1.1.1", false},        // public
 	}
 	for _, tc := range cases {
 		ip := net.ParseIP(tc.ip)
