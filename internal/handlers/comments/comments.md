@@ -28,7 +28,7 @@ Registers OpenAPI metadata for all endpoints. Uses `comment_type`/`media_type` C
 
 - **`writeError` duplicated** — local envelope helper instead of `internal/httpapi`.
 - **Hand-rolled CSV splitter and trimmer** — `splitByComma`/`trimSpace` reimplement `strings.Split`/`strings.TrimSpace`.
-- **`user_id` unchecked type assertions** (e.g. comments.go:326) — protected by `requireAuth` on write routes, so OK today, but panics if a route is ever mounted without the guard.
+- **`user_id` unchecked type assertions** (e.g. comments.go:326) — protected by the shared `auth.AuthRequired()` middleware on write routes, so OK today, but panics if a route is ever mounted without the guard.
 - **No reply-count decrement on delete** — deleting a comment that has replies (when allowed, i.e. ≤14 days) leaves the parent's `reply_count` stale; replies themselves are orphaned (no cascade handling).
 - **Like/reaction/reply counter increments are non-transactional** — `UpdateColumn("reply_count", +1)` after insert and full `COUNT` recalc on like are separate statements from the write; race-prone. Should use `WithCacheTransaction`.
 - **No cache invalidation / outbox events** — comment creates/likes/reactions don't invalidate media/user version keys nor publish events (feeds depend on these).

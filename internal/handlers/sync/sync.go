@@ -16,6 +16,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"trakt-api/internal/auth"
 	"trakt-api/internal/response"
 )
 
@@ -56,6 +57,7 @@ func registerOpenAPIRoutes() {
 // RegisterRoutes wires all sync route handlers.
 func RegisterRoutes(api fiber.Router) {
 	sync := api.Group("/sync")
+	sync.Use(auth.AuthRequired())
 
 	// History
 	sync.Get("/history", handleGetHistory)
@@ -91,10 +93,7 @@ func RegisterRoutes(api fiber.Router) {
 
 // handleGetHistory returns paginated watch history, most-recent-first.
 func handleGetHistory(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
+	userID := c.Locals("user_id").(string)
 
 	db, err := database.GetDB()
 	if err != nil {
@@ -152,10 +151,7 @@ func handleGetHistory(c *fiber.Ctx) error {
 
 // handleGetHistoryItem returns history for a specific media item.
 func handleGetHistoryItem(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
+	userID := c.Locals("user_id").(string)
 
 	mt := c.Params("media_type")
 	mediaParam := c.Params("media_id")
@@ -245,10 +241,7 @@ type historyAddResponse struct {
 
 // handleAddHistory adds watch history items with show/season expansion.
 func handleAddHistory(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
+	userID := c.Locals("user_id").(string)
 
 	var req historyAddRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -431,10 +424,7 @@ func handleAddHistory(c *fiber.Ctx) error {
 
 // handleRemoveHistory removes history items by IDs or media objects.
 func handleRemoveHistory(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
+	userID := c.Locals("user_id").(string)
 
 	var req struct {
 		IDs      []int64          `json:"ids,omitempty"`
@@ -579,10 +569,7 @@ func handleRemoveHistory(c *fiber.Ctx) error {
 // ============================================================================
 
 func handleGetCollection(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
+	userID := c.Locals("user_id").(string)
 
 	db, err := database.GetDB()
 	if err != nil {
@@ -613,10 +600,7 @@ func handleGetCollection(c *fiber.Ctx) error {
 }
 
 func handleAddCollection(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
+	userID := c.Locals("user_id").(string)
 
 	var req struct {
 		Movies []historyMovie `json:"movies,omitempty"`
@@ -697,10 +681,7 @@ func handleAddCollection(c *fiber.Ctx) error {
 }
 
 func handleRemoveCollection(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
+	userID := c.Locals("user_id").(string)
 
 	var req struct {
 		Movies []historyMovie `json:"movies,omitempty"`
@@ -773,10 +754,7 @@ func handleRemoveCollection(c *fiber.Ctx) error {
 // ============================================================================
 
 func handleGetWatchlist(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
+	userID := c.Locals("user_id").(string)
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
@@ -826,10 +804,7 @@ func handleGetWatchlist(c *fiber.Ctx) error {
 }
 
 func handleAddWatchlist(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
+	userID := c.Locals("user_id").(string)
 
 	var req struct {
 		Movies []struct {
@@ -935,10 +910,7 @@ func handleAddWatchlist(c *fiber.Ctx) error {
 }
 
 func handleRemoveWatchlist(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
+	userID := c.Locals("user_id").(string)
 
 	var req struct {
 		Movies []historyMovie `json:"movies,omitempty"`
@@ -1005,10 +977,7 @@ func handleRemoveWatchlist(c *fiber.Ctx) error {
 }
 
 func handleReorderWatchlist(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
+	userID := c.Locals("user_id").(string)
 
 	var req struct {
 		Rank []int64 `json:"rank"`
@@ -1071,10 +1040,7 @@ func handleReorderWatchlist(c *fiber.Ctx) error {
 // ============================================================================
 
 func handleGetRatings(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
+	userID := c.Locals("user_id").(string)
 
 	db, err := database.GetDB()
 	if err != nil {
@@ -1105,10 +1071,7 @@ func handleGetRatings(c *fiber.Ctx) error {
 }
 
 func handleAddRatings(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
+	userID := c.Locals("user_id").(string)
 
 	var req struct {
 		Movies []struct {
@@ -1208,10 +1171,7 @@ func handleAddRatings(c *fiber.Ctx) error {
 }
 
 func handleRemoveRatings(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
+	userID := c.Locals("user_id").(string)
 
 	var req struct {
 		Movies   []historyMovie   `json:"movies,omitempty"`
@@ -1295,10 +1255,7 @@ func handleRemoveRatings(c *fiber.Ctx) error {
 // ============================================================================
 
 func handleGetFavorites(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
+	userID := c.Locals("user_id").(string)
 
 	db, err := database.GetDB()
 	if err != nil {
@@ -1329,10 +1286,7 @@ func handleGetFavorites(c *fiber.Ctx) error {
 }
 
 func handleAddFavorites(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
+	userID := c.Locals("user_id").(string)
 
 	var req struct {
 		Movies []historyMovie `json:"movies,omitempty"`
@@ -1428,10 +1382,7 @@ func handleAddFavorites(c *fiber.Ctx) error {
 }
 
 func handleRemoveFavorites(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
+	userID := c.Locals("user_id").(string)
 
 	var req struct {
 		Movies []historyMovie `json:"movies,omitempty"`
@@ -1812,10 +1763,4 @@ func validateReorder(ids, ownedIDs []int64) error {
 		seen[id] = true
 	}
 	return nil
-}
-
-func authRequired(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-		"error": fiber.Map{"code": "unauthorized", "message": "invalid or expired token"},
-	})
 }

@@ -9,7 +9,7 @@ Implements check-in lifecycle endpoints:
 - `GET /v1/checkin` — returns the active (non-expired) checkin, or 204 if none.
 
 Key mechanics:
-- Uses the **shared auth middleware** (`auth.AuthRequired`) — unlike most other handler packages that hand-roll `requireAuth`.
+- Uses the **shared auth middleware** (`auth.AuthRequired`) at route registration.
 - ID resolution goes through `media.ResolveID` (TMDB id → internal media id + type); episode checkins resolve the season/episode row by season number + episode number.
 - Writes go through `cache.WithCacheTransaction` with a `pg_advisory_xact_lock` on the user id (one active checkin per user, race-safe).
 - Publishes outbox events (`checkin.created` / `checkin.deleted`) and schedules cache version-key invalidations (user + media).
@@ -39,7 +39,7 @@ Key mechanics:
 - **Episode response media id** — `response.Episode.IDs.TMDB = int(mediaID)` uses the show's TMDB id, not the episode's; the response references the parent show, which is consistent with Trakt's checkin response but worth verifying against the spec.
 - **Delete with zero rows** — DELETE when no checkin exists returns 204 silently; spec should confirm whether 204 is correct for the no-op case.
 - **No `sharing` handling** — `checkinSharing` is parsed but never used anywhere.
-- **`getUserID` ignores the bool** — a missing `user_id` silently yields empty string, then each handler re-checks for empty and 401s. Redundant double-check with `requireAuth`.
+- **`getUserID` ignores the bool** — a missing `user_id` silently yields empty string, then each handler re-checks for empty and 401s. Redundant double-check with the shared `auth.AuthRequired()` middleware.
 
 ## Todos
 

@@ -46,8 +46,8 @@ Writes go through `cache.WithCacheTransaction` with list/user version-key bumps 
 
 ## Oversights
 
-- **`requireAuth` hand-rolled** — duplicate of the pattern in every other package; should be `auth.AuthRequired`. Note the double-check: most write handlers also re-check `uid == ""`.
-- **Local error helpers** — full local set (`authRequired`/`badRequest`/`notFound`/`forbidden`/`internalError`) instead of `internal/httpapi`.
+- **`requireAuth` hand-rolled (RESOLVED)** — routes now run shared `auth.AuthRequired()` (Batch 1); the redundant per-handler `uid == ""` checks were dropped.
+- **Local error helpers (RESOLVED)** — full local set (`authRequired`/`badRequest`/`notFound`/`forbidden`/`internalError`) replaced by `internal/response` (Batch 0).
 - **SQL-injection exposure in sort ordering (RESOLVED)** — `handleGetListItems` did `fmt.Sprintf("%s %s", sortCol, sortDir)` (lists.go:609) with `sortCol` coming straight from the stored `List.SortBy` (no allowlist, unlike smart lists); an owner could store an arbitrary `sort_by` that becomes raw SQL on every items read. New `resolveListItemSort(sortBy, sortHow)` maps sort keys through an allowlist (`rank`, `added_at`, `media_type`, `media_id`, `notes`), falls back to `rank` for unknown keys, and normalizes direction to ASC/DESC (lists.go:598-625). Unit-tested in `internal/handlers/lists/lists_test.go`.
 - **Trending score SQL injection** — `handleGetTrendingLists` embeds a fixed expression (safe) but note it's a hardcoded PG expression; acceptable.
 - **`generateSlug` userID slicing** — `userID[0:8]` panics if user id is shorter than 8 chars (e.g. empty or short test ids). No length guard.
@@ -67,7 +67,7 @@ Writes go through `cache.WithCacheTransaction` with list/user version-key bumps 
 - [ ] Paginate `GET /lists/{id}/comments`.
 - [ ] Ensure unique constraint exists for list likes; consider a DB-level check.
 - [x] Replace local error helpers with `internal/response` (Batch 0).
-- [ ] Replace local `authRequired`/`requireAuth` with `auth.AuthRequired` (Batch 1).
+- [x] Replace local `authRequired`/`requireAuth` with `auth.AuthRequired` (Batch 1).
 - [ ] Consider response mapping for `database.List` leaks in likes/popular/trending/items-extended.
 - [ ] Verify the `genres::jsonb ? ?` filter matches the column type.
 - [ ] Verify module test coverage (`make test`).

@@ -10,6 +10,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/auth"
 	"trakt-api/internal/response"
 )
 
@@ -49,33 +50,25 @@ func RegisterRoutes(api fiber.Router) {
 	cg.Get("/trending", handleTrending)
 	cg.Get("/recent", handleRecent)
 	cg.Get("/updates", handleUpdates)
-	cg.Post("/", requireAuth, handleCreateComment)
+	cg.Post("/", auth.AuthRequired(), handleCreateComment)
 	cg.Get("/:id", handleGetComment)
-	cg.Put("/:id", requireAuth, handleEditComment)
-	cg.Delete("/:id", requireAuth, handleDeleteComment)
+	cg.Put("/:id", auth.AuthRequired(), handleEditComment)
+	cg.Delete("/:id", auth.AuthRequired(), handleDeleteComment)
 	cg.Get("/:id/replies", handleGetReplies)
-	cg.Post("/:id/replies", requireAuth, handleCreateReply)
-	cg.Post("/:id/like", requireAuth, handleLikeComment)
-	cg.Delete("/:id/like", requireAuth, handleUnlikeComment)
+	cg.Post("/:id/replies", auth.AuthRequired(), handleCreateReply)
+	cg.Post("/:id/like", auth.AuthRequired(), handleLikeComment)
+	cg.Delete("/:id/like", auth.AuthRequired(), handleUnlikeComment)
 	cg.Get("/:id/likes", handleGetLikes)
 	cg.Get("/:id/reactions", handleGetReactions)
-	cg.Post("/:id/reactions", requireAuth, handleAddReaction)
-	cg.Delete("/:id/reactions", requireAuth, handleRemoveReaction)
-	cg.Post("/:id/report", requireAuth, handleReportComment)
+	cg.Post("/:id/reactions", auth.AuthRequired(), handleAddReaction)
+	cg.Delete("/:id/reactions", auth.AuthRequired(), handleRemoveReaction)
+	cg.Post("/:id/report", auth.AuthRequired(), handleReportComment)
 	cg.Get("/:id/item", handleGetCommentItem)
 }
 
 // ---------------------------------------------------------------------------
 // Auth middleware
 // ---------------------------------------------------------------------------
-
-func requireAuth(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
-	}
-	return c.Next()
-}
 
 // ---------------------------------------------------------------------------
 // Request/Response types

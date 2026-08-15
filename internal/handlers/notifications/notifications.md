@@ -9,7 +9,7 @@ Implements the notification inbox and settings:
 - `GET /v1/notifications/settings` — read the user's notification preferences (defaults all true; parsed from `user.settings` JSON under `notifications`).
 - `CreateNotification` — exported helper for other handlers to create notifications inline (follow, reply, list invite).
 
-All routes auth-required via hand-rolled `requireAuth`. Registers OpenAPI metadata for the three endpoints.
+All routes auth-required via the shared `auth.AuthRequired()` middleware. Registers OpenAPI metadata for the three endpoints.
 
 ## Completion
 
@@ -23,7 +23,7 @@ All routes auth-required via hand-rolled `requireAuth`. Registers OpenAPI metada
 
 ## Oversights
 
-- **`requireAuth` hand-rolled** — same duplicated Local check.
+- **`requireAuth` hand-rolled (RESOLVED)** — routes now run shared `auth.AuthRequired()` (Batch 1).
 - **`handleMarkRead` swallows the body-parse error** (`_ = err`) — a malformed JSON body silently becomes "mark ALL as read". A client typo can wipe the read state of the whole inbox. Should 400 on malformed JSON.
 - **No "read" settings write endpoint** — only `GET /settings`; no way to update notification preferences. Spec likely requires PUT/POST.
 - **Settings stored as raw JSON string on the user row** — parsing is lenient (bad JSON → defaults), and unknown keys are ignored; no schema/versioning for settings.
@@ -40,6 +40,6 @@ All routes auth-required via hand-rolled `requireAuth`. Registers OpenAPI metada
 - [ ] Enforce notification preferences in `CreateNotification` (respect follows/replies/list_invite).
 - [ ] Move `CreateNotification` into the outbox/cache-tx flow.
 - [x] Replace local error/pagination helpers with `internal/response` (Batch 0).
-- [ ] Swap `requireAuth` for shared `auth.AuthRequired` (Batch 1).
+- [x] Swap `requireAuth` for shared `auth.AuthRequired` (Batch 1).
 - [ ] Consider cursor pagination for the inbox.
 - [ ] Verify module test coverage (`make test`).

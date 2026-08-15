@@ -42,33 +42,26 @@ func RegisterRoutes(api fiber.Router) {
 
 	// /users/me routes (require auth)
 	me := users.Group("/me")
-	me.Get("/", requireAuth, handleGetMe)
-	me.Put("/", requireAuth, handleUpdateMe)
-	me.Get("/settings", requireAuth, handleGetSettings)
-	me.Put("/settings", requireAuth, handleUpdateSettings)
-	me.Delete("/", requireAuth, handleDeleteAccount)
+	me.Get("/", auth.AuthRequired(), handleGetMe)
+	me.Put("/", auth.AuthRequired(), handleUpdateMe)
+	me.Get("/settings", auth.AuthRequired(), handleGetSettings)
+	me.Put("/settings", auth.AuthRequired(), handleUpdateSettings)
+	me.Delete("/", auth.AuthRequired(), handleDeleteAccount)
 
 	// /users/:id routes (public, privacy-filtered)
 	users.Get("/:id", auth.PrivacyFilter("id"), handleGetUser)
 
 	// Block endpoints (stub — 501)
-	users.Post("/:id/block", requireAuth, handleBlockUser)
-	users.Delete("/:id/block", requireAuth, handleUnblockUser)
+	users.Post("/:id/block", auth.AuthRequired(), handleBlockUser)
+	users.Delete("/:id/block", auth.AuthRequired(), handleUnblockUser)
 }
 
 // ---------------------------------------------------------------------------
 // Auth helper middleware
 // ---------------------------------------------------------------------------
 
-// requireAuth is a local middleware that requires authentication.
+// auth.AuthRequired() is a local middleware that requires authentication.
 // Returns 401 if c.Locals("user_id") is not set.
-func requireAuth(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
-	}
-	return c.Next()
-}
 
 // ---------------------------------------------------------------------------
 // Response types

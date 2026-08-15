@@ -10,6 +10,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/auth"
 	"trakt-api/internal/response"
 )
 
@@ -31,23 +32,15 @@ func registerOpenAPIRoutes() {
 
 // RegisterRoutes wires content report routes.
 func RegisterRoutes(api fiber.Router) {
-	api.Post("/movies/:id/report", requireAuth, handleReportMovie)
-	api.Post("/shows/:id/report", requireAuth, handleReportShow)
-	api.Post("/seasons/:id/report", requireAuth, handleReportSeason)
-	api.Post("/episodes/:id/report", requireAuth, handleReportEpisode)
+	api.Post("/movies/:id/report", auth.AuthRequired(), handleReportMovie)
+	api.Post("/shows/:id/report", auth.AuthRequired(), handleReportShow)
+	api.Post("/seasons/:id/report", auth.AuthRequired(), handleReportSeason)
+	api.Post("/episodes/:id/report", auth.AuthRequired(), handleReportEpisode)
 }
 
 // ---------------------------------------------------------------------------
 // Auth middleware
 // ---------------------------------------------------------------------------
-
-func requireAuth(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
-	}
-	return c.Next()
-}
 
 // ---------------------------------------------------------------------------
 // Valid reasons

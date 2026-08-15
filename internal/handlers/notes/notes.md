@@ -10,7 +10,7 @@ Implements personal notes on media items:
 - `DELETE /v1/notes/{id}` — delete own note (owner-scoped delete), 204.
 - `GET /v1/users/me/notes` — list own notes, paginated (default 20, max 100), optional `media_type` filter.
 
-All routes are auth-required via a hand-rolled `requireAuth`. Registers OpenAPI metadata for all five endpoints.
+All routes are auth-required via the shared `auth.AuthRequired()` middleware. Registers OpenAPI metadata for all five endpoints.
 
 ## Completion
 
@@ -24,8 +24,8 @@ All routes are auth-required via a hand-rolled `requireAuth`. Registers OpenAPI 
 
 ## Oversights
 
-- **`requireAuth` hand-rolled** — same Local check duplicated; should use shared `auth.AuthRequired`.
-- **Local error helpers + duplicated pagination helpers** — `writeError`/`badRequest`/`notFound`/`queryInt`/`clampLimit` reimplemented again.
+- **`requireAuth` hand-rolled (RESOLVED)** — routes now run shared `auth.AuthRequired()` (Batch 1).
+- **Local error helpers + duplicated pagination helpers (RESOLVED)** — `writeError`/`badRequest`/`notFound`/`queryInt`/`clampLimit` reimplemented again.
 - **Upsert is check-then-write, not atomic** — `First` then `Create`/`Save` has a race window (two concurrent POSTs for the same media can produce a unique-violation or a lost update). Should use `clause.OnConflict` upsert and/or advisory lock; DB unique constraint required.
 - **Owner-elsewhere returns 404, not 403** — consistent with the "don't leak existence" pattern but the OpenAPI doc declares 403 for PUT; mismatch between docs and implementation.
 - **No note length limit** — unbounded body accepted.
@@ -36,7 +36,7 @@ All routes are auth-required via a hand-rolled `requireAuth`. Registers OpenAPI 
 
 ## Todos
 
-- [ ] Swap `requireAuth` for shared `auth.AuthRequired`.
+- [x] Swap `requireAuth` for shared `auth.AuthRequired` (Batch 1).
 - [ ] Make the upsert atomic (DB unique constraint + `OnConflict` upsert) or advisory-locked.
 - [ ] Reconcile 403-vs-404 for cross-user access against the spec/docs.
 - [ ] Add note-length and `media_type` validation.

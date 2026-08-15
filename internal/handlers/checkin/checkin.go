@@ -37,18 +37,14 @@ func registerOpenAPIRoutes() {
 func RegisterRoutes(api fiber.Router) {
 	checkinGroup := api.Group("/checkin")
 
-	checkinGroup.Post("/", requireAuth, handleCheckinCreate)
-	checkinGroup.Delete("/", requireAuth, handleCheckinDelete)
-	checkinGroup.Get("/", requireAuth, handleCheckinGet)
+	checkinGroup.Post("/", auth.AuthRequired(), handleCheckinCreate)
+	checkinGroup.Delete("/", auth.AuthRequired(), handleCheckinDelete)
+	checkinGroup.Get("/", auth.AuthRequired(), handleCheckinGet)
 }
 
 // ---------------------------------------------------------------------------
 // Auth middleware wrapper
 // ---------------------------------------------------------------------------
-
-func requireAuth(c *fiber.Ctx) error {
-	return auth.AuthRequired()(c)
-}
 
 // ---------------------------------------------------------------------------
 // Request / response types

@@ -9,6 +9,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/auth"
 	"trakt-api/internal/response"
 )
 
@@ -29,22 +30,14 @@ func registerOpenAPIRoutes() {
 
 // RegisterRoutes wires saved filter routes.
 func RegisterRoutes(api fiber.Router) {
-	api.Get("/users/me/saved_filters/:section", requireAuth, handleListFilters)
-	api.Post("/users/me/saved_filters", requireAuth, handleSaveFilter)
-	api.Delete("/users/me/saved_filters/:id", requireAuth, handleDeleteFilter)
+	api.Get("/users/me/saved_filters/:section", auth.AuthRequired(), handleListFilters)
+	api.Post("/users/me/saved_filters", auth.AuthRequired(), handleSaveFilter)
+	api.Delete("/users/me/saved_filters/:id", auth.AuthRequired(), handleDeleteFilter)
 }
 
 // ---------------------------------------------------------------------------
 // Auth middleware
 // ---------------------------------------------------------------------------
-
-func requireAuth(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
-	}
-	return c.Next()
-}
 
 // ---------------------------------------------------------------------------
 // Request/Response types

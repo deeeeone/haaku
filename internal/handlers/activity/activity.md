@@ -18,7 +18,7 @@ The handler:
 3. Queries `ActivityFeed` rows for those actors, ordered `created_at DESC`, paginated via `page`/`limit`.
 4. Returns a paginated envelope (`data`, `page`, `limit`, `total_count`).
 
-Also registers OpenAPI route metadata (via `openapi.Register`) and exposes `RegisterRoutes` to wire the route group. Defines its own `requireAuth` middleware, response types, and pagination/error helpers.
+Also registers OpenAPI route metadata (via `openapi.Register`) and exposes `RegisterRoutes` to wire the route group. The route runs the shared `auth.AuthRequired()` middleware; response types and error/pagination helpers come from shared packages.
 
 ## Completion
 
@@ -36,7 +36,7 @@ Also registers OpenAPI route metadata (via `openapi.Register`) and exposes `Regi
 ## Oversights
 
 - **Duplicated error helper** — `writeError` re-implements the envelope inline instead of reusing `internal/httpapi` helpers, and it drops the shared `httpapi.NotFound/BadRequest/Unauthorized` constructors. If the envelope spec changes, this copy can drift.
-- **Bare `requireAuth`** — the auth check is hand-rolled (reads `user_id` Locals) rather than a shared middleware, so auth semantics can diverge across packages.
+- **Bare `requireAuth` (RESOLVED)** — route now runs the shared `auth.AuthRequired()` (Batch 1); the local middleware was removed.
 - **No trailing-page handling** — `page` beyond the last page returns empty `data` with the same `total_count`; no explicit `X-Pagination-Page-Count` style metadata (spec-dependent).
 - **`start_at` parse failure silently ignored** — an invalid `start_at` is treated as absent rather than returning a 400.
 - **`friends`/`type` validation** — unknown `type` values silently fall through to the `friends` branch; no 400 for invalid input.
@@ -45,7 +45,7 @@ Also registers OpenAPI route metadata (via `openapi.Register`) and exposes `Regi
 ## Todos
 
 - [x] Switch to shared `internal/response` error constructors (local `writeError` removed).
-- [ ] Move auth guard to a shared middleware package.
+- [x] Move auth guard to a shared middleware package — route now runs `auth.AuthRequired()` (Batch 1).
 - [ ] Return 400 on malformed `start_at` and on unknown `type` values.
 - [ ] Confirm pagination metadata contract against `api-conventions.md` and align response shape.
 - [ ] Verify the module has tests (`make test` TDD requirement).

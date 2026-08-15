@@ -9,6 +9,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/auth"
 	"trakt-api/internal/response"
 )
 
@@ -30,17 +31,9 @@ func registerOpenAPIRoutes() {
 // RegisterRoutes wires all notification route handlers.
 func RegisterRoutes(api fiber.Router) {
 	ng := api.Group("/notifications")
-	ng.Get("/", requireAuth, handleGetInbox)
-	ng.Post("/read", requireAuth, handleMarkRead)
-	ng.Get("/settings", requireAuth, handleGetSettings)
-}
-
-func requireAuth(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
-	}
-	return c.Next()
+	ng.Get("/", auth.AuthRequired(), handleGetInbox)
+	ng.Post("/read", auth.AuthRequired(), handleMarkRead)
+	ng.Get("/settings", auth.AuthRequired(), handleGetSettings)
 }
 
 // ---------------------------------------------------------------------------

@@ -18,6 +18,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"trakt-api/internal/auth"
 	"trakt-api/internal/response"
 )
 
@@ -63,24 +64,24 @@ func registerOpenAPIRoutes() {
 // RegisterRoutes wires all list route handlers.
 func RegisterRoutes(api fiber.Router) {
 	// User lists
-	api.Get("/users/:id/lists", requireAuth, handleGetUserLists)
-	api.Post("/users/me/lists", requireAuth, handleCreateList)
+	api.Get("/users/:id/lists", auth.AuthRequired(), handleGetUserLists)
+	api.Post("/users/me/lists", auth.AuthRequired(), handleCreateList)
 
 	// Individual list CRUD
 	api.Get("/lists/:id", handleGetList)
-	api.Put("/lists/:id", requireAuth, handleUpdateList)
-	api.Delete("/lists/:id", requireAuth, handleDeleteList)
+	api.Put("/lists/:id", auth.AuthRequired(), handleUpdateList)
+	api.Delete("/lists/:id", auth.AuthRequired(), handleDeleteList)
 
 	// List items
 	api.Get("/lists/:id/items", handleGetListItems)
-	api.Post("/lists/:id/items", requireAuth, handleAddListItems)
-	api.Post("/lists/:id/items/remove", requireAuth, handleRemoveListItems)
-	api.Put("/lists/:id/items/reorder", requireAuth, handleReorderListItems)
+	api.Post("/lists/:id/items", auth.AuthRequired(), handleAddListItems)
+	api.Post("/lists/:id/items/remove", auth.AuthRequired(), handleRemoveListItems)
+	api.Put("/lists/:id/items/reorder", auth.AuthRequired(), handleReorderListItems)
 
 	// Likes
 	api.Get("/lists/:id/likes", handleGetListLikes)
-	api.Post("/lists/:id/like", requireAuth, handleLikeList)
-	api.Delete("/lists/:id/like", requireAuth, handleUnlikeList)
+	api.Post("/lists/:id/like", auth.AuthRequired(), handleLikeList)
+	api.Delete("/lists/:id/like", auth.AuthRequired(), handleUnlikeList)
 
 	// Comments
 	api.Get("/lists/:id/comments", handleGetListComments)
@@ -90,25 +91,17 @@ func RegisterRoutes(api fiber.Router) {
 	api.Get("/lists/trending", handleGetTrendingLists)
 
 	// Smart lists
-	api.Get("/users/me/smart-lists", requireAuth, handleGetSmartLists)
-	api.Post("/users/me/smart-lists", requireAuth, handleCreateSmartList)
-	api.Get("/smart-lists/:id", requireAuth, handleGetSmartList)
-	api.Put("/smart-lists/:id", requireAuth, handleUpdateSmartList)
-	api.Delete("/smart-lists/:id", requireAuth, handleDeleteSmartList)
-	api.Get("/smart-lists/:id/items", requireAuth, handleGetSmartListItems)
+	api.Get("/users/me/smart-lists", auth.AuthRequired(), handleGetSmartLists)
+	api.Post("/users/me/smart-lists", auth.AuthRequired(), handleCreateSmartList)
+	api.Get("/smart-lists/:id", auth.AuthRequired(), handleGetSmartList)
+	api.Put("/smart-lists/:id", auth.AuthRequired(), handleUpdateSmartList)
+	api.Delete("/smart-lists/:id", auth.AuthRequired(), handleDeleteSmartList)
+	api.Get("/smart-lists/:id/items", auth.AuthRequired(), handleGetSmartListItems)
 }
 
 // ============================================================================
 // MIDDLEWARE / HELPERS
 // ============================================================================
-
-func requireAuth(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
-	return c.Next()
-}
 
 func userID(c *fiber.Ctx) string {
 	uid, _ := c.Locals("user_id").(string)
@@ -205,9 +198,6 @@ func generateSlug(name, userID string) string {
 
 func handleCreateList(c *fiber.Ctx) error {
 	uid := userID(c)
-	if uid == "" {
-		return authRequired(c)
-	}
 
 	var req createListRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -342,9 +332,6 @@ type updateListRequest struct {
 
 func handleUpdateList(c *fiber.Ctx) error {
 	uid := userID(c)
-	if uid == "" {
-		return authRequired(c)
-	}
 
 	idParam := c.Params("id")
 	listID, parseErr := strconv.ParseInt(idParam, 10, 64)
@@ -444,9 +431,6 @@ func handleUpdateList(c *fiber.Ctx) error {
 
 func handleDeleteList(c *fiber.Ctx) error {
 	uid := userID(c)
-	if uid == "" {
-		return authRequired(c)
-	}
 
 	idParam := c.Params("id")
 	listID, parseErr := strconv.ParseInt(idParam, 10, 64)
@@ -673,9 +657,6 @@ func resolveItemByTMDB(db *gorm.DB, mediaType string, tmdbID int) (int64, error)
 
 func handleAddListItems(c *fiber.Ctx) error {
 	uid := userID(c)
-	if uid == "" {
-		return authRequired(c)
-	}
 
 	idParam := c.Params("id")
 	listID, err := strconv.ParseInt(idParam, 10, 64)
@@ -782,9 +763,6 @@ func handleAddListItems(c *fiber.Ctx) error {
 
 func handleRemoveListItems(c *fiber.Ctx) error {
 	uid := userID(c)
-	if uid == "" {
-		return authRequired(c)
-	}
 
 	idParam := c.Params("id")
 	listID, err := strconv.ParseInt(idParam, 10, 64)
@@ -863,9 +841,6 @@ func handleRemoveListItems(c *fiber.Ctx) error {
 
 func handleReorderListItems(c *fiber.Ctx) error {
 	uid := userID(c)
-	if uid == "" {
-		return authRequired(c)
-	}
 
 	idParam := c.Params("id")
 	listID, err := strconv.ParseInt(idParam, 10, 64)
@@ -979,9 +954,6 @@ func handleGetListLikes(c *fiber.Ctx) error {
 
 func handleLikeList(c *fiber.Ctx) error {
 	uid := userID(c)
-	if uid == "" {
-		return authRequired(c)
-	}
 
 	idParam := c.Params("id")
 	listID, err := strconv.ParseInt(idParam, 10, 64)
@@ -1028,9 +1000,6 @@ func handleLikeList(c *fiber.Ctx) error {
 
 func handleUnlikeList(c *fiber.Ctx) error {
 	uid := userID(c)
-	if uid == "" {
-		return authRequired(c)
-	}
 
 	idParam := c.Params("id")
 	listID, err := strconv.ParseInt(idParam, 10, 64)
@@ -1182,9 +1151,6 @@ type smartListRequest struct {
 
 func handleGetSmartLists(c *fiber.Ctx) error {
 	uid := userID(c)
-	if uid == "" {
-		return authRequired(c)
-	}
 
 	db, err := database.GetDB()
 	if err != nil {
@@ -1204,9 +1170,6 @@ func handleGetSmartLists(c *fiber.Ctx) error {
 
 func handleCreateSmartList(c *fiber.Ctx) error {
 	uid := userID(c)
-	if uid == "" {
-		return authRequired(c)
-	}
 
 	var req smartListRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -1245,9 +1208,6 @@ func handleCreateSmartList(c *fiber.Ctx) error {
 
 func handleGetSmartList(c *fiber.Ctx) error {
 	uid := userID(c)
-	if uid == "" {
-		return authRequired(c)
-	}
 
 	idParam := c.Params("id")
 	slID, err := strconv.ParseInt(idParam, 10, 64)
@@ -1277,9 +1237,6 @@ func handleGetSmartList(c *fiber.Ctx) error {
 
 func handleUpdateSmartList(c *fiber.Ctx) error {
 	uid := userID(c)
-	if uid == "" {
-		return authRequired(c)
-	}
 
 	idParam := c.Params("id")
 	slID, err := strconv.ParseInt(idParam, 10, 64)
@@ -1340,9 +1297,6 @@ func handleUpdateSmartList(c *fiber.Ctx) error {
 
 func handleDeleteSmartList(c *fiber.Ctx) error {
 	uid := userID(c)
-	if uid == "" {
-		return authRequired(c)
-	}
 
 	idParam := c.Params("id")
 	slID, err := strconv.ParseInt(idParam, 10, 64)
@@ -1386,9 +1340,6 @@ func handleDeleteSmartList(c *fiber.Ctx) error {
 // handleGetSmartListItems resolves the smart list filter DSL dynamically.
 func handleGetSmartListItems(c *fiber.Ctx) error {
 	uid := userID(c)
-	if uid == "" {
-		return authRequired(c)
-	}
 
 	idParam := c.Params("id")
 	slID, err := strconv.ParseInt(idParam, 10, 64)
@@ -1687,14 +1638,4 @@ func toFloat64(v interface{}) (float64, bool) {
 	default:
 		return 0, false
 	}
-}
-
-// ============================================================================
-// ERROR HELPERS
-// ============================================================================
-
-func authRequired(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-		"error": fiber.Map{"code": "unauthorized", "message": "invalid or expired token"},
-	})
 }

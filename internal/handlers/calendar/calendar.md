@@ -34,8 +34,8 @@ Behavior:
 
 ## Oversights
 
-- **Duplicated error helpers** — `notFound`/`badRequest`/`authRequired` re-implement the envelope instead of using `internal/httpapi`. Also, `notFound` is defined but never used.
-- **`requireAuth` and handler both re-check auth** — the middleware wraps non-`all` routes *and* `handleCalendarShows` checks auth again for non-`all` targets. Redundant; the second check means the middleware is effectively optional.
+- **Duplicated error helpers (RESOLVED)** — `notFound`/`badRequest`/`authRequired` re-implemented the envelope; replaced by `internal/response` + `auth.AuthRequired` (Batches 0/1). The unused `notFound` was dropped.
+- **`requireAuth` and handler both re-check auth (RESOLVED)** — non-`all` routes now run `auth.AuthRequired()` and the handler-level re-check was removed (Batch 1). The public `/all` route keeps its empty `userID` handling.
 - **`deriveTarget` path parsing is brittle** — hand-rolled slash counting breaks if the URL prefix/mount path changes (e.g. mounting under a sub-path). Should use a route param or route-specific handlers.
 - **N+1 queries** — the response loop runs `db.First` for show and season per episode. Should batch-fetch with a single `WHERE id IN` query.
 - **`excludeHiddenShowIDs` only applied to `my` and `friends`** — `favorites` and `watched` do not exclude hidden shows. Inconsistency worth confirming against the spec.
@@ -46,7 +46,7 @@ Behavior:
 ## Todos
 
 - [x] Replace local error helpers with `internal/response` constructors; unused `notFound` dropped.
-- [ ] Remove the double auth check (either middleware or handler-level, not both).
+- [x] Remove the double auth check — non-`all` routes now run `auth.AuthRequired()`; the handler no longer re-checks.
 - [ ] Replace `deriveTarget` with a route param or per-target handlers.
 - [ ] Batch-fetch shows/seasons to kill the N+1 loop.
 - [ ] Apply hidden exclusion consistently across all targets (spec check).

@@ -30,7 +30,7 @@ Writes use `cache.WithCacheTransaction` with version-counter invalidation (`queu
   - `handleRemoveCollection` publishes `EventCollectionAdded` with `{"deleted": ...}` (sync.go:737) — **kept as-is**: the webhook catalog defines `collection.updated` as the add+remove event, so this is the correct constant (comment added).
   - `handleRemoveRatings` published `EventRatingAdded`, `handleRemoveFavorites` published `EventFavoriteAdded`, `handleReorderWatchlist` published `EventWatchlistAdded` (sync.go) — **fixed**: the webhook catalog (`trakt-killer-plan/03-api/webhooks.md`) defines no rating/favorite removal or watchlist-reorder events, so these handlers now emit nothing.
 - **Hardcoded `0` in add responses (RESOLVED)** — `handleAddWatchlist` returned `"added":{"movies":0,"episodes":0}` instead of real counts; `handleAddFavorites` returned `"movies":0,"shows":0` with `added` unused; `handleAddRatings` lumped ALL adds into `"movies"`. Now all three track real per-type `added`/`duplicates` (`addedMovies/Shows`, `dupMovies/Shows`, `addedSeasons/Episodes`) and return them.
-- **No requireAuth middleware on routes** — `RegisterRoutes` attaches nothing; each handler repeats the `c.Locals("user_id")` check. Inconsistent with `scrobble` (which wraps `auth.AuthRequired`).
+- **No requireAuth middleware on routes (RESOLVED)** — `/sync` group now runs `auth.AuthRequired()` via `sync.Use`; per-handler `c.Locals("user_id")` checks dropped (Batch 1).
 - **`handleGetHistoryItem` never validated `media_type` (RESOLVED)** — the route param was used verbatim in the WHERE while `media.ResolveID` may resolve a different type; now the resolved type must match the param or the request returns 400.
 - **`parseWatchedAt` silently fell back to `now` (RESOLVED)** — invalid/unknown timestamps became "now", silently corrupting watch history on client typos. Invalid RFC3339 strings now error and the offending item is reported under `not_found` with `"error": "invalid watched_at"` (batch keeps processing the rest). `"unknown"` semantics (aired_at vs now) still need a spec decision.
 - **`resolveByTMDB` bypasses `media.ResolveID`** — mutates the context (`c.Set("id_type", ...)`) and hand-rolls an `external_ids` lookup + `verifyMediaExists` per item; duplicates the resolver and does an extra query per item (N+1 on bulk adds).
@@ -48,7 +48,7 @@ Writes use `cache.WithCacheTransaction` with version-counter invalidation (`queu
 
 - [x] Fix outbox event names on collection/ratings/favorites remove + watchlist reorder (removals/reorder now emit nothing; collection keeps `collection.updated`).
 - [x] Return real `added`/`duplicates` counts in watchlist/favorites/ratings add responses.
-- [ ] Attach `auth.AuthRequired` at route registration; drop per-handler checks.
+- [x] Attach `auth.AuthRequired` at route registration (`sync.Use`); per-handler checks dropped (Batch 1).
 - [x] Validate `media_type` against the resolved type in `handleGetHistoryItem` (400 on mismatch; `parseWatchedAt` now errors on invalid timestamps instead of silently using `now`).
 - [ ] Reuse `media.ResolveID` and batch-resolve bulk add IDs.
 - [x] Advisory-lock rank assignment (watchlist/favorites adds + reorder); reorder is now 1-based and validated as a complete set (400 otherwise).

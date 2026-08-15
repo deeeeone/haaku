@@ -36,7 +36,7 @@ Best-practices module: uses shared `auth.AuthRequired`, `cache.WithCacheTransact
 - **Advisory lock key `(hashtext(user_id), media_id)`** — 32-bit `hashtext` collisions across users can cause cross-user lock serialization; also episode vs show scrobbles of the same user use the episode id, not the show id, so a show-level and episode-level scrobble of the same user+media don't contend (may be intended).
 - **Duplicate cooldown only looks at `action='scrobble'` sessions** — `start`/`stop` (pause-path) sessions bypass; combined with the pause-`ExpiresAt` bug the cooldown window semantics are fragile.
 - **`getUserID` ignores the type-assert `ok`** — returns `""` on mismatch, which is caught, but only by luck of the empty check.
-- **`writeAPIError` local helper** — mirrors `internal/httpapi` (though the auth wrapper correctly delegates to shared `auth.AuthRequired`).
+- **`writeAPIError` local helper (RESOLVED)** — replaced with shared `internal/response` (Batch 0); the auth wrapper delegates to shared `auth.AuthRequired`.
 - **`resolveScrobbleItem` for episodes requires TMDB show id in `episode.ids.tmdb`** — treats it as a show id; correct per Trakt schema but a misuse of the `tmdb` field name for episodes (a reader expects episode id).
 
 ## Todos

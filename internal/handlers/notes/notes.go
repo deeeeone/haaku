@@ -10,6 +10,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/auth"
 	"trakt-api/internal/response"
 )
 
@@ -32,24 +33,16 @@ func registerOpenAPIRoutes() {
 
 // RegisterRoutes wires note routes.
 func RegisterRoutes(api fiber.Router) {
-	api.Post("/notes", requireAuth, handleCreateNote)
-	api.Get("/notes/:id", requireAuth, handleGetNote)
-	api.Put("/notes/:id", requireAuth, handleUpdateNote)
-	api.Delete("/notes/:id", requireAuth, handleDeleteNote)
-	api.Get("/users/me/notes", requireAuth, handleListNotes)
+	api.Post("/notes", auth.AuthRequired(), handleCreateNote)
+	api.Get("/notes/:id", auth.AuthRequired(), handleGetNote)
+	api.Put("/notes/:id", auth.AuthRequired(), handleUpdateNote)
+	api.Delete("/notes/:id", auth.AuthRequired(), handleDeleteNote)
+	api.Get("/users/me/notes", auth.AuthRequired(), handleListNotes)
 }
 
 // ---------------------------------------------------------------------------
 // Auth middleware
 // ---------------------------------------------------------------------------
-
-func requireAuth(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
-	}
-	return c.Next()
-}
 
 // ---------------------------------------------------------------------------
 // Request/Response types

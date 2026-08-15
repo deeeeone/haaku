@@ -7,6 +7,7 @@ import (
 	"trakt-api/internal/openapi"
 
 	"github.com/gofiber/fiber/v2"
+	"trakt-api/internal/auth"
 	"trakt-api/internal/response"
 )
 
@@ -26,15 +27,7 @@ func registerOpenAPIRoutes() {
 // RegisterRoutes wires activity route handlers.
 func RegisterRoutes(api fiber.Router) {
 	me := api.Group("/users/me")
-	me.Get("/activity", requireAuth, handleGetActivity)
-}
-
-func requireAuth(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
-	}
-	return c.Next()
+	me.Get("/activity", auth.AuthRequired(), handleGetActivity)
 }
 
 // ---------------------------------------------------------------------------

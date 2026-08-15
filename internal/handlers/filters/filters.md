@@ -8,7 +8,7 @@ Implements saved-filter persistence for the current user:
 - `POST /v1/users/me/saved_filters` — save a filter (section + name + arbitrary JSON filter), max **20 per user per section** (400 when exceeded).
 - `DELETE /v1/users/me/saved_filters/{id}` — delete own filter (owner checked; non-owners get 404).
 
-All routes are auth-required (hand-rolled `requireAuth`). Registers OpenAPI metadata for all three endpoints.
+All routes are auth-required (shared `auth.AuthRequired()` middleware). Registers OpenAPI metadata for all three endpoints.
 
 ## Completion
 
@@ -22,8 +22,8 @@ All routes are auth-required (hand-rolled `requireAuth`). Registers OpenAPI meta
 
 ## Oversights
 
-- **`requireAuth` hand-rolled** — same Local check as other packages; should be the shared `auth.AuthRequired` middleware.
-- **Local error helpers** — `writeError`/`badRequest`/`notFound` duplicate `internal/httpapi`.
+- **`requireAuth` hand-rolled (RESOLVED)** — routes now run shared `auth.AuthRequired()` (Batch 1).
+- **Local error helpers (RESOLVED)** — `writeError`/`badRequest`/`notFound` duplicate `internal/httpapi`.
 - **Hand-formatted timestamp** — `"2006-01-02T15:04:05.000Z"` literal in `toFilterResponse`.
 - **Owner check returns 404 instead of 403** — deleting someone else's filter masquerades as "not found"; spec may want 403 (info-disclosure tradeoff, but note it).
 - **No `section` allowlist validation** — any arbitrary section string is accepted on save; typo'd sections silently create dead entries. Spec should define allowed sections.
@@ -34,7 +34,7 @@ All routes are auth-required (hand-rolled `requireAuth`). Registers OpenAPI meta
 
 ## Todos
 
-- [ ] Swap `requireAuth` for shared `auth.AuthRequired`.
+- [x] Swap `requireAuth` for shared `auth.AuthRequired` (Batch 1).
 - [x] Use `internal/response` error constructors (Batch 0).
 - [ ] Use `time.RFC3339` instead of the hand-rolled timestamp literal.
 - [ ] Validate section against a defined allowlist (spec).

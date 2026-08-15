@@ -9,6 +9,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"trakt-api/internal/auth"
 	"trakt-api/internal/response"
 )
 
@@ -93,24 +94,15 @@ func RegisterRoutes(api fiber.Router) {
 	calendars.Get("/all/shows/:start_date/:days", handleCalendarShows)
 
 	// Auth-required: my, friends, favorites, watched
-	calendars.Get("/my/shows/:start_date/:days", requireAuth, handleCalendarShows)
-	calendars.Get("/friends/shows/:start_date/:days", requireAuth, handleCalendarShows)
-	calendars.Get("/favorites/shows/:start_date/:days", requireAuth, handleCalendarShows)
-	calendars.Get("/watched/shows/:start_date/:days", requireAuth, handleCalendarShows)
+	calendars.Get("/my/shows/:start_date/:days", auth.AuthRequired(), handleCalendarShows)
+	calendars.Get("/friends/shows/:start_date/:days", auth.AuthRequired(), handleCalendarShows)
+	calendars.Get("/favorites/shows/:start_date/:days", auth.AuthRequired(), handleCalendarShows)
+	calendars.Get("/watched/shows/:start_date/:days", auth.AuthRequired(), handleCalendarShows)
 }
 
 // ---------------------------------------------------------------------------
 // Auth middleware wrapper
 // ---------------------------------------------------------------------------
-
-func requireAuth(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
-	_ = userID // used in downstream handlers via c.Locals
-	return c.Next()
-}
 
 // ---------------------------------------------------------------------------
 // Response types
@@ -165,15 +157,9 @@ func handleCalendarShows(c *fiber.Ctx) error {
 		return response.BadRequest(c, "invalid type filter, expected new, premieres, or finale")
 	}
 
-	// Auth check for non-all targets.
-	var userID string
-	if target != "all" {
-		var ok bool
-		userID, ok = c.Locals("user_id").(string)
-		if !ok || userID == "" {
-			return authRequired(c)
-		}
-	}
+	// Auth is enforced at route registration for non-"all" targets; the
+	// public /all route just gets an empty userID here.
+	userID, _ := c.Locals("user_id").(string)
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
@@ -464,12 +450,4 @@ func buildShowIDs(s *database.Show) media.IDs {
 		ids.IMDB = s.ImdbID
 	}
 	return ids
-}
-
-// --- Error helpers ---
-
-func authRequired(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-		"error": fiber.Map{"code": "unauthorized", "message": "invalid or expired token"},
-	})
 }

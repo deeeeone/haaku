@@ -149,10 +149,7 @@ type anticipatedItem struct {
 // ============================================================================
 
 func handlePersonalizedMovies(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
+	userID := c.Locals("user_id").(string)
 
 	db, err := database.GetDB()
 	if err != nil {
@@ -234,10 +231,7 @@ func handlePersonalizedMovies(c *fiber.Ctx) error {
 }
 
 func handlePersonalizedShows(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
+	userID := c.Locals("user_id").(string)
 
 	db, err := database.GetDB()
 	if err != nil {
@@ -327,10 +321,7 @@ func handlePersonalizedShows(c *fiber.Ctx) error {
 // ============================================================================
 
 func handleSocialMovies(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
+	userID := c.Locals("user_id").(string)
 
 	db, err := database.GetDB()
 	if err != nil {
@@ -424,10 +415,7 @@ func handleSocialMovies(c *fiber.Ctx) error {
 }
 
 func handleSocialShows(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
+	userID := c.Locals("user_id").(string)
 
 	db, err := database.GetDB()
 	if err != nil {
@@ -530,11 +518,6 @@ func handleSocialShows(c *fiber.Ctx) error {
 // ============================================================================
 
 func handleAnticipated(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
-
 	db, err := database.GetDB()
 	if err != nil {
 		return response.InternalError(c)
@@ -839,9 +822,3 @@ func imageURL(images database.JSONMap, key string) string {
 // ============================================================================
 // ERROR HELPERS
 // ============================================================================
-
-func authRequired(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-		"error": fiber.Map{"code": "unauthorized", "message": "invalid or expired token"},
-	})
-}

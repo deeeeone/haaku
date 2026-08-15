@@ -12,7 +12,7 @@ Account/profile management:
 - `DELETE /v1/users/me` — soft-delete (`status = pending_deletion`; async cleanup is a stub).
 - `POST|DELETE /v1/users/:id/block` — block (removes follows both directions, outbox `user.blocked`) / unblock.
 
-Uses shared `auth.PrivacyFilter` for the public route; local `requireAuth` elsewhere. OpenAPI registered.
+Uses shared `auth.PrivacyFilter` for the public route; shared `auth.AuthRequired()` elsewhere. OpenAPI registered.
 
 ## Completion
 
@@ -35,7 +35,7 @@ Uses shared `auth.PrivacyFilter` for the public route; local `requireAuth` elsew
 - **`parseSettings` backfill is asymmetric** — missing `privacy` fields are backfilled with defaults, but missing `notifications` fields are not (a partial settings JSON yields false notification prefs). Also the `notifications` module re-parses these independently — duplicated parsing logic.
 - **Public profile stats are stubs** — `Watched`/`Lists` hardcoded 0, `RecentActivity` empty; `StatsSummary` never wired to the stats engine. Followers/following counts don't filter `approved_at`.
 - **`/users/me` routes registered as `me.Get("/")`** — Fiber group prefix + `"/"` may only match `/users/me/` (trailing slash) and not `/users/me`; verify routing (the later `/users/:id` registration could swallow `/users/me`).
-- **Local `requireAuth`** duplicates `auth.AuthRequired`; local `writeError` duplicates `internal/httpapi`.
+- **Local `requireAuth` (RESOLVED)** — `/users/me` and block routes now run shared `auth.AuthRequired()` (Batch 1); the local `writeError` was replaced by `internal/response` (Batch 0).
 - **Profile writes not cache-invalidated** — avatar URL and profile updates change cached public profiles without bumping the user version counter.
 - **No validation on timezone/language/bio length** — arbitrary strings accepted (spec may cap lengths).
 
@@ -50,5 +50,5 @@ Uses shared `auth.PrivacyFilter` for the public route; local `requireAuth` elsew
 - [x] Verify `/users/me` vs `/users/:id` route precedence (trailing-slash issue) — static route wins; added TestUsersMeRoutePrecedence regression test.
 - [ ] Wire real stats + recent activity into the public profile.
 - [x] Use shared `internal/response` error helpers (Batch 0).
-- [ ] Swap local `requireAuth` for shared `auth.AuthRequired` (Batch 1).
+- [x] Swap local `requireAuth` for shared `auth.AuthRequired` (Batch 1).
 - [ ] Verify module test coverage (`make test`).

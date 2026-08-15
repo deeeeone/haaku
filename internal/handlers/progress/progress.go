@@ -6,6 +6,7 @@ import (
 	"trakt-api/internal/openapi"
 
 	"github.com/gofiber/fiber/v2"
+	"trakt-api/internal/auth"
 	"trakt-api/internal/response"
 )
 
@@ -46,22 +47,13 @@ func registerOpenAPIRoutes() {
 // RegisterRoutes wires progress route handlers to the Fiber router.
 func RegisterRoutes(api fiber.Router) {
 	sync := api.Group("/sync/playback")
-	sync.Get("/movies", requireAuth, handlePlaybackMovies)
-	sync.Get("/episodes", requireAuth, handlePlaybackEpisodes)
+	sync.Get("/movies", auth.AuthRequired(), handlePlaybackMovies)
+	sync.Get("/episodes", auth.AuthRequired(), handlePlaybackEpisodes)
 }
 
 // ---------------------------------------------------------------------------
 // Auth
 // ---------------------------------------------------------------------------
-
-func requireAuth(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
-	_ = userID
-	return c.Next()
-}
 
 // ---------------------------------------------------------------------------
 // Response types
@@ -101,10 +93,7 @@ type ShowPlaybackInfo struct {
 
 // handlePlaybackMovies returns paused/resumed movie positions with movie info.
 func handlePlaybackMovies(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
+	userID := c.Locals("user_id").(string)
 
 	db, err := database.GetDB()
 	if err != nil {
@@ -159,10 +148,7 @@ func handlePlaybackMovies(c *fiber.Ctx) error {
 
 // handlePlaybackEpisodes returns paused/resumed episode positions with show+episode info.
 func handlePlaybackEpisodes(c *fiber.Ctx) error {
-	userID, ok := c.Locals("user_id").(string)
-	if !ok || userID == "" {
-		return authRequired(c)
-	}
+	userID := c.Locals("user_id").(string)
 
 	db, err := database.GetDB()
 	if err != nil {
@@ -219,14 +205,4 @@ func handlePlaybackEpisodes(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(resp)
-}
-
-// ---------------------------------------------------------------------------
-// Error helpers
-// ---------------------------------------------------------------------------
-
-func authRequired(c *fiber.Ctx) error {
-	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-		"error": fiber.Map{"code": "unauthorized", "message": "invalid or expired token"},
-	})
 }

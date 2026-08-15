@@ -47,21 +47,17 @@ func RegisterRoutes(api fiber.Router) {
 	scrobbleGroup := api.Group("/scrobble")
 	syncGroup := api.Group("/sync")
 
-	scrobbleGroup.Post("/start", requireAuth, handleScrobbleStart)
-	scrobbleGroup.Post("/pause", requireAuth, handleScrobblePause)
-	scrobbleGroup.Post("/stop", requireAuth, handleScrobbleStop)
+	scrobbleGroup.Post("/start", auth.AuthRequired(), handleScrobbleStart)
+	scrobbleGroup.Post("/pause", auth.AuthRequired(), handleScrobblePause)
+	scrobbleGroup.Post("/stop", auth.AuthRequired(), handleScrobbleStop)
 
-	syncGroup.Get("/playback", requireAuth, handleGetPlayback)
-	syncGroup.Delete("/playback/:media_type/:media_id", requireAuth, handleDeletePlayback)
+	syncGroup.Get("/playback", auth.AuthRequired(), handleGetPlayback)
+	syncGroup.Delete("/playback/:media_type/:media_id", auth.AuthRequired(), handleDeletePlayback)
 }
 
 // ---------------------------------------------------------------------------
 // Auth middleware wrapper
 // ---------------------------------------------------------------------------
-
-func requireAuth(c *fiber.Ctx) error {
-	return auth.AuthRequired()(c)
-}
 
 // ---------------------------------------------------------------------------
 // Request / response types

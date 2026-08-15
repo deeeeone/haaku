@@ -42,5 +42,6 @@ This is the **only** recommendations implementation (the `discovery` module's re
 - [ ] Make the score weights / popularity fallback config or spec constants.
 - [ ] Respect `user_hidden` in `handleAnticipated`.
 - [x] Replace error + pagination helpers with `internal/response` (Batch 0).
-- [ ] Consolidate remaining local `safeStrings`/`safeDateString`/`imageURL` and swap `authRequired` for `auth.AuthRequired`.
+- [x] Swap local `authRequired` for shared `auth.AuthRequired` (Batch 1).
+- [ ] Consolidate remaining local `safeStrings`/`safeDateString`/`imageURL` into shared helpers.
 - [ ] Verify module test coverage (`make test`).
