@@ -506,7 +506,7 @@ func buildListItemResponse(item *database.ListItem) listItemResponse {
 		Rank:      item.Rank,
 		Notes:     item.Notes,
 		AddedBy:   item.AddedBy,
-		AddedAt:   item.AddedAt.Format(time.RFC3339),
+		AddedAt:   response.FormatTime(item.AddedAt),
 	}
 }
 
@@ -945,7 +945,7 @@ func handleGetListLikes(c *fiber.Ctx) error {
 	for _, l := range likes {
 		results = append(results, likeUserResponse{
 			UserID:    l.UserID,
-			CreatedAt: l.CreatedAt.Format(time.RFC3339),
+			CreatedAt: response.FormatTime(l.CreatedAt),
 		})
 	}
 

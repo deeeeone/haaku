@@ -30,7 +30,7 @@ Uses the shared `auth.AuthRequired()` middleware on all four routes (one of the 
 - **Session not-found maps all DB errors to 404** — a DB outage reads as "sync session not found".
 - **`/paused` conflates "errors" with "unmatched items"** — `session.Errors` may contain real processing errors, not paused/unmatched content; no distinction.
 - **No cache/outbox** — session reads are direct DB; no version-keyed caching. (Likely fine for now given low traffic, but inconsistent with the sync module.)
-- **`buildSyncResponse` uses `.000Z` timestamp literals** and exposes `user_id` in the response.
+- **`buildSyncResponse` exposes `user_id` in the response** (its `.000Z` literals were unified to the shared `response.FormatTime` helper in Batch 3).
 - **`Errors any` in the JSON response** — untyped; the paused response duplicates this via `session.Errors`.
 
 ## Todos

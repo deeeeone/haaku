@@ -340,7 +340,7 @@ func queryMediaComments(c *fiber.Ctx, db *gorm.DB, mediaType string, mediaID int
 			Spoiler:     c.Spoiler,
 			LikeCount:   c.LikeCount,
 			ReplyCount:  c.ReplyCount,
-			CreatedAt:   c.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			CreatedAt:   response.FormatTime(c.CreatedAt),
 		}
 		out = append(out, cr)
 	}

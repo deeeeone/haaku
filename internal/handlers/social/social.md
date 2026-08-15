@@ -34,7 +34,7 @@ Emits outbox events (`user.followed`, `user.unfollowed`, `user.follow_approved`)
 - **Unchecked errors throughout** — `listFollowRelations` ignores `Count` error; `resolveUserStubs` ignores `Find` error; several handlers ignore `db.Exec`/`Find` errors and return empty lists on failure.
 - **`handleUnfollow` doesn't guard self-follow** (`targetID == followerID`) while `handleFollow` does.
 - **`handleFollow` returns 201 for already-following** — arguably should be 200 or an idempotent 201; at least it diverges from REST semantics.
-- **Local error helpers** (`writeError`/`badRequest`/`notFound`) duplicated from `internal/httpapi`; hand-rolled timestamp literals.
+- **Local error helpers** (`writeError`/`badRequest`/`notFound`) duplicated from `internal/httpapi` (the hand-rolled timestamp literals were unified to `response.FormatTime` in Batch 3).
 - **No rate limiting / abuse control** on follow spam (429 per charter).
 
 ## Todos

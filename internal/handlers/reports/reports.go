@@ -82,7 +82,7 @@ func toReportResponse(r *database.ContentReport) reportResponse {
 		MediaID:     r.MediaID,
 		Reason:      r.Reason,
 		Description: r.Description,
-		CreatedAt:   r.CreatedAt.Format("2006-01-02T15:04:05.000Z"),
+		CreatedAt:   response.FormatTime(r.CreatedAt),
 	}
 }
 

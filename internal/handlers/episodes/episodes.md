@@ -33,7 +33,7 @@ All handlers verify the episode exists before serving sub-resources. Registers O
 - **Comment response re-declared locally** — `commentResponse` in `queryMediaComments` duplicates the shape in `internal/handlers/comments` and truncates fields (no `updated_at`, `edited_at`); drifts over time.
 - **Local error + pagination helpers** — `writeError`/`notFound`/`badRequest`/`parsePaginationHelper` duplicate `internal/httpapi` and other handler packages.
 - **Stats computed live per request** — no caching/versioning for the hot stats path; `COALESCE(AVG(rating),0)` scans are unindexed-friendly but heavy at scale.
-- **`CreatedAt.Format("...Z")`** — comment timestamps formatted without sub-second precision; inconsistent with RFC3339 full precision elsewhere.
+- **`CreatedAt.Format("...Z")` (RESOLVED)** — comment timestamps now emit `.000Z` via `response.FormatTime` (Batch 3).
 
 ## Todos
 

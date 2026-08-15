@@ -88,11 +88,11 @@ type createTokenRequest struct {
 }
 
 type tokenResponse struct {
-	ID        int64     `json:"id"`
-	Name      string    `json:"name"`
-	Scopes    []string  `json:"scopes"`
-	Active    bool      `json:"active"`
-	CreatedAt time.Time `json:"created_at"`
+	ID        int64    `json:"id"`
+	Name      string   `json:"name"`
+	Scopes    []string `json:"scopes"`
+	Active    bool     `json:"active"`
+	CreatedAt string   `json:"created_at"`
 }
 
 type createTokenResponse struct {
@@ -133,7 +133,7 @@ func toTokenResponse(t *database.IntegrationToken) tokenResponse {
 		Name:      t.Name,
 		Scopes:    scopes,
 		Active:    t.Active,
-		CreatedAt: t.CreatedAt,
+		CreatedAt: response.FormatTime(t.CreatedAt),
 	}
 }
 

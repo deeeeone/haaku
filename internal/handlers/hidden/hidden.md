@@ -28,7 +28,7 @@ Section allowlist enforced server-side: `calendar`, `progress_watched`, `progres
 - **Dead code at hidden.go:188-189** — `_ = db` with a "Publish outbox event (best-effort)" comment that does nothing. Either implement the outbox publish (hiding affects calendar/progress/recommendations feeds) or remove the stub.
 - **No cache invalidation** — hiding/unhiding doesn't invalidate user version keys, yet the calendar handler reads `user_hidden` to exclude items; cached feeds can go stale.
 - **`FirstOrCreate` doesn't refresh timestamps** — re-hiding an already-hidden item returns 201 with the original `HiddenAt` (idempotent, but semantically 200-ish); behavior should be confirmed.
-- **Hand-formatted timestamps** — `"2006-01-02T15:04:05.000Z"` literal duplicated.
+- **Hand-formatted timestamps (RESOLVED)** — now emitted via shared `response.FormatTime` (`.000Z`; Batch 3).
 - **No `media_type` allowlist** — arbitrary strings accepted; a typo'd `media_type` creates unreachable hidden rows (and can silently break exclusion joins downstream).
 - **Plain writes** — no `WithCacheTransaction` / advisory locks; fine for personal data but inconsistent with conventions.
 
@@ -37,7 +37,7 @@ Section allowlist enforced server-side: `calendar`, `progress_watched`, `progres
 - [ ] Implement or remove the outbox-event stub.
 - [ ] Invalidate user/feed version keys on hide/unhide.
 - [x] Use `internal/response` error constructors (Batch 0).
-- [ ] Use `time.RFC3339` instead of the hand-rolled timestamp literal.
+- [x] Use shared `response.FormatTime` instead of the hand-rolled timestamp literal.
 - [ ] Validate `media_type` against the spec's allowed values.
 - [ ] Confirm 201-vs-200 semantics for idempotent re-hide.
 - [ ] Verify module test coverage (`make test`).

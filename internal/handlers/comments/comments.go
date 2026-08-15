@@ -105,23 +105,28 @@ type reactionRequest struct {
 }
 
 type commentResponse struct {
-	ID          int64      `json:"id"`
-	UserID      string     `json:"user_id"`
-	ParentID    *int64     `json:"parent_id,omitempty"`
-	MediaType   string     `json:"media_type,omitempty"`
-	MediaID     *int64     `json:"media_id,omitempty"`
-	ListID      *int64     `json:"list_id,omitempty"`
-	CommentType string     `json:"comment_type"`
-	Body        string     `json:"body"`
-	Spoiler     bool       `json:"spoiler"`
-	LikeCount   int        `json:"like_count"`
-	ReplyCount  int        `json:"reply_count"`
-	EditedAt    *time.Time `json:"edited_at,omitempty"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	ID          int64   `json:"id"`
+	UserID      string  `json:"user_id"`
+	ParentID    *int64  `json:"parent_id,omitempty"`
+	MediaType   string  `json:"media_type,omitempty"`
+	MediaID     *int64  `json:"media_id,omitempty"`
+	ListID      *int64  `json:"list_id,omitempty"`
+	CommentType string  `json:"comment_type"`
+	Body        string  `json:"body"`
+	Spoiler     bool    `json:"spoiler"`
+	LikeCount   int     `json:"like_count"`
+	ReplyCount  int     `json:"reply_count"`
+	EditedAt    *string `json:"edited_at,omitempty"`
+	CreatedAt   string  `json:"created_at"`
+	UpdatedAt   string  `json:"updated_at"`
 }
 
 func toCommentResponse(c *database.Comment) commentResponse {
+	var editedAt *string
+	if c.EditedAt != nil {
+		ts := response.FormatTime(*c.EditedAt)
+		editedAt = &ts
+	}
 	return commentResponse{
 		ID:          c.ID,
 		UserID:      c.UserID,
@@ -134,9 +139,9 @@ func toCommentResponse(c *database.Comment) commentResponse {
 		Spoiler:     c.Spoiler,
 		LikeCount:   c.LikeCount,
 		ReplyCount:  c.ReplyCount,
-		EditedAt:    c.EditedAt,
-		CreatedAt:   c.CreatedAt,
-		UpdatedAt:   c.UpdatedAt,
+		EditedAt:    editedAt,
+		CreatedAt:   response.FormatTime(c.CreatedAt),
+		UpdatedAt:   response.FormatTime(c.UpdatedAt),
 	}
 }
 

@@ -389,7 +389,7 @@ func handleListFollowRequests(c *fiber.Ctx) error {
 			Username:   u.Username,
 			Name:       u.Name,
 			AvatarURL:  u.AvatarURL,
-			CreatedAt:  idToCreatedAt[u.ID].Format("2006-01-02T15:04:05.000Z"),
+			CreatedAt:  response.FormatTime(idToCreatedAt[u.ID]),
 		})
 	}
 
@@ -502,10 +502,10 @@ func buildFollowResponse(f *database.UserFollow, status string) FollowResponse {
 		FollowerID:  f.FollowerID,
 		FollowingID: f.FollowingID,
 		Status:      status,
-		CreatedAt:   f.CreatedAt.Format("2006-01-02T15:04:05.000Z"),
+		CreatedAt:   response.FormatTime(f.CreatedAt),
 	}
 	if f.ApprovedAt != nil {
-		ts := f.ApprovedAt.Format("2006-01-02T15:04:05.000Z")
+		ts := response.FormatTime(*f.ApprovedAt)
 		resp.ApprovedAt = &ts
 	}
 	return resp

@@ -138,7 +138,7 @@ func handlePlaybackMovies(c *fiber.Ctx) error {
 
 		resp = append(resp, MoviePlaybackResponse{
 			Progress: row.Progress,
-			PausedAt: row.PausedAt.Format("2006-01-02T15:04:05.000Z"),
+			PausedAt: response.FormatTime(row.PausedAt),
 			Movie:    movieResp,
 		})
 	}
@@ -191,7 +191,7 @@ func handlePlaybackEpisodes(c *fiber.Ctx) error {
 
 		resp = append(resp, EpisodePlaybackResponse{
 			Progress: row.Progress,
-			PausedAt: row.PausedAt.Format("2006-01-02T15:04:05.000Z"),
+			PausedAt: response.FormatTime(row.PausedAt),
 			Episode: EpisodePlaybackInfo{
 				Title:  row.EpisodeTitle,
 				Season: row.SeasonNumber,

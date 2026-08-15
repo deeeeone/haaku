@@ -42,7 +42,7 @@ Writes use `cache.WithCacheTransaction` with version-counter invalidation (`queu
 - **No pagination on `handleGetHistoryItem`** — returns all history rows for one item.
 - **No episode support in collection/watchlist/favorites** — Trakt allows episodes in watchlist; only movies/shows handled here.
 - **Error helpers (`authRequired`/`badRequest`/`internalError`) duplicated** — "match project conventions" per comment, but the shared package exists.
-- **Mixed timestamp formats** — RFC3339 here vs `.000Z` literals elsewhere in the codebase.
+- **Mixed timestamp formats (RESOLVED)** — all response timestamps now unified to `.000Z` via shared `response.FormatTime` (Batch 3); parse paths still accept RFC3339 input.
 
 ## Todos
 

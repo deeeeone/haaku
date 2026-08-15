@@ -30,7 +30,7 @@ All routes are auth-required via the shared `auth.AuthRequired()` middleware. Re
 - **Owner-elsewhere returns 404, not 403** — consistent with the "don't leak existence" pattern but the OpenAPI doc declares 403 for PUT; mismatch between docs and implementation.
 - **No note length limit** — unbounded body accepted.
 - **`media_type` not validated** — any string accepted; no allowlist (movie/show/season/episode).
-- **Hand-formatted timestamps** — `"2006-01-02T15:04:05.000Z"` literals.
+- **Hand-formatted timestamps (RESOLVED)** — now emitted via shared `response.FormatTime` (`.000Z`; Batch 3).
 - **No cache invalidation / outbox events** — notes changes don't bump user version keys (notes aren't cached today, so low impact, but inconsistent with conventions for writes).
 - **POST returns 200 (not 201)** — documented as 200; create-vs-update is indistinguishable to clients. Confirm spec intent.
 

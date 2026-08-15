@@ -136,7 +136,7 @@ func handleListHidden(c *fiber.Ctx) error {
 			Section:   item.Section,
 			MediaType: item.MediaType,
 			MediaID:   item.MediaID,
-			HiddenAt:  item.HiddenAt.Format("2006-01-02T15:04:05.000Z"),
+			HiddenAt:  response.FormatTime(item.HiddenAt),
 		})
 	}
 
@@ -194,7 +194,7 @@ func handleAddHidden(c *fiber.Ctx) error {
 		Section:   item.Section,
 		MediaType: item.MediaType,
 		MediaID:   item.MediaID,
-		HiddenAt:  item.HiddenAt.Format("2006-01-02T15:04:05.000Z"),
+		HiddenAt:  response.FormatTime(item.HiddenAt),
 	})
 }
 

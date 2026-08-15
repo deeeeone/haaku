@@ -41,7 +41,7 @@ type activityResponse struct {
 	MediaType string                 `json:"media_type,omitempty"`
 	MediaID   *int64                 `json:"media_id,omitempty"`
 	Payload   map[string]interface{} `json:"payload"`
-	CreatedAt time.Time              `json:"created_at"`
+	CreatedAt string                 `json:"created_at"`
 }
 
 type paginatedActivityResponse struct {
@@ -65,7 +65,7 @@ func toActivityResponse(a *database.ActivityFeed) activityResponse {
 		MediaType: a.MediaType,
 		MediaID:   a.MediaID,
 		Payload:   payload,
-		CreatedAt: a.CreatedAt,
+		CreatedAt: response.FormatTime(a.CreatedAt),
 	}
 }
 

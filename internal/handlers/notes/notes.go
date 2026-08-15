@@ -82,8 +82,8 @@ func toNoteResponse(n *database.UserNote) noteResponse {
 		MediaType: n.MediaType,
 		MediaID:   n.MediaID,
 		Note:      n.Note,
-		CreatedAt: n.CreatedAt.Format("2006-01-02T15:04:05.000Z"),
-		UpdatedAt: n.UpdatedAt.Format("2006-01-02T15:04:05.000Z"),
+		CreatedAt: response.FormatTime(n.CreatedAt),
+		UpdatedAt: response.FormatTime(n.UpdatedAt),
 	}
 }
 

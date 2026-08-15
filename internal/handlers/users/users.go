@@ -500,7 +500,7 @@ func buildProfileResponse(u *database.User) ProfileResponse {
 		IsModerator: u.IsModerator,
 		Status:      u.Status,
 		Plan:        u.Plan,
-		CreatedAt:   u.CreatedAt.Format("2006-01-02T15:04:05.000Z"),
+		CreatedAt:   response.FormatTime(u.CreatedAt),
 	}
 }
 

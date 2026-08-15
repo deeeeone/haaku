@@ -47,7 +47,7 @@ type notificationItem struct {
 	ActorID   string                 `json:"actor_id,omitempty"`
 	Payload   map[string]interface{} `json:"payload"`
 	Read      bool                   `json:"read"`
-	CreatedAt time.Time              `json:"created_at"`
+	CreatedAt string                 `json:"created_at"`
 }
 
 type paginatedNotifResponse struct {
@@ -83,7 +83,7 @@ func toNotificationItem(n *database.Notification) notificationItem {
 		ActorID:   n.ActorID,
 		Payload:   payload,
 		Read:      n.Read,
-		CreatedAt: n.CreatedAt,
+		CreatedAt: response.FormatTime(n.CreatedAt),
 	}
 }
 

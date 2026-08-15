@@ -219,8 +219,8 @@ func handleCheckinCreate(c *fiber.Ctx) error {
 
 		result = &checkinResponse{
 			ID:        checkin.ID,
-			ExpiresAt: expiresAt.Format(time.RFC3339),
-			WatchedAt: now.Format(time.RFC3339),
+			ExpiresAt: response.FormatTime(expiresAt),
+			WatchedAt: response.FormatTime(now),
 			Message:   req.Message,
 		}
 		if mediaType == "movie" {
@@ -327,8 +327,8 @@ func handleCheckinGet(c *fiber.Ctx) error {
 
 	return c.JSON(checkinResponse{
 		ID:        checkin.ID,
-		ExpiresAt: checkin.ExpiresAt.Format(time.RFC3339),
-		WatchedAt: checkin.CreatedAt.Format(time.RFC3339),
+		ExpiresAt: response.FormatTime(checkin.ExpiresAt),
+		WatchedAt: response.FormatTime(checkin.CreatedAt),
 		Message:   checkin.Message,
 	})
 }

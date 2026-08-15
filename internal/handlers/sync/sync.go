@@ -1467,7 +1467,7 @@ func buildHistoryResponse(h *database.UserHistory) historyResponse {
 		MediaID:   h.MediaID,
 		SeasonID:  h.SeasonID,
 		EpisodeID: h.EpisodeID,
-		WatchedAt: h.WatchedAt.Format(time.RFC3339),
+		WatchedAt: response.FormatTime(h.WatchedAt),
 		Source:    h.Source,
 	}
 	return resp
@@ -1485,7 +1485,7 @@ func buildCollectionResponses(items []database.UserCollection) []collectionRespo
 	for _, i := range items {
 		results = append(results, collectionResponse{
 			ID: i.ID, MediaType: i.MediaType, MediaID: i.MediaID,
-			CollectedAt: i.CollectedAt.Format(time.RFC3339),
+			CollectedAt: response.FormatTime(i.CollectedAt),
 		})
 	}
 	if results == nil {
@@ -1509,7 +1509,7 @@ func buildWatchlistResponses(items []database.UserWatchlist) []watchlistResponse
 		results = append(results, watchlistResponse{
 			ID: i.ID, MediaType: i.MediaType, MediaID: i.MediaID,
 			Rank: i.Rank, Notes: i.Notes,
-			ListedAt: i.ListedAt.Format(time.RFC3339),
+			ListedAt: response.FormatTime(i.ListedAt),
 		})
 	}
 	if results == nil {
@@ -1531,7 +1531,7 @@ func buildRatingResponses(items []database.UserRating) []ratingResponse {
 	for _, i := range items {
 		results = append(results, ratingResponse{
 			ID: i.ID, MediaType: i.MediaType, MediaID: i.MediaID,
-			Rating: i.Rating, RatedAt: i.RatedAt.Format(time.RFC3339),
+			Rating: i.Rating, RatedAt: response.FormatTime(i.RatedAt),
 		})
 	}
 	if results == nil {
@@ -1553,7 +1553,7 @@ func buildFavoriteResponses(items []database.UserFavorite) []favoriteResponse {
 	for _, i := range items {
 		results = append(results, favoriteResponse{
 			ID: i.ID, MediaType: i.MediaType, MediaID: i.MediaID,
-			Rank: i.Rank, FavoritedAt: i.FavoritedAt.Format(time.RFC3339),
+			Rank: i.Rank, FavoritedAt: response.FormatTime(i.FavoritedAt),
 		})
 	}
 	if results == nil {

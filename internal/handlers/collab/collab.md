@@ -30,7 +30,7 @@ Ownership is enforced by checking `lists.id = ? AND lists.user_id = ?`. Register
 - **Unchecked type assertions on `user_id` (RESOLVED)** — `c.Locals("user_id").(string)` (collab.go:112, 146, 221) without the `ok` form panicked → 500 via Recovery when the Local was unset. All handlers now use the checked form and return 401.
 - **`GET /users/me/lists/collaborations` claim mismatch** — comment says "owned + collaborated" but the query only returns `ListCollaborator` rows (collaborated), not lists the user owns. Spec check needed.
 - **Duplicated error helpers** — `writeError`/`badRequest`/`notFound` reimplement the envelope; should use `internal/httpapi`.
-- **Timestamps hand-formatted** — `"2006-01-02T15:04:05.000Z"` string literals duplicated in three handlers instead of a shared `time.Format(time.RFC3339)` helper.
+- **Timestamps hand-formatted (RESOLVED)** — now emitted via shared `response.FormatTime` (`.000Z` millisecond precision; Batch 3).
 - **No invite acceptance flow** — `AcceptedAt` is stored/returned but no endpoint ever sets it (no accept/decline endpoint, no notification on invite).
 - **Owner lookup treats 404 as "list not found"** — a list owned by someone else returns `not_found` instead of `forbidden`. Spec distinguishes 403 for non-owners.
 - **Raw `parseID`** — hand-rolled numeric parser instead of `strconv.ParseInt`.

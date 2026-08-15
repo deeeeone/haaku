@@ -24,7 +24,7 @@ All routes are auth-required (shared `auth.AuthRequired()` middleware). Register
 
 - **`requireAuth` hand-rolled (RESOLVED)** — routes now run shared `auth.AuthRequired()` (Batch 1).
 - **Local error helpers (RESOLVED)** — `writeError`/`badRequest`/`notFound` duplicate `internal/httpapi`.
-- **Hand-formatted timestamp** — `"2006-01-02T15:04:05.000Z"` literal in `toFilterResponse`.
+- **Hand-formatted timestamp (RESOLVED)** — `toFilterResponse` now emits via shared `response.FormatTime` (`.000Z`; Batch 3).
 - **Owner check returns 404 instead of 403** — deleting someone else's filter masquerades as "not found"; spec may want 403 (info-disclosure tradeoff, but note it).
 - **No `section` allowlist validation** — any arbitrary section string is accepted on save; typo'd sections silently create dead entries. Spec should define allowed sections.
 - **No duplicate-name guard** — same section+name can be saved repeatedly.
@@ -36,7 +36,7 @@ All routes are auth-required (shared `auth.AuthRequired()` middleware). Register
 
 - [x] Swap `requireAuth` for shared `auth.AuthRequired` (Batch 1).
 - [x] Use `internal/response` error constructors (Batch 0).
-- [ ] Use `time.RFC3339` instead of the hand-rolled timestamp literal.
+- [x] Use shared `response.FormatTime` instead of the hand-rolled timestamp literal.
 - [ ] Validate section against a defined allowlist (spec).
 - [ ] Decide 403-vs-404 for cross-user delete; align with conventions.
 - [ ] Optionally enforce uniqueness on (user, section, name) and harden the 20-cap.

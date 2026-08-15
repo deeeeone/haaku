@@ -437,8 +437,8 @@ func handleScrobbleStop(c *fiber.Ctx) error {
 				First(&existing); result.Error == nil {
 				// Duplicate scrobble found
 				return nil, &duplicateScrobbleError{
-					WatchedAt: existing.CreatedAt.Format(time.RFC3339),
-					ExpiresAt: existing.CreatedAt.Add(cooldown).Format(time.RFC3339),
+					WatchedAt: response.FormatTime(existing.CreatedAt),
+					ExpiresAt: response.FormatTime(existing.CreatedAt.Add(cooldown)),
 				}
 			}
 
@@ -464,7 +464,7 @@ func handleScrobbleStop(c *fiber.Ctx) error {
 				ID:        session.ID,
 				Action:    "scrobble",
 				Progress:  req.Progress,
-				WatchedAt: session.CreatedAt.Format(time.RFC3339),
+				WatchedAt: response.FormatTime(session.CreatedAt),
 			}
 
 			queueScrobbleInvalidation(tx, cacheTx, userID, mediaType, mediaID)
@@ -473,7 +473,7 @@ func handleScrobbleStop(c *fiber.Ctx) error {
 				"media_type": mediaType,
 				"media_id":   mediaID,
 				"progress":   req.Progress,
-				"watched_at": session.CreatedAt.Format(time.RFC3339),
+				"watched_at": response.FormatTime(session.CreatedAt),
 			}); err != nil {
 				return nil, err
 			}
@@ -623,7 +623,7 @@ func handleGetPlayback(c *fiber.Ctx) error {
 			MediaType: p.MediaType,
 			MediaID:   p.MediaID,
 			Progress:  p.Progress,
-			PausedAt:  p.PausedAt.Format(time.RFC3339),
+			PausedAt:  response.FormatTime(p.PausedAt),
 		})
 	}
 

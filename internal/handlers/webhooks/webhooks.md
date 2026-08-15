@@ -38,7 +38,7 @@ Also exports the delivery building blocks for the worker: `EventCatalogV1` (even
 - **Test ping doesn't validate active state or record a delivery** — `ping` outboxed regardless of `ep.Active`; no delivery-log row is created by this handler (the worker presumably does).
 - **`GenerateHMAC` has no timestamp-window check** — the format is `timestamp.body`, but the verification helper just compares bytes; replay protection (clock skew window) must live in the worker and isn't enforced here.
 - **`NewWebhookPayload` ignores the passed `eventID` (RESOLVED)** — the parameter was dead; the function always generated a fresh `uuid.New()`. Now it takes only `(eventType, data)`.
-- **`endpointResponse` returns raw `time.Time`** (RFC3339 in JSON) — fine, but inconsistent with the `.000Z` literals used across other modules.
+- **`endpointResponse` returns raw `time.Time` (RESOLVED)** — `endpointResponse`/`deliveryResponse` timestamps now emit `.000Z` via `response.FormatTime` (Batch 3).
 
 ## Todos
 

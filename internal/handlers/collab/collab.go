@@ -134,10 +134,10 @@ func handleMyCollaborations(c *fiber.Ctx) error {
 			"list_id":    col.ListID,
 			"user_id":    col.UserID,
 			"role":       col.Role,
-			"invited_at": col.InvitedAt.Format("2006-01-02T15:04:05.000Z"),
+			"invited_at": response.FormatTime(col.InvitedAt),
 		}
 		if col.AcceptedAt != nil {
-			ts := col.AcceptedAt.Format("2006-01-02T15:04:05.000Z")
+			ts := response.FormatTime(*col.AcceptedAt)
 			entry["accepted_at"] = ts
 		}
 		resp = append(resp, entry)
@@ -218,7 +218,7 @@ func handleInviteCollaborator(c *fiber.Ctx) error {
 	resp := CollaboratorResponse{
 		UserID:    collab.UserID,
 		Role:      collab.Role,
-		InvitedAt: collab.InvitedAt.Format("2006-01-02T15:04:05.000Z"),
+		InvitedAt: response.FormatTime(collab.InvitedAt),
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(resp)
@@ -289,10 +289,10 @@ func handleListCollaborators(c *fiber.Ctx) error {
 		entry := CollaboratorResponse{
 			UserID:    col.UserID,
 			Role:      col.Role,
-			InvitedAt: col.InvitedAt.Format("2006-01-02T15:04:05.000Z"),
+			InvitedAt: response.FormatTime(col.InvitedAt),
 		}
 		if col.AcceptedAt != nil {
-			ts := col.AcceptedAt.Format("2006-01-02T15:04:05.000Z")
+			ts := response.FormatTime(*col.AcceptedAt)
 			entry.AcceptedAt = &ts
 		}
 		resp = append(resp, entry)

@@ -174,12 +174,12 @@ type updateEndpointRequest struct {
 // ---------------------------------------------------------------------------
 
 type endpointResponse struct {
-	ID        int64     `json:"id"`
-	URL       string    `json:"url"`
-	Events    []string  `json:"events"`
-	Active    bool      `json:"active"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID        int64    `json:"id"`
+	URL       string   `json:"url"`
+	Events    []string `json:"events"`
+	Active    bool     `json:"active"`
+	CreatedAt string   `json:"created_at"`
+	UpdatedAt string   `json:"updated_at"`
 }
 
 type createEndpointResponse struct {
@@ -188,14 +188,14 @@ type createEndpointResponse struct {
 }
 
 type deliveryResponse struct {
-	ID           int64     `json:"id"`
-	EventID      string    `json:"event_id"`
-	EventType    string    `json:"event_type"`
-	Status       string    `json:"status"`
-	Attempts     int       `json:"attempts"`
-	ResponseCode *int      `json:"response_code,omitempty"`
-	DurationMs   *int      `json:"duration_ms,omitempty"`
-	CreatedAt    time.Time `json:"created_at"`
+	ID           int64  `json:"id"`
+	EventID      string `json:"event_id"`
+	EventType    string `json:"event_type"`
+	Status       string `json:"status"`
+	Attempts     int    `json:"attempts"`
+	ResponseCode *int   `json:"response_code,omitempty"`
+	DurationMs   *int   `json:"duration_ms,omitempty"`
+	CreatedAt    string `json:"created_at"`
 }
 
 // ---------------------------------------------------------------------------
@@ -345,8 +345,8 @@ func toEndpointResponse(ep *database.WebhookEndpoint) endpointResponse {
 		URL:       ep.URL,
 		Events:    events,
 		Active:    ep.Active,
-		CreatedAt: ep.CreatedAt,
-		UpdatedAt: ep.UpdatedAt,
+		CreatedAt: response.FormatTime(ep.CreatedAt),
+		UpdatedAt: response.FormatTime(ep.UpdatedAt),
 	}
 }
 
@@ -359,7 +359,7 @@ func toDeliveryResponse(d *database.WebhookDelivery) deliveryResponse {
 		Attempts:     d.Attempts,
 		ResponseCode: d.ResponseCode,
 		DurationMs:   d.DurationMs,
-		CreatedAt:    d.CreatedAt,
+		CreatedAt:    response.FormatTime(d.CreatedAt),
 	}
 }
 
@@ -777,7 +777,7 @@ func NewWebhookPayload(eventType string, data map[string]interface{}) WebhookPay
 	return WebhookPayload{
 		EventID:    uuid.New().String(),
 		Type:       eventType,
-		CreatedAt:  time.Now().UTC().Format(time.RFC3339),
+		CreatedAt:  response.FormatTime(time.Now().UTC()),
 		Data:       data,
 		APIVersion: 1,
 	}

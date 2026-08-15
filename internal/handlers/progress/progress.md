@@ -23,7 +23,7 @@ Both return plain JSON arrays with `progress` + `paused_at` and enriched media i
 - **No pagination** — unbounded result sets; a power user with thousands of paused items gets the full list (charter forbids caps, so pagination is required for scale).
 - **`requireAuth` + per-handler auth check duplicated (RESOLVED)** — routes now run shared `auth.AuthRequired()`; per-handler checks dropped (Batch 1).
 - **Hand-rolled `requireAuth`/error helpers (RESOLVED)** — `auth.AuthRequired` (Batch 1) + `internal/response` (Batch 0).
-- **Hand-formatted timestamps** — `"2006-01-02T15:04:05.000Z"` literals.
+- **Hand-formatted timestamps (RESOLVED)** — now emitted via shared `response.FormatTime` (`.000Z`; Batch 3).
 - **Response shapes hand-built** — movie response duplicates `media.MovieResponse` construction manually (and omits images/genres/rating) instead of using `BuildMovieResponse`; episode/show info uses local structs instead of media builders. Drift risk.
 - **No `has_paused` / active-filter semantics** — returns everything in `user_playback`; no distinction between "paused" vs "resumed/expired" state, no filtering or expiry handling.
 - **No `extended` handling** — query param ignored.

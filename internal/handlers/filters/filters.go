@@ -65,7 +65,7 @@ func toFilterResponse(f *database.SavedFilter) filterResponse {
 		Section:   f.Section,
 		Name:      f.Name,
 		Filter:    f.Filter,
-		CreatedAt: f.CreatedAt.Format("2006-01-02T15:04:05.000Z"),
+		CreatedAt: response.FormatTime(f.CreatedAt),
 	}
 }
 

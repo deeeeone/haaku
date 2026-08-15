@@ -258,7 +258,7 @@ func buildSyncResponse(s *database.SyncSession) SyncResponse {
 		TotalItems:     s.TotalItems,
 		ProcessedItems: s.ProcessedItems,
 		Errors:         s.Errors,
-		CreatedAt:      s.CreatedAt.Format("2006-01-02T15:04:05.000Z"),
-		UpdatedAt:      s.UpdatedAt.Format("2006-01-02T15:04:05.000Z"),
+		CreatedAt:      response.FormatTime(s.CreatedAt),
+		UpdatedAt:      response.FormatTime(s.UpdatedAt),
 	}
 }
