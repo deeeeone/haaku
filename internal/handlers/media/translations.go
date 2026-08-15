@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"trakt-api/external/tmdb"
@@ -19,14 +20,16 @@ import (
 )
 
 // tmdbClientSingleton holds the lazily-initialized TMDB client.
-var tmdbClientSingleton *tmdb.Client
+var (
+	tmdbOnce            sync.Once
+	tmdbClientSingleton *tmdb.Client
+)
 
 func getTMDB() (*tmdb.Client, error) {
-	if tmdbClientSingleton != nil {
-		return tmdbClientSingleton, nil
-	}
 	var err error
-	tmdbClientSingleton, err = tmdb.New()
+	tmdbOnce.Do(func() {
+		tmdbClientSingleton, err = tmdb.New()
+	})
 	return tmdbClientSingleton, err
 }
 

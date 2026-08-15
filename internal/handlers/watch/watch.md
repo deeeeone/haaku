@@ -22,7 +22,7 @@ Both use `media.ResolveID` (numeric/slug), load the row from DB, then fetch prov
 ## Oversights
 
 - **CRITICAL: the cache is never persisted** — `serveWatchProviders` calls `storeCachedProviders(metadata, cached)`, which only mutates the **in-memory** `database.JSONMap` (watch.go:276-286). There is no `db.Model(&movie).Update("metadata", ...)` write anywhere. The `metadata` map is loaded fresh from the DB per request, so the "cached" data is discarded immediately — **every request refetches TMDB**. The whole caching layer is inert.
-- **Race-prone lazy TMDB client** — `getTMDBClient` (watch.go:66-76) has no `sync.Once`; same pattern as `media`/`reference`.
+- **Race-prone lazy TMDB client (RESOLVED)** — `getTMDBClient` (watch.go:66-78) now guarded by `sync.Once` (Batch 2).
 - **Only 3 of TMDB's provider categories mapped** — `flatrate`/`rent`/`buy` are mapped but `ads`, `free`, and `cinema` are dropped (TMDB returns those for some titles/countries).
 - **Country-miss still does a full TMDB fetch per request** — even with a working cache, a requested country absent from cached results triggers a refetch of the whole provider set every time for that country (no negative caching).
 - **`cpLink` hardcodes `https://www.themoviedb.org/...`** — returns a TMDB link, not a trakt-killer link; for a country with no providers this just links off-site. Also `cpLink(resp.ID, "movie", country)` passes a hardcoded `"movie"` even for shows at watch.go:235 (the show branch is reachable and would emit the wrong `/movie/` link when `country` is missing from results).
@@ -35,7 +35,7 @@ Both use `media.ResolveID` (numeric/slug), load the row from DB, then fetch prov
 ## Todos
 
 - [ ] Persist the `watch_providers` metadata back to the DB after fetch (the cache currently does nothing).
-- [ ] Add `sync.Once` to the TMDB client init.
+- [x] Add `sync.Once` to the TMDB client init.
 - [ ] Map `ads`/`free`/`cinema` provider categories or document their exclusion.
 - [ ] Fix the `cpLink` hardcoded `"movie"` in the show country-miss path.
 - [ ] Add negative caching for missing countries to avoid repeated full refetches.

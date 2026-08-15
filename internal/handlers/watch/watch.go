@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"trakt-api/external/tmdb"
@@ -66,14 +67,15 @@ func RegisterRoutes(api fiber.Router) {
 
 // tmdbClient is lazily initialized on first use.
 var (
+	tmdbOnce      sync.Once
 	tmdbClient    *tmdb.Client
 	tmdbClientErr error
 )
 
 func getTMDBClient() (*tmdb.Client, error) {
-	if tmdbClient == nil && tmdbClientErr == nil {
+	tmdbOnce.Do(func() {
 		tmdbClient, tmdbClientErr = tmdb.New()
-	}
+	})
 	return tmdbClient, tmdbClientErr
 }
 

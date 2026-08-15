@@ -25,7 +25,7 @@ Cache keys `reference:{category}:{type}`, TTL 24h. TMDB client lazily initialize
 
 ## Oversights
 
-- **`getTMDBClient` lazy init has no `sync.Once`** — same race as `media.getTMDB`; concurrent first requests can construct two clients or leak an error. (reference.go:105-110)
+- **`getTMDBClient` lazy init has no `sync.Once` (RESOLVED)** — now guarded by `sync.Once` (Batch 2).
 - **Local error helpers duplicate `internal/httpapi`** — `writeError`/`badRequest` comment even admits "mirror httpapi exported variants". Should import the shared package.
 - **Cache failure semantics inconsistent** — `getCached` falls through to upstream on Redis error (good), but a marshaled `[]` (empty upstream) is cached as a real value; an empty TMDB response would pin empty results for 24h.
 - **No cache on networks DB query** — it's cached, but the query runs `DISTINCT network` full scan each cold miss; no partial-network index.
@@ -37,7 +37,7 @@ Cache keys `reference:{category}:{type}`, TTL 24h. TMDB client lazily initialize
 
 ## Todos
 
-- [ ] Add `sync.Once` (or init at startup) to `getTMDBClient`.
+- [x] Add `sync.Once` (or init at startup) to `getTMDBClient`.
 - [x] Use shared `internal/response` error helpers.
 - [ ] Sort certification country groups deterministically.
 - [ ] Decide slug strategy (unicode-aware / upstream TMDB slug) — confirm genre slugs against spec.
