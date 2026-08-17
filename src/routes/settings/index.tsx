@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { useClerk } from '@clerk/clerk-react'
+import { useClerk } from '@clerk/react'
 import {
   User,
   Lock,

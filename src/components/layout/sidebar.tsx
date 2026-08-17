@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { useClerk } from '@clerk/clerk-react'
+import { useClerk } from '@clerk/react'
 import {
   Home,
   Search,

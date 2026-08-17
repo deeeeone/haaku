@@ -1,5 +1,5 @@
 import type { PropsWithChildren } from 'react'
-import { UserButton } from '@clerk/clerk-react'
+import { UserButton } from '@clerk/react'
 import { Topbar } from '@/components/ui'
 import { Sidebar } from './sidebar'
 import { MobileNav } from './mobile-nav'

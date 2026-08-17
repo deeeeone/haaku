@@ -1,5 +1,5 @@
 import createClient from 'openapi-fetch'
-import { useAuth } from '@clerk/clerk-react'
+import { useAuth } from '@clerk/react'
 import { toast } from 'sonner'
 import type { paths } from '@/api/generated/schema'
 

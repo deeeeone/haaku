@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useMovie, useMoviePeople, useMovieStats, useMovieRecommendations } from '@/api/hooks/useMovies'
 import { useAddToWatchlist, useRemoveFromWatchlist, useAddToFavorites, useRemoveFromFavorites, useAddRating } from '@/api/hooks/useSync'
-import { useAuth } from '@clerk/clerk-react'
+import { useAuth } from '@clerk/react'
 import { Page, Section, ScrollRow } from '@/components/layout'
 import {
   Hero,
