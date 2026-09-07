@@ -386,6 +386,12 @@ func getShowIDsForTarget(db *gorm.DB, target, userID string) []int64 {
 		for _, id := range favShowIDs {
 			showIDMap[id] = true
 		}
+
+		// Apply the same hidden-show exclusion as the other user-scoped
+		// targets: hiding a show in the calendar section means it should not
+		// surface in any of the user's calendar views, favorites included.
+		excludeHiddenShowIDs(db, userID, "calendar", "show", showIDMap)
+
 		for id := range showIDMap {
 			showIDs = append(showIDs, id)
 		}
@@ -403,6 +409,12 @@ func getShowIDsForTarget(db *gorm.DB, target, userID string) []int64 {
 		for _, id := range historyShowIDs {
 			showIDMap[id] = true
 		}
+
+		// Hidden exclusion is applied consistently across every user-scoped
+		// target (my/friends/favorites/watched): a show hidden in the calendar
+		// section must not reappear in the watched calendar view either.
+		excludeHiddenShowIDs(db, userID, "calendar", "show", showIDMap)
+
 		for id := range showIDMap {
 			showIDs = append(showIDs, id)
 		}
