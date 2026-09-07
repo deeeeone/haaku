@@ -1444,9 +1444,10 @@ func resolveSmartListQuery(db *gorm.DB, filters database.JSONMap, userID, mediaT
 			q = applyFilterDSL(q, filters, "movies")
 			q = applyUserFilters(q, filters, userID, "movie")
 
+			// Fetch the full (ordered) match set for this type — no per-type
+			// OFFSET/LIMIT — so pagination can be applied over the combined
+			// result set below instead of per table.
 			if err := q.Order(fmt.Sprintf("%s DESC", sanitizeSortColumn(sortBy))).
-				Offset((page - 1) * limit).
-				Limit(limit).
 				Find(&movies).Error; err != nil {
 				return nil, 0, err
 			}
@@ -1477,8 +1478,6 @@ func resolveSmartListQuery(db *gorm.DB, filters database.JSONMap, userID, mediaT
 			q = applyUserFilters(q, filters, userID, "show")
 
 			if err := q.Order(fmt.Sprintf("%s DESC", sanitizeSortColumn(sortBy))).
-				Offset((page - 1) * limit).
-				Limit(limit).
 				Find(&shows).Error; err != nil {
 				return nil, 0, err
 			}
@@ -1502,7 +1501,25 @@ func resolveSmartListQuery(db *gorm.DB, filters database.JSONMap, userID, mediaT
 		allResults = make([]map[string]interface{}, 0)
 	}
 
-	return allResults, totalCount, nil
+	// Page over the COMBINED result set (not per type). Without this, each
+	// media type was OFFSET/LIMIT-ed independently and then concatenated, so
+	// later pages repeated/dropped items. totalCount (summed per type above)
+	// is the full combined size, so the page slice stays consistent with it.
+	start := (page - 1) * limit
+	if start < 0 {
+		start = 0
+	}
+	if start >= len(allResults) {
+		return []map[string]interface{}{}, totalCount, nil
+	}
+	end := start + limit
+	if end > len(allResults) {
+		end = len(allResults)
+	}
+	paged := make([]map[string]interface{}, end-start)
+	copy(paged, allResults[start:end])
+
+	return paged, totalCount, nil
 }
 
 // applyFilterDSL applies the core filter DSL to a GORM query.
