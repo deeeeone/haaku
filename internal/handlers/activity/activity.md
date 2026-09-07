@@ -47,5 +47,5 @@ Also registers OpenAPI route metadata (via `openapi.Register`) and exposes `Regi
 - [x] Switch to shared `internal/response` error constructors (local `writeError` removed).
 - [x] Move auth guard to a shared middleware package — route now runs `auth.AuthRequired()` (Batch 1).
 - [x] Return 400 on malformed `start_at` and on unknown `type` values. (Batch 6)
-- [ ] Confirm pagination metadata contract against `api-conventions.md` and align response shape.
+- [x] Confirm pagination metadata contract against `api-conventions.md` and align response shape. (Batch 8 — body envelope kept; now emits the §7 `X-Pagination-*` headers + `Link: rel="next"` and a stable `created_at DESC, id DESC` order; default limit aligned to §7's 25.)
 - [ ] Verify the module has tests (`make test` TDD requirement).
