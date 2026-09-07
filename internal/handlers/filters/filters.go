@@ -52,6 +52,18 @@ type filterSaveRequest struct {
 	Filter  database.JSONMap `json:"filter"`
 }
 
+// validSections is the allowlist of sections a user may save filters against.
+// The API spec does not enumerate filter sections separately, so this mirrors
+// the canonical collection-section set used by the hidden-items subsystem.
+var validSections = map[string]bool{
+	"calendar":           true,
+	"progress_watched":   true,
+	"progress_collected": true,
+	"recommendations":    true,
+	"comments":           true,
+	"dropped":            true,
+}
+
 type filterResponse struct {
 	ID        int64            `json:"id"`
 	UserID    string           `json:"user_id"`
@@ -114,6 +126,9 @@ func handleSaveFilter(c *fiber.Ctx) error {
 	}
 	if req.Section == "" || req.Name == "" {
 		return response.BadRequest(c, "section and name are required")
+	}
+	if !validSections[req.Section] {
+		return response.BadRequest(c, "invalid section: "+req.Section)
 	}
 
 	// Build the filter value.
