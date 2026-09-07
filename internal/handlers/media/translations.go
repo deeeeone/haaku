@@ -189,7 +189,7 @@ func handleMovieAliases(c *fiber.Ctx) error {
 
 	raw, err := callTMDB(fmt.Sprintf("/movie/%d/alternative_titles", tmdbID))
 	if err != nil {
-		return response.InternalError(c, err.Error())
+		return tmdbUpstreamError(c, "aliases", tmdbID, err)
 	}
 
 	aliases := parseAliases(raw)
@@ -211,7 +211,7 @@ func handleShowAliases(c *fiber.Ctx) error {
 
 	raw, err := callTMDB(fmt.Sprintf("/tv/%d/alternative_titles", tmdbID))
 	if err != nil {
-		return response.InternalError(c, err.Error())
+		return tmdbUpstreamError(c, "aliases", tmdbID, err)
 	}
 
 	aliases := parseAliases(raw)
@@ -230,7 +230,7 @@ func proxyTranslations(c *fiber.Ctx, cacheKey, lang, tmdbPath string) error {
 
 	raw, err := callTMDB(tmdbPath)
 	if err != nil {
-		return response.InternalError(c, err.Error())
+		return tmdbUpstreamError(c, tmdbPath, 0, err)
 	}
 
 	trans, err := filterTranslations(raw, lang)
@@ -249,6 +249,18 @@ func callTMDB(path string) ([]byte, error) {
 		return nil, fmt.Errorf("tmdb client unavailable: %w", err)
 	}
 	return client.GetV3(path)
+}
+
+// tmdbUpstreamError logs the raw upstream TMDB failure server-side and returns
+// a generic 500 internal message, so verbose/leaky TMDB text never reaches the
+// client. tmdbID is informational; pass 0 when unknown.
+func tmdbUpstreamError(c *fiber.Ctx, tmdbPath string, tmdbID int, err error) error {
+	if tmdbID != 0 {
+		fmt.Printf("media: TMDB upstream error tmdb_id=%d path=%s: %v\n", tmdbID, tmdbPath, err)
+	} else {
+		fmt.Printf("media: TMDB upstream error path=%s: %v\n", tmdbPath, err)
+	}
+	return response.InternalError(c)
 }
 
 // ---------------------------------------------------------------------------
