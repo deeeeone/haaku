@@ -1,6 +1,7 @@
 package updates
 
 import (
+	"strconv"
 	"time"
 
 	"trakt-api/internal/database"
@@ -89,9 +90,14 @@ func handleMovieUpdates(c *fiber.Ctx) error {
 	page, limit := response.ParsePagination(c, 25)
 	extended := media.GetExtended(c)
 
+	var total int64
+	if err := db.Model(&database.Movie{}).Where("updated_at >= ?", startDate).Count(&total).Error; err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "database count error")
+	}
+
 	var movies []database.Movie
 	if err := db.Where("updated_at >= ?", startDate).
-		Order("updated_at DESC").
+		Order("updated_at DESC, id DESC"). // stable order for pagination
 		Offset((page - 1) * limit).
 		Limit(limit).
 		Find(&movies).Error; err != nil {
@@ -102,6 +108,8 @@ func handleMovieUpdates(c *fiber.Ctx) error {
 	for _, m := range movies {
 		resp = append(resp, media.BuildMovieResponse(&m, extended))
 	}
+
+	setPaginationHeaders(c, page, limit, total, len(resp))
 
 	return c.JSON(resp)
 }
@@ -121,9 +129,14 @@ func handleShowUpdates(c *fiber.Ctx) error {
 	page, limit := response.ParsePagination(c, 25)
 	extended := media.GetExtended(c)
 
+	var total int64
+	if err := db.Model(&database.Show{}).Where("updated_at >= ?", startDate).Count(&total).Error; err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "database count error")
+	}
+
 	var shows []database.Show
 	if err := db.Where("updated_at >= ?", startDate).
-		Order("updated_at DESC").
+		Order("updated_at DESC, id DESC"). // stable order for pagination
 		Offset((page - 1) * limit).
 		Limit(limit).
 		Find(&shows).Error; err != nil {
@@ -134,6 +147,8 @@ func handleShowUpdates(c *fiber.Ctx) error {
 	for _, s := range shows {
 		resp = append(resp, media.BuildShowResponse(&s, extended))
 	}
+
+	setPaginationHeaders(c, page, limit, total, len(resp))
 
 	return c.JSON(resp)
 }
@@ -152,9 +167,14 @@ func handlePeopleUpdates(c *fiber.Ctx) error {
 
 	page, limit := response.ParsePagination(c, 25)
 
+	var total int64
+	if err := db.Model(&database.Person{}).Where("updated_at >= ?", startDate).Count(&total).Error; err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "database count error")
+	}
+
 	var people []database.Person
 	if err := db.Where("updated_at >= ?", startDate).
-		Order("updated_at DESC").
+		Order("updated_at DESC, id DESC"). // stable order for pagination
 		Offset((page - 1) * limit).
 		Limit(limit).
 		Find(&people).Error; err != nil {
@@ -166,7 +186,24 @@ func handlePeopleUpdates(c *fiber.Ctx) error {
 		resp = append(resp, media.BuildPersonResponse(&p))
 	}
 
+	setPaginationHeaders(c, page, limit, total, len(resp))
+
 	return c.JSON(resp)
 }
 
-// --- Error helpers ---
+// setPaginationHeaders emits the §7 pagination headers (api-conventions.md)
+// plus a Link: rel="next" header when more pages exist.
+func setPaginationHeaders(c *fiber.Ctx, page, limit int, total int64, itemsCount int) {
+	totalPages := int64(0)
+	if total > 0 {
+		totalPages = (total + int64(limit) - 1) / int64(limit)
+	}
+	c.Set("X-Pagination-Page", strconv.Itoa(page))
+	c.Set("X-Pagination-Limit", strconv.Itoa(limit))
+	c.Set("X-Pagination-Total-Pages", strconv.FormatInt(totalPages, 10))
+	c.Set("X-Pagination-Total-Items", strconv.FormatInt(total, 10))
+	c.Set("X-Pagination-Items-Count", strconv.Itoa(itemsCount))
+	if page < int(totalPages) {
+		c.Set("Link", `<`+c.Path()+`?page=`+strconv.Itoa(page+1)+`&limit=`+strconv.Itoa(limit)+`>; rel="next"`)
+	}
+}
