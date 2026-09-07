@@ -34,8 +34,8 @@ Section allowlist enforced server-side: `calendar`, `progress_watched`, `progres
 
 ## Todos
 
-- [ ] Implement or remove the outbox-event stub.
-- [ ] Invalidate user/feed version keys on hide/unhide.
+- [x] Implement or remove the outbox-event stub. (Batch 7 — removed; the webhook catalog defines no hide/unhide event)
+- [x] Invalidate user/feed version keys on hide/unhide. (Batch 7)
 - [x] Use `internal/response` error constructors (Batch 0).
 - [x] Use shared `response.FormatTime` instead of the hand-rolled timestamp literal.
 - [ ] Validate `media_type` against the spec's allowed values.
