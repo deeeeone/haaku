@@ -86,13 +86,13 @@ func handleGetEpisode(c *fiber.Ctx) error {
 	}
 
 	resp := EpisodeDetailResponse{
-		EpisodeResponse: buildFullEpisodeResponse(&episode),
+		EpisodeResponse: media.BuildEpisodeResponse(&episode),
 	}
 
 	// Fetch season.
 	var season database.Season
 	if err := db.First(&season, episode.SeasonID).Error; err == nil {
-		sr := buildFullSeasonResponse(&season)
+		sr := media.BuildSeasonResponse(&season)
 		resp.Season = &sr
 	}
 
@@ -345,52 +345,6 @@ func queryMediaComments(c *fiber.Ctx, db *gorm.DB, mediaType string, mediaID int
 		"limit":       limit,
 		"total_count": totalCount,
 	})
-}
-
-func buildFullEpisodeResponse(e *database.Episode) media.EpisodeResponse {
-	resp := media.EpisodeResponse{
-		IDs:            buildEpisodeIDs(e),
-		SeasonID:       e.SeasonID,
-		ShowID:         e.ShowID,
-		EpisodeNumber:  e.EpisodeNumber,
-		Title:          e.Title,
-		Overview:       e.Overview,
-		Runtime:        e.Runtime,
-		Images:         e.Images,
-		AbsoluteNumber: e.AbsoluteNumber,
-	}
-	if e.AiredAt != nil {
-		resp.AiredAt = e.AiredAt.String()
-	}
-	if resp.Images == nil {
-		resp.Images = make(map[string]any)
-	}
-	return resp
-}
-
-func buildFullSeasonResponse(s *database.Season) media.SeasonResponse {
-	resp := media.SeasonResponse{
-		IDs:          buildSeasonIDs(s),
-		ShowID:       s.ShowID,
-		SeasonNumber: s.SeasonNumber,
-		EpisodeCount: s.EpisodeCount,
-		Images:       s.Images,
-	}
-	if s.AiredAt != nil {
-		resp.AiredAt = s.AiredAt.String()
-	}
-	if resp.Images == nil || len(resp.Images) == 0 {
-		resp.Images = make(map[string]any)
-	}
-	return resp
-}
-
-func buildEpisodeIDs(e *database.Episode) media.IDs {
-	return media.IDs{ID: e.ID}
-}
-
-func buildSeasonIDs(s *database.Season) media.IDs {
-	return media.IDs{ID: s.ID}
 }
 
 // ---------------------------------------------------------------------------

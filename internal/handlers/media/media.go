@@ -230,7 +230,7 @@ func handleGetShow(c *fiber.Ctx) error {
 	var seasons []database.Season
 	db.Where("show_id = ?", show.ID).Order("season_number ASC").Find(&seasons)
 	for _, s := range seasons {
-		resp.Seasons = append(resp.Seasons, buildSeasonResponse(&s))
+		resp.Seasons = append(resp.Seasons, BuildSeasonResponse(&s))
 	}
 
 	return c.JSON(resp)
@@ -257,7 +257,7 @@ func handleGetShowSeasons(c *fiber.Ctx) error {
 
 	resp := make([]SeasonResponse, 0, len(seasons))
 	for _, s := range seasons {
-		resp = append(resp, buildSeasonResponse(&s))
+		resp = append(resp, BuildSeasonResponse(&s))
 	}
 
 	return c.JSON(resp)
@@ -291,7 +291,7 @@ func handleGetShowSeason(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
 
-	return c.JSON(buildSeasonResponse(&season))
+	return c.JSON(BuildSeasonResponse(&season))
 }
 
 func handleGetShowSeasonEpisodes(c *fiber.Ctx) error {
@@ -335,7 +335,7 @@ func handleGetShowSeasonEpisodes(c *fiber.Ctx) error {
 
 	resp := make([]EpisodeResponse, 0, len(episodes))
 	for _, e := range episodes {
-		resp = append(resp, buildEpisodeResponse(&e))
+		resp = append(resp, BuildEpisodeResponse(&e))
 	}
 
 	return c.JSON(resp)
@@ -382,7 +382,7 @@ func handleGetShowEpisode(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
 
-	return c.JSON(buildEpisodeResponse(&episode))
+	return c.JSON(BuildEpisodeResponse(&episode))
 }
 
 func handleGetShowPeople(c *fiber.Ctx) error {

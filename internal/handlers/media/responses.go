@@ -317,8 +317,8 @@ func BuildShowResponse(s *database.Show, extended string) ShowResponse {
 	return resp
 }
 
-// buildSeasonResponse builds a SeasonResponse from a database Season.
-func buildSeasonResponse(s *database.Season) SeasonResponse {
+// BuildSeasonResponse builds a SeasonResponse from a database Season.
+func BuildSeasonResponse(s *database.Season) SeasonResponse {
 	resp := SeasonResponse{
 		IDs:          buildIDs("season", s.ID, nil, nil),
 		ShowID:       s.ShowID,
@@ -335,8 +335,8 @@ func buildSeasonResponse(s *database.Season) SeasonResponse {
 	return resp
 }
 
-// buildEpisodeResponse builds an EpisodeResponse from a database Episode.
-func buildEpisodeResponse(e *database.Episode) EpisodeResponse {
+// BuildEpisodeResponse builds an EpisodeResponse from a database Episode.
+func BuildEpisodeResponse(e *database.Episode) EpisodeResponse {
 	resp := EpisodeResponse{
 		IDs:            buildIDs("episode", e.ID, nil, nil),
 		SeasonID:       e.SeasonID,
