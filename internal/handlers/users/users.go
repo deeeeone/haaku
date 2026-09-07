@@ -214,7 +214,12 @@ func handleUpdateMe(c *fiber.Ctx) error {
 
 	// Fetch updated user.
 	var user database.User
-	db.First(&user, "id = ?", userID)
+	if err := db.First(&user, "id = ?", userID).Error; err != nil {
+		// The update already committed, but we can't read the fresh row back.
+		// Don't silently return the pre-update/stale row with a 200.
+		slog.Error("handleUpdateMe: re-fetch after update failed", "user_id", userID, "error", err)
+		return response.InternalError(c)
+	}
 
 	return c.JSON(buildProfileResponse(&user))
 }
