@@ -63,8 +63,8 @@ Writes go through `cache.WithCacheTransaction` with list/user version-key bumps 
 
 - [x] Fix SQL injection in `handleGetListItems` ordering — `resolveListItemSort` allowlist + unit test (lists_test.go).
 - [x] Guard `userID[0:8]` in `generateSlug` against short/empty ids (length-safe suffix + tests).
-- [ ] Fix smart-list pagination to page over the combined result set, not per-type.
-- [ ] Paginate `GET /lists/{id}/comments`.
+- [x] Fix smart-list pagination to page over the combined result set, not per-type. (Batch 8 — per-type queries now fetch the full ordered match set with no OFFSET/LIMIT; the page is sliced from the combined result in Go, so `row_count` (full combined total) matches and pages no longer repeat/drop items.)
+- [x] Paginate `GET /lists/{id}/comments`. (Batch 8 — `?page&limit` default 25/max 100 with §7 `X-Pagination-*` headers + `Link: rel="next"`; stable `created_at ASC, id ASC` order.)
 - [ ] Ensure unique constraint exists for list likes; consider a DB-level check.
 - [x] Replace local error helpers with `internal/response` (Batch 0).
 - [x] Replace local `authRequired`/`requireAuth` with `auth.AuthRequired` (Batch 1).
