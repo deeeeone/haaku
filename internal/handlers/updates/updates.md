@@ -34,7 +34,7 @@ Each paginates (`page`/`limit`, default 25, max 100) and honors `extended` (min/
 ## Todos
 
 - [ ] Include `updated_at` (and entity id) in responses.
-- [ ] Reuse `media` builders instead of the local duplicates.
+- [x] Reuse `media` builders (`BuildMovieResponse`/`BuildShowResponse`/`BuildPersonResponse`) instead of the local duplicates; person IDs now preserve tmdb/imdb in media's builder (Batch 5).
 - [ ] Add Redis caching with a short TTL.
 - [ ] Consider supporting timestamp `start_date` and an `end_date` filter per spec.
 - [ ] Return `[]` (never `null`) for empty result sets.
