@@ -347,7 +347,10 @@ func handleNetworks(c *fiber.Ctx) error {
 	}
 
 	var networks []string
-	if err := db.Raw("SELECT DISTINCT network FROM shows WHERE network != ''").Scan(&networks).Error; err != nil {
+	// `shows.network` is a scalar TEXT column (migration 0002; GORM
+	// Show.Network string), so a plain DISTINCT is correct — no unnest/
+	// jsonb_each_text needed. ORDER BY gives a deterministic, stable list.
+	if err := db.Raw("SELECT DISTINCT network FROM shows WHERE network != '' ORDER BY network").Scan(&networks).Error; err != nil {
 		log.Printf("[reference] DB networks query error: %v", err)
 		return response.WriteError(c, fiber.StatusInternalServerError, "db_error", "Failed to query networks")
 	}
