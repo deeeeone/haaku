@@ -49,7 +49,7 @@ Behavior:
 - [x] Remove the double auth check — non-`all` routes now run `auth.AuthRequired()`; the handler no longer re-checks.
 - [ ] Replace `deriveTarget` with a route param or per-target handlers.
 - [x] Batch-fetch shows/seasons to kill the N+1 loop. (Batch 10)
-- [ ] Apply hidden exclusion consistently across all targets (spec check).
+- [x] Apply hidden exclusion consistently across all targets (spec check). (Batch 12 — hidden shows are now excluded from every user-scoped calendar target: `my`, `friends`, `favorites`, and `watched`. The `metadata-api` spec states "my variants respect hidden items + watchlist membership"; favorites/watched are also personal calendar surfaces, so excluding a show hidden in the `calendar` section from them is consistent with that rule and with the already-applied `my`/`friends` exclusion.)
 - [x] Use structured `internal` error code for DB failures. (Batch 6)
 - [ ] Verify `friends` mutual-follow semantics and 90-day cutoff against the spec.
 - [ ] Confirm module test coverage (`make test`).
