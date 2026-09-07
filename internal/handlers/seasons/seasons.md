@@ -39,5 +39,5 @@ Reuses media builders (`SeasonResponse`, `ShowResponse`, `RatingSummary`). No au
 - [x] Reuse shared `media` season builder (`media.BuildSeasonResponse`) instead of the local `buildFullSeasonResponse` (Batch 5).
 - [ ] Consolidate the detail query (single joined query or batch).
 - [x] Use shared `internal/response` helpers.
-- [ ] Verify season rating storage semantics against the data model.
+- [x] Verify season rating storage semantics against the data model. (Batch 12 — VERIFIED/CONFIRMED: ratings are stored directly on the season, per-media-type.) `user_ratings` (migration 0009 / data-model §3) is `UNIQUE(user_id, media_type, media_id)` where `media_type` may be `movie`/`show`/`season`/`episode`, and `seasons` are first-class media rows with their own `external_ids` entry. The sync add-rating path resolves a season's TMDB id to `media_type='season', media_id=<season row id>` and writes that row. The seasons handler's `queryRatingDistribution("season", seasonID)` and stats' `AVG` query on `media_type='season'` therefore read exactly what sync writes — per-season ratings on the season row, not rolled up from episodes or stored on the parent show. Consistent; no code change needed.)
 - [ ] Verify module test coverage (`make test`).
