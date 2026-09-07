@@ -1,15 +1,19 @@
 package reports
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"trakt-api/internal/database"
 	"trakt-api/internal/openapi"
+	projredis "trakt-api/redis"
 
 	"github.com/gofiber/fiber/v2"
+	goredis "github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 	"trakt-api/internal/auth"
 	"trakt-api/internal/response"
@@ -59,6 +63,13 @@ var validReportReasons = map[string]bool{
 // maxReportDescription caps free-form report detail. The schema column is
 // unbounded text; this cap keeps moderation notes reasonable and bounded.
 const maxReportDescription = 1000
+
+// Per-user report submission rate limit (sliding window, stored in Redis).
+// Each user may submit at most reportRateMax reports per reportRateWindow.
+const (
+	reportRateWindow = time.Hour
+	reportRateMax    = 10
+)
 
 // ---------------------------------------------------------------------------
 // Request/Response types
@@ -137,6 +148,12 @@ func handleReportContent(c *fiber.Ctx, mediaType string) error {
 		return response.BadRequest(c, fmt.Sprintf("description exceeds maximum length of %d characters", maxReportDescription))
 	}
 
+	// Rate-limit report submissions per user before doing any work, so abuse
+	// is throttled regardless of the target media.
+	if err := reportRateAllowed(c, userID); err != nil {
+		return err
+	}
+
 	db, err := database.GetDB()
 	if err != nil {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
@@ -181,6 +198,46 @@ func handleReportContent(c *fiber.Ctx, mediaType string) error {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+// reportRateAllowed enforces a per-user sliding-window limit on report
+// submissions via Redis. It returns a 429 rate_limited response (with a
+// Retry-After header) when the user exceeds reportRateMax submissions within
+// reportRateWindow, and nil otherwise. Redis failures fail OPEN: the request
+// is allowed through so an unavailable cache never blocks legitimate use.
+func reportRateAllowed(c *fiber.Ctx, userID string) error {
+	rdb := projredis.GetClient()
+	if rdb == nil {
+		return nil
+	}
+
+	key := "ratelimit:report:" + userID
+	now := time.Now()
+	nowMs := float64(now.UnixMilli())
+	windowStart := float64(now.Add(-reportRateWindow).UnixMilli())
+	member := fmt.Sprintf("%d:%d", now.UnixNano(), now.UnixNano()%100000)
+
+	ctx, cancel := context.WithTimeout(c.Context(), 100*time.Millisecond)
+	defer cancel()
+
+	pipe := rdb.Pipeline()
+	pipe.ZAdd(ctx, key, goredis.Z{Score: nowMs, Member: member})
+	pipe.ZRemRangeByScore(ctx, key, "0", fmt.Sprintf("%.0f", windowStart))
+	countCmd := pipe.ZCard(ctx, key)
+	pipe.Expire(ctx, key, reportRateWindow)
+
+	if _, err := pipe.Exec(ctx); err != nil {
+		return nil
+	}
+	count, err := countCmd.Result()
+	if err != nil {
+		return nil
+	}
+	if count > reportRateMax {
+		c.Set("Retry-After", fmt.Sprintf("%d", int(reportRateWindow.Seconds())))
+		return response.WriteError(c, fiber.StatusTooManyRequests, "rate_limited", "too many reports — slow down")
+	}
+	return nil
+}
 
 // reportTargetExists reports whether a media row of the given type/id exists.
 // This backs the 404 advertised by the report OpenAPI routes.
