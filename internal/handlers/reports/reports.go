@@ -134,6 +134,16 @@ func handleReportContent(c *fiber.Ctx, mediaType string) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
+	// The OpenAPI contract advertises a 404 for a missing target media item, so
+	// verify the media row exists before inserting a report against it.
+	exists, verr := reportTargetExists(db, mediaType, id)
+	if verr != nil {
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
+	}
+	if !exists {
+		return response.NotFound(c, mediaType+" not found")
+	}
+
 	// Check for duplicate report.
 	var existing database.ContentReport
 	result := db.Where("reporter_id = ? AND media_type = ? AND media_id = ?", userID, mediaType, id).
@@ -163,3 +173,26 @@ func handleReportContent(c *fiber.Ctx, mediaType string) error {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+// reportTargetExists reports whether a media row of the given type/id exists.
+// This backs the 404 advertised by the report OpenAPI routes.
+func reportTargetExists(db *gorm.DB, mediaType string, mediaID int64) (bool, error) {
+	var model interface{}
+	switch mediaType {
+	case "movie":
+		model = &database.Movie{}
+	case "show":
+		model = &database.Show{}
+	case "season":
+		model = &database.Season{}
+	case "episode":
+		model = &database.Episode{}
+	default:
+		return false, nil
+	}
+	var count int64
+	if err := db.Model(model).Where("id = ?", mediaID).Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
