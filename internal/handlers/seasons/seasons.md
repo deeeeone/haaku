@@ -36,7 +36,7 @@ Reuses media builders (`SeasonResponse`, `ShowResponse`, `RatingSummary`). No au
 
 - [ ] Add Redis caching (TTL) for season detail/stats/ratings.
 - [ ] Handle errors in `querySeasonStats`/`queryRatingDistribution` (return error, 500 on failure).
-- [ ] Reuse shared `media` season builder instead of the local `buildFullSeasonResponse`.
+- [x] Reuse shared `media` season builder (`media.BuildSeasonResponse`) instead of the local `buildFullSeasonResponse` (Batch 5).
 - [ ] Consolidate the detail query (single joined query or batch).
 - [x] Use shared `internal/response` helpers.
 - [ ] Verify season rating storage semantics against the data model.
