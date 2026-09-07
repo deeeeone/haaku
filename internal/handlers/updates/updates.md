@@ -37,7 +37,7 @@ Each paginates (`page`/`limit`, default 25, max 100) and honors `extended` (min/
 - [x] Reuse `media` builders (`BuildMovieResponse`/`BuildShowResponse`/`BuildPersonResponse`) instead of the local duplicates; person IDs now preserve tmdb/imdb in media's builder (Batch 5).
 - [ ] Add Redis caching with a short TTL.
 - [ ] Consider supporting timestamp `start_date` and an `end_date` filter per spec.
-- [ ] Return `[]` (never `null`) for empty result sets.
-- [ ] Add pagination metadata to the response.
+- [x] Return `[]` (never `null`) for empty result sets. (Batch 8 — response built with `make([]T, 0, …)`, so an empty/no-match result serializes as `[]`; a nil underlying slice never reaches the JSON encoder.)
+- [x] Add pagination metadata to the response. (Batch 8 — the array body is kept (matching the spec-compliant `webhooks`/`sync` convention); §7 `X-Pagination-*` headers + `Link: rel="next"` now carry `page`/`limit`/`total`/pages so a client can page deterministically against the stable `updated_at DESC, id DESC` order. No `row_count`/`total` envelope field is needed since headers suffice.)
 - [x] Remove dead `notFound` helper.
 - [ ] Verify module test coverage (`make test`).
