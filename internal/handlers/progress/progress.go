@@ -100,42 +100,37 @@ func handlePlaybackMovies(c *fiber.Ctx) error {
 		return response.InternalError(c)
 	}
 
-	// Query user_playback joined with movies.
-	type playbackMovieRow struct {
-		database.UserPlayback
-		Title    string `json:"title"`
-		TmdbID   int    `json:"tmdb_id"`
-		ImdbID   string `json:"imdb_id"`
-		Year     int    `json:"year"`
-		Overview string `json:"overview"`
-		Runtime  int    `json:"runtime"`
-	}
-
-	var rows []playbackMovieRow
-	if err := db.Table("user_playback up").
-		Select("up.*, m.title, m.tmdb_id, m.imdb_id, m.overview, m.runtime").
-		Joins("JOIN movies m ON m.id = up.media_id AND up.media_type = 'movie'").
-		Where("up.user_id = ?", userID).
-		Order("up.paused_at DESC").
+	var rows []database.UserPlayback
+	if err := db.Where("user_id = ? AND media_type = ?", userID, "movie").
+		Order("paused_at DESC").
 		Find(&rows).Error; err != nil {
 		return response.InternalError(c)
 	}
 
+	// Batch-fetch the movies so we can reuse media.BuildMovieResponse for
+	// response enrichment without a per-item N+1.
+	movieIDs := make([]int64, 0, len(rows))
+	for _, row := range rows {
+		movieIDs = append(movieIDs, row.MediaID)
+	}
+	movies := make(map[int64]database.Movie, len(movieIDs))
+	if len(movieIDs) > 0 {
+		var fetched []database.Movie
+		if err := db.Where("id IN ?", movieIDs).Find(&fetched).Error; err != nil {
+			return response.InternalError(c)
+		}
+		for _, m := range fetched {
+			movies[m.ID] = m
+		}
+	}
+
+	extended := media.GetExtended(c)
 	resp := make([]MoviePlaybackResponse, 0, len(rows))
 	for _, row := range rows {
-		movieResp := media.MovieResponse{
-			IDs:      media.IDs{ID: row.MediaID, TMDB: row.TmdbID},
-			Title:    row.Title,
-			Overview: row.Overview,
-			Runtime:  row.Runtime,
+		movieResp := media.MovieResponse{}
+		if m, ok := movies[row.MediaID]; ok {
+			movieResp = media.BuildMovieResponse(&m, extended)
 		}
-		if row.ImdbID != "" {
-			movieResp.IDs.IMDB = row.ImdbID
-		}
-		if movieResp.Images == nil {
-			movieResp.Images = make(map[string]any)
-		}
-
 		resp = append(resp, MoviePlaybackResponse{
 			Progress: row.Progress,
 			PausedAt: response.FormatTime(row.PausedAt),
