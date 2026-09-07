@@ -30,7 +30,7 @@ The **shared media-read foundation** for the API (4 files). Provides movie/show/
 
 ## Oversights
 
-- **Stats / lists / watching are stubs** — `handleGetMovieStats`, `handleGetMovieLists`, `handleGetMovieWatching` (and show equivalents) return hardcoded empty responses, but are registered in OpenAPI as complete 200 endpoints.
+- **Stats / lists / watching are fail-closed 501 (Batch 13)** — `handleGetMovieStats`, `handleGetMovieLists`, `handleGetMovieWatching` (and show equivalents) returned hardcoded empty/zero responses, but were registered in OpenAPI as complete 200 endpoints. They now **fail closed with 501 `not_implemented`** (real counts/activity require the stats/lists/activity engines, which aren't landed) and their OpenAPI `StatusCodes` list 501. No counts are fabricated.
 - **`buildRatingSummary` returns empty distribution** — always `{}`; real per-star distributions are only computed elsewhere (episodes package). Inconsistent.
 - **`buildIDs` does a per-response DB query (RESOLVED)** — each builder ran a fresh `external_ids` query; every list of N items = N extra queries (N+1 across discovery/lists/calendar too). Now batches external_ids into a single `(media_type, media_id) IN (...)` query per request via `batchExternalIDs`/`buildIDsFromLookup`, and the media package's own array builders (show detail+seasons, seasons, episodes, people) share one lookup (Batch 10). Cross-package list builders (discovery/updates/etc.) still call the single-item `Build*Response`; those batches can adopt `batchExternalIDs` in a later pass.
 - **`buildIDs("season"/"episode"/"person", ...)` passes nil movie/show** — so season/episode/person `IDs` get no TMDB/IMDB populated even though `external_ids` rows exist for them (only slug/tvdb lookups run).
@@ -45,7 +45,7 @@ The **shared media-read foundation** for the API (4 files). Provides movie/show/
 
 ## Todos
 
-- [ ] Implement or explicitly mark as `not-implemented` the stats/lists/watching stubs.
+- [x] Implement or explicitly mark as `not-implemented` the stats/lists/watching stubs. (Batch 13 — DECISION: all six movie/show stats/lists/watching handlers now fail closed with 501 `not_implemented` until the stats/lists/activity engines land; the previous hardcoded-zero/empty responses fabricated results and were removed. Ratings summaries remain real.)
 - [ ] Populate real rating distributions in `buildRatingSummary` or drop the field until implemented.
 - [x] Batch external-id lookups in `buildIDs` (single query per batch) to kill N+1s. (Batch 10)
 - [ ] Populate TMDB/IMDB for season/episode/person IDs from `external_ids`.
