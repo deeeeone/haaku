@@ -13,10 +13,11 @@ Single endpoint: `GET /v1/users/:id/stats` — public user statistics (plays, mi
 | Cached read via `statsengine` | Done |
 | Recompute-on-stale (1h) | Done |
 | Version-counter bump after recompute | Done |
+| Version-keyed Redis response cache | Done (Batch 9) |
 
 ## Oversights
 
-- **Dead code: Redis version-keyed caching is stubbed** — lines 107-112 fetch `cache.GetUserVersion(userID)` and `_ = version`; the intended "serve version-keyed cached response" path was never implemented. The DB table (`statsengine.GetUserStats`) is the only real cache.
+- **Dead code removed: version-keyed Redis cache implemented (RESOLVED)** — the stubbed `cache.GetUserVersion` fetch (`_ = version`) is replaced by a real version-keyed response cache: reads the user's current version, serves a serialized `StatsResponse` for that version directly from Redis, and stores it after a DB-backed compute. A history/data write that bumps the user version invalidates the entry in O(1); misses/outages fall through to the DB table read + recompute (Batch 9).
 - **Recompute is uncoordinated** — two concurrent requests that both find stale stats both call `ComputeUserStats`; no advisory lock / singleflight. Wasted work + duplicate writes.
 - **Recompute failure is silently swallowed (RESOLVED)** — a failed `ComputeUserStats` (or re-fetch) now returns 503 `db_unavailable` instead of a 200 with zeroed stats.
 - **Stats staleness is 1h wall-clock, not version-driven** — user history writes should invalidate instantly (outbox/version counter); instead stale data lives up to an hour.
@@ -28,7 +29,7 @@ Single endpoint: `GET /v1/users/:id/stats` — public user statistics (plays, mi
 
 ## Todos
 
-- [ ] Implement the version-keyed Redis cache path (or remove the stub).
+- [x] Implement the version-keyed Redis cache path. (Batch 9 — reads user version, serves a serialized `StatsResponse` for that version from Redis, stores after DB compute; version bump invalidates in O(1), DB fallback retained.)
 - [x] Guard recompute with an advisory lock or singleflight. (Batch 7 — per-user advisory lock in `recomputeUserStats`)
 - [x] Surface recompute failures (503/500) instead of returning zeroed stats. (Batch 6)
 - [x] Align staleness with the user version counter (invalidate on writes via outbox). (Batch 7 — version snapshot in Redis; recompute when the counter advances. Residual: implemented locally in the stats module, not wired into the sync write path; the snapshot keys off the user version counter the sync/scrobble cache-tx already bumps, and first-cycle snapshots default to wall-clock until the next compute.)
