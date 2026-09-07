@@ -50,7 +50,7 @@ Writes use `cache.WithCacheTransaction` with version-counter invalidation (`queu
 - [x] Return real `added`/`duplicates` counts in watchlist/favorites/ratings add responses.
 - [x] Attach `auth.AuthRequired` at route registration (`sync.Use`); per-handler checks dropped (Batch 1).
 - [x] Validate `media_type` against the resolved type in `handleGetHistoryItem` (400 on mismatch; `parseWatchedAt` now errors on invalid timestamps instead of silently using `now`).
-- [ ] Reuse `media.ResolveID` and batch-resolve bulk add IDs.
+- [x] Reuse `media.ResolveID` (single-item path) and batch-resolve bulk add IDs via `media.ResolveTMDBBatch` (kills the per-item N+1 in the add loops; Batch 5).
 - [x] Advisory-lock rank assignment (watchlist/favorites adds + reorder); reorder is now 1-based and validated as a complete set (400 otherwise).
 - [ ] Fix `sort_by=title` to join titles.
 - [ ] Decide `watched_at` semantics for `"unknown"` (aired_at vs now) and align with spec.
