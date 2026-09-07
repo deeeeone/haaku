@@ -20,7 +20,7 @@ Validation: `id` must parse; `reason` allowlisted (`spam`, `spoiler`, `offensive
 
 ## Oversights
 
-- **No FK/media existence check** — OpenAPI advertises `404 Movie not found`, but `handleReportContent` never verifies the movie/show/season/episode exists; any numeric id creates a dangling report. 404 is never returned.
+- **No FK/media existence check (RESOLVED)** — `handleReportContent` now verifies the movie/show/season/episode row exists (`reportTargetExists`) before inserting, so the OpenAPI-advertised 404 is actually returned for missing targets.
 - **No per-user rate limit** — nothing stops a user hammering report endpoints; charter anti-abuse (429) not applied here.
 - **Check-then-insert race** — duplicate check (`First`) then `Create` is not atomic; two concurrent requests can both pass the check and create duplicates (no unique index on `(reporter_id, media_type, media_id)`? — verify schema).
 - **Local `writeError`/`badRequest`** duplicated from `internal/httpapi`.
@@ -32,7 +32,7 @@ Validation: `id` must parse; `reason` allowlisted (`spam`, `spoiler`, `offensive
 
 ## Todos
 
-- [ ] Verify target media exists before insert (return the advertised 404) or drop 404 from OpenAPI.
+- [x] Verify target media exists before insert (return the advertised 404) or drop 404 from OpenAPI. (Batch 6)
 - [ ] Add per-user 429 rate limiting on report submission.
 - [ ] Add a unique constraint on `(reporter_id, media_type, media_id)` (schema change → planning DB doc first) or use upsert/on-conflict.
 - [x] Use shared `internal/response` error helpers (Batch 0).
