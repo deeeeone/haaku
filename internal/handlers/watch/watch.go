@@ -211,12 +211,21 @@ func serveWatchProviders(
 	persist func() error,
 	fetchFresh func() (*tmdb.WatchProvidersResponse, error),
 ) error {
+	country = strings.ToUpper(country)
+
 	// Try cache first.
 	if cached, ok := loadCachedProviders(metadata); ok {
-		if countryResult, found := cached.Results[strings.ToUpper(country)]; found {
+		if countryResult, found := cached.Results[country]; found {
 			return c.JSON(convertToResponse(countryResult))
 		}
-		// Country not in cache — fall through to fetch fresh.
+		// The requested country has no providers in the cached set. If we already
+		// confirmed that absence recently, serve the negative result instead of
+		// refetching the whole provider set on every request for this country.
+		if countryAbsenceFresh(metadata, country) {
+			return c.JSON(WatchResponse{})
+		}
+		// Absence not (recently) confirmed — fall through to one refetch so
+		// newly-added providers are picked up.
 	}
 
 	// Fetch from TMDB.
@@ -244,19 +253,106 @@ func serveWatchProviders(
 		log.Printf("[watch] failed to cache watch providers: %v", err)
 	}
 
-	// Persist the updated metadata so the cache survives across restarts.
-	// Best-effort: a write failure must not fail the response.
+	// Return requested country.
+	countryResult, found := cached.Results[country]
+
+	if found {
+		// Country now has providers — clear any stale negative and persist.
+		clearCountryAbsence(metadata, country)
+		if err := persist(); err != nil {
+			log.Printf("[watch] failed to persist watch providers cache: %v", err)
+		}
+		return c.JSON(convertToResponse(countryResult))
+	}
+
+	// No providers for this country — record the absence (short TTL negative
+	// cache) so repeated requests for it don't each trigger a full TMDB refetch,
+	// then persist both the provider set and the absence marker.
+	recordCountryAbsence(metadata, country)
 	if err := persist(); err != nil {
 		log.Printf("[watch] failed to persist watch providers cache: %v", err)
 	}
+	return c.JSON(defaultResponse(cpLink(resp.ID, "movie", country)))
+}
 
-	// Return requested country.
-	countryResult, ok := cached.Results[strings.ToUpper(country)]
-	if !ok {
-		return c.JSON(defaultResponse(cpLink(resp.ID, "movie", country)))
+// metadataAbsenceKey is the metadata JSONB key holding country → last-confirmed
+// "no providers" timestamps for negative caching.
+const metadataAbsenceKey = "watch_providers_absence"
+
+// countryAbsenceTTL bounds how long a confirmed "no providers" negative is
+// honored before the country is re-checked against TMDB.
+const countryAbsenceTTL = time.Hour
+
+// loadAbsenceMap decodes the stored absence map (country → RFC3339 timestamp).
+func loadAbsenceMap(metadata database.JSONMap) map[string]string {
+	if metadata == nil {
+		return nil
 	}
+	raw, ok := metadata[metadataAbsenceKey]
+	if !ok {
+		return nil
+	}
+	data, err := json.Marshal(raw)
+	if err != nil {
+		return nil
+	}
+	var m map[string]string
+	if err := json.Unmarshal(data, &m); err != nil {
+		return nil
+	}
+	return m
+}
 
-	return c.JSON(convertToResponse(countryResult))
+// countryAbsenceFresh reports whether we recently confirmed that the country has
+// no providers (within countryAbsenceTTL), so the caller can serve the negative
+// result without refetching TMDB.
+func countryAbsenceFresh(metadata database.JSONMap, country string) bool {
+	ts, ok := loadAbsenceMap(metadata)[country]
+	if !ok {
+		return false
+	}
+	t, err := time.Parse(time.RFC3339, ts)
+	if err != nil {
+		return false
+	}
+	return time.Since(t) <= countryAbsenceTTL
+}
+
+// recordCountryAbsence stamps a confirmed "no providers" negative for country.
+func recordCountryAbsence(metadata database.JSONMap, country string) {
+	m := loadAbsenceMap(metadata)
+	if m == nil {
+		m = make(map[string]string)
+	}
+	m[country] = time.Now().UTC().Format(time.RFC3339)
+	storeAbsenceMap(metadata, m)
+}
+
+// clearCountryAbsence drops a stale negative once a country gains providers.
+func clearCountryAbsence(metadata database.JSONMap, country string) {
+	m := loadAbsenceMap(metadata)
+	if m == nil {
+		return
+	}
+	if _, ok := m[country]; !ok {
+		return
+	}
+	delete(m, country)
+	storeAbsenceMap(metadata, m)
+}
+
+// storeAbsenceMap writes the absence map back into the metadata JSONB, keeping
+// the same clean any-typed shape storeCachedProviders uses.
+func storeAbsenceMap(metadata database.JSONMap, m map[string]string) {
+	data, err := json.Marshal(m)
+	if err != nil {
+		return
+	}
+	var raw map[string]any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return
+	}
+	metadata[metadataAbsenceKey] = raw
 }
 
 // loadCachedProviders reads cached watch provider data from metadata.
