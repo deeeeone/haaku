@@ -9,6 +9,7 @@ import (
 	"trakt-api/internal/auth"
 	"trakt-api/internal/cache"
 	"trakt-api/internal/database"
+	"trakt-api/internal/handlers/notifications"
 	"trakt-api/internal/openapi"
 	"trakt-api/internal/outbox"
 	"trakt-api/redis"
@@ -175,6 +176,14 @@ func handleFollow(c *fiber.Ctx) error {
 			"status":       status,
 		}); err != nil {
 			return nil, err
+		}
+
+		// Notify the recipient so the follow shows up in their activity inbox.
+		// Pending (private-profile) follows notify too — the recipient still
+		// learns someone requested to follow them.
+		if err := notifications.CreateNotification(tx, cacheTx, targetID, notifications.NotifTypeFollow, followerID,
+			map[string]interface{}{"following_id": targetID, "follower_id": followerID, "status": status}); err != nil {
+			return nil, fmt.Errorf("create follow notification: %w", err)
 		}
 
 		resp = buildFollowResponse(&follow, status)
@@ -450,6 +459,12 @@ func handleApproveFollowRequest(c *fiber.Ctx) error {
 			"follower_id": followerID,
 		}); err != nil {
 			return nil, err
+		}
+
+		// Notify the follower that their request was approved.
+		if err := notifications.CreateNotification(tx, cacheTx, followerID, notifications.NotifTypeFollow, userID,
+			map[string]interface{}{"following_id": userID, "follower_id": followerID, "approved": true}); err != nil {
+			return nil, fmt.Errorf("create follow-approved notification: %w", err)
 		}
 		return cacheTx, nil
 	})
