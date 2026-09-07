@@ -40,5 +40,5 @@ All routes are auth-required (shared `auth.AuthRequired()` middleware). Register
 - [ ] Validate section against a defined allowlist (spec).
 - [x] Decide 403-vs-404 for cross-user delete; align with conventions. (Batch 6)
 - [ ] Optionally enforce uniqueness on (user, section, name) and harden the 20-cap.
-- [ ] Route writes through `WithCacheTransaction`.
+- [x] Route writes through `WithCacheTransaction`. (Batch 7)
 - [ ] Verify module test coverage (`make test`).
