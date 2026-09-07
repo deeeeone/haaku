@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -409,6 +410,14 @@ func handleCertifications(c *fiber.Ctx) error {
 			Certifications: items,
 		})
 	}
+
+	// Sort deterministically so the response order does not depend on map
+	// iteration order (which is random in Go and would otherwise serialize a
+	// nondeterministic order into the 24h cache). Country groups sort by ISO
+	// code; each country's certifications retain TMDB's own `order` field.
+	sort.Slice(groups, func(i, j int) bool {
+		return groups[i].Country < groups[j].Country
+	})
 
 	setCache(c, key, groups)
 	return c.JSON(groups)
