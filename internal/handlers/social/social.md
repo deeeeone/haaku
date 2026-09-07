@@ -31,7 +31,7 @@ Emits outbox events (`user.followed`, `user.unfollowed`, `user.follow_approved`)
 - **No `notifications.CreateNotification`** — approval/follow events are outboxed but no notification record is created for the target (spec likely wants inbox notifications).
 - **No pagination (RESOLVED)** — followers/following/friends/requests were unbounded lists (charter: unlimited data → must paginate). All four now paginate per §7 (`?page&limit`, default 25/max 100) with `X-Pagination-*` headers + `Link: rel="next"`.
 - **No ordering (RESOLVED)** — lists were unordered. All four now order by `created_at DESC, id ASC` (id tiebreaker keeps pages stable).
-- **Unchecked errors throughout** — `listFollowRelations` ignores `Count` error; `resolveUserStubs` ignores `Find` error; several handlers ignore `db.Exec`/`Find` errors and return empty lists on failure.
+- **Unchecked errors throughout (RESOLVED)** — the already-following existence check, the follow-request user fetch, and `resolveUserStubs` (used by friends/followers/following) now propagate DB failures as 500 `internal` instead of returning empty/partial lists.
 - **`handleUnfollow` doesn't guard self-follow** (`targetID == followerID`) while `handleFollow` does.
 - **`handleFollow` returns 201 for already-following** — arguably should be 200 or an idempotent 201; at least it diverges from REST semantics.
 - **Local error helpers** (`writeError`/`badRequest`/`notFound`) duplicated from `internal/httpapi` (the hand-rolled timestamp literals were unified to `response.FormatTime` in Batch 3).
@@ -44,6 +44,6 @@ Emits outbox events (`user.followed`, `user.unfollowed`, `user.follow_approved`)
 - [x] Define typed outbox constants for follow events — `EventFollowCreated/Approved/Removed` matching the webhook catalog (`follow.created` / `follow.approved` / `follow.removed`); old `user.*` names were drift. Advisory locks on follow still pending.
 - [ ] Create inbox notifications on follow/approve.
 - [x] Add pagination + stable ordering to all list endpoints.
-- [ ] Handle all DB errors instead of ignoring them.
+- [x] Handle all DB errors instead of ignoring them. (Batch 6)
 - [x] Use shared `internal/response` helpers (leaf envelope package now exists, unblocking this).
 - [ ] Verify module test coverage (`make test`).
