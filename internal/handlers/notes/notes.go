@@ -21,9 +21,9 @@ func init() {
 func registerOpenAPIRoutes() {
 	routes := []openapi.RouteDef{
 		{Method: "POST", Path: "/v1/notes", Summary: "Create or update a personal note on a media item", Tags: []string{"Notes"}, Auth: "required", StatusCodes: map[int]string{200: "Note created/updated", 400: "Invalid request", 401: "Unauthorized"}},
-		{Method: "GET", Path: "/v1/notes/{id}", Summary: "Get a single note by ID (owner only)", Tags: []string{"Notes"}, Auth: "required", StatusCodes: map[int]string{200: "Note found", 404: "Not found", 401: "Unauthorized"}},
+		{Method: "GET", Path: "/v1/notes/{id}", Summary: "Get a single note by ID (owner only)", Tags: []string{"Notes"}, Auth: "required", StatusCodes: map[int]string{200: "Note found", 403: "Not your note", 404: "Not found", 401: "Unauthorized"}},
 		{Method: "PUT", Path: "/v1/notes/{id}", Summary: "Update a note body (owner only)", Tags: []string{"Notes"}, Auth: "required", StatusCodes: map[int]string{200: "Note updated", 403: "Not your note", 404: "Not found", 401: "Unauthorized"}},
-		{Method: "DELETE", Path: "/v1/notes/{id}", Summary: "Delete a note (owner only)", Tags: []string{"Notes"}, Auth: "required", StatusCodes: map[int]string{204: "Note deleted", 404: "Not found", 401: "Unauthorized"}},
+		{Method: "DELETE", Path: "/v1/notes/{id}", Summary: "Delete a note (owner only)", Tags: []string{"Notes"}, Auth: "required", StatusCodes: map[int]string{204: "Note deleted", 403: "Not your note", 404: "Not found", 401: "Unauthorized"}},
 		{Method: "GET", Path: "/v1/users/me/notes", Summary: "List own notes, paginated, optional media_type filter", Tags: []string{"Notes"}, Auth: "required", StatusCodes: map[int]string{200: "Notes list", 401: "Unauthorized"}},
 	}
 	for _, r := range routes {
@@ -166,7 +166,7 @@ func handleGetNote(c *fiber.Ctx) error {
 	}
 
 	if note.UserID != userID {
-		return response.NotFound(c, "note not found")
+		return response.Forbidden(c, "note belongs to another user")
 	}
 
 	return c.JSON(toNoteResponse(&note))
@@ -202,7 +202,7 @@ func handleUpdateNote(c *fiber.Ctx) error {
 	}
 
 	if note.UserID != userID {
-		return response.NotFound(c, "note not found")
+		return response.Forbidden(c, "note belongs to another user")
 	}
 
 	note.Note = req.Note
@@ -227,12 +227,21 @@ func handleDeleteNote(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
-	result := db.Where("id = ? AND user_id = ?", id, userID).Delete(&database.UserNote{})
+	var note database.UserNote
+	result := db.Where("id = ?", id).First(&note)
 	if result.Error != nil {
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to delete note")
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return response.NotFound(c, "note not found")
+		}
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
-	if result.RowsAffected == 0 {
-		return response.NotFound(c, "note not found")
+
+	if note.UserID != userID {
+		return response.Forbidden(c, "note belongs to another user")
+	}
+
+	if err := db.Delete(&note).Error; err != nil {
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to delete note")
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
