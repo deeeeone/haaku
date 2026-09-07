@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"trakt-api/internal/auth"
@@ -86,6 +87,24 @@ type createTokenRequest struct {
 	Name   string   `json:"name"`
 	Scopes []string `json:"scopes,omitempty"`
 }
+
+// validScopes is the allowlist of scopes an integration token may grant. It
+// mirrors the canonical OAuth scope set. "*" is deliberately excluded — a
+// wildcard token is too broad, and unknown scopes are rejected rather than
+// silently dropped (no token should receive permissions it was not asked for).
+var validScopes = map[string]bool{
+	"profile": true, "history:read": true, "history:write": true,
+	"watchlist:read": true, "watchlist:write": true,
+	"ratings:read": true, "ratings:write": true,
+	"lists:read": true, "lists:write": true,
+	"social:read": true, "social:write": true,
+	"webhooks:manage": true, "offline_access": true,
+}
+
+// defaultScopes grants a minimal read-only scope to a token created without an
+// explicit scopes field. It replaces the former wildcard "*" default, which
+// would have granted unrestricted access.
+var defaultScopes = []string{"profile"}
 
 type tokenResponse struct {
 	ID        int64    `json:"id"`
@@ -171,7 +190,24 @@ func handleCreateToken(c *fiber.Ctx) error {
 
 	scopes := database.StringSlice(req.Scopes)
 	if len(scopes) == 0 {
-		scopes = database.StringSlice{"*"}
+		scopes = database.StringSlice(defaultScopes)
+	} else {
+		// Validate every requested scope against the allowlist and dedupe.
+		// Unknown (including the former wildcard "*") are rejected outright so a
+		// token is never granted permission beyond what was explicitly listed.
+		granted := make([]string, 0, len(scopes))
+		seen := make(map[string]bool, len(scopes))
+		for _, s := range scopes {
+			s = strings.TrimSpace(s)
+			if !validScopes[s] {
+				return response.BadRequest(c, "invalid scope: "+s)
+			}
+			if !seen[s] {
+				seen[s] = true
+				granted = append(granted, s)
+			}
+		}
+		scopes = database.StringSlice(granted)
 	}
 
 	tok := database.IntegrationToken{
