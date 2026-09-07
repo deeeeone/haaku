@@ -101,10 +101,15 @@ type PublicProfileResponse struct {
 	RecentActivity []interface{} `json:"recent_activity,omitempty"`
 }
 
-// StatsSummary is a stub for user stats.
+// StatsSummary is the stats block on a public profile.
+// Watched/Lists are omitempty: they are genuinely unimplemented (they must be
+// filled by the stats engine, which is not landed) and hardcoded 0s must never
+// be presented as real aggregate counts. Only Followers/Following carry real,
+// DB-computed values. RecentActivity on PublicProfileResponse is likewise
+// omitted (empty) until the stats engine provides it.
 type StatsSummary struct {
-	Watched   int64 `json:"watched"`
-	Lists     int64 `json:"lists"`
+	Watched   int64 `json:"watched,omitempty"`
+	Lists     int64 `json:"lists,omitempty"`
 	Followers int64 `json:"followers"`
 	Following int64 `json:"following"`
 }
@@ -252,7 +257,9 @@ func handleGetUser(c *fiber.Ctx) error {
 
 	resp := buildPublicProfileResponse(&user)
 
-	// Populate stats stubs.
+	// Followers/Following are real DB counts. Watched/Lists stay 0 (omitempty,
+	// so not serialized) and RecentActivity stays empty (omitempty) because they
+	// require the stats engine that isn't landed — we don't fabricate counts.
 	var followersCount, followingCount int64
 	db.Model(&database.UserFollow{}).Where("following_id = ?", userID).Count(&followersCount)
 	db.Model(&database.UserFollow{}).Where("follower_id = ?", userID).Count(&followingCount)
