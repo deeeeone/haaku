@@ -347,11 +347,28 @@ func handleDeleteAccount(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to delete account")
 	}
 
-	db, err := database.GetDB()
+	// Wipe the local mirror + all owned data, then emit the catalog's
+	// user.deleted event and invalidate cached profiles. The event is inserted
+	// after the wipe (DeleteUserData removes this user's events_outbox rows) so
+	// it survives, and all of it commits/rolls back together. Cache ops run
+	// async after commit.
+	err := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
+
+		if err := database.DeleteUserData(tx, userID); err != nil {
+			return nil, fmt.Errorf("delete user data: %w", err)
+		}
+		if err := outbox.PublishEvent(tx, outbox.EventUserDeleted, userID, map[string]any{
+			"user_id": userID,
+		}); err != nil {
+			return nil, fmt.Errorf("publish user.deleted: %w", err)
+		}
+
+		// Invalidate the user's cached profiles across the cache layer.
+		queueUserVersion(cacheTx, userID)
+		return cacheTx, nil
+	})
 	if err != nil {
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
-	}
-	if err := database.DeleteUserData(db, userID); err != nil {
 		slog.Error("delete account: local wipe failed", "user_id", userID, "error", err)
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to delete account data")
 	}

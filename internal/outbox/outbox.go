@@ -39,6 +39,9 @@ const (
 	EventListDeleted      = "list.deleted"
 	EventListItemsAdded   = "list.items.added"
 	EventListItemsRemoved = "list.items.removed"
+
+	// Account events (plan 03-api/webhooks.md §Event catalog).
+	EventUserDeleted = "user.deleted"
 )
 
 // PublishEvent inserts an event into the events_outbox table within the
