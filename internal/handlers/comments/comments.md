@@ -43,7 +43,7 @@ Registers OpenAPI metadata for all endpoints. Uses `comment_type`/`media_type` C
 - [x] Replace local error helpers with `internal/response` (Batch 0).
 - [x] `parseCSV` is stdlib-based (`strings.Split`/`strings.TrimSpace`); the hand-rolled `splitByComma`/`trimSpace` helpers were deleted (Batch 4).
 - [ ] Handle reply_count on delete (decrement and/or cascade) and orphaned replies.
-- [ ] Wrap write flows in `cache.WithCacheTransaction` + cache/version invalidation and outbox events.
+- [x] Wrap write flows in `cache.WithCacheTransaction` + cache/version invalidation and outbox events. (Batch 7 — no comment/reaction/reply/report events exist in the webhook catalog, so invalidation only.)
 - [ ] Paginate `GET /{id}/likes`.
 - [ ] Add comment length validation per spec.
 - [ ] Add DB index strategy for trending query (`like_count+reply_count`, `created_at`).
