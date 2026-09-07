@@ -41,5 +41,5 @@ All routes auth-required via the shared `auth.AuthRequired()` middleware. Regist
 - [x] Move `CreateNotification` into the outbox/cache-tx flow. (Batch 7 — now takes the caller's `cacheTx` and bumps the recipient's user version; inserts must run inside the caller's `cache.WithCacheTransaction`)
 - [x] Replace local error/pagination helpers with `internal/response` (Batch 0).
 - [x] Swap `requireAuth` for shared `auth.AuthRequired` (Batch 1).
-- [ ] Consider cursor pagination for the inbox.
+- [x] Consider cursor pagination for the inbox. (Batch 8 — decision: kept offset `page`/`limit` pagination and added §7 `X-Pagination-*` headers + `Link: rel="next"` with a stable `read ASC, created_at DESC, id DESC` order. Cursor was considered and rejected: the inbox already had an offset-based envelope contract and page/limit is what every other spec-compliant module (webhooks/sync/social) uses, so staying on offset keeps the API uniform. `unread_count`/`total_count` stay in the envelope; page determinism comes from the stable order + headers.)
 - [ ] Verify module test coverage (`make test`).
