@@ -30,7 +30,7 @@ Single endpoint: `GET /v1/users/:id/stats` — public user statistics (plays, mi
 
 - [ ] Implement the version-keyed Redis cache path (or remove the stub).
 - [ ] Guard recompute with an advisory lock or singleflight.
-- [ ] Surface recompute failures (503/500) instead of returning zeroed stats.
+- [x] Surface recompute failures (503/500) instead of returning zeroed stats. (Batch 6)
 - [ ] Align staleness with the user version counter (invalidate on writes via outbox).
 - [ ] Handle non-404 DB errors separately from "not found".
 - [x] Use shared `internal/response` helpers.
