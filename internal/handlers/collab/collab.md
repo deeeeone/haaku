@@ -44,5 +44,5 @@ Ownership is enforced by checking `lists.id = ? AND lists.user_id = ?`. Register
 - [ ] Return 403 (not 404) when the list exists but the caller isn't the owner.
 - [ ] Route writes through `cache.WithCacheTransaction` with list version-key invalidation.
 - [x] Replace local error helpers with shared `internal/response` (Batch 0).
-- [ ] Consolidate the identical fiber.Ctx `parseID` copies in episodes/seasons/comments into a shared helper (collab's string `parseID` now uses `strconv.ParseInt`; Batch 4).
+- [x] Consolidate the identical fiber.Ctx `parseID` copies in episodes/seasons/comments into a shared helper (`response.ParseIDParam`; collab's string `parseID` still uses `strconv.ParseInt`; Batch 5).
 - [ ] Verify module test coverage (`make test`).
