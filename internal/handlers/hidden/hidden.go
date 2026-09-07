@@ -1,13 +1,18 @@
 package hidden
 
 import (
+	"errors"
+	"fmt"
 	"time"
 
 	"trakt-api/internal/auth"
+	"trakt-api/internal/cache"
 	"trakt-api/internal/database"
 	"trakt-api/internal/openapi"
+	"trakt-api/redis"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 	"trakt-api/internal/response"
 )
 
@@ -161,40 +166,47 @@ func handleAddHidden(c *fiber.Ctx) error {
 		return response.BadRequest(c, "media_type and media_id are required")
 	}
 
-	db, err := database.GetDB()
+	var respItem *database.UserHidden
+	err := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
+
+		item := database.UserHidden{
+			UserID:    userID,
+			Section:   section,
+			MediaType: req.MediaType,
+			MediaID:   req.MediaID,
+			HiddenAt:  time.Now(),
+		}
+		// Use FirstOrCreate to avoid duplicate key errors (idempotent).
+		result := tx.Where(database.UserHidden{
+			UserID:    userID,
+			Section:   section,
+			MediaType: req.MediaType,
+			MediaID:   req.MediaID,
+		}).FirstOrCreate(&item)
+		if result.Error != nil {
+			return nil, fmt.Errorf("hide item: %w", result.Error)
+		}
+		respItem = &item
+
+		// Hiding affects the calendar/progress/recommendations feeds (which read
+		// user_hidden to exclude items) and the media item's own state, so bump
+		// both the user and media version counters. No outbox event: the webhook
+		// catalog defines no hide/unhide event type.
+		queueHiddenInvalidation(cacheTx, userID, req.MediaType, req.MediaID)
+		return cacheTx, nil
+	})
 	if err != nil {
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
-	}
-
-	item := database.UserHidden{
-		UserID:    userID,
-		Section:   section,
-		MediaType: req.MediaType,
-		MediaID:   req.MediaID,
-		HiddenAt:  time.Now(),
-	}
-
-	// Use FirstOrCreate to avoid duplicate key errors.
-	result := db.Where(database.UserHidden{
-		UserID:    userID,
-		Section:   section,
-		MediaType: req.MediaType,
-		MediaID:   req.MediaID,
-	}).FirstOrCreate(&item)
-
-	if result.Error != nil {
+		fmt.Printf("hidden: hide item failed: %v\n", err)
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to hide item")
 	}
 
-	// Publish outbox event (best-effort, non-blocking).
-	_ = db
-
 	return c.Status(fiber.StatusCreated).JSON(HiddenItemResponse{
-		UserID:    item.UserID,
-		Section:   item.Section,
-		MediaType: item.MediaType,
-		MediaID:   item.MediaID,
-		HiddenAt:  response.FormatTime(item.HiddenAt),
+		UserID:    respItem.UserID,
+		Section:   respItem.Section,
+		MediaType: respItem.MediaType,
+		MediaID:   respItem.MediaID,
+		HiddenAt:  response.FormatTime(respItem.HiddenAt),
 	})
 }
 
@@ -216,21 +228,28 @@ func handleRemoveHidden(c *fiber.Ctx) error {
 		return response.BadRequest(c, "media_type and media_id are required")
 	}
 
-	db, err := database.GetDB()
+	err := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
+
+		result := tx.Where("user_id = ? AND section = ? AND media_type = ? AND media_id = ?",
+			userID, section, req.MediaType, req.MediaID).
+			Delete(&database.UserHidden{})
+		if result.Error != nil {
+			return nil, fmt.Errorf("unhide item: %w", result.Error)
+		}
+		if result.RowsAffected == 0 {
+			return nil, errHiddenItemNotFound
+		}
+
+		queueHiddenInvalidation(cacheTx, userID, req.MediaType, req.MediaID)
+		return cacheTx, nil
+	})
 	if err != nil {
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
-	}
-
-	result := db.Where("user_id = ? AND section = ? AND media_type = ? AND media_id = ?",
-		userID, section, req.MediaType, req.MediaID).
-		Delete(&database.UserHidden{})
-
-	if result.Error != nil {
+		if errors.Is(err, errHiddenItemNotFound) {
+			return response.NotFound(c, "hidden item not found")
+		}
+		fmt.Printf("hidden: unhide item failed: %v\n", err)
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to remove hidden item")
-	}
-
-	if result.RowsAffected == 0 {
-		return response.NotFound(c, "hidden item not found")
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
@@ -239,3 +258,26 @@ func handleRemoveHidden(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+var errHiddenItemNotFound = errors.New("hidden item not found")
+
+// queueHiddenInvalidation bumps the user's version counter (calendar/progress/
+// recommendations feeds read user_hidden to exclude items) and the target
+// media's version counter after a hide/unhide, invalidating caches in O(1).
+func queueHiddenInvalidation(cacheTx *cache.CacheTransaction, userID, mediaType string, mediaID int64) {
+	uvk := redis.BuildUserVersionKey(userID)
+	cacheTx.AddInvalidation(uvk, map[string]interface{}{
+		"user_id":      userID,
+		"version_key":  uvk,
+		"version_only": true,
+	})
+	if mediaType != "" && mediaID != 0 {
+		mvk := redis.BuildMediaVersionKey(mediaType, mediaID, nil, nil)
+		cacheTx.AddInvalidation(mvk, map[string]interface{}{
+			"media_id":     mediaID,
+			"media_type":   mediaType,
+			"version_key":  mvk,
+			"version_only": true,
+		})
+	}
+}
