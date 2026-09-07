@@ -2,6 +2,7 @@ package comments
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -451,10 +452,19 @@ func handleDeleteComment(c *fiber.Ctx) error {
 	}
 
 	if comment.UserID != userID {
-		// Moderators and admins can delete any comment
-		// Check user role from DB
+		// Moderators and admins can delete any comment. Check the caller's role
+		// from the DB, handling a failed lookup rather than silently treating
+		// them as a non-moderator.
 		var user database.User
-		db.First(&user, "id = ?", userID)
+		if err := db.First(&user, "id = ?", userID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				// Authenticated principal has no user row — deny (safe default).
+				fmt.Printf("comments: delete comment %d: requester %q has no user row\n", id, userID)
+				return response.WriteError(c, fiber.StatusForbidden, "forbidden", "you can only delete your own comments")
+			}
+			fmt.Printf("comments: delete comment %d: lookup requester %q failed: %v\n", id, userID, err)
+			return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		}
 		if !user.IsModerator && !user.IsAdmin {
 			return response.WriteError(c, fiber.StatusForbidden, "forbidden", "you can only delete your own comments")
 		}
