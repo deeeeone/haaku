@@ -27,7 +27,8 @@ Registers OpenAPI metadata for all six endpoints. Reuses `media.BuildMovieRespon
 - **`fiber.NewError` for DB failures** — unstructured error message rather than the envelope `internal` code (also diverges from other handlers that use `writeError`).
 - **No count/total in the response** — raw arrays, no pagination envelope or `row_count`; inconsistent with calendar/comments/activity pagination shapes.
 - **No `movies/collected`/`watched` variants** — only trending/popular/recommendations exist; check the spec for missing discovery endpoints.
-- **No cache layer** — popular/trending are hot, public, read-heavy endpoints; no Redis caching or version invalidation.
+- **Endpoint-set audit vs roadmap T1.7 (DOCUMENTED)** — roadmap T1.7 "Discovery + rankings" expects more than this module delivers: trending (watch activity, not just popularity), popular, **anticipated**, and **played / watched / collected / favorited** variants **with periods**, plus **rankings** (with a stats-worker to precompute them). Discovery currently implements only trending/popular (both `popularity DESC`); `anticipated` lives in the `recommendations` module (`/v1/media/anticipated`) and none of the per-activity (`played`/`collected`/`favorited`) or period-parameterized/ranking endpoints exist anywhere. Per Batch 9 scope these are NOT added here (endpoint additions are out of scope) — tracked as roadmap follow-up work. See roadmap.md T1.7. (Batch 9)
+- **Caching added (RESOLVED)** — trending/popular movie+show listings are now Redis-cached (5m TTL), keyed by media type/kind/page/limit/extended; best-effort, DB fallback (Batch 9).
 
 ## Todos
 
@@ -35,6 +36,6 @@ Registers OpenAPI metadata for all six endpoints. Reuses `media.BuildMovieRespon
 - [ ] Implement recommendations or mark the routes as `not-implemented` in OpenAPI.
 - [x] Use `internal/response` error constructors instead of `fiber.NewError`.
 - [ ] Align response envelope with the API conventions (add counts/pagination metadata if the spec requires).
-- [ ] Add caching for hot public listings.
-- [ ] Cross-check the endpoint set against the roadmap (T1.7).
+- [x] Add caching for hot public listings. (Batch 9 — 5m Redis TTL, keyed by type/kind/page/limit/extended; best-effort, DB fallback.)
+- [x] Cross-check the endpoint set against the roadmap (T1.7). (Batch 9 — audit documented in Oversights: roadmap expects anticipated + played/watched/collected/favorited with periods + rankings, none added here per scope.)
 - [ ] Verify module test coverage (`make test`).
