@@ -206,12 +206,21 @@ func handleGetEpisodeLists(c *fiber.Ctx) error {
 
 	page, limit := response.ParsePagination(c, 25)
 
+	// Count only lists the viewer can actually see (public/link_only) so
+	// total_count matches the rows returned (was counting private lists too).
 	var totalCount int64
-	db.Model(&database.ListItem{}).Where("media_type = ? AND media_id = ?", "episode", id).Count(&totalCount)
+	db.Model(&database.ListItem{}).
+		Joins("JOIN lists ON lists.id = list_items.list_id").
+		Where("list_items.media_type = ? AND list_items.media_id = ? AND lists.privacy IN ?", "episode", id, []string{"public", "link_only"}).
+		Count(&totalCount)
 
+	// Fetch only visible lists in SQL so OFFSET/LIMIT apply to the visible
+	// result set, not to a superset that is later filtered in Go.
 	var items []database.ListItem
-	db.Where("media_type = ? AND media_id = ?", "episode", id).
-		Order("added_at DESC").
+	db.Model(&database.ListItem{}).
+		Joins("JOIN lists ON lists.id = list_items.list_id").
+		Where("list_items.media_type = ? AND list_items.media_id = ? AND lists.privacy IN ?", "episode", id, []string{"public", "link_only"}).
+		Order("list_items.added_at DESC, list_items.id DESC"). // stable order for pagination
 		Offset((page - 1) * limit).
 		Limit(limit).
 		Find(&items)
@@ -225,9 +234,7 @@ func handleGetEpisodeLists(c *fiber.Ctx) error {
 	for _, item := range items {
 		var list database.List
 		if err := db.First(&list, item.ListID).Error; err == nil {
-			if list.Privacy == "public" || list.Privacy == "link_only" {
-				results = append(results, listItemResult{ListItem: item, List: list})
-			}
+			results = append(results, listItemResult{ListItem: item, List: list})
 		}
 	}
 
