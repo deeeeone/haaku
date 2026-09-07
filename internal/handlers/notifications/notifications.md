@@ -36,8 +36,8 @@ All routes auth-required via the shared `auth.AuthRequired()` middleware. Regist
 ## Todos
 
 - [x] Return 400 on malformed JSON in `handleMarkRead` instead of marking everything read. (Batch 6)
-- [ ] Add a notification-settings update endpoint (spec check).
-- [ ] Enforce notification preferences in `CreateNotification` (respect follows/replies/list_invite).
+- [x] Add a notification-settings update endpoint (spec check). (Batch 12 — DECISION: NOT in the spec → no endpoint added; documented as future.) `social-api.md`'s Notifications table lists exactly three routes — `GET /notifications`, `POST /notifications/read`, and `GET /notifications/settings` — and there is **no** settings-write route (no PUT/POST `/notifications/settings`). Per the AGENTS rule "invent no endpoints not in the specs," no update endpoint is added here. Updating preferences is recorded as future work (would write the `users.settings` JSON under `notifications`); for now settings are read-only via `GET /notifications/settings` and the write path remains unimplemented by design.)
+- [x] Enforce notification preferences in `CreateNotification` (respect follows/replies/list_invite). (Batch 12 — implemented. `CreateNotification` now reads the recipient's settings (`users.settings` → `parseNotifSettings`) and skips creation when the toggle for the notification's type is disabled — follow→`follows`, reply→`replies`, list_invite→`list_invite`, import_complete→`import_complete`; types with no toggle (e.g. mentions) are always allowed. The underlying social action still happens; only the inbox entry is suppressed. Best-effort: a settings-read failure defaults to enabled so notifications are never silently lost. Exported `NotifType*` constants added for the spec's inbox categories.)
 - [x] Move `CreateNotification` into the outbox/cache-tx flow. (Batch 7 — now takes the caller's `cacheTx` and bumps the recipient's user version; inserts must run inside the caller's `cache.WithCacheTransaction`)
 - [x] Replace local error/pagination helpers with `internal/response` (Batch 0).
 - [x] Swap `requireAuth` for shared `auth.AuthRequired` (Batch 1).
