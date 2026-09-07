@@ -25,7 +25,7 @@ Each paginates (`page`/`limit`, default 25, max 100) and honors `extended` (min/
 - **Local builders duplicate `media`'s** — `buildMovieResponse`/`buildShowResponse`/`buildPersonResponse`/`buildMovieIDs`/`buildShowIDs` reimplement what `media` already exports (`BuildMovieResponse`, `BuildShowResponse`); the extended switch uses `fallthrough` magic and an `if extended == "all"` re-set block that sets fields twice. Drift risk (already diverging: no trailer/status handling parity).
 - **`case "images":` is empty** — images are always embedded in the base response, so the "images" extended level is a no-op; also `"metadata"` only sets `Metadata` (no fallthrough to images semantics).
 - **`notFound` helper is dead code** — defined, never called.
-- **No caching** — unlike `media`/`reference`/`lists`, these public read endpoints hit the DB directly each call; updates feeds are exactly the kind of thing that should be Redis-cached with a short TTL.
+- **Caching added (RESOLVED)** — these public update feeds are now Redis-cached with a short 90s TTL (keyed by type, start_date, page, limit, extended), so repeated sync-scraper polling reads from Redis instead of hammering the DB. Best-effort with DB fallback (Batch 9).
 - **Date-only `start_date`** — `time.Parse("2006-01-02", ...)`; sub-day precision is lost and Trakt allows timestamp-style start dates. Also no `end_date`/`type` filters.
 - **Error helpers** — `badRequest` local; DB errors via `fiber.NewError` (which the shared error handler formats — OK, but inconsistent with sibling modules that write the envelope inline).
 - **Empty results are `null`, not `[]`** — `make([]media.MovieResponse, 0, len(movies))` only guards the happy path length; a `nil` movies slice yields `null` in JSON for the no-results case.
@@ -35,7 +35,7 @@ Each paginates (`page`/`limit`, default 25, max 100) and honors `extended` (min/
 
 - [ ] Include `updated_at` (and entity id) in responses.
 - [x] Reuse `media` builders (`BuildMovieResponse`/`BuildShowResponse`/`BuildPersonResponse`) instead of the local duplicates; person IDs now preserve tmdb/imdb in media's builder (Batch 5).
-- [ ] Add Redis caching with a short TTL.
+- [x] Add Redis caching with a short TTL. (Batch 9 — 90s TTL keyed by type/start_date/page/limit/extended; best-effort, DB fallback.)
 - [ ] Consider supporting timestamp `start_date` and an `end_date` filter per spec.
 - [x] Return `[]` (never `null`) for empty result sets. (Batch 8 — response built with `make([]T, 0, …)`, so an empty/no-match result serializes as `[]`; a nil underlying slice never reaches the JSON encoder.)
 - [x] Add pagination metadata to the response. (Batch 8 — the array body is kept (matching the spec-compliant `webhooks`/`sync` convention); §7 `X-Pagination-*` headers + `Link: rel="next"` now carry `page`/`limit`/`total`/pages so a client can page deterministically against the stable `updated_at DESC, id DESC` order. No `row_count`/`total` envelope field is needed since headers suffice.)
