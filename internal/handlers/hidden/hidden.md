@@ -38,6 +38,6 @@ Section allowlist enforced server-side: `calendar`, `progress_watched`, `progres
 - [x] Invalidate user/feed version keys on hide/unhide. (Batch 7)
 - [x] Use `internal/response` error constructors (Batch 0).
 - [x] Use shared `response.FormatTime` instead of the hand-rolled timestamp literal.
-- [ ] Validate `media_type` against the spec's allowed values.
+- [x] Validate `media_type` against the spec's allowed values. (Batch 11)
 - [ ] Confirm 201-vs-200 semantics for idempotent re-hide.
 - [ ] Verify module test coverage (`make test`).
