@@ -39,7 +39,7 @@ All routes are auth-required via the shared `auth.AuthRequired()` middleware. Re
 - [x] Swap `requireAuth` for shared `auth.AuthRequired` (Batch 1).
 - [x] Make the upsert atomic (DB unique constraint + `OnConflict` upsert) or advisory-locked. (Batch 7 — advisory-locked; no schema change)
 - [x] Reconcile 403-vs-404 for cross-user access against the spec/docs. (Batch 6)
-- [ ] Add note-length and `media_type` validation.
+- [x] Add note-length and `media_type` validation. (Batch 11)
 - [x] Replace local error/pagination helpers with `internal/response` (Batch 0).
 - [x] Route writes through `WithCacheTransaction` per conventions. (Batch 7)
 - [ ] Verify module test coverage (`make test`).
