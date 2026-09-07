@@ -1,6 +1,7 @@
 package stats
 
 import (
+	"errors"
 	"log"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	projredis "trakt-api/redis"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 	"trakt-api/internal/response"
 )
 
@@ -63,7 +65,12 @@ func handleGetUserStats(c *fiber.Ctx) error {
 	// Check if user exists.
 	var user database.User
 	if err := db.First(&user, "id = ?", userID).Error; err != nil {
-		return response.NotFound(c, "user not found")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return response.NotFound(c, "user not found")
+		}
+		// A DB outage is not the same as a missing user — don't mask it as 404.
+		log.Printf("[stats] lookup user %s failed: %v", userID, err)
+		return response.ServiceUnavailable(c, "stats are temporarily unavailable")
 	}
 
 	// Try fetching cached stats.
