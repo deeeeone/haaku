@@ -23,7 +23,7 @@ Reuses media builders (`SeasonResponse`, `ShowResponse`, `RatingSummary`). No au
 ## Oversights
 
 - **No cache** — no Redis caching of detail/stats/ratings even though `media`/`lists`/`reference` cache aggressively. Public endpoints will hammer the DB per request; stats run 4 separate queries per call.
-- **Stats error handling swallowed** — `querySeasonStats` ignores all `.Error` returns; a DB error silently yields zeroed stats. Same for `queryRatingDistribution`.
+- **Stats error handling swallowed (RESOLVED)** — `querySeasonStats`/`queryRatingDistribution` now return errors on DB failure and callers log + return 500 `internal` instead of silently yielding zeroed stats.
 - **Embedded show lookup errors ignored** — `db.First(&show...)` failure leaves `resp.Show = nil` silently (acceptable degradation but no logging).
 - **Rating distribution only for `season` media_type** — season ratings query by `media_id` of type `season`; if ratings are stored per-episode elsewhere there's a mismatch. Verify data model.
 - **`handleGetSeason` fetches season first, then show, then 4 stat queries** — 6+ queries for one detail response; N+1 / chatty.
@@ -35,7 +35,7 @@ Reuses media builders (`SeasonResponse`, `ShowResponse`, `RatingSummary`). No au
 ## Todos
 
 - [ ] Add Redis caching (TTL) for season detail/stats/ratings.
-- [ ] Handle errors in `querySeasonStats`/`queryRatingDistribution` (return error, 500 on failure).
+- [x] Handle errors in `querySeasonStats`/`queryRatingDistribution` (return error, 500 on failure). (Batch 6)
 - [x] Reuse shared `media` season builder (`media.BuildSeasonResponse`) instead of the local `buildFullSeasonResponse` (Batch 5).
 - [ ] Consolidate the detail query (single joined query or batch).
 - [x] Use shared `internal/response` helpers.
