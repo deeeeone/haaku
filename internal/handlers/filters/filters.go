@@ -2,10 +2,13 @@ package filters
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 
+	"trakt-api/internal/cache"
 	"trakt-api/internal/database"
 	"trakt-api/internal/openapi"
+	"trakt-api/redis"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -113,37 +116,54 @@ func handleSaveFilter(c *fiber.Ctx) error {
 		return response.BadRequest(c, "section and name are required")
 	}
 
-	db, err := database.GetDB()
-	if err != nil {
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
-	}
-
-	// Check count — max 20 per user per section.
-	var count int64
-	db.Model(&database.SavedFilter{}).
-		Where("user_id = ? AND section = ?", userID, req.Section).
-		Count(&count)
-	if count >= 20 {
-		return response.BadRequest(c, "maximum of 20 saved filters per section reached")
-	}
-
+	// Build the filter value.
 	filter := req.Filter
 	if filter == nil {
 		filter = database.JSONMap{}
 	}
 
-	saved := database.SavedFilter{
-		UserID:  userID,
-		Section: req.Section,
-		Name:    req.Name,
-		Filter:  filter,
-	}
+	var savedResult *database.SavedFilter
+	err := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
 
-	if err := db.Create(&saved).Error; err != nil {
+		// Enforce the 20-per-section cap inside the tx, serialized per user so
+		// concurrent saves can't both pass the check and exceed the limit.
+		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtext(?))", "saved_filter:"+userID).Error; err != nil {
+			return nil, fmt.Errorf("advisory lock: %w", err)
+		}
+		var count int64
+		if err := tx.Model(&database.SavedFilter{}).
+			Where("user_id = ? AND section = ?", userID, req.Section).
+			Count(&count).Error; err != nil {
+			return nil, fmt.Errorf("count saved filters: %w", err)
+		}
+		if count >= 20 {
+			return nil, errFilterLimitReached
+		}
+
+		saved := database.SavedFilter{
+			UserID:  userID,
+			Section: req.Section,
+			Name:    req.Name,
+			Filter:  filter,
+		}
+		if err := tx.Create(&saved).Error; err != nil {
+			return nil, fmt.Errorf("create saved filter: %w", err)
+		}
+		savedResult = &saved
+
+		bumpUserVersion(cacheTx, userID)
+		return cacheTx, nil
+	})
+	if err != nil {
+		if errors.Is(err, errFilterLimitReached) {
+			return response.BadRequest(c, "maximum of 20 saved filters per section reached")
+		}
+		fmt.Printf("filters: save filter failed: %v\n", err)
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to save filter")
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(toFilterResponse(&saved))
+	return c.Status(fiber.StatusCreated).JSON(toFilterResponse(savedResult))
 }
 
 // DELETE /v1/users/me/saved_filters/:id — delete a saved filter
@@ -171,7 +191,16 @@ func handleDeleteFilter(c *fiber.Ctx) error {
 		return response.Forbidden(c, "you can only delete your own saved filters")
 	}
 
-	if err := db.Delete(&f).Error; err != nil {
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
+		if err := tx.Delete(&f).Error; err != nil {
+			return nil, fmt.Errorf("delete saved filter: %w", err)
+		}
+		bumpUserVersion(cacheTx, userID)
+		return cacheTx, nil
+	})
+	if err != nil {
+		fmt.Printf("filters: delete filter failed: %v\n", err)
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to delete filter")
 	}
 
@@ -181,3 +210,16 @@ func handleDeleteFilter(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+var errFilterLimitReached = errors.New("saved filter limit reached")
+
+// bumpUserVersion queues a version-counter bump for the user so cached
+// user-scoped saved-filter responses are invalidated in O(1).
+func bumpUserVersion(cacheTx *cache.CacheTransaction, userID string) {
+	uvk := redis.BuildUserVersionKey(userID)
+	cacheTx.AddInvalidation(uvk, map[string]interface{}{
+		"user_id":      userID,
+		"version_key":  uvk,
+		"version_only": true,
+	})
+}
