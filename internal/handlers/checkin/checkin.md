@@ -44,9 +44,9 @@ Key mechanics:
 ## Todos
 
 - [x] Replace `writeAPIError` with `internal/response` error constructors.
-- [ ] Use a typed sentinel error for "already checked in" instead of string comparison.
-- [ ] Map resolve/DB errors to proper status codes (404 for missing season/episode, 500 for DB failures) instead of blanket 400.
-- [ ] Don't leak wrapped error details in client-facing messages; log them server-side.
+- [x] Use a typed sentinel error for "already checked in" instead of string comparison. (Batch 6)
+- [x] Map resolve/DB errors to proper status codes (404 for missing season/episode, 500/503 for DB failures) instead of blanket 400. (Batch 6)
+- [x] Don't leak wrapped error details in client-facing messages; log them server-side. (Batch 6)
 - [ ] Decide whether to implement `sharing` or drop the field.
 - [ ] Confirm DELETE-no-op and episode response shape against the spec.
 - [ ] Verify module test coverage (`make test`).
