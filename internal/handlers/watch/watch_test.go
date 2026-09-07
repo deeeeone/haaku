@@ -3,6 +3,7 @@ package watch
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -71,7 +72,7 @@ func makeWatchApp(dbMeta *database.JSONMap, fetchCalls *int, mediaType string, t
 				}, nil
 			}
 		}
-		return serveWatchProviders(c, meta, c.Query("country", "us"), persist, fetchFresh)
+		return serveWatchProviders(c, meta, c.Query("country", "us"), mediaType, persist, fetchFresh)
 	})
 	return app
 }
@@ -192,6 +193,39 @@ func TestWatchProvidersAbsenceExpires(t *testing.T) {
 	resp.Body.Close()
 	if fetchCalls != 1 {
 		t.Fatalf("expired negative was not re-checked: fetch calls = %d, want 1", fetchCalls)
+	}
+}
+
+// TestWatchShowCountryMissLinkIsTV confirms the show branch of the country-miss
+// path builds a /tv/ TMDB watch link, not a /movie/ link. Regression for the
+// hardcoded "movie" passed to cpLink in the show country-miss path.
+func TestWatchShowCountryMissLinkIsTV(t *testing.T) {
+	var dbMeta database.JSONMap = database.JSONMap{}
+	fetchCalls := 0
+	// The makeWatchApp "show" fetch returns only US providers (id=1).
+	app := makeWatchApp(&dbMeta, &fetchCalls, "show", 1)
+
+	resp, err := app.Test(httptestReq("/watch?country=CA"))
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d, want 200", resp.StatusCode)
+	}
+
+	var w WatchResponse
+	if err := json.NewDecoder(resp.Body).Decode(&w); err != nil {
+		t.Fatalf("decode body: %v", err)
+	}
+	if w.Link == "" {
+		t.Fatalf("expected a TMDB watch link for the country-miss show path, got empty link")
+	}
+	if !strings.Contains(w.Link, "/tv/1/watch") {
+		t.Fatalf("show country-miss link = %q, want /tv/1/watch link (movie link would be wrong)", w.Link)
+	}
+	if strings.Contains(w.Link, "/movie/") {
+		t.Fatalf("show country-miss link = %q, must NOT point at /movie/", w.Link)
 	}
 }
 

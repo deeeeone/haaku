@@ -148,7 +148,7 @@ func handleMovieWatch(c *fiber.Ctx) error {
 		return response.NotFound(c, "movie has no TMDB ID")
 	}
 
-	return serveWatchProviders(c, movie.Metadata, country, func() error {
+	return serveWatchProviders(c, movie.Metadata, country, "movie", func() error {
 		return db.Model(&movie).Update("metadata", movie.Metadata).Error
 	}, func() (*tmdb.WatchProvidersResponse, error) {
 		client, cerr := getTMDBClient()
@@ -190,7 +190,7 @@ func handleShowWatch(c *fiber.Ctx) error {
 		return response.NotFound(c, "show has no TMDB ID")
 	}
 
-	return serveWatchProviders(c, show.Metadata, country, func() error {
+	return serveWatchProviders(c, show.Metadata, country, "show", func() error {
 		return db.Model(&show).Update("metadata", show.Metadata).Error
 	}, func() (*tmdb.WatchProvidersResponse, error) {
 		client, cerr := getTMDBClient()
@@ -203,11 +203,14 @@ func handleShowWatch(c *fiber.Ctx) error {
 
 // serveWatchProviders handles cache lookup and fallback to TMDB for watch providers.
 // persist persists an updated metadata map back to the DB row (best-effort) after
-// a fresh TMDB fetch.
+// a fresh TMDB fetch. mediaType is the canonical media type ("movie"|"show") and
+// is used to build the correct TMDB watch link when the requested country has no
+// providers (movie vs /tv/ — see cpLink).
 func serveWatchProviders(
 	c *fiber.Ctx,
 	metadata database.JSONMap,
 	country string,
+	mediaType string,
 	persist func() error,
 	fetchFresh func() (*tmdb.WatchProvidersResponse, error),
 ) error {
@@ -272,7 +275,7 @@ func serveWatchProviders(
 	if err := persist(); err != nil {
 		log.Printf("[watch] failed to persist watch providers cache: %v", err)
 	}
-	return c.JSON(defaultResponse(cpLink(resp.ID, "movie", country)))
+	return c.JSON(defaultResponse(cpLink(resp.ID, mediaType, country)))
 }
 
 // metadataAbsenceKey is the metadata JSONB key holding country → last-confirmed
