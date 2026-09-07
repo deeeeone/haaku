@@ -50,6 +50,6 @@ Behavior:
 - [ ] Replace `deriveTarget` with a route param or per-target handlers.
 - [ ] Batch-fetch shows/seasons to kill the N+1 loop.
 - [ ] Apply hidden exclusion consistently across all targets (spec check).
-- [ ] Use structured `internal` error code for DB failures.
+- [x] Use structured `internal` error code for DB failures. (Batch 6)
 - [ ] Verify `friends` mutual-follow semantics and 90-day cutoff against the spec.
 - [ ] Confirm module test coverage (`make test`).
