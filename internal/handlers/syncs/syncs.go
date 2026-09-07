@@ -51,7 +51,7 @@ func registerOpenAPIRoutes() {
 			StatusCodes: map[int]string{
 				200: "Paused/unmatched items",
 				401: "Unauthorized",
-				404: "Sync session not found",
+				501: "Not implemented (requires sync engine)",
 			},
 		},
 		{
@@ -63,7 +63,7 @@ func registerOpenAPIRoutes() {
 			StatusCodes: map[int]string{
 				200: "Skipped items",
 				401: "Unauthorized",
-				404: "Sync session not found",
+				501: "Not implemented (requires sync engine)",
 			},
 		},
 	}
@@ -169,64 +169,20 @@ func handleGetSync(c *fiber.Ctx) error {
 }
 
 // handleGetSyncPaused returns items that couldn't be matched.
+// Fails closed with 501: unmatched/paused items are produced by the async sync
+// engine, which isn't landed (Phase 3+). Returning session.Errors would conflate
+// real processing errors with unmatched content, and an empty array would pretend
+// to be a real result — so this stays not_implemented until the engine exists.
 func handleGetSyncPaused(c *fiber.Ctx) error {
-	userID, err := requireUserID(c)
-	if err != nil {
-		return err
-	}
-	syncID, err := parseSyncID(c)
-	if err != nil {
-		return err
-	}
-
-	db, err := database.GetDB()
-	if err != nil {
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
-	}
-
-	var session database.SyncSession
-	if err := db.Where("id = ? AND user_id = ?", syncID, userID).First(&session).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return response.WriteError(c, fiber.StatusNotFound, "not_found", "sync session not found")
-		}
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
-	}
-
-	return c.JSON(fiber.Map{
-		"sync_id":      session.ID,
-		"paused_items": session.Errors,
-	})
+	return response.NotImplemented(c, "paused/unmatched items require the sync engine, which is not implemented")
 }
 
 // handleGetSyncSkipped returns skipped items.
+// Fails closed with 501: skipped items are produced by the async sync engine,
+// which isn't landed (Phase 3+). Returning a hardcoded empty array would pretend
+// to be a real result, so this stays not_implemented until the engine exists.
 func handleGetSyncSkipped(c *fiber.Ctx) error {
-	userID, err := requireUserID(c)
-	if err != nil {
-		return err
-	}
-	syncID, err := parseSyncID(c)
-	if err != nil {
-		return err
-	}
-
-	db, err := database.GetDB()
-	if err != nil {
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
-	}
-
-	var session database.SyncSession
-	if err := db.Where("id = ? AND user_id = ?", syncID, userID).First(&session).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return response.WriteError(c, fiber.StatusNotFound, "not_found", "sync session not found")
-		}
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
-	}
-
-	// Minimal: return empty for now; skipped items require full sync engine (Phase 3+).
-	return c.JSON(fiber.Map{
-		"sync_id":       session.ID,
-		"skipped_items": []any{},
-	})
+	return response.NotImplemented(c, "skipped items require the sync engine, which is not implemented")
 }
 
 // ---------------------------------------------------------------------------
