@@ -38,5 +38,5 @@ Validation: `id` must parse; `reason` allowlisted (`spam`, `spoiler`, `offensive
 - [x] Use shared `internal/response` error helpers (Batch 0).
 - [x] Swap `requireAuth` for shared `auth.AuthRequired` (Batch 1).
 - [ ] Consider whether `reporter_id` should be in the public response.
-- [ ] Cap `description` length.
+- [x] Cap `description` length. (Batch 11)
 - [ ] Verify module test coverage (`make test`).
