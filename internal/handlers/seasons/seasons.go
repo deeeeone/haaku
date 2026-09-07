@@ -82,7 +82,7 @@ func handleGetSeason(c *fiber.Ctx) error {
 	}
 
 	resp := SeasonDetailResponse{
-		SeasonResponse: buildFullSeasonResponse(&season),
+		SeasonResponse: media.BuildSeasonResponse(&season),
 	}
 
 	// Fetch show.
@@ -203,23 +203,6 @@ func queryRatingDistribution(db *gorm.DB, mediaType string, mediaID int64) *medi
 		Votes:        count,
 		Distribution: distribution,
 	}
-}
-
-func buildFullSeasonResponse(s *database.Season) media.SeasonResponse {
-	resp := media.SeasonResponse{
-		IDs:          media.IDs{ID: s.ID},
-		ShowID:       s.ShowID,
-		SeasonNumber: s.SeasonNumber,
-		EpisodeCount: s.EpisodeCount,
-		Images:       s.Images,
-	}
-	if s.AiredAt != nil {
-		resp.AiredAt = s.AiredAt.String()
-	}
-	if resp.Images == nil || len(resp.Images) == 0 {
-		resp.Images = make(map[string]any)
-	}
-	return resp
 }
 
 // ---------------------------------------------------------------------------
