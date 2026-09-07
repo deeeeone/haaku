@@ -258,16 +258,35 @@ func handleAddHistory(c *fiber.Ctx) error {
 	var movieIDs []int64
 	var episodes []database.Episode
 
+	// Collect every TMDB id up front so we can batch-resolve them in a bounded
+	// number of queries instead of one lookup per item (kills the N+1).
+	var tmdbIDs []int
+	for _, m := range req.Movies {
+		tmdbIDs = append(tmdbIDs, m.IDs.TMDB)
+	}
+	for _, s := range req.Shows {
+		tmdbIDs = append(tmdbIDs, s.IDs.TMDB)
+	}
+	for _, e := range req.Episodes {
+		tmdbIDs = append(tmdbIDs, e.IDs.TMDB)
+	}
+
 	dbErr := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
 		cacheTx := cache.NewCacheTransaction()
 
+		refs, resolveErr := media.ResolveTMDBBatch(tx, tmdbIDs)
+		if resolveErr != nil {
+			return nil, resolveErr
+		}
+
 		// Process movies
 		for _, m := range req.Movies {
-			mediaType, mediaID, err := resolveByTMDB(c, tx, m.IDs.TMDB)
-			if err != nil || mediaType != "movie" {
+			ref, ok := refs[m.IDs.TMDB]
+			if !ok || ref.MediaType != "movie" {
 				resp.NotFound.Movies = append(resp.NotFound.Movies, map[string]interface{}{"ids": m.IDs})
 				continue
 			}
+			mediaID := ref.MediaID
 			watchedAt, err := parseWatchedAt(m.WatchedAt, now, nil)
 			if err != nil {
 				resp.NotFound.Movies = append(resp.NotFound.Movies, map[string]interface{}{
@@ -286,11 +305,12 @@ func handleAddHistory(c *fiber.Ctx) error {
 
 		// Process shows — expand to episodes
 		for _, s := range req.Shows {
-			mediaType, mediaID, err := resolveByTMDB(c, tx, s.IDs.TMDB)
-			if err != nil || mediaType != "show" {
+			ref, ok := refs[s.IDs.TMDB]
+			if !ok || ref.MediaType != "show" {
 				resp.NotFound.Shows = append(resp.NotFound.Shows, map[string]interface{}{"ids": s.IDs})
 				continue
 			}
+			mediaID := ref.MediaID
 
 			if len(s.Seasons) > 0 {
 				// Expand specific seasons
@@ -355,13 +375,14 @@ func handleAddHistory(c *fiber.Ctx) error {
 
 		// Process standalone episodes (with show TMDB ID, season, and episode number)
 		for _, ep := range req.Episodes {
-			mediaType, showID, err := resolveByTMDB(c, tx, ep.IDs.TMDB)
-			if err != nil || mediaType != "show" {
+			ref, ok := refs[ep.IDs.TMDB]
+			if !ok || ref.MediaType != "show" {
 				resp.NotFound.Episodes = append(resp.NotFound.Episodes, map[string]interface{}{
 					"ids": ep.IDs, "season": ep.Season, "number": ep.Number,
 				})
 				continue
 			}
+			showID := ref.MediaID
 
 			seasonRow, found := findSeason(tx, showID, ep.Season)
 			if !found {
@@ -615,15 +636,30 @@ func handleAddCollection(c *fiber.Ctx) error {
 	var showIDs []int64
 	now := time.Now()
 
+	// Batch-resolve every TMDB id up front (kills the per-item N+1).
+	var tmdbIDs []int
+	for _, m := range req.Movies {
+		tmdbIDs = append(tmdbIDs, m.IDs.TMDB)
+	}
+	for _, s := range req.Shows {
+		tmdbIDs = append(tmdbIDs, s.IDs.TMDB)
+	}
+
 	dbErr := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
 		cacheTx := cache.NewCacheTransaction()
 
+		refs, resolveErr := media.ResolveTMDBBatch(tx, tmdbIDs)
+		if resolveErr != nil {
+			return nil, resolveErr
+		}
+
 		for _, m := range req.Movies {
-			mediaType, mediaID, err := resolveByTMDB(c, tx, m.IDs.TMDB)
-			if err != nil || mediaType != "movie" {
+			ref, ok := refs[m.IDs.TMDB]
+			if !ok || ref.MediaType != "movie" {
 				notFound++
 				continue
 			}
+			mediaID := ref.MediaID
 			result := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&database.UserCollection{
 				UserID: userID, MediaType: "movie", MediaID: mediaID, CollectedAt: now,
 			})
@@ -635,11 +671,12 @@ func handleAddCollection(c *fiber.Ctx) error {
 			}
 		}
 		for _, s := range req.Shows {
-			mediaType, mediaID, err := resolveByTMDB(c, tx, s.IDs.TMDB)
-			if err != nil || mediaType != "show" {
+			ref, ok := refs[s.IDs.TMDB]
+			if !ok || ref.MediaType != "show" {
 				notFound++
 				continue
 			}
+			mediaID := ref.MediaID
 			result := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&database.UserCollection{
 				UserID: userID, MediaType: "show", MediaID: mediaID, CollectedAt: now,
 			})
@@ -827,8 +864,22 @@ func handleAddWatchlist(c *fiber.Ctx) error {
 	var showIDs []int64
 	now := time.Now()
 
+	// Batch-resolve every TMDB id up front (kills the per-item N+1).
+	var tmdbIDs []int
+	for _, m := range req.Movies {
+		tmdbIDs = append(tmdbIDs, m.IDs.TMDB)
+	}
+	for _, s := range req.Shows {
+		tmdbIDs = append(tmdbIDs, s.IDs.TMDB)
+	}
+
 	dbErr := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
 		cacheTx := cache.NewCacheTransaction()
+
+		refs, resolveErr := media.ResolveTMDBBatch(tx, tmdbIDs)
+		if resolveErr != nil {
+			return nil, resolveErr
+		}
 
 		// Serialize rank assignment per user (advisory lock), then read the
 		// current max so concurrent adds can't produce duplicate ranks.
@@ -842,11 +893,12 @@ func handleAddWatchlist(c *fiber.Ctx) error {
 		}
 
 		for _, m := range req.Movies {
-			mediaType, mediaID, err := resolveByTMDB(c, tx, m.IDs.TMDB)
-			if err != nil || mediaType != "movie" {
+			ref, ok := refs[m.IDs.TMDB]
+			if !ok || ref.MediaType != "movie" {
 				notFound++
 				continue
 			}
+			mediaID := ref.MediaID
 			maxRank++
 			result := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&database.UserWatchlist{
 				UserID: userID, MediaType: "movie", MediaID: mediaID, Rank: maxRank,
@@ -861,11 +913,12 @@ func handleAddWatchlist(c *fiber.Ctx) error {
 			}
 		}
 		for _, s := range req.Shows {
-			mediaType, mediaID, err := resolveByTMDB(c, tx, s.IDs.TMDB)
-			if err != nil || mediaType != "show" {
+			ref, ok := refs[s.IDs.TMDB]
+			if !ok || ref.MediaType != "show" {
 				notFound++
 				continue
 			}
+			mediaID := ref.MediaID
 			maxRank++
 			result := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&database.UserWatchlist{
 				UserID: userID, MediaType: "show", MediaID: mediaID, Rank: maxRank,
@@ -1100,19 +1153,41 @@ func handleAddRatings(c *fiber.Ctx) error {
 	var mediaRefs []mediaRef
 	now := time.Now()
 
+	// Batch-resolve every TMDB id up front (kills the per-item N+1).
+	var tmdbIDs []int
+	for _, m := range req.Movies {
+		tmdbIDs = append(tmdbIDs, m.IDs.TMDB)
+	}
+	for _, s := range req.Shows {
+		tmdbIDs = append(tmdbIDs, s.IDs.TMDB)
+	}
+	for _, s := range req.Seasons {
+		tmdbIDs = append(tmdbIDs, s.IDs.TMDB)
+	}
+	for _, e := range req.Episodes {
+		tmdbIDs = append(tmdbIDs, e.IDs.TMDB)
+	}
+
 	dbErr := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
 		cacheTx := cache.NewCacheTransaction()
+
+		refs, resolveErr := media.ResolveTMDBBatch(tx, tmdbIDs)
+		if resolveErr != nil {
+			return nil, resolveErr
+		}
 
 		upsertRating := func(ids idsObj, rating int) {
 			if rating < 1 || rating > 10 {
 				notFound++
 				return
 			}
-			mediaTypeResolved, mediaID, err := resolveByTMDB(c, tx, ids.TMDB)
-			if err != nil || mediaTypeResolved == "" {
+			ref, ok := refs[ids.TMDB]
+			if !ok {
 				notFound++
 				return
 			}
+			mediaTypeResolved := ref.MediaType
+			mediaID := ref.MediaID
 			tx.Clauses(clause.OnConflict{
 				Columns:   []clause.Column{{Name: "user_id"}, {Name: "media_type"}, {Name: "media_id"}},
 				DoUpdates: clause.AssignmentColumns([]string{"rating", "rated_at", "updated_at"}),
@@ -1303,8 +1378,22 @@ func handleAddFavorites(c *fiber.Ctx) error {
 	var showIDs []int64
 	now := time.Now()
 
+	// Batch-resolve every TMDB id up front (kills the per-item N+1).
+	var tmdbIDs []int
+	for _, m := range req.Movies {
+		tmdbIDs = append(tmdbIDs, m.IDs.TMDB)
+	}
+	for _, s := range req.Shows {
+		tmdbIDs = append(tmdbIDs, s.IDs.TMDB)
+	}
+
 	dbErr := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
 		cacheTx := cache.NewCacheTransaction()
+
+		refs, resolveErr := media.ResolveTMDBBatch(tx, tmdbIDs)
+		if resolveErr != nil {
+			return nil, resolveErr
+		}
 
 		// Serialize rank assignment per user (advisory lock), then read the
 		// current max so concurrent adds can't produce duplicate ranks.
@@ -1318,11 +1407,12 @@ func handleAddFavorites(c *fiber.Ctx) error {
 		}
 
 		addFavorite := func(tmdbID int, mediaType string) {
-			mtResolved, mediaID, err := resolveByTMDB(c, tx, tmdbID)
-			if err != nil || mtResolved != mediaType {
+			ref, ok := refs[tmdbID]
+			if !ok || ref.MediaType != mediaType {
 				notFound++
 				return
 			}
+			mediaID := ref.MediaID
 			maxRank++
 			result := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&database.UserFavorite{
 				UserID: userID, MediaType: mediaType, MediaID: mediaID,
