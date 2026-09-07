@@ -35,6 +35,6 @@ Both return plain JSON arrays with `progress` + `paused_at` and enriched media i
 - [x] Add pagination (page/limit) to both endpoints. (Batch 8 — §7 `X-Pagination-*` headers + `Link: rel="next"`; stable `paused_at DESC, id DESC` order.)
 - [x] Remove the redundant per-handler auth check — routes run `auth.AuthRequired()` (Batch 1).
 - [x] Reuse `media.BuildMovieResponse` / media builders for response enrichment (movie playback now batch-fetches and builds via `media.BuildMovieResponse`; Batch 5).
-- [ ] Clarify paused-vs-expired semantics and filter accordingly.
+- [x] Clarify paused-vs-expired semantics and filter accordingly. (Batch 12 — DECISION: there is no "expired" state to filter; `user_playback` rows are pure resume points.) `sync-api.md` defines `GET /sync/playback` as "all saved resume points (progress %, paused_at)" with `DELETE` to clear one — there is no expiry column or expired concept on `user_playback` (unlike `scrobble_sessions`, which carry `expires_at` for the active-watching timeout). Playback rows are created on pause/stop<80% and removed when the item is completed (scrobble ≥80%), a fresh start, or explicit DELETE. So the GET returns every stored resume position — there is nothing "expired" to exclude, and adding a filter would wrongly hide positions that are still valid resume points. No code change; behavior is correct per spec.)
 - [x] Replace local error helpers with `internal/response` (Batch 0); auth swap tracked at the item above.
 - [ ] Verify module test coverage (`make test`).
