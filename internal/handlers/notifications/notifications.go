@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"time"
 
+	"trakt-api/internal/cache"
 	"trakt-api/internal/database"
 	"trakt-api/internal/openapi"
+	"trakt-api/redis"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -241,9 +243,19 @@ func parseNotifSettings(rawSettings string) notifSettingsResponse {
 	return settings
 }
 
-// CreateNotification creates a notification for a user. Called inline from
-// other handlers when an event occurs (e.g., follow, reply, list invite).
-func CreateNotification(db *gorm.DB, userID, notifType, actorID string, payload map[string]interface{}) error {
+// Notification type constants — the canonical inbox Type values used by
+// CreateNotification and the inbox UI/settings (follows/replies/list_invite).
+const (
+	NotifTypeFollow = "follow"
+)
+
+// CreateNotification creates a notification for a user. It must be called from
+// within a `cache.WithCacheTransaction` (DB-commit-first) flow: pass the active
+// transaction `db` and the caller's `cacheTx` so the insert commits atomically
+// with the surrounding write and the recipient's user version counter is queued
+// for a bump (invalidates the cached inbox in O(1)). Notification writes never
+// bypass version counters or open their own transaction.
+func CreateNotification(db *gorm.DB, cacheTx *cache.CacheTransaction, userID, notifType, actorID string, payload map[string]interface{}) error {
 	payloadMap := database.JSONMap{}
 	if payload != nil {
 		for k, v := range payload {
@@ -260,5 +272,17 @@ func CreateNotification(db *gorm.DB, userID, notifType, actorID string, payload 
 		CreatedAt: time.Now(),
 	}
 
-	return db.Create(&notif).Error
+	if err := db.Create(&notif).Error; err != nil {
+		return err
+	}
+
+	if cacheTx != nil {
+		uvk := redis.BuildUserVersionKey(userID)
+		cacheTx.AddInvalidation(uvk, map[string]interface{}{
+			"user_id":      userID,
+			"version_key":  uvk,
+			"version_only": true,
+		})
+	}
+	return nil
 }
