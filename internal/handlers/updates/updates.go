@@ -1,12 +1,16 @@
 package updates
 
 import (
+	"encoding/json"
+	"fmt"
+	"log"
 	"strconv"
 	"time"
 
 	"trakt-api/internal/database"
 	"trakt-api/internal/handlers/media"
 	"trakt-api/internal/openapi"
+	projredis "trakt-api/redis"
 
 	"github.com/gofiber/fiber/v2"
 	"trakt-api/internal/response"
@@ -82,13 +86,20 @@ func handleMovieUpdates(c *fiber.Ctx) error {
 		return response.BadRequest(c, "invalid start_date format, expected YYYY-MM-DD")
 	}
 
+	page, limit := response.ParsePagination(c, 25)
+	extended := media.GetExtended(c)
+
+	cacheKey := updatesFeedCacheKey("movies", startDate, page, limit, extended)
+	if enc, ok := updatesGetCache(cacheKey); ok {
+		setPaginationHeaders(c, page, limit, enc.Total, enc.Count)
+		c.Set("Content-Type", "application/json")
+		return c.Send(enc.Body)
+	}
+
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "database unavailable")
 	}
-
-	page, limit := response.ParsePagination(c, 25)
-	extended := media.GetExtended(c)
 
 	var total int64
 	if err := db.Model(&database.Movie{}).Where("updated_at >= ?", startDate).Count(&total).Error; err != nil {
@@ -109,8 +120,8 @@ func handleMovieUpdates(c *fiber.Ctx) error {
 		resp = append(resp, media.BuildMovieResponse(&m, extended))
 	}
 
+	updatesSetCache(cacheKey, updatesCacheEnvelope{Total: total, Count: len(resp), Body: mustMarshal(resp)})
 	setPaginationHeaders(c, page, limit, total, len(resp))
-
 	return c.JSON(resp)
 }
 
@@ -121,13 +132,20 @@ func handleShowUpdates(c *fiber.Ctx) error {
 		return response.BadRequest(c, "invalid start_date format, expected YYYY-MM-DD")
 	}
 
+	page, limit := response.ParsePagination(c, 25)
+	extended := media.GetExtended(c)
+
+	cacheKey := updatesFeedCacheKey("shows", startDate, page, limit, extended)
+	if enc, ok := updatesGetCache(cacheKey); ok {
+		setPaginationHeaders(c, page, limit, enc.Total, enc.Count)
+		c.Set("Content-Type", "application/json")
+		return c.Send(enc.Body)
+	}
+
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "database unavailable")
 	}
-
-	page, limit := response.ParsePagination(c, 25)
-	extended := media.GetExtended(c)
 
 	var total int64
 	if err := db.Model(&database.Show{}).Where("updated_at >= ?", startDate).Count(&total).Error; err != nil {
@@ -148,8 +166,8 @@ func handleShowUpdates(c *fiber.Ctx) error {
 		resp = append(resp, media.BuildShowResponse(&s, extended))
 	}
 
+	updatesSetCache(cacheKey, updatesCacheEnvelope{Total: total, Count: len(resp), Body: mustMarshal(resp)})
 	setPaginationHeaders(c, page, limit, total, len(resp))
-
 	return c.JSON(resp)
 }
 
@@ -160,12 +178,19 @@ func handlePeopleUpdates(c *fiber.Ctx) error {
 		return response.BadRequest(c, "invalid start_date format, expected YYYY-MM-DD")
 	}
 
+	page, limit := response.ParsePagination(c, 25)
+
+	cacheKey := updatesFeedCacheKey("people", startDate, page, limit, "")
+	if enc, ok := updatesGetCache(cacheKey); ok {
+		setPaginationHeaders(c, page, limit, enc.Total, enc.Count)
+		c.Set("Content-Type", "application/json")
+		return c.Send(enc.Body)
+	}
+
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "database unavailable")
 	}
-
-	page, limit := response.ParsePagination(c, 25)
 
 	var total int64
 	if err := db.Model(&database.Person{}).Where("updated_at >= ?", startDate).Count(&total).Error; err != nil {
@@ -186,9 +211,76 @@ func handlePeopleUpdates(c *fiber.Ctx) error {
 		resp = append(resp, media.BuildPersonResponse(&p))
 	}
 
+	updatesSetCache(cacheKey, updatesCacheEnvelope{Total: total, Count: len(resp), Body: mustMarshal(resp)})
 	setPaginationHeaders(c, page, limit, total, len(resp))
-
 	return c.JSON(resp)
+}
+
+// ---------------------------------------------------------------------------
+// Redis TTL cache for update feeds
+// ---------------------------------------------------------------------------
+
+// updatesFeedTTL keeps the sync-scraper public feeds reasonably fresh while
+// absorbing bursts of polling traffic.
+const updatesFeedTTL = 90 * time.Second
+
+// updatesCacheEnvelope stores everything a cached update feed needs to rebuild
+// both the pagination headers and the JSON body on a cache hit.
+type updatesCacheEnvelope struct {
+	Total int64           `json:"total"`
+	Count int             `json:"count"`
+	Body  json.RawMessage `json:"body"`
+}
+
+func updatesFeedCacheKey(mediaType string, startDate time.Time, page, limit int, extended string) string {
+	date := startDate.Format("2006-01-02")
+	if extended != "" {
+		return fmt.Sprintf("updates:%s:%s:page%d:limit%d:extended%s", mediaType, date, page, limit, extended)
+	}
+	return fmt.Sprintf("updates:%s:%s:page%d:limit%d", mediaType, date, page, limit)
+}
+
+// updatesGetCache returns a cached envelope on a hit; (zero, false) on miss or
+// Redis unavailability so callers fall through to the DB.
+func updatesGetCache(key string) (updatesCacheEnvelope, bool) {
+	var enc updatesCacheEnvelope
+	if projredis.GetClient() == nil {
+		return enc, false
+	}
+	data, err := projredis.GetCacheData(key)
+	if err != nil {
+		return enc, false
+	}
+	if err := json.Unmarshal(data, &enc); err != nil {
+		log.Printf("[updates] cache unmarshal error for key %s: %v", key, err)
+		return enc, false
+	}
+	return enc, true
+}
+
+// updatesSetCache stores an envelope with updatesFeedTTL. Best-effort.
+func updatesSetCache(key string, enc updatesCacheEnvelope) {
+	if projredis.GetClient() == nil {
+		return
+	}
+	data, err := json.Marshal(enc)
+	if err != nil {
+		log.Printf("[updates] cache marshal error for key %s: %v", key, err)
+		return
+	}
+	if err := projredis.SetCacheData(key, data, updatesFeedTTL); err != nil {
+		log.Printf("[updates] cache set error for key %s: %v", key, err)
+	}
+}
+
+// mustMarshal serializes v to JSON; falls back to "[]" on error so caching never
+// panics on an unmarshalable response slice.
+func mustMarshal(v interface{}) json.RawMessage {
+	data, err := json.Marshal(v)
+	if err != nil {
+		return json.RawMessage("[]")
+	}
+	return data
 }
 
 // setPaginationHeaders emits the §7 pagination headers (api-conventions.md)
