@@ -29,9 +29,9 @@ Single endpoint: `GET /v1/users/:id/stats` — public user statistics (plays, mi
 ## Todos
 
 - [ ] Implement the version-keyed Redis cache path (or remove the stub).
-- [ ] Guard recompute with an advisory lock or singleflight.
+- [x] Guard recompute with an advisory lock or singleflight. (Batch 7 — per-user advisory lock in `recomputeUserStats`)
 - [x] Surface recompute failures (503/500) instead of returning zeroed stats. (Batch 6)
-- [ ] Align staleness with the user version counter (invalidate on writes via outbox).
+- [x] Align staleness with the user version counter (invalidate on writes via outbox). (Batch 7 — version snapshot in Redis; recompute when the counter advances. Residual: implemented locally in the stats module, not wired into the sync write path; the snapshot keys off the user version counter the sync/scrobble cache-tx already bumps, and first-cycle snapshots default to wall-clock until the next compute.)
 - [x] Handle non-404 DB errors separately from "not found". (Batch 6)
 - [x] Use shared `internal/response` helpers.
 - [ ] Verify stats engine output matches the spec'd fields.
