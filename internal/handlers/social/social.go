@@ -2,6 +2,7 @@ package social
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -136,6 +137,10 @@ func handleFollow(c *fiber.Ctx) error {
 			status = "pending"
 		}
 		return c.Status(fiber.StatusCreated).JSON(buildFollowResponse(&existing, status))
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		// A real DB failure, not a mere "not following yet".
+		fmt.Printf("social: follow existence check failed: %v\n", err)
+		return response.InternalError(c)
 	}
 
 	var resp FollowResponse
@@ -278,7 +283,11 @@ func handleListFriends(c *fiber.Ctx) error {
 		userIDs = append(userIDs, r.FollowingID)
 	}
 
-	users := resolveUserStubs(db, userIDs)
+	users, err := resolveUserStubs(db, userIDs)
+	if err != nil {
+		fmt.Printf("social: resolve user profiles failed: %v\n", err)
+		return response.InternalError(c)
+	}
 	setPaginationHeaders(c, page, limit, totalPages(total, limit), total, len(users))
 	return c.JSON(users)
 }
@@ -330,7 +339,11 @@ func listFollowRelations(c *fiber.Ctx, targetID, direction string) error {
 		}
 	}
 
-	users := resolveUserStubs(db, userIDs)
+	users, err := resolveUserStubs(db, userIDs)
+	if err != nil {
+		fmt.Printf("social: resolve user profiles failed: %v\n", err)
+		return response.InternalError(c)
+	}
 	setPaginationHeaders(c, page, limit, totalPages(total, limit), total, len(users))
 	return c.JSON(users)
 }
@@ -379,7 +392,10 @@ func handleListFollowRequests(c *fiber.Ctx) error {
 	// Resolve to user profiles.
 	var users []database.User
 	if len(followerIDs) > 0 {
-		db.Where("id IN ?", followerIDs).Find(&users)
+		if err := db.Where("id IN ?", followerIDs).Find(&users).Error; err != nil {
+			fmt.Printf("social: resolve follow-request users failed: %v\n", err)
+			return response.InternalError(c)
+		}
 	}
 
 	resp := make([]FollowRequestResponse, 0, len(users))
@@ -511,14 +527,18 @@ func buildFollowResponse(f *database.UserFollow, status string) FollowResponse {
 	return resp
 }
 
-// resolveUserStubs fetches user profiles in bulk.
-func resolveUserStubs(db *gorm.DB, userIDs []string) []UserProfileStub {
+// resolveUserStubs fetches user profiles in bulk, preserving the requested
+// order. It returns an error when the underlying query fails rather than
+// silently returning a partial/empty list.
+func resolveUserStubs(db *gorm.DB, userIDs []string) ([]UserProfileStub, error) {
 	if len(userIDs) == 0 {
-		return []UserProfileStub{}
+		return []UserProfileStub{}, nil
 	}
 
 	var users []database.User
-	db.Where("id IN ?", userIDs).Find(&users)
+	if err := db.Where("id IN ?", userIDs).Find(&users).Error; err != nil {
+		return nil, err
+	}
 
 	// Preserve order.
 	userMap := make(map[string]database.User, len(users))
@@ -537,7 +557,7 @@ func resolveUserStubs(db *gorm.DB, userIDs []string) []UserProfileStub {
 			})
 		}
 	}
-	return stubs
+	return stubs, nil
 }
 
 // ---------------------------------------------------------------------------
