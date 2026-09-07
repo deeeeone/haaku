@@ -176,12 +176,15 @@ func handleInviteCollaborator(c *fiber.Ctx) error {
 	}
 
 	// Verify list exists and current user is the owner.
-	var listCount int64
-	if err := db.Table("lists").Where("id = ? AND user_id = ?", listID, userID).Count(&listCount).Error; err != nil {
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
+	exists, owned, lerr := lookupListOwnership(db, listID, userID)
+	if lerr != nil {
+		return response.InternalError(c)
 	}
-	if listCount == 0 {
+	if !exists {
 		return response.NotFound(c, "list not found")
+	}
+	if !owned {
+		return response.Forbidden(c, "you are not the owner of this list")
 	}
 
 	// Resolve username to user ID.
@@ -190,7 +193,7 @@ func handleInviteCollaborator(c *fiber.Ctx) error {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return response.NotFound(c, "user not found")
 		}
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return response.InternalError(c)
 	}
 
 	// Don't allow inviting yourself.
@@ -248,12 +251,15 @@ func handleRemoveCollaborator(c *fiber.Ctx) error {
 	}
 
 	// Verify list exists and current user is the owner.
-	var listCount int64
-	if err := db.Table("lists").Where("id = ? AND user_id = ?", listID, userID).Count(&listCount).Error; err != nil {
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
+	exists, owned, lerr := lookupListOwnership(db, listID, userID)
+	if lerr != nil {
+		return response.InternalError(c)
 	}
-	if listCount == 0 {
+	if !exists {
 		return response.NotFound(c, "list not found")
+	}
+	if !owned {
+		return response.Forbidden(c, "you are not the owner of this list")
 	}
 
 	result := db.Where("list_id = ? AND user_id = ?", listID, targetUserID).Delete(&database.ListCollaborator{})
@@ -312,4 +318,23 @@ func parseID(s string) int64 {
 		return 0
 	}
 	return id
+}
+
+// lookupListOwnership reports whether a list with the given id exists and
+// whether the caller is its owner. This lets handlers distinguish a genuinely
+// missing list (404) from a list the caller isn't allowed to manage (403).
+func lookupListOwnership(db *gorm.DB, listID int64, userID string) (exists, owned bool, err error) {
+	var n int64
+	if e := db.Table("lists").Where("id = ?", listID).Count(&n).Error; e != nil {
+		return false, false, e
+	}
+	exists = n > 0
+	if !exists {
+		return false, false, nil
+	}
+	n = 0
+	if e := db.Table("lists").Where("id = ? AND user_id = ?", listID, userID).Count(&n).Error; e != nil {
+		return true, false, e
+	}
+	return true, n > 0, nil
 }
