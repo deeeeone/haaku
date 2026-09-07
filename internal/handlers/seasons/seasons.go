@@ -1,13 +1,17 @@
 package seasons
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
+	"time"
 
 	"trakt-api/internal/database"
 	"trakt-api/internal/handlers/media"
 	"trakt-api/internal/openapi"
+	projredis "trakt-api/redis"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -69,6 +73,14 @@ func handleGetSeason(c *fiber.Ctx) error {
 		return err
 	}
 
+	extended := media.GetExtended(c)
+	cacheKey := seasonCacheKey("detail", id, extended)
+
+	var cached SeasonDetailResponse
+	if hit, _ := seasonGetCache(cacheKey, &cached); hit {
+		return c.JSON(cached)
+	}
+
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
@@ -89,7 +101,6 @@ func handleGetSeason(c *fiber.Ctx) error {
 	// Fetch show.
 	var show database.Show
 	if err := db.First(&show, season.ShowID).Error; err == nil {
-		extended := media.GetExtended(c)
 		sr := media.BuildShowResponse(&show, extended)
 		resp.Show = &sr
 	}
@@ -102,6 +113,7 @@ func handleGetSeason(c *fiber.Ctx) error {
 	}
 	resp.Stats = stats
 
+	seasonSetCache(cacheKey, resp, seasonDetailTTL)
 	return c.JSON(resp)
 }
 
@@ -110,6 +122,13 @@ func handleGetSeasonStats(c *fiber.Ctx) error {
 	id, err := response.ParseIDParam(c, "season")
 	if err != nil {
 		return err
+	}
+
+	cacheKey := seasonCacheKey("stats", id, "")
+
+	var cachedStats SeasonStatsResponse
+	if hit, _ := seasonGetCache(cacheKey, &cachedStats); hit {
+		return c.JSON(cachedStats)
 	}
 
 	db, dbErr := database.GetDB()
@@ -130,6 +149,7 @@ func handleGetSeasonStats(c *fiber.Ctx) error {
 		fmt.Printf("seasons: query stats for season %d failed: %v\n", id, qerr)
 		return response.InternalError(c)
 	}
+	seasonSetCache(cacheKey, stats, seasonStatsTTL)
 	return c.JSON(stats)
 }
 
@@ -138,6 +158,13 @@ func handleGetSeasonRatings(c *fiber.Ctx) error {
 	id, err := response.ParseIDParam(c, "season")
 	if err != nil {
 		return err
+	}
+
+	cacheKey := seasonCacheKey("ratings", id, "")
+
+	var cachedDist media.RatingSummary
+	if hit, _ := seasonGetCache(cacheKey, &cachedDist); hit {
+		return c.JSON(cachedDist)
 	}
 
 	db, dbErr := database.GetDB()
@@ -158,6 +185,7 @@ func handleGetSeasonRatings(c *fiber.Ctx) error {
 		fmt.Printf("seasons: query rating distribution for season %d failed: %v\n", id, qerr)
 		return response.InternalError(c)
 	}
+	seasonSetCache(cacheKey, dist, seasonRatingsTTL)
 	return c.JSON(dist)
 }
 
@@ -236,6 +264,61 @@ func queryRatingDistribution(db *gorm.DB, mediaType string, mediaID int64) (*med
 		Votes:        count,
 		Distribution: distribution,
 	}, nil
+}
+
+// ---------------------------------------------------------------------------
+// Redis TTL cache for stable season reads
+// ---------------------------------------------------------------------------
+
+// Detail responses (season + embedded show + stats) are stable enough to cache
+// longer; stats/ratings recompute from user activity so use a shorter TTL.
+const (
+	seasonDetailTTL  = 30 * time.Minute
+	seasonStatsTTL   = 15 * time.Minute
+	seasonRatingsTTL = 15 * time.Minute
+)
+
+// seasonCacheKey builds a stable Redis key. Detail keyed by extended level
+// (affects the embedded show); stats/ratings keyed by id only.
+func seasonCacheKey(kind string, id int64, extended string) string {
+	if extended != "" {
+		return fmt.Sprintf("season:%s:%d:extended%s", kind, id, extended)
+	}
+	return fmt.Sprintf("season:%s:%d", kind, id)
+}
+
+// seasonGetCache unmarshals a cached JSON value into dst. Returns (true, nil) on
+// a hit; (false, nil) on miss or Redis unavailability so callers fall through to
+// the DB. The cache is best-effort and never fails the request.
+func seasonGetCache(key string, dst interface{}) (bool, error) {
+	if projredis.GetClient() == nil {
+		return false, nil
+	}
+	data, err := projredis.GetCacheData(key)
+	if err != nil {
+		return false, nil
+	}
+	if err := json.Unmarshal(data, dst); err != nil {
+		log.Printf("[seasons] cache unmarshal error for key %s: %v", key, err)
+		return false, nil
+	}
+	return true, nil
+}
+
+// seasonSetCache marshals v and stores it under key with the given TTL.
+// Best-effort: a Redis failure only logs.
+func seasonSetCache(key string, v interface{}, ttl time.Duration) {
+	if projredis.GetClient() == nil {
+		return
+	}
+	data, err := json.Marshal(v)
+	if err != nil {
+		log.Printf("[seasons] cache marshal error for key %s: %v", key, err)
+		return
+	}
+	if err := projredis.SetCacheData(key, data, ttl); err != nil {
+		log.Printf("[seasons] cache set error for key %s: %v", key, err)
+	}
 }
 
 // ---------------------------------------------------------------------------
