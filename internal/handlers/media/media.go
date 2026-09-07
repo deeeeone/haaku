@@ -224,13 +224,23 @@ func handleGetShow(c *fiber.Ctx) error {
 	}
 
 	extended := getExtended(c)
-	resp := BuildShowResponse(&show, extended)
 
 	// Fetch seasons.
 	var seasons []database.Season
 	db.Where("show_id = ?", show.ID).Order("season_number ASC").Find(&seasons)
+
+	// Batch external_ids for the show + all its seasons in one query, then
+	// build responses from that shared lookup (no per-item queries).
+	refs := make([]mediaRef, 0, len(seasons)+1)
+	refs = append(refs, mediaRef{mediaType: "show", mediaID: show.ID})
 	for _, s := range seasons {
-		resp.Seasons = append(resp.Seasons, BuildSeasonResponse(&s))
+		refs = append(refs, mediaRef{mediaType: "season", mediaID: s.ID})
+	}
+	lookup := batchExternalIDs(db, refs)
+
+	resp := buildShowResponse(lookup, &show, extended)
+	for _, s := range seasons {
+		resp.Seasons = append(resp.Seasons, buildSeasonResponse(lookup, &s))
 	}
 
 	return c.JSON(resp)
@@ -255,9 +265,17 @@ func handleGetShowSeasons(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
 
+	// Batch external_ids for all seasons in one query, then build responses
+	// from that shared lookup.
+	refs := make([]mediaRef, 0, len(seasons))
+	for _, s := range seasons {
+		refs = append(refs, mediaRef{mediaType: "season", mediaID: s.ID})
+	}
+	lookup := batchExternalIDs(db, refs)
+
 	resp := make([]SeasonResponse, 0, len(seasons))
 	for _, s := range seasons {
-		resp = append(resp, BuildSeasonResponse(&s))
+		resp = append(resp, buildSeasonResponse(lookup, &s))
 	}
 
 	return c.JSON(resp)
@@ -333,9 +351,17 @@ func handleGetShowSeasonEpisodes(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
 
+	// Batch external_ids for all episodes in one query, then build responses
+	// from that shared lookup.
+	refs := make([]mediaRef, 0, len(episodes))
+	for _, e := range episodes {
+		refs = append(refs, mediaRef{mediaType: "episode", mediaID: e.ID})
+	}
+	lookup := batchExternalIDs(db, refs)
+
 	resp := make([]EpisodeResponse, 0, len(episodes))
 	for _, e := range episodes {
-		resp = append(resp, BuildEpisodeResponse(&e))
+		resp = append(resp, buildEpisodeResponse(lookup, &e))
 	}
 
 	return c.JSON(resp)
@@ -568,21 +594,47 @@ func buildPeopleResponse(c *fiber.Ctx, db *gorm.DB, credits []database.Credit) (
 	cast := make([]CastMemberResponse, 0)
 	crew := make([]CrewMemberResponse, 0)
 
+	// Batch-load persons referenced by the credits in one query.
+	personIDs := make([]int64, 0, len(credits))
+	seen := make(map[int64]bool, len(credits))
 	for _, cr := range credits {
-		var person database.Person
-		if err := db.First(&person, cr.PersonID).Error; err != nil {
+		if !seen[cr.PersonID] {
+			seen[cr.PersonID] = true
+			personIDs = append(personIDs, cr.PersonID)
+		}
+	}
+	personMap := make(map[int64]*database.Person, len(personIDs))
+	if len(personIDs) > 0 {
+		var persons []database.Person
+		if err := db.Where("id IN ?", personIDs).Find(&persons).Error; err == nil {
+			for i := range persons {
+				personMap[persons[i].ID] = &persons[i]
+			}
+		}
+	}
+
+	// Batch external_ids for all persons in one query.
+	refs := make([]mediaRef, 0, len(personMap))
+	for id := range personMap {
+		refs = append(refs, mediaRef{mediaType: "person", mediaID: id})
+	}
+	lookup := batchExternalIDs(db, refs)
+
+	for _, cr := range credits {
+		person, ok := personMap[cr.PersonID]
+		if !ok {
 			continue // skip if person not found
 		}
 
 		if cr.CreditType == "cast" {
 			cast = append(cast, CastMemberResponse{
-				Person:    BuildPersonResponse(&person),
+				Person:    buildPersonResponse(lookup, person),
 				Character: cr.Character,
 				Order:     cr.Order,
 			})
 		} else {
 			crew = append(crew, CrewMemberResponse{
-				Person:     BuildPersonResponse(&person),
+				Person:     buildPersonResponse(lookup, person),
 				Job:        cr.Job,
 				Department: cr.Department,
 			})

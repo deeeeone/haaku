@@ -6,6 +6,7 @@ import (
 	"trakt-api/internal/database"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 )
 
 // --- Response types for media API ---
@@ -171,8 +172,67 @@ type ListsResponse []interface{}
 
 // --- Builders ---
 
-// buildIDs builds the IDs object from a media row and external ID lookups.
-func buildIDs(mediaType string, mediaID int64, movie *database.Movie, show *database.Show) IDs {
+// mediaRef is a (media_type, media_id) key used to look up external_ids rows
+// in a single batched query.
+type mediaRef struct {
+	mediaType string
+	mediaID   int64
+}
+
+// batchExternalIDs fetches the slug/tvdb external_ids rows for a batch of
+// media refs in one query, keyed by ref. This replaces the per-`buildIDs`
+// external_ids N+1 (one query per item) with a single query per request batch.
+// Unresolvable refs are simply absent from the returned map; failures degrade
+// to an empty map (best-effort, matching the old buildIDs behavior of leaving
+// slug/tvdb empty on query error).
+func batchExternalIDs(db *gorm.DB, refs []mediaRef) map[mediaRef][]database.ExternalID {
+	result := make(map[mediaRef][]database.ExternalID, len(refs))
+	if db == nil || len(refs) == 0 {
+		return result
+	}
+
+	seen := make(map[mediaRef]bool, len(refs))
+	pairs := make([][]interface{}, 0, len(refs))
+	for _, r := range refs {
+		if r.mediaID == 0 {
+			continue
+		}
+		if !seen[r] {
+			seen[r] = true
+			pairs = append(pairs, []interface{}{r.mediaType, r.mediaID})
+		}
+	}
+	if len(pairs) == 0 {
+		return result
+	}
+
+	var exts []database.ExternalID
+	if err := db.Where("(media_type, media_id) IN ? AND source IN ?",
+		pairs, []string{"slug", "tvdb"}).Find(&exts).Error; err != nil {
+		return result
+	}
+	for _, ext := range exts {
+		ref := mediaRef{mediaType: ext.MediaType, mediaID: ext.MediaID}
+		if seen[ref] {
+			result[ref] = append(result[ref], ext)
+		}
+	}
+	return result
+}
+
+// mediaBatchLookup fetches external_ids for a single media ref via the batched
+// path (one query), returning a lookup keyed by that ref. DB-unavailable returns nil.
+func mediaBatchLookup(mediaType string, mediaID int64) map[mediaRef][]database.ExternalID {
+	if db, err := database.GetDB(); err == nil {
+		return batchExternalIDs(db, []mediaRef{{mediaType: mediaType, mediaID: mediaID}})
+	}
+	return nil
+}
+
+// buildIDsFromLookup builds an IDs object using a pre-fetched external_ids
+// batch (no extra query). TMDB/IMDB come from the movie/show rows; slug and
+// TVDB come from the lookup.
+func buildIDsFromLookup(lookup map[mediaRef][]database.ExternalID, mediaType string, mediaID int64, movie *database.Movie, show *database.Show) IDs {
 	ids := IDs{ID: mediaID}
 
 	if movie != nil {
@@ -191,33 +251,37 @@ func buildIDs(mediaType string, mediaID int64, movie *database.Movie, show *data
 		}
 	}
 
-	// Slug and TVDB come from external_ids table.
-	if db, err := database.GetDB(); err == nil {
-		var exts []database.ExternalID
-		db.Where("media_type = ? AND media_id = ? AND source IN ?",
-			mediaType, mediaID, []string{"slug", "tvdb"}).Find(&exts)
-		for _, ext := range exts {
-			switch ext.Source {
-			case "slug":
-				ids.Slug = ext.ExternalID
-			case "tvdb":
-				ids.TVDB = ext.ExternalID
-			}
+	for _, ext := range lookup[mediaRef{mediaType: mediaType, mediaID: mediaID}] {
+		switch ext.Source {
+		case "slug":
+			ids.Slug = ext.ExternalID
+		case "tvdb":
+			ids.TVDB = ext.ExternalID
 		}
 	}
 
 	return ids
 }
 
+// buildIDs builds the IDs object from a media row and external ID lookups
+// (single-item path — one batched lookup for this item).
+func buildIDs(mediaType string, mediaID int64, movie *database.Movie, show *database.Show) IDs {
+	return buildIDsFromLookup(mediaBatchLookup(mediaType, mediaID), mediaType, mediaID, movie, show)
+}
+
 // BuildMovieResponse builds a MovieResponse from a database Movie (exported for cross-package use).
 func BuildMovieResponse(m *database.Movie, extended string) MovieResponse {
+	return buildMovieResponse(mediaBatchLookup("movie", m.ID), m, extended)
+}
+
+func buildMovieResponse(lookup map[mediaRef][]database.ExternalID, m *database.Movie, extended string) MovieResponse {
 	year := 0
 	if m.Released != nil && !m.Released.IsZero() {
 		year = m.Released.Year()
 	}
 
 	resp := MovieResponse{
-		IDs:           buildIDs("movie", m.ID, m, nil),
+		IDs:           buildIDsFromLookup(lookup, "movie", m.ID, m, nil),
 		Title:         m.Title,
 		Year:          year,
 		Images:        m.Images,
@@ -260,13 +324,17 @@ func BuildMovieResponse(m *database.Movie, extended string) MovieResponse {
 
 // BuildShowResponse builds a ShowResponse from a database Show (exported for cross-package use).
 func BuildShowResponse(s *database.Show, extended string) ShowResponse {
+	return buildShowResponse(mediaBatchLookup("show", s.ID), s, extended)
+}
+
+func buildShowResponse(lookup map[mediaRef][]database.ExternalID, s *database.Show, extended string) ShowResponse {
 	year := 0
 	if s.FirstAired != nil && !s.FirstAired.IsZero() {
 		year = s.FirstAired.Year()
 	}
 
 	resp := ShowResponse{
-		IDs:           buildIDs("show", s.ID, nil, s),
+		IDs:           buildIDsFromLookup(lookup, "show", s.ID, nil, s),
 		Title:         s.Title,
 		Year:          year,
 		Images:        s.Images,
@@ -319,8 +387,12 @@ func BuildShowResponse(s *database.Show, extended string) ShowResponse {
 
 // BuildSeasonResponse builds a SeasonResponse from a database Season.
 func BuildSeasonResponse(s *database.Season) SeasonResponse {
+	return buildSeasonResponse(mediaBatchLookup("season", s.ID), s)
+}
+
+func buildSeasonResponse(lookup map[mediaRef][]database.ExternalID, s *database.Season) SeasonResponse {
 	resp := SeasonResponse{
-		IDs:          buildIDs("season", s.ID, nil, nil),
+		IDs:          buildIDsFromLookup(lookup, "season", s.ID, nil, nil),
 		ShowID:       s.ShowID,
 		SeasonNumber: s.SeasonNumber,
 		EpisodeCount: s.EpisodeCount,
@@ -337,8 +409,12 @@ func BuildSeasonResponse(s *database.Season) SeasonResponse {
 
 // BuildEpisodeResponse builds an EpisodeResponse from a database Episode.
 func BuildEpisodeResponse(e *database.Episode) EpisodeResponse {
+	return buildEpisodeResponse(mediaBatchLookup("episode", e.ID), e)
+}
+
+func buildEpisodeResponse(lookup map[mediaRef][]database.ExternalID, e *database.Episode) EpisodeResponse {
 	resp := EpisodeResponse{
-		IDs:            buildIDs("episode", e.ID, nil, nil),
+		IDs:            buildIDsFromLookup(lookup, "episode", e.ID, nil, nil),
 		SeasonID:       e.SeasonID,
 		ShowID:         e.ShowID,
 		EpisodeNumber:  e.EpisodeNumber,
@@ -359,7 +435,11 @@ func BuildEpisodeResponse(e *database.Episode) EpisodeResponse {
 
 // BuildPersonResponse builds a PersonResponse from a database Person.
 func BuildPersonResponse(p *database.Person) PersonResponse {
-	ids := buildIDs("person", p.ID, nil, nil)
+	return buildPersonResponse(mediaBatchLookup("person", p.ID), p)
+}
+
+func buildPersonResponse(lookup map[mediaRef][]database.ExternalID, p *database.Person) PersonResponse {
+	ids := buildIDsFromLookup(lookup, "person", p.ID, nil, nil)
 	// buildIDs only reads movie/show rows for TMDB/IMDB, so add the person's
 	// own external ids here to keep parity with the fields on the row.
 	if p.TmdbID != 0 {
