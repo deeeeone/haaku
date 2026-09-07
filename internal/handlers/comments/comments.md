@@ -47,5 +47,5 @@ Registers OpenAPI metadata for all endpoints. Uses `comment_type`/`media_type` C
 - [ ] Paginate `GET /{id}/likes`.
 - [ ] Add comment length validation per spec.
 - [ ] Add DB index strategy for trending query (`like_count+reply_count`, `created_at`).
-- [ ] Check the user lookup error in the moderator delete path.
+- [x] Check the user lookup error in the moderator delete path. (Batch 6)
 - [ ] Verify module test coverage (`make test`).
