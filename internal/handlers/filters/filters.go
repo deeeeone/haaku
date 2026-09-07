@@ -168,7 +168,7 @@ func handleDeleteFilter(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 	if f.UserID != userID {
-		return response.NotFound(c, "filter not found")
+		return response.Forbidden(c, "you can only delete your own saved filters")
 	}
 
 	if err := db.Delete(&f).Error; err != nil {
