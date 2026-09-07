@@ -85,6 +85,11 @@ func handleGetActivity(c *fiber.Ctx) error {
 	page := response.QueryInt(c, "page", 1)
 	limit := response.ClampLimit(response.QueryInt(c, "limit", 20), 1, 100)
 	feedType := c.Query("type", "friends")
+	switch feedType {
+	case "following", "followers", "friends", "":
+	default:
+		return response.BadRequest(c, "unknown activity feed type")
+	}
 
 	// Collect actor IDs from the social graph
 	var actorIDs []string
@@ -127,9 +132,10 @@ func handleGetActivity(c *fiber.Ctx) error {
 	var startTime *time.Time
 	if startAt != "" {
 		t, err := time.Parse(time.RFC3339, startAt)
-		if err == nil {
-			startTime = &t
+		if err != nil {
+			return response.BadRequest(c, "invalid start_at: must be an RFC3339 timestamp")
 		}
+		startTime = &t
 	}
 
 	if len(actorIDs) == 0 {
