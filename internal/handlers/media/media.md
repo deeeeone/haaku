@@ -38,7 +38,7 @@ The **shared media-read foundation** for the API (4 files). Provides movie/show/
 - **Local error helpers everywhere** — `notFound`/`badRequest`/`writeTranslationError` duplicated (3 copies in this package alone); other files use `fiber.NewError`.
 - **`fiber.NewError` for DB failures** — unstructured messages bypass the envelope `internal` code.
 - **`getTMDB` singleton is race-prone (RESOLVED)** — now guarded by `sync.Once` (Batch 2).
-- **TMDB error responses leak detail** — `writeTranslationError(c, err.Error())` puts raw TMDB error text in the client message.
+- **TMDB error responses leak detail (RESOLVED)** — `proxyTranslations`/alias handlers now log the raw upstream error server-side via `tmdbUpstreamError` and return a generic `internal` message.
 - **TMDB proxy has no upstream fallback** — if TMDB is down, translations/aliases 500 even though data could be cached or degraded.
 - **`getCachedTranslations`/`getCachedAliases` ignore lang in the key for aliases** — fine, but `proxyTranslations` keys include lang while filtering also matches ISO3166; keys and filters can disagree (same key for `?lang=en` matched by country).
 - **`handleGetShow` embeds all seasons** regardless of `extended` — `ShowResponse.Seasons` is always populated (non-nil), which can be heavy.
@@ -50,7 +50,7 @@ The **shared media-read foundation** for the API (4 files). Provides movie/show/
 - [ ] Batch external-id lookups in `buildIDs` (single query per batch) to kill N+1s.
 - [ ] Populate TMDB/IMDB for season/episode/person IDs from `external_ids`.
 - [x] Use `sync.Once` for the TMDB client singleton.
-- [ ] Sanitize/log TMDB upstream errors instead of echoing raw text.
+- [x] Sanitize/log TMDB upstream errors instead of echoing raw text. (Batch 6)
 - [x] Replace duplicated error helpers with `internal/response`.
 - [ ] Reconsider always-embedded seasons on show detail.
 - [ ] Verify module test coverage (`make test`).
