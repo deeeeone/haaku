@@ -1,6 +1,7 @@
 package stats
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -76,6 +77,15 @@ func handleGetUserStats(c *fiber.Ctx) error {
 		return response.ServiceUnavailable(c, "stats are temporarily unavailable")
 	}
 
+	// Serve a version-keyed cached response when one exists for the user's
+	// current version. The version is embedded in the key, so a history/data
+	// write that bumps the user version counter makes this miss automatically
+	// and the recompute path below runs. Redis is best-effort: any miss or
+	// outage falls through to the DB-backed read.
+	if resp, ok := getVersionKeyedStatsResponse(userID); ok {
+		return c.JSON(resp)
+	}
+
 	// Try fetching cached stats.
 	cachedStats, err := statsengine.GetUserStats(db, userID)
 	if err != nil {
@@ -130,14 +140,7 @@ func handleGetUserStats(c *fiber.Ctx) error {
 		})
 	}
 
-	// Try Redis cache for version-keyed response.
-	if rdb := projredis.GetClient(); rdb != nil {
-		// Check if we can serve a version-keyed cached response.
-		version, _ := cache.GetUserVersion(userID)
-		_ = version
-	}
-
-	return c.JSON(StatsResponse{
+	resp := StatsResponse{
 		UserID:         cachedStats.UserID,
 		Plays:          cachedStats.Plays,
 		Minutes:        cachedStats.Minutes,
@@ -145,7 +148,69 @@ func handleGetUserStats(c *fiber.Ctx) error {
 		UniqueShows:    cachedStats.UniqueShows,
 		UniqueEpisodes: cachedStats.UniqueEpisodes,
 		RatingsCount:   cachedStats.RatingsCount,
-	})
+	}
+
+	// Persist the serialized response under the user's current version so the
+	// next request can serve it without hitting the DB/compute path.
+	storeVersionKeyedStatsResponse(userID, resp)
+
+	return c.JSON(resp)
+}
+
+// ---------------------------------------------------------------------------
+// Version-keyed response cache
+// ---------------------------------------------------------------------------
+
+// statsResponseCacheTTL is the TTL for a version-keyed stats response entry.
+// Correctness is enforced by the embedded user version (the entry is only served
+// when it matches the current counter), so the TTL is just a cleanup backstop
+// for orphaned versions from a user whose counter was reset.
+const statsResponseCacheTTL = 7 * 24 * time.Hour
+
+func statsResponseKey(userID string, version int64) string {
+	return fmt.Sprintf("stats:response:%s:v%d", userID, version)
+}
+
+// getVersionKeyedStatsResponse serves the user's stats from Redis when an entry
+// exists keyed to their current version counter. Returns (zero, false) on any
+// miss or Redis unavailability so the caller runs the DB-backed path.
+func getVersionKeyedStatsResponse(userID string) (StatsResponse, bool) {
+	var out StatsResponse
+	if projredis.GetClient() == nil {
+		return out, false
+	}
+	version, err := cache.GetUserVersion(userID)
+	if err != nil {
+		return out, false
+	}
+	data, err := projredis.GetCacheData(statsResponseKey(userID, version))
+	if err != nil {
+		return out, false
+	}
+	if err := json.Unmarshal(data, &out); err != nil {
+		log.Printf("[stats] cache unmarshal error for user %s version %d: %v", userID, version, err)
+		return out, false
+	}
+	return out, true
+}
+
+// storeVersionKeyedStatsResponse caches resp under the user's current version
+// counter. Best-effort: failures only log and never affect the response.
+func storeVersionKeyedStatsResponse(userID string, resp StatsResponse) {
+	if projredis.GetClient() == nil {
+		return
+	}
+	version, err := cache.GetUserVersion(userID)
+	if err != nil {
+		return
+	}
+	data, err := json.Marshal(resp)
+	if err != nil {
+		return
+	}
+	if err := projredis.SetCacheData(statsResponseKey(userID, version), data, statsResponseCacheTTL); err != nil {
+		log.Printf("[stats] cache set error for user %s version %d: %v", userID, version, err)
+	}
 }
 
 // ---------------------------------------------------------------------------
