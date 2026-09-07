@@ -84,6 +84,15 @@ var validSections = map[string]bool{
 	"dropped":            true,
 }
 
+// validMediaTypes is the allowlist of media_type values the hidden subsystem
+// supports, mirroring the API's movie/show/season/episode polymorphic id model.
+var validMediaTypes = map[string]bool{
+	"movie":   true,
+	"show":    true,
+	"season":  true,
+	"episode": true,
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -165,6 +174,9 @@ func handleAddHidden(c *fiber.Ctx) error {
 	if req.MediaType == "" || req.MediaID == 0 {
 		return response.BadRequest(c, "media_type and media_id are required")
 	}
+	if !validMediaTypes[req.MediaType] {
+		return response.BadRequest(c, "invalid media_type: "+req.MediaType)
+	}
 
 	var respItem *database.UserHidden
 	err := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
@@ -226,6 +238,9 @@ func handleRemoveHidden(c *fiber.Ctx) error {
 
 	if req.MediaType == "" || req.MediaID == 0 {
 		return response.BadRequest(c, "media_type and media_id are required")
+	}
+	if !validMediaTypes[req.MediaType] {
+		return response.BadRequest(c, "invalid media_type: "+req.MediaType)
 	}
 
 	err := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
