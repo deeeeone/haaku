@@ -6,8 +6,10 @@ import (
 	"strings"
 	"time"
 
+	"trakt-api/internal/cache"
 	"trakt-api/internal/database"
 	"trakt-api/internal/openapi"
+	"trakt-api/redis"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -333,47 +335,53 @@ func handleCreateComment(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "comment body is required")
 	}
 
-	db, err := database.GetDB()
-	if err != nil {
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
-	}
+	var resultComment *database.Comment
+	err := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
 
-	comment := database.Comment{
-		UserID:      userID,
-		Body:        req.Comment,
-		CommentType: "shout",
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
-	}
-
-	if req.Spoiler != nil {
-		comment.Spoiler = *req.Spoiler
-	}
-
-	// Determine media type and ID from the item block.
-	if req.Item != nil {
-		if req.Item.Movie != nil {
-			comment.MediaType = "movie"
-			comment.MediaID = req.Item.Movie
-		} else if req.Item.Show != nil {
-			comment.MediaType = "show"
-			comment.MediaID = req.Item.Show
-		} else if req.Item.Season != nil {
-			comment.MediaType = "season"
-			comment.MediaID = req.Item.Season
-		} else if req.Item.Episode != nil {
-			comment.MediaType = "episode"
-			comment.MediaID = req.Item.Episode
-		} else if req.Item.List != nil {
-			comment.ListID = req.Item.List
+		comment := database.Comment{
+			UserID:      userID,
+			Body:        req.Comment,
+			CommentType: "shout",
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
 		}
-	}
+		if req.Spoiler != nil {
+			comment.Spoiler = *req.Spoiler
+		}
+		// Determine media type and ID from the item block.
+		if req.Item != nil {
+			if req.Item.Movie != nil {
+				comment.MediaType = "movie"
+				comment.MediaID = req.Item.Movie
+			} else if req.Item.Show != nil {
+				comment.MediaType = "show"
+				comment.MediaID = req.Item.Show
+			} else if req.Item.Season != nil {
+				comment.MediaType = "season"
+				comment.MediaID = req.Item.Season
+			} else if req.Item.Episode != nil {
+				comment.MediaType = "episode"
+				comment.MediaID = req.Item.Episode
+			} else if req.Item.List != nil {
+				comment.ListID = req.Item.List
+			}
+		}
 
-	if err := db.Create(&comment).Error; err != nil {
+		if err := tx.Create(&comment).Error; err != nil {
+			return nil, fmt.Errorf("create comment: %w", err)
+		}
+		resultComment = &comment
+
+		bumpCommentTarget(cacheTx, &comment)
+		return cacheTx, nil
+	})
+	if err != nil {
+		fmt.Printf("comments: create comment failed: %v\n", err)
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to create comment")
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(toCommentResponse(&comment))
+	return c.Status(fiber.StatusCreated).JSON(toCommentResponse(resultComment))
 }
 
 // PUT /v1/comments/:id
@@ -476,7 +484,16 @@ func handleDeleteComment(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusConflict, "conflict", "comment is older than 14 days and has replies — cannot delete")
 	}
 
-	if err := db.Delete(&comment).Error; err != nil {
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
+		if err := tx.Delete(&comment).Error; err != nil {
+			return nil, fmt.Errorf("delete comment: %w", err)
+		}
+		bumpCommentTarget(cacheTx, &comment)
+		return cacheTx, nil
+	})
+	if err != nil {
+		fmt.Printf("comments: delete comment %d failed: %v\n", id, err)
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to delete comment")
 	}
 
@@ -575,14 +592,26 @@ func handleCreateReply(c *fiber.Ctx) error {
 		reply.Spoiler = *req.Spoiler
 	}
 
-	if err := db.Create(&reply).Error; err != nil {
+	var resultReply *database.Comment
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
+		if err := tx.Create(&reply).Error; err != nil {
+			return nil, fmt.Errorf("create reply: %w", err)
+		}
+		// Increment parent's reply count atomically with the insert.
+		if err := tx.Model(&parent).UpdateColumn("reply_count", gorm.Expr("reply_count + 1")).Error; err != nil {
+			return nil, fmt.Errorf("increment parent reply_count: %w", err)
+		}
+		resultReply = &reply
+		bumpCommentTarget(cacheTx, &parent)
+		return cacheTx, nil
+	})
+	if err != nil {
+		fmt.Printf("comments: create reply failed: %v\n", err)
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to create reply")
 	}
 
-	// Increment parent's reply count
-	db.Model(&parent).UpdateColumn("reply_count", gorm.Expr("reply_count + 1"))
-
-	return c.Status(fiber.StatusCreated).JSON(toCommentResponse(&reply))
+	return c.Status(fiber.StatusCreated).JSON(toCommentResponse(resultReply))
 }
 
 // POST /v1/comments/:id/like
@@ -607,23 +636,36 @@ func handleLikeComment(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
-	// Upsert the like
-	like := database.CommentLike{
-		CommentID: id,
-		UserID:    userID,
-		CreatedAt: time.Now(),
-	}
-
 	// Try to create; if conflict, that's fine (idempotent)
-	result := db.Where("comment_id = ? AND user_id = ?", id, userID).FirstOrCreate(&like)
-	if result.Error != nil {
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
+
+		like := database.CommentLike{
+			CommentID: id,
+			UserID:    userID,
+			CreatedAt: time.Now(),
+		}
+		result := tx.Where("comment_id = ? AND user_id = ?", id, userID).FirstOrCreate(&like)
+		if result.Error != nil {
+			return nil, fmt.Errorf("like comment: %w", result.Error)
+		}
+
+		// Update like_count to be accurate
+		var count int64
+		if err := tx.Model(&database.CommentLike{}).Where("comment_id = ?", id).Count(&count).Error; err != nil {
+			return nil, fmt.Errorf("count likes: %w", err)
+		}
+		if err := tx.Model(&comment).UpdateColumn("like_count", count).Error; err != nil {
+			return nil, fmt.Errorf("update like_count: %w", err)
+		}
+
+		bumpCommentTarget(cacheTx, &comment)
+		return cacheTx, nil
+	})
+	if err != nil {
+		fmt.Printf("comments: like comment failed: %v\n", err)
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to like comment")
 	}
-
-	// Update like_count to be accurate
-	var count int64
-	db.Model(&database.CommentLike{}).Where("comment_id = ?", id).Count(&count)
-	db.Model(&comment).UpdateColumn("like_count", count)
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"status": "liked"})
 }
@@ -650,12 +692,29 @@ func handleUnlikeComment(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
-	db.Where("comment_id = ? AND user_id = ?", id, userID).Delete(&database.CommentLike{})
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
 
-	// Update like_count
-	var count int64
-	db.Model(&database.CommentLike{}).Where("comment_id = ?", id).Count(&count)
-	db.Model(&comment).UpdateColumn("like_count", count)
+		if err := tx.Where("comment_id = ? AND user_id = ?", id, userID).Delete(&database.CommentLike{}).Error; err != nil {
+			return nil, fmt.Errorf("unlike comment: %w", err)
+		}
+
+		// Update like_count
+		var count int64
+		if err := tx.Model(&database.CommentLike{}).Where("comment_id = ?", id).Count(&count).Error; err != nil {
+			return nil, fmt.Errorf("count likes: %w", err)
+		}
+		if err := tx.Model(&comment).UpdateColumn("like_count", count).Error; err != nil {
+			return nil, fmt.Errorf("update like_count: %w", err)
+		}
+
+		bumpCommentTarget(cacheTx, &comment)
+		return cacheTx, nil
+	})
+	if err != nil {
+		fmt.Printf("comments: unlike comment failed: %v\n", err)
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to unlike comment")
+	}
 
 	return c.SendStatus(fiber.StatusNoContent)
 }
@@ -759,16 +818,26 @@ func handleAddReaction(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
-	reaction := database.CommentReaction{
-		CommentID:    id,
-		UserID:       userID,
-		ReactionType: req.Reaction,
-		CreatedAt:    time.Now(),
-	}
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
 
-	result := db.Where("comment_id = ? AND user_id = ? AND reaction_type = ?",
-		id, userID, req.Reaction).FirstOrCreate(&reaction)
-	if result.Error != nil {
+		reaction := database.CommentReaction{
+			CommentID:    id,
+			UserID:       userID,
+			ReactionType: req.Reaction,
+			CreatedAt:    time.Now(),
+		}
+		result := tx.Where("comment_id = ? AND user_id = ? AND reaction_type = ?",
+			id, userID, req.Reaction).FirstOrCreate(&reaction)
+		if result.Error != nil {
+			return nil, fmt.Errorf("add reaction: %w", result.Error)
+		}
+
+		bumpCommentTarget(cacheTx, &comment)
+		return cacheTx, nil
+	})
+	if err != nil {
+		fmt.Printf("comments: add reaction failed: %v\n", err)
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to add reaction")
 	}
 
@@ -802,8 +871,21 @@ func handleRemoveReaction(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
-	db.Where("comment_id = ? AND user_id = ? AND reaction_type = ?",
-		id, userID, req.Reaction).Delete(&database.CommentReaction{})
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
+
+		if err := tx.Where("comment_id = ? AND user_id = ? AND reaction_type = ?",
+			id, userID, req.Reaction).Delete(&database.CommentReaction{}).Error; err != nil {
+			return nil, fmt.Errorf("remove reaction: %w", err)
+		}
+
+		bumpCommentTarget(cacheTx, &comment)
+		return cacheTx, nil
+	})
+	if err != nil {
+		fmt.Printf("comments: remove reaction failed: %v\n", err)
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to remove reaction")
+	}
 
 	return c.SendStatus(fiber.StatusNoContent)
 }
@@ -838,20 +920,34 @@ func handleReportComment(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
-	// Prevent duplicate reports from the same user
-	var existing database.CommentReport
-	if err := db.Where("comment_id = ? AND reporter_id = ?", id, userID).First(&existing).Error; err == nil {
-		return response.WriteError(c, fiber.StatusConflict, "conflict", "you have already reported this comment")
-	}
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
 
-	report := database.CommentReport{
-		CommentID:  id,
-		ReporterID: userID,
-		Reason:     req.Reason,
-		CreatedAt:  time.Now(),
-	}
+		// Prevent duplicate reports from the same user (checked inside the tx).
+		var existing database.CommentReport
+		if err := tx.Where("comment_id = ? AND reporter_id = ?", id, userID).First(&existing).Error; err == nil {
+			return nil, errAlreadyReported
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("check existing report: %w", err)
+		}
 
-	if err := db.Create(&report).Error; err != nil {
+		report := database.CommentReport{
+			CommentID:  id,
+			ReporterID: userID,
+			Reason:     req.Reason,
+			CreatedAt:  time.Now(),
+		}
+		if err := tx.Create(&report).Error; err != nil {
+			return nil, fmt.Errorf("submit report: %w", err)
+		}
+
+		return cacheTx, nil
+	})
+	if err != nil {
+		if errors.Is(err, errAlreadyReported) {
+			return response.WriteError(c, fiber.StatusConflict, "conflict", "you have already reported this comment")
+		}
+		fmt.Printf("comments: submit report failed: %v\n", err)
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to submit report")
 	}
 
@@ -888,6 +984,37 @@ func handleGetCommentItem(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+var (
+	errAlreadyReported = errors.New("comment already reported by this user")
+)
+
+// bumpCommentTarget queues version-counter bumps for the media/list a comment
+// is attached to, so cached media/list responses (which embed comments, likes
+// and reactions) are invalidated in O(1) after any comment write. The webhook
+// catalog defines no comment/reaction events, so no outbox event is emitted.
+func bumpCommentTarget(cacheTx *cache.CacheTransaction, comment *database.Comment) {
+	if comment == nil {
+		return
+	}
+	if comment.MediaType != "" && comment.MediaID != nil && *comment.MediaID != 0 {
+		mvk := redis.BuildMediaVersionKey(comment.MediaType, *comment.MediaID, nil, nil)
+		cacheTx.AddInvalidation(mvk, map[string]interface{}{
+			"media_id":     *comment.MediaID,
+			"media_type":   comment.MediaType,
+			"version_key":  mvk,
+			"version_only": true,
+		})
+	}
+	if comment.ListID != nil && *comment.ListID != 0 {
+		lvk := redis.BuildListVersionKey(*comment.ListID)
+		cacheTx.AddInvalidation(lvk, map[string]interface{}{
+			"list_id":      *comment.ListID,
+			"version_key":  lvk,
+			"version_only": true,
+		})
+	}
+}
 
 func parseCSV(s string) []string {
 	parts := strings.Split(s, ",")
