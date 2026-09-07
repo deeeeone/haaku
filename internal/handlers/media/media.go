@@ -486,7 +486,7 @@ func handleGetPerson(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
 
-	resp := buildPersonResponse(&person)
+	resp := BuildPersonResponse(&person)
 
 	// Include credits.
 	var credits []database.Credit
@@ -576,13 +576,13 @@ func buildPeopleResponse(c *fiber.Ctx, db *gorm.DB, credits []database.Credit) (
 
 		if cr.CreditType == "cast" {
 			cast = append(cast, CastMemberResponse{
-				Person:    buildPersonResponse(&person),
+				Person:    BuildPersonResponse(&person),
 				Character: cr.Character,
 				Order:     cr.Order,
 			})
 		} else {
 			crew = append(crew, CrewMemberResponse{
-				Person:     buildPersonResponse(&person),
+				Person:     BuildPersonResponse(&person),
 				Job:        cr.Job,
 				Department: cr.Department,
 			})

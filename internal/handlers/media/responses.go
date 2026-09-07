@@ -357,10 +357,19 @@ func BuildEpisodeResponse(e *database.Episode) EpisodeResponse {
 	return resp
 }
 
-// buildPersonResponse builds a PersonResponse from a database Person.
-func buildPersonResponse(p *database.Person) PersonResponse {
+// BuildPersonResponse builds a PersonResponse from a database Person.
+func BuildPersonResponse(p *database.Person) PersonResponse {
+	ids := buildIDs("person", p.ID, nil, nil)
+	// buildIDs only reads movie/show rows for TMDB/IMDB, so add the person's
+	// own external ids here to keep parity with the fields on the row.
+	if p.TmdbID != 0 {
+		ids.TMDB = p.TmdbID
+	}
+	if p.ImdbID != "" {
+		ids.IMDB = p.ImdbID
+	}
 	resp := PersonResponse{
-		IDs:                buildIDs("person", p.ID, nil, nil),
+		IDs:                ids,
 		Name:               p.Name,
 		Biography:          p.Biography,
 		Gender:             p.Gender,

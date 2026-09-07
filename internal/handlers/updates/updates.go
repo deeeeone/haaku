@@ -87,7 +87,7 @@ func handleMovieUpdates(c *fiber.Ctx) error {
 	}
 
 	page, limit := response.ParsePagination(c, 25)
-	extended := getExtended(c)
+	extended := media.GetExtended(c)
 
 	var movies []database.Movie
 	if err := db.Where("updated_at >= ?", startDate).
@@ -100,7 +100,7 @@ func handleMovieUpdates(c *fiber.Ctx) error {
 
 	resp := make([]media.MovieResponse, 0, len(movies))
 	for _, m := range movies {
-		resp = append(resp, buildMovieResponse(&m, extended))
+		resp = append(resp, media.BuildMovieResponse(&m, extended))
 	}
 
 	return c.JSON(resp)
@@ -119,7 +119,7 @@ func handleShowUpdates(c *fiber.Ctx) error {
 	}
 
 	page, limit := response.ParsePagination(c, 25)
-	extended := getExtended(c)
+	extended := media.GetExtended(c)
 
 	var shows []database.Show
 	if err := db.Where("updated_at >= ?", startDate).
@@ -132,7 +132,7 @@ func handleShowUpdates(c *fiber.Ctx) error {
 
 	resp := make([]media.ShowResponse, 0, len(shows))
 	for _, s := range shows {
-		resp = append(resp, buildShowResponse(&s, extended))
+		resp = append(resp, media.BuildShowResponse(&s, extended))
 	}
 
 	return c.JSON(resp)
@@ -163,184 +163,10 @@ func handlePeopleUpdates(c *fiber.Ctx) error {
 
 	resp := make([]media.PersonResponse, 0, len(people))
 	for _, p := range people {
-		resp = append(resp, buildPersonResponse(&p))
+		resp = append(resp, media.BuildPersonResponse(&p))
 	}
 
 	return c.JSON(resp)
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-// getExtended returns the extended level from query params, defaulting to "min".
-func getExtended(c *fiber.Ctx) string {
-	ext := c.Query("extended", "min")
-	switch ext {
-	case "min", "full", "metadata", "images", "all":
-		return ext
-	default:
-		return "min"
-	}
-}
-
-// buildMovieResponse builds a MovieResponse from a database Movie.
-func buildMovieResponse(m *database.Movie, extended string) media.MovieResponse {
-	year := 0
-	if m.Released != nil && !m.Released.IsZero() {
-		year = m.Released.Year()
-	}
-
-	resp := media.MovieResponse{
-		IDs:    buildMovieIDs(m),
-		Title:  m.Title,
-		Year:   year,
-		Images: m.Images,
-		RatingSummary: &media.RatingSummary{
-			Rating:       m.RatingAvg,
-			Votes:        m.RatingCount,
-			Distribution: make(map[string]int64),
-		},
-	}
-
-	switch extended {
-	case "full", "all":
-		resp.Overview = m.Overview
-		resp.Tagline = m.Tagline
-		resp.Runtime = m.Runtime
-		resp.Genres = m.Genres
-		resp.Certification = m.Certification
-		resp.Language = m.Language
-		resp.TrailerURL = m.TrailerURL
-		resp.Status = m.Status
-		fallthrough
-	case "metadata":
-		resp.Metadata = m.Metadata
-	case "images":
-	}
-
-	if extended == "all" {
-		resp.Overview = m.Overview
-		resp.Tagline = m.Tagline
-		resp.Runtime = m.Runtime
-		resp.Genres = m.Genres
-		resp.Certification = m.Certification
-		resp.Language = m.Language
-		resp.TrailerURL = m.TrailerURL
-		resp.Status = m.Status
-		resp.Metadata = m.Metadata
-	}
-
-	return resp
-}
-
-// buildShowResponse builds a ShowResponse from a database Show.
-func buildShowResponse(s *database.Show, extended string) media.ShowResponse {
-	year := 0
-	if s.FirstAired != nil && !s.FirstAired.IsZero() {
-		year = s.FirstAired.Year()
-	}
-
-	resp := media.ShowResponse{
-		IDs:    buildShowIDs(s),
-		Title:  s.Title,
-		Year:   year,
-		Images: s.Images,
-		RatingSummary: &media.RatingSummary{
-			Rating:       s.RatingAvg,
-			Votes:        s.RatingCount,
-			Distribution: make(map[string]int64),
-		},
-		Seasons: make([]media.SeasonResponse, 0),
-	}
-
-	switch extended {
-	case "full", "all":
-		resp.Overview = s.Overview
-		resp.Genres = s.Genres
-		resp.Certification = s.Certification
-		resp.Language = s.Language
-		resp.Network = s.Network
-		resp.Status = s.Status
-		resp.EpisodeCount = s.EpisodeCount
-		resp.SeasonCount = s.SeasonCount
-		if s.FirstAired != nil {
-			resp.FirstAired = s.FirstAired.String()
-		}
-		if s.LastAired != nil {
-			resp.LastAired = s.LastAired.String()
-		}
-		fallthrough
-	case "metadata":
-		resp.Metadata = s.Metadata
-	case "images":
-	}
-
-	if extended == "all" {
-		resp.Overview = s.Overview
-		resp.Genres = s.Genres
-		resp.Certification = s.Certification
-		resp.Language = s.Language
-		resp.Network = s.Network
-		resp.Status = s.Status
-		resp.EpisodeCount = s.EpisodeCount
-		resp.SeasonCount = s.SeasonCount
-		if s.FirstAired != nil {
-			resp.FirstAired = s.FirstAired.String()
-		}
-		if s.LastAired != nil {
-			resp.LastAired = s.LastAired.String()
-		}
-		resp.Metadata = s.Metadata
-	}
-
-	return resp
-}
-
-// buildPersonResponse builds a PersonResponse from a database Person.
-func buildPersonResponse(p *database.Person) media.PersonResponse {
-	resp := media.PersonResponse{
-		IDs:                media.IDs{ID: p.ID, TMDB: p.TmdbID, IMDB: p.ImdbID},
-		Name:               p.Name,
-		Biography:          p.Biography,
-		Gender:             p.Gender,
-		KnownForDepartment: p.KnownForDepartment,
-		Images:             p.Images,
-	}
-	if p.Birthday != nil {
-		resp.Birthday = p.Birthday.String()
-	}
-	if p.Deathday != nil {
-		resp.Deathday = p.Deathday.String()
-	}
-	if resp.Images == nil {
-		resp.Images = make(map[string]any)
-	}
-	return resp
-}
-
-// buildMovieIDs builds a media.IDs object for a movie.
-func buildMovieIDs(m *database.Movie) media.IDs {
-	ids := media.IDs{ID: m.ID}
-	if m.TmdbID != 0 {
-		ids.TMDB = m.TmdbID
-	}
-	if m.ImdbID != "" {
-		ids.IMDB = m.ImdbID
-	}
-	return ids
-}
-
-// buildShowIDs builds a media.IDs object for a show.
-func buildShowIDs(s *database.Show) media.IDs {
-	ids := media.IDs{ID: s.ID}
-	if s.TmdbID != 0 {
-		ids.TMDB = s.TmdbID
-	}
-	if s.ImdbID != "" {
-		ids.IMDB = s.ImdbID
-	}
-	return ids
 }
 
 // --- Error helpers ---
