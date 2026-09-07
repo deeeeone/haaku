@@ -3,6 +3,7 @@ package comments
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -739,15 +740,43 @@ func handleGetLikes(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
+	page, limit := response.ParsePagination(c, 25)
+
+	var totalCount int64
+	db.Model(&database.CommentLike{}).Where("comment_id = ?", id).Count(&totalCount)
+
 	var likes []database.CommentLike
-	db.Where("comment_id = ?", id).Find(&likes)
+	db.Where("comment_id = ?", id).
+		Order("created_at DESC, user_id DESC"). // stable order for pagination
+		Offset((page - 1) * limit).
+		Limit(limit).
+		Find(&likes)
 
 	users := make([]string, len(likes))
 	for i, l := range likes {
 		users[i] = l.UserID
 	}
 
+	setPaginationHeaders(c, page, limit, totalCount, len(users))
+
 	return c.JSON(likesResponse{Users: users})
+}
+
+// setPaginationHeaders emits the §7 pagination headers (api-conventions.md)
+// plus a Link: rel="next" header when more pages exist.
+func setPaginationHeaders(c *fiber.Ctx, page, limit int, total int64, itemsCount int) {
+	totalPages := int64(0)
+	if total > 0 {
+		totalPages = (total + int64(limit) - 1) / int64(limit)
+	}
+	c.Set("X-Pagination-Page", strconv.Itoa(page))
+	c.Set("X-Pagination-Limit", strconv.Itoa(limit))
+	c.Set("X-Pagination-Total-Pages", strconv.FormatInt(totalPages, 10))
+	c.Set("X-Pagination-Total-Items", strconv.FormatInt(total, 10))
+	c.Set("X-Pagination-Items-Count", strconv.Itoa(itemsCount))
+	if page < int(totalPages) {
+		c.Set("Link", `<`+c.Path()+`?page=`+strconv.Itoa(page+1)+`&limit=`+strconv.Itoa(limit)+`>; rel="next"`)
+	}
 }
 
 // GET /v1/comments/:id/reactions
