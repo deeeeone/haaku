@@ -45,7 +45,7 @@ Registers OpenAPI metadata for all endpoints. Uses `comment_type`/`media_type` C
 - [ ] Handle reply_count on delete (decrement and/or cascade) and orphaned replies.
 - [x] Wrap write flows in `cache.WithCacheTransaction` + cache/version invalidation and outbox events. (Batch 7 — no comment/reaction/reply/report events exist in the webhook catalog, so invalidation only.)
 - [x] Paginate `GET /{id}/likes`. (Batch 8 — `?page&limit` default 25/max 100 with §7 `X-Pagination-*` headers + `Link: rel="next"`; stable `created_at DESC, user_id DESC` order.)
-- [ ] Add comment length validation per spec.
+- [x] Add comment length validation per spec. (Batch 11)
 - [x] Add DB index strategy for trending query (`like_count+reply_count`, `created_at`). (Batch 10 — documented in the Databases section below; no schema change landed here per project rules.)
 - [x] Check the user lookup error in the moderator delete path. (Batch 6)
 - [ ] Verify module test coverage (`make test`).
