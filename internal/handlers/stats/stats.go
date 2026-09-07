@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
+	"strings"
 	"time"
 
 	"trakt-api/internal/cache"
@@ -81,8 +83,10 @@ func handleGetUserStats(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to fetch stats")
 	}
 
-	// Recompute if no stats or stale > 1h.
-	if cachedStats == nil || isStale(cachedStats.ComputedAt) {
+	// Recompute if no stats, stale > 1h, or the user version counter has
+	// advanced since the last compute (history/data writes bump it, so stats
+	// stop serving stale data after history changes instead of waiting an hour).
+	if cachedStats == nil || isStale(cachedStats.ComputedAt) || statsVersionMismatch(userID) {
 		log.Printf("[stats] recomputing stats for user %s", userID)
 		recomputed, rerr := recomputeUserStats(userID)
 		if rerr != nil {
@@ -101,12 +105,15 @@ func handleGetUserStats(c *fiber.Ctx) error {
 		cachedStats = fresh
 
 		if recomputed {
-			// Bump user version for cache invalidation.
+			// Bump user version for cache invalidation, then snapshot it so the
+			// next write that advances it triggers a recompute (version-driven
+			// staleness).
 			if rdb := projredis.GetClient(); rdb != nil {
 				if _, err := projredis.IncrementUserVersion(userID); err != nil {
 					log.Printf("[stats] failed to bump user version for %s: %v", userID, err)
 				}
 			}
+			storeStatsVersionSnapshot(userID)
 		}
 	}
 
@@ -186,7 +193,7 @@ func recomputeUserStats(userID string) (bool, error) {
 		if cerr != nil {
 			return nil, fmt.Errorf("fetch current stats under lock: %w", cerr)
 		}
-		if cur != nil && !isStale(cur.ComputedAt) {
+		if cur != nil && !isStale(cur.ComputedAt) && !statsVersionMismatch(userID) {
 			// Another concurrent request already recomputed — nothing to do.
 			return cacheTx, nil
 		}
@@ -201,4 +208,52 @@ func recomputeUserStats(userID string) (bool, error) {
 		return false, err
 	}
 	return recomputed, nil
+}
+
+// statsVersionSnapshotTTL governs how long a stats version snapshot lives in
+// Redis before it expires. Long enough that a snapshot from the last compute
+// survives between writes; if it expires, staleness falls back to wall-clock.
+const statsVersionSnapshotTTL = 7 * 24 * time.Hour
+
+func statsVersionSnapshotKey(userID string) string {
+	return "stats:user_version:" + userID
+}
+
+// statsVersionMismatch reports whether the user's version counter has advanced
+// past the snapshot taken when their stats were last computed. History/data
+// writes bump the user version (via their cache-tx), so a mismatch means the
+// cached stats may be stale even if they're younger than 1h. Redis is best
+// effort: if unavailable or no snapshot exists yet, it returns false and the
+// 1h wall-clock staleness still applies.
+func statsVersionMismatch(userID string) bool {
+	current, err := cache.GetUserVersion(userID)
+	if err != nil {
+		return false
+	}
+	snap, err := projredis.GetCacheData(statsVersionSnapshotKey(userID))
+	if err != nil {
+		return false
+	}
+	v, err := strconv.ParseInt(strings.TrimSpace(string(snap)), 10, 64)
+	if err != nil {
+		return false
+	}
+	return v != current
+}
+
+// storeStatsVersionSnapshot records the user's current version counter as the
+// baseline against which future stats staleness is measured. Called after a
+// recompute (and its version bump) so the snapshot matches the freshly
+// computed stats.
+func storeStatsVersionSnapshot(userID string) {
+	if projredis.GetClient() == nil {
+		return
+	}
+	v, err := cache.GetUserVersion(userID)
+	if err != nil {
+		return
+	}
+	if err := projredis.SetCacheData(statsVersionSnapshotKey(userID), []byte(strconv.FormatInt(v, 10)), statsVersionSnapshotTTL); err != nil {
+		log.Printf("[stats] failed to store version snapshot for %s: %v", userID, err)
+	}
 }
