@@ -41,7 +41,7 @@ Ownership is enforced by checking `lists.id = ? AND lists.user_id = ?`. Register
 - [x] Add `auth.AuthRequired` middleware to all collab routes; use checked `user_id` asserts (401 on missing).
 - [ ] Decide owned+collaborated vs collaborated-only semantics for `GET /users/me/lists/collaborations`.
 - [ ] Implement the invite accept/decline flow or explicitly document `AcceptedAt` as future.
-- [ ] Return 403 (not 404) when the list exists but the caller isn't the owner.
+- [x] Return 403 (not 404) when the list exists but the caller isn't the owner. (Batch 6)
 - [ ] Route writes through `cache.WithCacheTransaction` with list version-key invalidation.
 - [x] Replace local error helpers with shared `internal/response` (Batch 0).
 - [x] Consolidate the identical fiber.Ctx `parseID` copies in episodes/seasons/comments into a shared helper (`response.ParseIDParam`; collab's string `parseID` still uses `strconv.ParseInt`; Batch 5).
