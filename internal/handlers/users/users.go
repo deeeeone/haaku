@@ -3,13 +3,16 @@ package users
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"time"
 
 	"trakt-api/internal/auth"
+	"trakt-api/internal/cache"
 	"trakt-api/internal/database"
 	"trakt-api/internal/openapi"
 	"trakt-api/internal/outbox"
+	"trakt-api/redis"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -383,27 +386,63 @@ func handleBlockUser(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
-	block := database.UserBlock{
-		BlockerID: userID,
-		BlockedID: targetID,
-		CreatedAt: time.Now(),
-	}
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
 
-	result := db.Where(database.UserBlock{
-		BlockerID: userID,
-		BlockedID: targetID,
-	}).FirstOrCreate(&block)
+		block := database.UserBlock{
+			BlockerID: userID,
+			BlockedID: targetID,
+			CreatedAt: time.Now(),
+		}
+		result := tx.Where(database.UserBlock{
+			BlockerID: userID,
+			BlockedID: targetID,
+		}).FirstOrCreate(&block)
+		if result.Error != nil {
+			return nil, fmt.Errorf("create block: %w", result.Error)
+		}
 
-	if result.Error != nil {
+		// Remove any existing follow relationship in both directions (blocking
+		// severs follows), atomically with the block row.
+		var removedFollow bool
+		r1 := tx.Where("follower_id = ? AND following_id = ?", userID, targetID).Delete(&database.UserFollow{})
+		if r1.Error != nil {
+			return nil, fmt.Errorf("remove follow (out): %w", r1.Error)
+		}
+		if r1.RowsAffected > 0 {
+			removedFollow = true
+		}
+		r2 := tx.Where("follower_id = ? AND following_id = ?", targetID, userID).Delete(&database.UserFollow{})
+		if r2.Error != nil {
+			return nil, fmt.Errorf("remove follow (in): %w", r2.Error)
+		}
+		if r2.RowsAffected > 0 {
+			removedFollow = true
+		}
+
+		// Blocking a followed user severs that follow — emit the catalog's
+		// typed follow-removal event in-tx. The catalog has no user.blocked
+		// event; a follow removal is the external signal a block produces.
+		if removedFollow {
+			if err := outbox.PublishEvent(tx, outbox.EventFollowRemoved, userID, map[string]any{
+				"actor":      userID,
+				"target":     targetID,
+				"blocked_id": targetID,
+			}); err != nil {
+				return nil, fmt.Errorf("publish follow-removed: %w", err)
+			}
+		}
+
+		// Blocking changes both users' follower/following views and the blocked
+		// user's profile relationship — bump both version counters.
+		queueUserVersion(cacheTx, userID)
+		queueUserVersion(cacheTx, targetID)
+		return cacheTx, nil
+	})
+	if err != nil {
+		slog.Error("block user failed", "user_id", userID, "target_id", targetID, "error", err)
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to block user")
 	}
-
-	// Remove any existing follow relationship in both directions.
-	db.Where("follower_id = ? AND following_id = ?", userID, targetID).Delete(&database.UserFollow{})
-	db.Where("follower_id = ? AND following_id = ?", targetID, userID).Delete(&database.UserFollow{})
-
-	// Publish outbox event.
-	_ = outbox.PublishEvent(db, "user.blocked", userID, map[string]any{"blocked_id": targetID})
 
 	return c.SendStatus(fiber.StatusNoContent)
 }
@@ -420,22 +459,48 @@ func handleUnblockUser(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid target user id")
 	}
 
-	db, err := database.GetDB()
-	if err != nil {
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
-	}
+	err := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
 
-	result := db.Where("blocker_id = ? AND blocked_id = ?", userID, targetID).Delete(&database.UserBlock{})
-	if result.Error != nil {
+		result := tx.Where("blocker_id = ? AND blocked_id = ?", userID, targetID).Delete(&database.UserBlock{})
+		if result.Error != nil {
+			return nil, fmt.Errorf("unblock user: %w", result.Error)
+		}
+		if result.RowsAffected == 0 {
+			return nil, errBlockNotFound
+		}
+
+		queueUserVersion(cacheTx, userID)
+		queueUserVersion(cacheTx, targetID)
+		return cacheTx, nil
+	})
+	if err != nil {
+		if errors.Is(err, errBlockNotFound) {
+			return response.WriteError(c, fiber.StatusNotFound, "not_found", "block not found")
+		}
+		slog.Error("unblock user failed", "user_id", userID, "target_id", targetID, "error", err)
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to unblock user")
 	}
-	if result.RowsAffected == 0 {
-		return response.WriteError(c, fiber.StatusNotFound, "not_found", "block not found")
-	}
-
-	_ = outbox.PublishEvent(db, "user.unblocked", userID, map[string]any{"unblocked_id": targetID})
 
 	return c.SendStatus(fiber.StatusNoContent)
+}
+
+// ---------------------------------------------------------------------------
+// Cache/version helpers
+// ---------------------------------------------------------------------------
+
+var errBlockNotFound = errors.New("block not found")
+
+// queueUserVersion queues a version-counter bump for a user so cached
+// follower/following/profile responses are invalidated in O(1) after a
+// block/unblock (blocking severs follows and changes relationship views).
+func queueUserVersion(cacheTx *cache.CacheTransaction, userID string) {
+	uvk := redis.BuildUserVersionKey(userID)
+	cacheTx.AddInvalidation(uvk, map[string]interface{}{
+		"user_id":      userID,
+		"version_key":  uvk,
+		"version_only": true,
+	})
 }
 
 // ---------------------------------------------------------------------------
