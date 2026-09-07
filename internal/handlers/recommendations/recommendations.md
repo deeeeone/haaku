@@ -24,7 +24,7 @@ This is the **only** recommendations implementation (the `discovery` module's re
 
 - **`requireAuth` was middleware-less (RESOLVED)** — routes were registered WITHOUT `requireAuth`; only the per-handler `c.Locals("user_id")` check guarded them (recommendations.go:60-70). Handlers already fail closed (checked asserts, 401), so behavior is unchanged — but all 5 routes now run `auth.AuthRequired()` at registration, matching the OpenAPI Auth:required annotation and enforcing auth before any DB work.
 - **Anticipated `watchlist_count`/`score` ordering** — in the combined branch (`mediaType` empty) the inner CTEs each compute `COUNT(*) OVER()` before `UNION ALL`, so `full_count` is the per-type count, not the combined total; the outer wrapper re-orders by `score` but the reported `row_count` is misleading when both types are returned.
-- **Unbounded `fetchTopGenres` query** — union of 6 per-user subqueries scanned per request; no cache. Every personalized call re-aggregates the user's full history. No Redis cache despite the pattern in `media`/`lists`.
+- **`fetchTopGenres` now cached (RESOLVED)** — the per-user top-genres query is cached in Redis, version-keyed by the user's version counter (a history/favorites/ratings write that bumps it invalidates in O(1)), with a 30m TTL backstop. Best-effort, DB fallback (Batch 9).
 - **`jsonb_array_elements_text` cross join** — `JOIN jsonb_array_elements_text(movies.genres) AS g ON TRUE` on the movies table; combined with `DISTINCT` this is functional but expensive (full-table expansion before filtering). No index-friendly path.
 - **`Date.String()` (nil) returns `""`** — shared `database.Date.String()` is nil-safe; combined with `released,omitempty` semantics it's fine, yet `first_aired`/`release_date` zero-dates silently become empty strings.
 - **Cutoff is `time.Now()` (server clock)** — 90-day window is per-request; fine for a wall-clock read but untestable; no injection of `now()`.
@@ -37,7 +37,7 @@ This is the **only** recommendations implementation (the `discovery` module's re
 
 - [x] Attach `auth.AuthRequired` to route registration (all 5 routes).
 - [ ] Fix `full_count` in the combined anticipated branch (count after UNION, not per-CTE).
-- [ ] Cache `fetchTopGenres` results (Redis, TTL) — it scans the user's full history every request.
+- [x] Cache `fetchTopGenres` results (Redis, TTL). (Batch 9 — version-keyed per-user with 30m TTL backstop; DB fallback retained.)
 - [ ] Replace `jsonb_array_elements_text` cross join with a GIN-indexed containment query where possible.
 - [ ] Make the score weights / popularity fallback config or spec constants.
 - [ ] Respect `user_hidden` in `handleAnticipated`.
