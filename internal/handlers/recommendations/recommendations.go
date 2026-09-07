@@ -1,11 +1,16 @@
 package recommendations
 
 import (
+	"encoding/json"
+	"fmt"
+	"log"
 	"time"
 
 	"trakt-api/internal/auth"
+	"trakt-api/internal/cache"
 	"trakt-api/internal/database"
 	"trakt-api/internal/openapi"
+	projredis "trakt-api/redis"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -160,7 +165,7 @@ func handlePersonalizedMovies(c *fiber.Ctx) error {
 	page, limit := response.ParsePagination(c, 20)
 
 	// Step 1: Get user's top 5 genres from history + favorites + ratings.
-	topGenres, err := fetchTopGenres(db, userID, 5)
+	topGenres, err := fetchTopGenresCached(db, userID, 5)
 	if err != nil {
 		return response.InternalError(c)
 	}
@@ -242,7 +247,7 @@ func handlePersonalizedShows(c *fiber.Ctx) error {
 	page, limit := response.ParsePagination(c, 20)
 
 	// Step 1: Get user's top 5 genres.
-	topGenres, err := fetchTopGenres(db, userID, 5)
+	topGenres, err := fetchTopGenresCached(db, userID, 5)
 	if err != nil {
 		return response.InternalError(c)
 	}
@@ -783,6 +788,66 @@ func fetchTopGenres(db *gorm.DB, userID string, n int) ([]string, error) {
 		genres = make([]string, 0)
 	}
 	return genres, nil
+}
+
+// ---------------------------------------------------------------------------
+// Cached fetchTopGenres
+// ---------------------------------------------------------------------------
+
+// topGenresCacheTTL bounds how long a per-user top-genres result is served from
+// Redis. Version-keying the entry means a history/favorites/ratings write that
+// bumps the user version counter invalidates the result immediately (O(1)); the
+// TTL is a backstop for the version counter expiring.
+const topGenresCacheTTL = 30 * time.Minute
+
+func topGenresCacheKey(userID string, version int64) string {
+	return fmt.Sprintf("recommendations:topgenres:%s:v%d", userID, version)
+}
+
+// fetchTopGenresCached returns the user's top N genres, serving from Redis when
+// a fresh version-keyed entry exists and computing from the DB otherwise. It is
+// best-effort: on Redis unavailability or version-fetch failure it falls through
+// to the DB scan and never fails the request.
+func fetchTopGenresCached(db *gorm.DB, userID string, n int) ([]string, error) {
+	if projredis.GetClient() != nil {
+		if version, err := cache.GetUserVersion(userID); err == nil {
+			key := topGenresCacheKey(userID, version)
+			if genres, ok := getCachedTopGenres(key); ok {
+				return genres, nil
+			}
+			genres, err := fetchTopGenres(db, userID, n)
+			if err != nil {
+				return nil, err
+			}
+			setCachedTopGenres(key, genres)
+			return genres, nil
+		}
+	}
+	return fetchTopGenres(db, userID, n)
+}
+
+func getCachedTopGenres(key string) ([]string, bool) {
+	data, err := projredis.GetCacheData(key)
+	if err != nil {
+		return nil, false
+	}
+	var genres []string
+	if err := json.Unmarshal(data, &genres); err != nil {
+		log.Printf("[recommendations] cache unmarshal error for key %s: %v", key, err)
+		return nil, false
+	}
+	return genres, true
+}
+
+func setCachedTopGenres(key string, genres []string) {
+	data, err := json.Marshal(genres)
+	if err != nil {
+		log.Printf("[recommendations] cache marshal error for key %s: %v", key, err)
+		return
+	}
+	if err := projredis.SetCacheData(key, data, topGenresCacheTTL); err != nil {
+		log.Printf("[recommendations] cache set error for key %s: %v", key, err)
+	}
 }
 
 // ============================================================================
