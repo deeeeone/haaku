@@ -38,10 +38,38 @@ This is the **only** recommendations implementation (the `discovery` module's re
 - [x] Attach `auth.AuthRequired` to route registration (all 5 routes).
 - [ ] Fix `full_count` in the combined anticipated branch (count after UNION, not per-CTE).
 - [x] Cache `fetchTopGenres` results (Redis, TTL). (Batch 9 — version-keyed per-user with 30m TTL backstop; DB fallback retained.)
-- [ ] Replace `jsonb_array_elements_text` cross join with a GIN-indexed containment query where possible.
+- [x] Replace `jsonb_array_elements_text` cross join with a GIN-indexed containment query where possible. (Batch 10 — NOT possible yet: no GIN index exists on `movies.genres`/`shows.genres` (only tsvector GIN on `search_vector`, migration 0003). Cross join kept as-is for correct "any-of-top-genres" results; the index migration + `?|`/`@>` rewrite is documented in the Databases section below and is out of scope here — no schema changes allowed in this batch.)
 - [ ] Make the score weights / popularity fallback config or spec constants.
 - [ ] Respect `user_hidden` in `handleAnticipated`.
 - [x] Replace error + pagination helpers with `internal/response` (Batch 0).
 - [x] Swap local `authRequired` for shared `auth.AuthRequired` (Batch 1).
 - [x] `safeStrings`/`safeDateString`/`imageURL` consolidated into `database` package methods (`StringSlice.Values`, `Date.String`, `JSONMap.StringValue`; Batch 4).
 - [ ] Verify module test coverage (`make test`).
+
+## Databases — genre containment index (migration needed, out of scope here)
+
+The personalized movies/shows recommendations currently use a
+`JOIN jsonb_array_elements_text(genres) AS g ... WHERE g IN (topGenres)` cross
+join to match media that has **any** of the user's top genres (OR semantics).
+There is **no GIN index** on `movies.genres` or `shows.genres` (`genres` are
+`jsonb DEFAULT '[]'`, migration 0002; the only GIN indexes are the tsvector
+`search_vector` ones in migration 0003). Without GIN the containment operators
+would not be accelerator-usable, so the cross join was **kept as-is** for correct
+results — no schema/query change landed in Batch 10 (schema changes are not
+allowed in this batch).
+
+When a GIN index migration becomes available (new append-only migration), apply:
+
+```sql
+CREATE INDEX idx_movies_genres_gin ON movies USING GIN (genres);
+CREATE INDEX idx_shows_genres_gin  ON shows USING GIN (genres);
+```
+
+then the two recommendation queries can drop the cross join in favor of the
+array-contains operators, preserving the same "any of top genres" semantics:
+
+- movies: replace the `Joins("JOIN jsonb_array_elements_text(movies.genres) AS g ON TRUE")`
+  + `Where("g IN ?", topGenres)` with `Where("movies.genres ?| ?", topGenres)`.
+- shows: same pattern with `shows.genres ?| ?`.
+- The optional per-request `genre` filter already uses the `? ` (string-exists)
+  operator, which also benefits from the GIN index.
