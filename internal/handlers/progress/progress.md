@@ -34,7 +34,7 @@ Both return plain JSON arrays with `progress` + `paused_at` and enriched media i
 
 - [ ] Add pagination (page/limit) to both endpoints.
 - [x] Remove the redundant per-handler auth check — routes run `auth.AuthRequired()` (Batch 1).
-- [ ] Reuse `media.BuildMovieResponse` / media builders for response enrichment.
+- [x] Reuse `media.BuildMovieResponse` / media builders for response enrichment (movie playback now batch-fetches and builds via `media.BuildMovieResponse`; Batch 5).
 - [ ] Clarify paused-vs-expired semantics and filter accordingly.
 - [x] Replace local error helpers with `internal/response` (Batch 0); auth swap tracked at the item above.
 - [ ] Verify module test coverage (`make test`).
