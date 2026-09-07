@@ -267,9 +267,60 @@ func parseNotifSettings(rawSettings string) notifSettingsResponse {
 
 // Notification type constants — the canonical inbox Type values used by
 // CreateNotification and the inbox UI/settings (follows/replies/list_invite).
+// The types mirror the spec's inbox categories (social-api.md: replies, follow
+// requests, list invites, import done, mentions).
 const (
-	NotifTypeFollow = "follow"
+	NotifTypeFollow        = "follow"
+	NotifTypeReply         = "reply"
+	NotifTypeListInvite    = "list_invite"
+	NotifTypeImportDone    = "import_complete"
 )
+
+// prefKeyForType maps a notification type to the recipient-settings toggle that
+// governs it (see parseNotifSettings). Types with no dedicated toggle (e.g.
+// mentions) return "" so they are always allowed.
+func prefKeyForType(notifType string) string {
+	switch notifType {
+	case NotifTypeFollow:
+		return "follows"
+	case NotifTypeReply:
+		return "replies"
+	case NotifTypeListInvite:
+		return "list_invite"
+	case NotifTypeImportDone:
+		return "import_complete"
+	}
+	return ""
+}
+
+// recipientEnabled reports whether the recipient's notification settings allow
+// a notification of the given type. Reads the user row's settings JSON (which
+// lives on `users.settings`). Best-effort: on a read error it defaults to
+// enabled (true) so a settings hiccup never silently swallows a notification.
+func recipientEnabled(db *gorm.DB, userID, notifType string) bool {
+	key := prefKeyForType(notifType)
+	if key == "" {
+		return true // no toggle governs this type — always allowed
+	}
+
+	var user database.User
+	if err := db.Select("settings").First(&user, "id = ?", userID).Error; err != nil {
+		return true
+	}
+	settings := parseNotifSettings(user.Settings)
+
+	switch key {
+	case "follows":
+		return settings.Follows
+	case "replies":
+		return settings.Replies
+	case "list_invite":
+		return settings.ListInvite
+	case "import_complete":
+		return settings.ImportComplete
+	}
+	return true
+}
 
 // CreateNotification creates a notification for a user. It must be called from
 // within a `cache.WithCacheTransaction` (DB-commit-first) flow: pass the active
@@ -277,7 +328,16 @@ const (
 // with the surrounding write and the recipient's user version counter is queued
 // for a bump (invalidates the cached inbox in O(1)). Notification writes never
 // bypass version counters or open their own transaction.
+//
+// The recipient's notification preferences are respected: if the toggle for
+// this notification's type (follows/replies/list_invite/import_complete) is
+// disabled, the notification is silently skipped (returns nil) — the underlying
+// social action still happens, the user just gets no inbox entry.
 func CreateNotification(db *gorm.DB, cacheTx *cache.CacheTransaction, userID, notifType, actorID string, payload map[string]interface{}) error {
+	if !recipientEnabled(db, userID, notifType) {
+		return nil
+	}
+
 	payloadMap := database.JSONMap{}
 	if payload != nil {
 		for k, v := range payload {
