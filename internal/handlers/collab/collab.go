@@ -2,12 +2,15 @@ package collab
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
 	"trakt-api/internal/auth"
+	"trakt-api/internal/cache"
 	"trakt-api/internal/database"
 	"trakt-api/internal/openapi"
+	"trakt-api/redis"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -201,28 +204,49 @@ func handleInviteCollaborator(c *fiber.Ctx) error {
 		return response.BadRequest(c, "cannot invite yourself")
 	}
 
-	// Check if already a collaborator.
-	var existing database.ListCollaborator
-	if err := db.Where("list_id = ? AND user_id = ?", listID, targetUser.ID).First(&existing).Error; err == nil {
-		return response.BadRequest(c, "user is already a collaborator")
-	}
+	created := &database.ListCollaborator{}
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
 
-	now := time.Now()
-	collab := database.ListCollaborator{
-		ListID:    listID,
-		UserID:    targetUser.ID,
-		Role:      req.Role,
-		InvitedAt: now,
-	}
+		// Duplicate check must happen inside the tx so a concurrent invite
+		// can't both pass the check and create — serialized per list.
+		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtext(?))", fmt.Sprintf("list:%d", listID)).Error; err != nil {
+			return nil, fmt.Errorf("advisory lock: %w", err)
+		}
+		var existing database.ListCollaborator
+		if err := tx.Where("list_id = ? AND user_id = ?", listID, targetUser.ID).First(&existing).Error; err == nil {
+			return nil, errAlreadyCollaborator
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("check existing collaborator: %w", err)
+		}
 
-	if err := db.Create(&collab).Error; err != nil {
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to add collaborator")
+		now := time.Now()
+		collab := database.ListCollaborator{
+			ListID:    listID,
+			UserID:    targetUser.ID,
+			Role:      req.Role,
+			InvitedAt: now,
+		}
+		if err := tx.Create(&collab).Error; err != nil {
+			return nil, fmt.Errorf("create collaborator: %w", err)
+		}
+		*created = collab
+
+		bumpListVersion(cacheTx, listID)
+		return cacheTx, nil
+	})
+	if err != nil {
+		if errors.Is(err, errAlreadyCollaborator) {
+			return response.BadRequest(c, "user is already a collaborator")
+		}
+		fmt.Printf("collab: invite collaborator failed: %v\n", err)
+		return response.InternalError(c)
 	}
 
 	resp := CollaboratorResponse{
-		UserID:    collab.UserID,
-		Role:      collab.Role,
-		InvitedAt: response.FormatTime(collab.InvitedAt),
+		UserID:    created.UserID,
+		Role:      created.Role,
+		InvitedAt: response.FormatTime(created.InvitedAt),
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(resp)
@@ -262,12 +286,29 @@ func handleRemoveCollaborator(c *fiber.Ctx) error {
 		return response.Forbidden(c, "you are not the owner of this list")
 	}
 
-	result := db.Where("list_id = ? AND user_id = ?", listID, targetUserID).Delete(&database.ListCollaborator{})
-	if result.Error != nil {
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to remove collaborator")
-	}
-	if result.RowsAffected == 0 {
-		return response.NotFound(c, "collaborator not found")
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
+
+		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtext(?))", fmt.Sprintf("list:%d", listID)).Error; err != nil {
+			return nil, fmt.Errorf("advisory lock: %w", err)
+		}
+		result := tx.Where("list_id = ? AND user_id = ?", listID, targetUserID).Delete(&database.ListCollaborator{})
+		if result.Error != nil {
+			return nil, fmt.Errorf("remove collaborator: %w", result.Error)
+		}
+		if result.RowsAffected == 0 {
+			return nil, errCollaboratorNotFound
+		}
+
+		bumpListVersion(cacheTx, listID)
+		return cacheTx, nil
+	})
+	if err != nil {
+		if errors.Is(err, errCollaboratorNotFound) {
+			return response.NotFound(c, "collaborator not found")
+		}
+		fmt.Printf("collab: remove collaborator failed: %v\n", err)
+		return response.InternalError(c)
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
@@ -311,6 +352,22 @@ func handleListCollaborators(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+var (
+	errAlreadyCollaborator  = errors.New("user is already a collaborator")
+	errCollaboratorNotFound = errors.New("collaborator not found")
+)
+
+// bumpListVersion queues a version-counter bump for a list's cached data so
+// collaborator-set changes invalidate cached list responses in O(1).
+func bumpListVersion(cacheTx *cache.CacheTransaction, listID int64) {
+	lvk := redis.BuildListVersionKey(listID)
+	cacheTx.AddInvalidation(lvk, map[string]interface{}{
+		"list_id":      listID,
+		"version_key":  lvk,
+		"version_only": true,
+	})
+}
 
 func parseID(s string) int64 {
 	id, err := strconv.ParseInt(s, 10, 64)
