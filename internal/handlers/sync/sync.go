@@ -811,7 +811,14 @@ func handleGetWatchlist(c *fiber.Ctx) error {
 	case "listed", "added":
 		order = "listed_at " + sortHow
 	case "title":
-		order = "media_type " + sortHow + ", media_id " + sortHow
+		// Sort by the real media title: join to movies/shows via correlated
+		// subqueries keyed on media_type/media_id, then fall back to
+		// media_type/media_id for a deterministic tiebreak. Previously this
+		// sorted by type+id, which is not title order at all.
+		order = `COALESCE(
+			(SELECT m.title FROM movies m WHERE m.id = user_watchlist.media_id AND user_watchlist.media_type = 'movie'),
+			(SELECT s.title FROM shows s WHERE s.id = user_watchlist.media_id AND user_watchlist.media_type = 'show')
+		) ` + sortHow + `, media_type ` + sortHow + `, media_id ` + sortHow
 	default:
 		order = "rank ASC"
 	}
