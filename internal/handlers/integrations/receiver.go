@@ -2,12 +2,15 @@ package integrations
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 
 	"trakt-api/internal/database"
 	"trakt-api/internal/openapi"
 	"trakt-api/internal/outbox"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 	"trakt-api/internal/response"
 )
 
@@ -44,15 +47,22 @@ func handleReceiveEvent(c *fiber.Ctx) error {
 
 	db, err := database.GetDB()
 	if err != nil {
-		return response.BadRequest(c, "database unavailable")
+		fmt.Printf("integrations: receiver database unavailable: %v\n", err)
+		return response.ServiceUnavailable(c, "database unavailable")
 	}
 
 	tok, err := LookupToken(db, tokenStr)
 	if err != nil {
-		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "invalid or expired token")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			// Token genuinely unknown/inactive → invalid credentials.
+			return response.Unauthorized(c)
+		}
+		// A DB failure during lookup is a server-side fault, not bad credentials.
+		fmt.Printf("integrations: receiver token lookup failed: %v\n", err)
+		return response.InternalError(c)
 	}
 	if tok == nil || !tok.Active {
-		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "invalid or expired token")
+		return response.Unauthorized(c)
 	}
 
 	var payload map[string]interface{}
@@ -65,7 +75,8 @@ func handleReceiveEvent(c *fiber.Ctx) error {
 	}
 
 	if err := outbox.PublishEvent(db, "integration.received", tok.UserID, payload); err != nil {
-		return response.BadRequest(c, "failed to queue event")
+		fmt.Printf("integrations: receiver publish event failed: %v\n", err)
+		return response.InternalError(c)
 	}
 
 	return c.Status(fiber.StatusAccepted).JSON(fiber.Map{"status": "accepted"})

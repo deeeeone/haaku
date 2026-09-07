@@ -159,12 +159,14 @@ func handleCreateToken(c *fiber.Ctx) error {
 
 	tokenStr, err := generateToken()
 	if err != nil {
-		return response.BadRequest(c, "failed to generate token")
+		fmt.Printf("integrations: generate token failed: %v\n", err)
+		return response.InternalError(c)
 	}
 
 	db, err := getDB()
 	if err != nil {
-		return response.BadRequest(c, "database unavailable")
+		fmt.Printf("integrations: database unavailable: %v\n", err)
+		return response.ServiceUnavailable(c, "database unavailable")
 	}
 
 	scopes := database.StringSlice(req.Scopes)
@@ -182,7 +184,8 @@ func handleCreateToken(c *fiber.Ctx) error {
 	}
 
 	if err := db.Create(&tok).Error; err != nil {
-		return response.BadRequest(c, "failed to create integration token")
+		fmt.Printf("integrations: create token failed: %v\n", err)
+		return response.InternalError(c)
 	}
 
 	resp := createTokenResponse{
@@ -201,12 +204,14 @@ func handleListTokens(c *fiber.Ctx) error {
 
 	db, err := getDB()
 	if err != nil {
-		return response.BadRequest(c, "database unavailable")
+		fmt.Printf("integrations: database unavailable: %v\n", err)
+		return response.ServiceUnavailable(c, "database unavailable")
 	}
 
 	var tokens []database.IntegrationToken
 	if err := db.Where("user_id = ?", uid).Order("created_at DESC").Find(&tokens).Error; err != nil {
-		return response.BadRequest(c, "failed to list tokens")
+		fmt.Printf("integrations: list tokens failed: %v\n", err)
+		return response.InternalError(c)
 	}
 
 	results := make([]tokenResponse, len(tokens))
@@ -230,12 +235,14 @@ func handleRevokeToken(c *fiber.Ctx) error {
 
 	db, err := getDB()
 	if err != nil {
-		return response.BadRequest(c, "database unavailable")
+		fmt.Printf("integrations: database unavailable: %v\n", err)
+		return response.ServiceUnavailable(c, "database unavailable")
 	}
 
 	result := db.Where("id = ? AND user_id = ?", id, uid).Delete(&database.IntegrationToken{})
 	if result.Error != nil {
-		return response.BadRequest(c, "failed to revoke token")
+		fmt.Printf("integrations: revoke token %d failed: %v\n", id, result.Error)
+		return response.InternalError(c)
 	}
 	if result.RowsAffected == 0 {
 		return response.NotFound(c, "integration token not found")
@@ -252,7 +259,7 @@ func LookupToken(db *gorm.DB, tokenStr string) (*database.IntegrationToken, erro
 	var tok database.IntegrationToken
 	if err := db.Where("token = ? AND active = ?", tokenStr, true).First(&tok).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("integration token not found or inactive")
+			return nil, fmt.Errorf("integration token not found or inactive: %w", err)
 		}
 		return nil, err
 	}
