@@ -18,9 +18,9 @@ Single endpoint: `GET /v1/users/:id/stats` — public user statistics (plays, mi
 
 - **Dead code: Redis version-keyed caching is stubbed** — lines 107-112 fetch `cache.GetUserVersion(userID)` and `_ = version`; the intended "serve version-keyed cached response" path was never implemented. The DB table (`statsengine.GetUserStats`) is the only real cache.
 - **Recompute is uncoordinated** — two concurrent requests that both find stale stats both call `ComputeUserStats`; no advisory lock / singleflight. Wasted work + duplicate writes.
-- **Recompute failure is silently swallowed** — on `ComputeUserStats` error the handler falls through to whatever exists (possibly nil → zero stats), hiding the error behind a 200 with zeros. Logged, but client can't distinguish "no data" from "computation failed".
+- **Recompute failure is silently swallowed (RESOLVED)** — a failed `ComputeUserStats` (or re-fetch) now returns 503 `db_unavailable` instead of a 200 with zeroed stats.
 - **Stats staleness is 1h wall-clock, not version-driven** — user history writes should invalidate instantly (outbox/version counter); instead stale data lives up to an hour.
-- **`db.First` error mapping treats ALL errors as 404** — a DB outage becomes "user not found".
+- **`db.First` error mapping treats ALL errors as 404 (RESOLVED)** — a DB outage now returns 503 `db_unavailable`; only `gorm.ErrRecordNotFound` maps to 404 "user not found".
 - **Auth is "optional" in OpenAPI but unused** — the endpoint doesn't read `user_id`; stats are public (fine), but no "extended/self" behavior.
 - **Response only exposes aggregate counts** — no breakdown by type/period that the stats engine may compute; verify against spec.
 - **Local error helpers** (`writeError`/`badRequest`/`notFound`) duplicated from `internal/httpapi`.
@@ -32,7 +32,7 @@ Single endpoint: `GET /v1/users/:id/stats` — public user statistics (plays, mi
 - [ ] Guard recompute with an advisory lock or singleflight.
 - [x] Surface recompute failures (503/500) instead of returning zeroed stats. (Batch 6)
 - [ ] Align staleness with the user version counter (invalidate on writes via outbox).
-- [ ] Handle non-404 DB errors separately from "not found".
+- [x] Handle non-404 DB errors separately from "not found". (Batch 6)
 - [x] Use shared `internal/response` helpers.
 - [ ] Verify stats engine output matches the spec'd fields.
 - [ ] Verify module test coverage (`make test`).
