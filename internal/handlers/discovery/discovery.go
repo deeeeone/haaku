@@ -1,9 +1,15 @@
 package discovery
 
 import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"time"
+
 	"trakt-api/internal/database"
 	"trakt-api/internal/handlers/media"
 	"trakt-api/internal/openapi"
+	projredis "trakt-api/redis"
 
 	"github.com/gofiber/fiber/v2"
 	"trakt-api/internal/response"
@@ -66,14 +72,23 @@ func handleShowsPopular(c *fiber.Ctx) error {
 }
 
 // moviesList queries movies ordered by popularity DESC with pagination.
-func moviesList(c *fiber.Ctx, _ string) error {
+// Results are cached in Redis (short TTL) because these are hot, public,
+// read-heavy endpoints. A cache failure never fails the request — it falls
+// through to the DB.
+func moviesList(c *fiber.Ctx, kind string) error {
+	page, limit := response.ParsePagination(c, 20)
+	extended := media.GetExtended(c)
+
+	cacheKey := discoveryCacheKey("movies", kind, page, limit, extended)
+	if data, ok := discoveryGetCache(cacheKey); ok {
+		c.Set("Content-Type", "application/json")
+		return c.Send(data)
+	}
+
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
 		return response.InternalError(c, "database unavailable")
 	}
-
-	page, limit := response.ParsePagination(c, 20)
-	extended := media.GetExtended(c)
 
 	var movies []database.Movie
 	if err := db.Order("popularity DESC").
@@ -88,18 +103,25 @@ func moviesList(c *fiber.Ctx, _ string) error {
 		resp = append(resp, media.BuildMovieResponse(&movies[i], extended))
 	}
 
+	discoverySetCache(cacheKey, resp)
 	return c.JSON(resp)
 }
 
 // showsList queries shows ordered by popularity DESC with pagination.
-func showsList(c *fiber.Ctx, _ string) error {
+func showsList(c *fiber.Ctx, kind string) error {
+	page, limit := response.ParsePagination(c, 20)
+	extended := media.GetExtended(c)
+
+	cacheKey := discoveryCacheKey("shows", kind, page, limit, extended)
+	if data, ok := discoveryGetCache(cacheKey); ok {
+		c.Set("Content-Type", "application/json")
+		return c.Send(data)
+	}
+
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
 		return response.InternalError(c, "database unavailable")
 	}
-
-	page, limit := response.ParsePagination(c, 20)
-	extended := media.GetExtended(c)
 
 	var shows []database.Show
 	if err := db.Order("popularity DESC").
@@ -114,6 +136,7 @@ func showsList(c *fiber.Ctx, _ string) error {
 		resp = append(resp, media.BuildShowResponse(&shows[i], extended))
 	}
 
+	discoverySetCache(cacheKey, resp)
 	return c.JSON(resp)
 }
 
@@ -127,6 +150,50 @@ func handleMoviesRecommendations(c *fiber.Ctx) error {
 
 func handleShowsRecommendations(c *fiber.Ctx) error {
 	return c.JSON(make([]media.ShowResponse, 0))
+}
+
+// ---------------------------------------------------------------------------
+// Redis TTL cache for hot public listings
+// ---------------------------------------------------------------------------
+
+// discoveryListTTL bounds how long a hot public listing (trending/popular) is
+// served from cache. Short enough to stay fresh, long enough to absorb bursts.
+const discoveryListTTL = 5 * time.Minute
+
+// discoveryCacheKey builds a stable key from every input that affects the
+// response body: media type, list kind, page, limit, and extended level.
+func discoveryCacheKey(mediaType, kind string, page, limit int, extended string) string {
+	return fmt.Sprintf("discovery:%s:%s:page%d:limit%d:extended%s", mediaType, kind, page, limit, extended)
+}
+
+// discoveryGetCache returns the cached raw JSON body for key. It returns
+// (nil, false) on any miss or Redis unavailability so the caller falls through
+// to the DB — the cache is best-effort and never blocks or fails the request.
+func discoveryGetCache(key string) ([]byte, bool) {
+	if projredis.GetClient() == nil {
+		return nil, false
+	}
+	data, err := projredis.GetCacheData(key)
+	if err != nil {
+		return nil, false
+	}
+	return data, true
+}
+
+// discoverySetCache stores the marshaled JSON of v under key with discoveryListTTL.
+// Best-effort: a Redis failure only logs.
+func discoverySetCache(key string, v interface{}) {
+	if projredis.GetClient() == nil {
+		return
+	}
+	data, err := json.Marshal(v)
+	if err != nil {
+		log.Printf("[discovery] cache marshal error for key %s: %v", key, err)
+		return
+	}
+	if err := projredis.SetCacheData(key, data, discoveryListTTL); err != nil {
+		log.Printf("[discovery] cache set error for key %s: %v", key, err)
+	}
 }
 
 // ---------------------------------------------------------------------------
