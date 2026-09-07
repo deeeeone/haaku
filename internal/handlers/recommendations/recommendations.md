@@ -36,7 +36,7 @@ This is the **only** recommendations implementation (the `discovery` module's re
 ## Todos
 
 - [x] Attach `auth.AuthRequired` to route registration (all 5 routes).
-- [ ] Fix `full_count` in the combined anticipated branch (count after UNION, not per-CTE).
+- [x] Fix `full_count` in the combined anticipated branch (count after UNION, not per-CTE). (Batch 12 — the shared union base no longer emits per-part `COUNT(*) OVER()`; the "both" wrapper computes `full_count` over the UNIONed result before ORDER/LIMIT, so the reported total matches the combined item set.)
 - [x] Cache `fetchTopGenres` results (Redis, TTL). (Batch 9 — version-keyed per-user with 30m TTL backstop; DB fallback retained.)
 - [x] Replace `jsonb_array_elements_text` cross join with a GIN-indexed containment query where possible. (Batch 10 — NOT possible yet: no GIN index exists on `movies.genres`/`shows.genres` (only tsvector GIN on `search_vector`, migration 0003). Cross join kept as-is for correct "any-of-top-genres" results; the index migration + `?|`/`@>` rewrite is documented in the Databases section below and is out of scope here — no schema changes allowed in this batch.)
 - [ ] Make the score weights / popularity fallback config or spec constants.
