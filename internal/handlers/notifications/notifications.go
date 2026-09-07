@@ -1,6 +1,7 @@
 package notifications
 
 import (
+	"bytes"
 	"encoding/json"
 	"time"
 
@@ -147,10 +148,15 @@ func handleMarkRead(c *fiber.Ctx) error {
 	}
 
 	var req markReadRequest
-	if err := c.BodyParser(&req); err != nil {
-		// If body is empty, mark ALL as read
-		_ = err
+	body := c.Body()
+	if len(bytes.TrimSpace(body)) > 0 {
+		// A non-empty body must be valid JSON; a client typo should not
+		// silently escalate into "mark everything read".
+		if err := json.Unmarshal(body, &req); err != nil {
+			return response.BadRequest(c, "invalid JSON body")
+		}
 	}
+	// An empty/whitespace-only body means "mark ALL as read".
 
 	if len(req.IDs) > 0 {
 		if dbErr := db.Model(&database.Notification{}).
