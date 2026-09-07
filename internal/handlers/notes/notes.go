@@ -57,6 +57,19 @@ type noteCreateRequest struct {
 	Note      string `json:"note"`
 }
 
+// maxNoteLength caps note bodies at 500 characters per the API spec
+// ("500-char cap" for parity).
+const maxNoteLength = 500
+
+// validMediaTypes is the allowlist of media_type values notes may attach to,
+// mirroring the API's movie/show/season/episode polymorphic id model.
+var validMediaTypes = map[string]bool{
+	"movie":   true,
+	"show":    true,
+	"season":  true,
+	"episode": true,
+}
+
 type noteUpdateRequest struct {
 	Note string `json:"note"`
 }
@@ -104,6 +117,12 @@ func handleCreateNote(c *fiber.Ctx) error {
 	}
 	if req.MediaType == "" || req.MediaID == 0 || req.Note == "" {
 		return response.BadRequest(c, "media_type, media_id, and note are required")
+	}
+	if !validMediaTypes[req.MediaType] {
+		return response.BadRequest(c, "invalid media_type: "+req.MediaType)
+	}
+	if len(req.Note) > maxNoteLength {
+		return response.BadRequest(c, fmt.Sprintf("note exceeds maximum length of %d characters", maxNoteLength))
 	}
 
 	now := time.Now()
@@ -206,6 +225,9 @@ func handleUpdateNote(c *fiber.Ctx) error {
 	}
 	if req.Note == "" {
 		return response.BadRequest(c, "note is required")
+	}
+	if len(req.Note) > maxNoteLength {
+		return response.BadRequest(c, fmt.Sprintf("note exceeds maximum length of %d characters", maxNoteLength))
 	}
 
 	db, err := database.GetDB()
