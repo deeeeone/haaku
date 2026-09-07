@@ -52,7 +52,7 @@ Writes use `cache.WithCacheTransaction` with version-counter invalidation (`queu
 - [x] Validate `media_type` against the resolved type in `handleGetHistoryItem` (400 on mismatch; `parseWatchedAt` now errors on invalid timestamps instead of silently using `now`).
 - [x] Reuse `media.ResolveID` (single-item path) and batch-resolve bulk add IDs via `media.ResolveTMDBBatch` (kills the per-item N+1 in the add loops; Batch 5).
 - [x] Advisory-lock rank assignment (watchlist/favorites adds + reorder); reorder is now 1-based and validated as a complete set (400 otherwise).
-- [ ] Fix `sort_by=title` to join titles.
+- [x] Fix `sort_by=title` to join titles. (Batch 10)
 - [ ] Decide `watched_at` semantics for `"unknown"` (aired_at vs now) and align with spec.
 - [x] Use shared `internal/response` error helpers (Batch 0); per-handler `authRequired` is tracked at the route-attachment item above.
 - [ ] Verify module test coverage (`make test`).
