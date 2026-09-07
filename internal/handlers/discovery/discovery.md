@@ -32,7 +32,7 @@ Registers OpenAPI metadata for all six endpoints. Reuses `media.BuildMovieRespon
 
 ## Todos
 
-- [ ] Decide trending-vs-popular semantics (need a real trending signal or drop the distinction).
+- [x] Decide trending-vs-popular semantics (need a real trending signal or drop the distinction). (Batch 12 — DECISION: keep both endpoints but document that `trending` is currently an alias of `popular`.) The `metadata-api` spec defines trending as "by current watcher activity" and popular as "by popularity (TMDB seed + our watch data)". A real trending signal requires per-item watcher momentum, which lives in the `trending_rankings` table rebuilt by a stats-worker (data-model §9, roadmap T1.7) — that engine is not yet implemented. Rather than drop the endpoint or invent a half-signal, `trending` and `popular` both return the same `popularity DESC` ordering for now, and this equivalence is documented so clients don't expect different results. Real trending is tracked as roadmap follow-up work (Batch 9 audit).
 - [ ] Implement recommendations or mark the routes as `not-implemented` in OpenAPI.
 - [x] Use `internal/response` error constructors instead of `fiber.NewError`.
 - [ ] Align response envelope with the API conventions (add counts/pagination metadata if the spec requires).
