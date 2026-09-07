@@ -43,8 +43,8 @@ Uses shared `auth.PrivacyFilter` for the public route; shared `auth.AuthRequired
 
 - [x] Gate avatar upload until S3 is implemented — endpoint now fails closed with 501 `not_implemented` (no fake URL persisted).
 - [ ] Implement real S3/MinIO upload once the dependency is approved.
-- [ ] Wrap block/unblock/delete-account in `cache.WithCacheTransaction` with version invalidation + in-tx outbox; use typed event constants.
-- [ ] Emit account-deletion outbox event and invalidate cached profiles.
+- [x] Wrap block/unblock/delete-account in `cache.WithCacheTransaction` with version invalidation + in-tx outbox; use typed event constants. (Batch 7 — block emits typed `follow.removed`; raw `user.blocked`/`user.unblocked` strings removed)
+- [x] Emit account-deletion outbox event and invalidate cached profiles. (Batch 7 — typed `user.deleted`)
 - [x] Handle the post-update re-fetch error in `handleUpdateMe`. (Batch 6)
 - [ ] Backfill notification settings symmetrically in `parseSettings`.
 - [x] Verify `/users/me` vs `/users/:id` route precedence (trailing-slash issue) — static route wins; added TestUsersMeRoutePrecedence regression test.
