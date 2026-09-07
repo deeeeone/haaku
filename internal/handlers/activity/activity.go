@@ -157,7 +157,8 @@ func handleGetActivity(c *fiber.Ctx) error {
 	query.Count(&totalCount)
 
 	var activities []database.ActivityFeed
-	query.Order("created_at DESC, id DESC"). // stable order for pagination
+	// Stable order for pagination.
+	query.Order("created_at DESC, id DESC").
 		Offset((page - 1) * limit).
 		Limit(limit).
 		Find(&activities)
