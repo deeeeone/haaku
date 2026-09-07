@@ -37,7 +37,7 @@ All routes are auth-required (shared `auth.AuthRequired()` middleware). Register
 - [x] Swap `requireAuth` for shared `auth.AuthRequired` (Batch 1).
 - [x] Use `internal/response` error constructors (Batch 0).
 - [x] Use shared `response.FormatTime` instead of the hand-rolled timestamp literal.
-- [ ] Validate section against a defined allowlist (spec).
+- [x] Validate section against a defined allowlist (spec). (Batch 11)
 - [x] Decide 403-vs-404 for cross-user delete; align with conventions. (Batch 6)
 - [ ] Optionally enforce uniqueness on (user, section, name) and harden the 20-cap.
 - [x] Route writes through `WithCacheTransaction`. (Batch 7)
