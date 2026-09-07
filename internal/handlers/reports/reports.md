@@ -33,7 +33,7 @@ Validation: `id` must parse; `reason` allowlisted (`spam`, `spoiler`, `offensive
 ## Todos
 
 - [x] Verify target media exists before insert (return the advertised 404) or drop 404 from OpenAPI. (Batch 6)
-- [ ] Add per-user 429 rate limiting on report submission.
+- [x] Add per-user 429 rate limiting on report submission. (Batch 11)
 - [ ] Add a unique constraint on `(reporter_id, media_type, media_id)` (schema change → planning DB doc first) or use upsert/on-conflict.
 - [x] Use shared `internal/response` error helpers (Batch 0).
 - [x] Swap `requireAuth` for shared `auth.AuthRequired` (Batch 1).
