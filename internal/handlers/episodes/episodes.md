@@ -37,7 +37,7 @@ All handlers verify the episode exists before serving sub-resources. Registers O
 
 ## Todos
 
-- [ ] Reuse the media package episode/season builders (or the `comments` package's response type) instead of local duplicates.
+- [x] Reuse the media package episode/season builders (`media.BuildEpisodeResponse`/`BuildSeasonResponse`) instead of local duplicates (Batch 5).
 - [ ] Populate external IDs (tmdb/imdb) in episode/season `IDs`.
 - [ ] Fix `total_count` on the lists endpoint to reflect only visible lists (or filter in SQL).
 - [x] Consolidate error + pagination helpers into `internal/response`.
