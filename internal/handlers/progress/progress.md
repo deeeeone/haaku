@@ -32,7 +32,7 @@ Both return plain JSON arrays with `progress` + `paused_at` and enriched media i
 
 ## Todos
 
-- [ ] Add pagination (page/limit) to both endpoints.
+- [x] Add pagination (page/limit) to both endpoints. (Batch 8 — §7 `X-Pagination-*` headers + `Link: rel="next"`; stable `paused_at DESC, id DESC` order.)
 - [x] Remove the redundant per-handler auth check — routes run `auth.AuthRequired()` (Batch 1).
 - [x] Reuse `media.BuildMovieResponse` / media builders for response enrichment (movie playback now batch-fetches and builds via `media.BuildMovieResponse`; Batch 5).
 - [ ] Clarify paused-vs-expired semantics and filter accordingly.
