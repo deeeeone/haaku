@@ -1050,13 +1050,26 @@ func handleGetListComments(c *fiber.Ctx) error {
 		return response.InternalError(c)
 	}
 
+	page, limit := response.ParsePagination(c, 25)
+
+	var total int64
+	if err := db.Model(&database.ListComment{}).Where("list_id = ?", listID).Count(&total).Error; err != nil {
+		return response.InternalError(c)
+	}
+
 	var comments []database.ListComment
-	if err := db.Where("list_id = ?", listID).Order("created_at ASC").Find(&comments).Error; err != nil {
+	if err := db.Where("list_id = ?", listID).
+		Order("created_at ASC, id ASC"). // stable order for pagination
+		Offset((page - 1) * limit).
+		Limit(limit).
+		Find(&comments).Error; err != nil {
 		return response.InternalError(c)
 	}
 	if comments == nil {
 		comments = make([]database.ListComment, 0)
 	}
+
+	setPaginationHeaders(c, page, limit, total, len(comments))
 
 	return c.JSON(comments)
 }
@@ -1637,5 +1650,22 @@ func toFloat64(v interface{}) (float64, bool) {
 		return f, err == nil
 	default:
 		return 0, false
+	}
+}
+
+// setPaginationHeaders emits the §7 pagination headers (api-conventions.md)
+// plus a Link: rel="next" header when more pages exist.
+func setPaginationHeaders(c *fiber.Ctx, page, limit int, total int64, itemsCount int) {
+	totalPages := int64(0)
+	if total > 0 {
+		totalPages = (total + int64(limit) - 1) / int64(limit)
+	}
+	c.Set("X-Pagination-Page", strconv.Itoa(page))
+	c.Set("X-Pagination-Limit", strconv.Itoa(limit))
+	c.Set("X-Pagination-Total-Pages", strconv.FormatInt(totalPages, 10))
+	c.Set("X-Pagination-Total-Items", strconv.FormatInt(total, 10))
+	c.Set("X-Pagination-Items-Count", strconv.Itoa(itemsCount))
+	if page < int(totalPages) {
+		c.Set("Link", `<`+c.Path()+`?page=`+strconv.Itoa(page+1)+`&limit=`+strconv.Itoa(limit)+`>; rel="next"`)
 	}
 }
