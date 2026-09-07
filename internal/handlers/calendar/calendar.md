@@ -48,7 +48,7 @@ Behavior:
 - [x] Replace local error helpers with `internal/response` constructors; unused `notFound` dropped.
 - [x] Remove the double auth check — non-`all` routes now run `auth.AuthRequired()`; the handler no longer re-checks.
 - [ ] Replace `deriveTarget` with a route param or per-target handlers.
-- [ ] Batch-fetch shows/seasons to kill the N+1 loop.
+- [x] Batch-fetch shows/seasons to kill the N+1 loop. (Batch 10)
 - [ ] Apply hidden exclusion consistently across all targets (spec check).
 - [x] Use structured `internal` error code for DB failures. (Batch 6)
 - [ ] Verify `friends` mutual-follow semantics and 90-day cutoff against the spec.
