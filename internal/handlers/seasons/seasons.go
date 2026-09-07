@@ -2,6 +2,7 @@ package seasons
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 
 	"trakt-api/internal/database"
@@ -94,7 +95,12 @@ func handleGetSeason(c *fiber.Ctx) error {
 	}
 
 	// Stats.
-	resp.Stats = querySeasonStats(db, season.ID)
+	stats, qerr := querySeasonStats(db, season.ID)
+	if qerr != nil {
+		fmt.Printf("seasons: query stats for season %d failed: %v\n", season.ID, qerr)
+		return response.InternalError(c)
+	}
+	resp.Stats = stats
 
 	return c.JSON(resp)
 }
@@ -119,7 +125,11 @@ func handleGetSeasonStats(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
-	stats := querySeasonStats(db, id)
+	stats, qerr := querySeasonStats(db, id)
+	if qerr != nil {
+		fmt.Printf("seasons: query stats for season %d failed: %v\n", id, qerr)
+		return response.InternalError(c)
+	}
 	return c.JSON(stats)
 }
 
@@ -143,57 +153,80 @@ func handleGetSeasonRatings(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
-	return c.JSON(queryRatingDistribution(db, "season", id))
+	dist, qerr := queryRatingDistribution(db, "season", id)
+	if qerr != nil {
+		fmt.Printf("seasons: query rating distribution for season %d failed: %v\n", id, qerr)
+		return response.InternalError(c)
+	}
+	return c.JSON(dist)
 }
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-func querySeasonStats(db *gorm.DB, seasonID int64) *SeasonStatsResponse {
+func querySeasonStats(db *gorm.DB, seasonID int64) (*SeasonStatsResponse, error) {
 	// Watchers: distinct users who watched episodes in this season.
 	var watchers int64
-	db.Model(&database.UserHistory{}).Where("season_id = ?", seasonID).
-		Distinct("user_id").Count(&watchers)
+	if err := db.Model(&database.UserHistory{}).Where("season_id = ?", seasonID).
+		Distinct("user_id").Count(&watchers).Error; err != nil {
+		return nil, fmt.Errorf("count watchers: %w", err)
+	}
 
 	// Plays: total watches of episodes in this season.
 	var plays int64
-	db.Model(&database.UserHistory{}).Where("season_id = ?", seasonID).Count(&plays)
+	if err := db.Model(&database.UserHistory{}).Where("season_id = ?", seasonID).
+		Count(&plays).Error; err != nil {
+		return nil, fmt.Errorf("count plays: %w", err)
+	}
 
 	// Episodes count in this season.
 	var episodeCount int64
-	db.Model(&database.Episode{}).Where("season_id = ?", seasonID).Count(&episodeCount)
+	if err := db.Model(&database.Episode{}).Where("season_id = ?", seasonID).
+		Count(&episodeCount).Error; err != nil {
+		return nil, fmt.Errorf("count episodes: %w", err)
+	}
 
 	// Average rating for this season.
 	var avgRating float64
-	db.Model(&database.UserRating{}).Where("media_type = ? AND media_id = ?", "season", seasonID).
-		Select("COALESCE(AVG(rating), 0)").Scan(&avgRating)
+	if err := db.Model(&database.UserRating{}).Where("media_type = ? AND media_id = ?", "season", seasonID).
+		Select("COALESCE(AVG(rating), 0)").Scan(&avgRating).Error; err != nil {
+		return nil, fmt.Errorf("avg rating: %w", err)
+	}
 
 	return &SeasonStatsResponse{
 		Watchers:      watchers,
 		Plays:         plays,
 		EpisodesCount: episodeCount,
 		Rating:        avgRating,
-	}
+	}, nil
 }
 
-func queryRatingDistribution(db *gorm.DB, mediaType string, mediaID int64) *media.RatingSummary {
+func queryRatingDistribution(db *gorm.DB, mediaType string, mediaID int64) (*media.RatingSummary, error) {
 	var avgRating float64
+	if err := db.Model(&database.UserRating{}).Where("media_type = ? AND media_id = ?", mediaType, mediaID).
+		Select("COALESCE(AVG(rating), 0)").Scan(&avgRating).Error; err != nil {
+		return nil, fmt.Errorf("avg rating: %w", err)
+	}
+
 	var count int64
-	db.Model(&database.UserRating{}).Where("media_type = ? AND media_id = ?", mediaType, mediaID).
-		Select("COALESCE(AVG(rating), 0)").Scan(&avgRating)
-	db.Model(&database.UserRating{}).Where("media_type = ? AND media_id = ?", mediaType, mediaID).Count(&count)
+	if err := db.Model(&database.UserRating{}).Where("media_type = ? AND media_id = ?", mediaType, mediaID).
+		Count(&count).Error; err != nil {
+		return nil, fmt.Errorf("count ratings: %w", err)
+	}
 
 	distribution := make(map[string]int64)
 	var rows []struct {
 		Rating int
 		Count  int64
 	}
-	db.Model(&database.UserRating{}).
+	if err := db.Model(&database.UserRating{}).
 		Select("rating, count(*) as count").
 		Where("media_type = ? AND media_id = ?", mediaType, mediaID).
 		Group("rating").
-		Scan(&rows)
+		Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("group ratings: %w", err)
+	}
 	for _, r := range rows {
 		distribution[strconv.Itoa(r.Rating)] = r.Count
 	}
@@ -202,7 +235,7 @@ func queryRatingDistribution(db *gorm.DB, mediaType string, mediaID int64) *medi
 		Rating:       avgRating,
 		Votes:        count,
 		Distribution: distribution,
-	}
+	}, nil
 }
 
 // ---------------------------------------------------------------------------
