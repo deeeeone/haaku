@@ -2,6 +2,7 @@ package checkin
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -99,7 +100,26 @@ func getUserID(c *fiber.Ctx) string {
 	return uid
 }
 
+// Sentinel error: returned when the user already has an active (non-expired)
+// checkin and a new one is attempted. Compared with errors.Is so callers are
+// not coupled to a string match.
+var ErrAlreadyCheckedIn = errors.New("already checked in")
+
+// Internal classification sentinels for the media-resolution path. These are
+// never sent to the client verbatim; the handler maps each to the appropriate
+// envelope status and keeps diagnostics server-side.
+var (
+	errNotAShow         = errors.New("id does not resolve to a show")
+	errNotAMovie        = errors.New("id does not resolve to a movie")
+	errNoMediaSpecified = errors.New("no media item specified")
+	errDBUnavailable    = errors.New("database unavailable")
+	errSeasonNotFound   = errors.New("season not found")
+	errEpisodeNotFound  = errors.New("episode not found")
+)
+
 // resolveCheckinItem resolves the checkin item to media type/id.
+// It returns typed sentinel errors (see above) for classification; the caller
+// maps them to proper HTTP statuses instead of a blanket 400.
 func resolveCheckinItem(c *fiber.Ctx, req *checkinRequest) (string, int64, *int64, *int64, error) {
 	if req.Episode != nil {
 		mt, id, err := media.ResolveID(c, fmt.Sprintf("%d", req.Episode.IDs.TMDB))
@@ -107,22 +127,28 @@ func resolveCheckinItem(c *fiber.Ctx, req *checkinRequest) (string, int64, *int6
 			return "", 0, nil, nil, err
 		}
 		if mt != "show" {
-			return "", 0, nil, nil, fmt.Errorf("id not a show")
+			return "", 0, nil, nil, errNotAShow
 		}
 
 		db, dbErr := database.GetDB()
 		if dbErr != nil {
-			return "", 0, nil, nil, fiber.NewError(fiber.StatusInternalServerError, "database unavailable")
+			return "", 0, nil, nil, errDBUnavailable
 		}
 
 		var season database.Season
 		if err := db.Where("show_id = ? AND season_number = ?", id, req.Episode.Season).First(&season).Error; err != nil {
-			return "", 0, nil, nil, fiber.NewError(fiber.StatusNotFound, "season not found")
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return "", 0, nil, nil, errSeasonNotFound
+			}
+			return "", 0, nil, nil, fmt.Errorf("lookup season: %w", err)
 		}
 
 		var episode database.Episode
 		if err := db.Where("season_id = ? AND episode_number = ?", season.ID, req.Episode.Number).First(&episode).Error; err != nil {
-			return "", 0, nil, nil, fiber.NewError(fiber.StatusNotFound, "episode not found")
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return "", 0, nil, nil, errEpisodeNotFound
+			}
+			return "", 0, nil, nil, fmt.Errorf("lookup episode: %w", err)
 		}
 
 		sid := season.ID
@@ -136,7 +162,7 @@ func resolveCheckinItem(c *fiber.Ctx, req *checkinRequest) (string, int64, *int6
 			return "", 0, nil, nil, err
 		}
 		if mt != "movie" {
-			return "", 0, nil, nil, fmt.Errorf("id not a movie")
+			return "", 0, nil, nil, errNotAMovie
 		}
 		return "movie", id, nil, nil, nil
 	}
@@ -147,12 +173,34 @@ func resolveCheckinItem(c *fiber.Ctx, req *checkinRequest) (string, int64, *int6
 			return "", 0, nil, nil, err
 		}
 		if mt != "show" {
-			return "", 0, nil, nil, fmt.Errorf("id not a show")
+			return "", 0, nil, nil, errNotAShow
 		}
 		return "show", id, nil, nil, nil
 	}
 
-	return "", 0, nil, nil, fmt.Errorf("no media item specified")
+	return "", 0, nil, nil, errNoMediaSpecified
+}
+
+// mapResolveError writes the correct envelope for a resolution error. Client
+// mistakes (bad input, unknown type) are 400; a requested-but-missing
+// season/episode is 404; DB unavailability is 503. Anything else (a resolve or
+// DB failure) is logged and returned as a generic 500 so wrapped GORM / resolver
+// detail never reaches the client.
+func mapResolveError(c *fiber.Ctx, err error) error {
+	switch {
+	case errors.Is(err, errNotAShow), errors.Is(err, errNotAMovie), errors.Is(err, errNoMediaSpecified):
+		return response.BadRequest(c, err.Error())
+	case errors.Is(err, errSeasonNotFound):
+		return response.NotFound(c, "season not found")
+	case errors.Is(err, errEpisodeNotFound):
+		return response.NotFound(c, "episode not found")
+	case errors.Is(err, errDBUnavailable):
+		return response.ServiceUnavailable(c, "database unavailable")
+	}
+	// media.ResolveID may return a *fiber.Error for a DB failure (already typed
+	// 5xx); map genuine DB-resolution failures to internal, log the detail.
+	fmt.Printf("checkin: resolve error: %v\n", err)
+	return response.InternalError(c)
 }
 
 // defaultCheckinDuration returns the default checkin expiry (2 hours).
@@ -178,7 +226,7 @@ func handleCheckinCreate(c *fiber.Ctx) error {
 
 	mediaType, mediaID, seasonID, episodeID, err := resolveCheckinItem(c, &req)
 	if err != nil {
-		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", err.Error())
+		return mapResolveError(c, err)
 	}
 
 	expiresAt := time.Now().Add(defaultCheckinDuration())
@@ -196,7 +244,9 @@ func handleCheckinCreate(c *fiber.Ctx) error {
 		// Check if user has an active (non-expired) checkin
 		var existing database.UserCheckin
 		if result := tx.Where("user_id = ? AND expires_at > ?", userID, now).First(&existing); result.Error == nil {
-			return nil, fmt.Errorf("already checked in")
+			return nil, ErrAlreadyCheckedIn
+		} else if !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("check existing checkin: %w", result.Error)
 		}
 
 		// Delete any expired checkins for the user
@@ -254,10 +304,11 @@ func handleCheckinCreate(c *fiber.Ctx) error {
 	})
 
 	if err != nil {
-		if err.Error() == "already checked in" {
-			return response.WriteError(c, fiber.StatusConflict, "conflict", "you already have an active checkin")
+		if errors.Is(err, ErrAlreadyCheckedIn) {
+			return response.Conflict(c, "you already have an active checkin")
 		}
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", err.Error())
+		fmt.Printf("checkin: create failed: %v\n", err)
+		return response.InternalError(c)
 	}
 
 	return c.JSON(result)
@@ -300,7 +351,8 @@ func handleCheckinDelete(c *fiber.Ctx) error {
 	})
 
 	if err != nil {
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", err.Error())
+		fmt.Printf("checkin: delete failed: %v\n", err)
+		return response.InternalError(c)
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
@@ -315,7 +367,8 @@ func handleCheckinGet(c *fiber.Ctx) error {
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		fmt.Printf("checkin: database unavailable: %v\n", dbErr)
+		return response.ServiceUnavailable(c, "database unavailable")
 	}
 
 	now := time.Now()
