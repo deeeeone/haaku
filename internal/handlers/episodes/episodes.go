@@ -67,7 +67,7 @@ type EpisodeStatsResponse struct {
 
 // GET /v1/episodes/{id}
 func handleGetEpisode(c *fiber.Ctx) error {
-	id, err := parseID(c)
+	id, err := response.ParseIDParam(c, "episode")
 	if err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func handleGetEpisode(c *fiber.Ctx) error {
 
 // GET /v1/episodes/{id}/stats
 func handleGetEpisodeStats(c *fiber.Ctx) error {
-	id, err := parseID(c)
+	id, err := response.ParseIDParam(c, "episode")
 	if err != nil {
 		return err
 	}
@@ -137,7 +137,7 @@ func handleGetEpisodeStats(c *fiber.Ctx) error {
 
 // GET /v1/episodes/{id}/ratings
 func handleGetEpisodeRatings(c *fiber.Ctx) error {
-	id, err := parseID(c)
+	id, err := response.ParseIDParam(c, "episode")
 	if err != nil {
 		return err
 	}
@@ -161,7 +161,7 @@ func handleGetEpisodeRatings(c *fiber.Ctx) error {
 
 // GET /v1/episodes/{id}/comments
 func handleGetEpisodeComments(c *fiber.Ctx) error {
-	id, err := parseID(c)
+	id, err := response.ParseIDParam(c, "episode")
 	if err != nil {
 		return err
 	}
@@ -185,7 +185,7 @@ func handleGetEpisodeComments(c *fiber.Ctx) error {
 
 // GET /v1/episodes/{id}/lists
 func handleGetEpisodeLists(c *fiber.Ctx) error {
-	id, err := parseID(c)
+	id, err := response.ParseIDParam(c, "episode")
 	if err != nil {
 		return err
 	}
@@ -242,15 +242,6 @@ func handleGetEpisodeLists(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-func parseID(c *fiber.Ctx) (int64, error) {
-	idStr := c.Params("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		return 0, response.BadRequest(c, "invalid episode id")
-	}
-	return id, nil
-}
 
 func queryEpisodeStats(db *gorm.DB, episodeID int64) *EpisodeStatsResponse {
 	var watchers int64

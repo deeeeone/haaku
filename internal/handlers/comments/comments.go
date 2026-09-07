@@ -2,7 +2,6 @@ package comments
 
 import (
 	"errors"
-	"strconv"
 	"strings"
 	"time"
 
@@ -305,7 +304,7 @@ func handleGetComment(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
-	id, parseErr := parseID(c)
+	id, parseErr := response.ParseIDParam(c, "comment")
 	if parseErr != nil {
 		return parseErr
 	}
@@ -393,7 +392,7 @@ func handleEditComment(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
-	id, parseErr := parseID(c)
+	id, parseErr := response.ParseIDParam(c, "comment")
 	if parseErr != nil {
 		return parseErr
 	}
@@ -438,7 +437,7 @@ func handleDeleteComment(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
-	id, parseErr := parseID(c)
+	id, parseErr := response.ParseIDParam(c, "comment")
 	if parseErr != nil {
 		return parseErr
 	}
@@ -481,7 +480,7 @@ func handleGetReplies(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
-	id, parseErr := parseID(c)
+	id, parseErr := response.ParseIDParam(c, "comment")
 	if parseErr != nil {
 		return parseErr
 	}
@@ -532,7 +531,7 @@ func handleCreateReply(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
-	id, parseErr := parseID(c)
+	id, parseErr := response.ParseIDParam(c, "comment")
 	if parseErr != nil {
 		return parseErr
 	}
@@ -585,7 +584,7 @@ func handleLikeComment(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
-	id, parseErr := parseID(c)
+	id, parseErr := response.ParseIDParam(c, "comment")
 	if parseErr != nil {
 		return parseErr
 	}
@@ -628,7 +627,7 @@ func handleUnlikeComment(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
-	id, parseErr := parseID(c)
+	id, parseErr := response.ParseIDParam(c, "comment")
 	if parseErr != nil {
 		return parseErr
 	}
@@ -658,7 +657,7 @@ func handleGetLikes(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
-	id, parseErr := parseID(c)
+	id, parseErr := response.ParseIDParam(c, "comment")
 	if parseErr != nil {
 		return parseErr
 	}
@@ -689,7 +688,7 @@ func handleGetReactions(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
-	id, parseErr := parseID(c)
+	id, parseErr := response.ParseIDParam(c, "comment")
 	if parseErr != nil {
 		return parseErr
 	}
@@ -737,7 +736,7 @@ func handleAddReaction(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
-	id, parseErr := parseID(c)
+	id, parseErr := response.ParseIDParam(c, "comment")
 	if parseErr != nil {
 		return parseErr
 	}
@@ -780,7 +779,7 @@ func handleRemoveReaction(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
-	id, parseErr := parseID(c)
+	id, parseErr := response.ParseIDParam(c, "comment")
 	if parseErr != nil {
 		return parseErr
 	}
@@ -816,7 +815,7 @@ func handleReportComment(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
-	id, parseErr := parseID(c)
+	id, parseErr := response.ParseIDParam(c, "comment")
 	if parseErr != nil {
 		return parseErr
 	}
@@ -856,7 +855,7 @@ func handleGetCommentItem(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
-	id, parseErr := parseID(c)
+	id, parseErr := response.ParseIDParam(c, "comment")
 	if parseErr != nil {
 		return parseErr
 	}
@@ -879,15 +878,6 @@ func handleGetCommentItem(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-func parseID(c *fiber.Ctx) (int64, error) {
-	idStr := c.Params("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		return 0, response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid comment ID")
-	}
-	return id, nil
-}
 
 func parseCSV(s string) []string {
 	parts := strings.Split(s, ",")

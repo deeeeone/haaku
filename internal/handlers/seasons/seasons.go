@@ -63,7 +63,7 @@ type SeasonStatsResponse struct {
 
 // GET /v1/seasons/{id}
 func handleGetSeason(c *fiber.Ctx) error {
-	id, err := parseID(c)
+	id, err := response.ParseIDParam(c, "season")
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func handleGetSeason(c *fiber.Ctx) error {
 
 // GET /v1/seasons/{id}/stats
 func handleGetSeasonStats(c *fiber.Ctx) error {
-	id, err := parseID(c)
+	id, err := response.ParseIDParam(c, "season")
 	if err != nil {
 		return err
 	}
@@ -125,7 +125,7 @@ func handleGetSeasonStats(c *fiber.Ctx) error {
 
 // GET /v1/seasons/{id}/ratings
 func handleGetSeasonRatings(c *fiber.Ctx) error {
-	id, err := parseID(c)
+	id, err := response.ParseIDParam(c, "season")
 	if err != nil {
 		return err
 	}
@@ -149,15 +149,6 @@ func handleGetSeasonRatings(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-func parseID(c *fiber.Ctx) (int64, error) {
-	idStr := c.Params("id")
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil {
-		return 0, response.BadRequest(c, "invalid season id")
-	}
-	return id, nil
-}
 
 func querySeasonStats(db *gorm.DB, seasonID int64) *SeasonStatsResponse {
 	// Watchers: distinct users who watched episodes in this season.
