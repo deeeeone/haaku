@@ -112,6 +112,15 @@ func handleCreateNote(c *fiber.Ctx) error {
 	err := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
 		cacheTx := cache.NewCacheTransaction()
 
+		// Serialize concurrent upserts for the same (user, media) so the
+		// check-then-write below is race-free: two simultaneous POSTs can't both
+		// see "not found" and create duplicate rows (no DB unique constraint
+		// today) or lose an update. Advisory lock mirrors checkin/sync.
+		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtext(?))",
+			fmt.Sprintf("note:%s:%s:%d", userID, req.MediaType, req.MediaID)).Error; err != nil {
+			return nil, fmt.Errorf("advisory lock: %w", err)
+		}
+
 		// Try to find existing note for upsert.
 		var existing database.UserNote
 		result := tx.Where("user_id = ? AND media_type = ? AND media_id = ?", userID, req.MediaType, req.MediaID).First(&existing)
