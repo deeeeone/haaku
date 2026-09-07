@@ -1,6 +1,7 @@
 package calendar
 
 import (
+	"fmt"
 	"time"
 
 	"trakt-api/internal/database"
@@ -163,7 +164,7 @@ func handleCalendarShows(c *fiber.Ctx) error {
 
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "database unavailable")
+		return response.ServiceUnavailable(c, "database unavailable")
 	}
 
 	page, limit := response.ParsePagination(c, 25)
@@ -208,7 +209,8 @@ func handleCalendarShows(c *fiber.Ctx) error {
 		Offset((page - 1) * limit).
 		Limit(limit).
 		Find(&episodes).Error; err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
+		fmt.Printf("calendar: database query error: %v\n", err)
+		return response.InternalError(c)
 	}
 
 	// Build response, merging season_number from seasons table.
