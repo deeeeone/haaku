@@ -39,5 +39,5 @@ Section allowlist enforced server-side: `calendar`, `progress_watched`, `progres
 - [x] Use `internal/response` error constructors (Batch 0).
 - [x] Use shared `response.FormatTime` instead of the hand-rolled timestamp literal.
 - [x] Validate `media_type` against the spec's allowed values. (Batch 11)
-- [ ] Confirm 201-vs-200 semantics for idempotent re-hide.
+- [x] Confirm 201-vs-200 semantics for idempotent re-hide. (Batch 12 — DECISION: keep `201` for every successful hide, including an idempotent re-hide.) `sync-api.md` lists `POST /users/:id/hidden/:section` with no per-status contract, and our OpenAPI route (source of truth) documents **201** for POST. `FirstOrCreate` makes re-hiding idempotent (no duplicate row, `HiddenAt` preserved), but the request's effect — "this item is hidden in this section" — holds whether the row was just created or already existed, so a uniform 201 is coherent and matches Trakt's add-hiding muscle memory. Distinguishing `200`-on-already-hidden would add client-side contract complexity the spec doesn't call for. No code change; documented decision.)
 - [ ] Verify module test coverage (`make test`).
