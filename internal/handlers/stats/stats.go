@@ -2,6 +2,7 @@ package stats
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -83,10 +84,11 @@ func handleGetUserStats(c *fiber.Ctx) error {
 	// Recompute if no stats or stale > 1h.
 	if cachedStats == nil || isStale(cachedStats.ComputedAt) {
 		log.Printf("[stats] recomputing stats for user %s", userID)
-		if err := statsengine.ComputeUserStats(db, userID); err != nil {
-			// A recompute failure is a service-side fault — surface it instead of
-			// hiding the outage behind a 200-with-zeroed-stats body.
-			log.Printf("[stats] failed to recompute stats for %s: %v", userID, err)
+		recomputed, rerr := recomputeUserStats(userID)
+		if rerr != nil {
+			// A recompute failure is a service-side fault — surface it instead
+			// of hiding the outage behind a 200-with-zeroed-stats body.
+			log.Printf("[stats] failed to recompute stats for %s: %v", userID, rerr)
 			return response.ServiceUnavailable(c, "stats are temporarily unavailable")
 		}
 
@@ -98,10 +100,12 @@ func handleGetUserStats(c *fiber.Ctx) error {
 		}
 		cachedStats = fresh
 
-		// Bump user version for cache invalidation.
-		if rdb := projredis.GetClient(); rdb != nil {
-			if _, err := projredis.IncrementUserVersion(userID); err != nil {
-				log.Printf("[stats] failed to bump user version for %s: %v", userID, err)
+		if recomputed {
+			// Bump user version for cache invalidation.
+			if rdb := projredis.GetClient(); rdb != nil {
+				if _, err := projredis.IncrementUserVersion(userID); err != nil {
+					log.Printf("[stats] failed to bump user version for %s: %v", userID, err)
+				}
 			}
 		}
 	}
@@ -161,4 +165,40 @@ func isStale(t *time.Time) bool {
 		return true
 	}
 	return time.Since(*t) > time.Hour
+}
+
+// recomputeUserStats recomputes a user's stats under a per-user advisory lock
+// (mirroring checkin/sync) so concurrent stale requests don't both recompute.
+// It re-checks staleness after acquiring the lock — if a concurrent request
+// already recomputed fresh stats while we waited, it returns recomputed=false
+// and leaves them alone. Returns whether this call performed the recompute.
+func recomputeUserStats(userID string) (bool, error) {
+	recomputed := false
+
+	err := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
+
+		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtext(?))", "stats:"+userID).Error; err != nil {
+			return nil, fmt.Errorf("advisory lock: %w", err)
+		}
+
+		cur, cerr := statsengine.GetUserStats(tx, userID)
+		if cerr != nil {
+			return nil, fmt.Errorf("fetch current stats under lock: %w", cerr)
+		}
+		if cur != nil && !isStale(cur.ComputedAt) {
+			// Another concurrent request already recomputed — nothing to do.
+			return cacheTx, nil
+		}
+
+		if err := statsengine.ComputeUserStats(tx, userID); err != nil {
+			return nil, fmt.Errorf("compute stats: %w", err)
+		}
+		recomputed = true
+		return cacheTx, nil
+	})
+	if err != nil {
+		return false, err
+	}
+	return recomputed, nil
 }
