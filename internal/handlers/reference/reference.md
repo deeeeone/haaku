@@ -41,6 +41,6 @@ Cache keys `reference:{category}:{type}`, TTL 24h. TMDB client lazily initialize
 - [x] Use shared `internal/response` error helpers.
 - [ ] Sort certification country groups deterministically.
 - [ ] Decide slug strategy (unicode-aware / upstream TMDB slug) — confirm genre slugs against spec.
-- [ ] Verify `shows.network` column type (scalar vs JSON list) against the schema; fix `DISTINCT network` query accordingly.
+- [x] Verify `shows.network` column type (scalar vs JSON list) against the schema; fix `DISTINCT network` query accordingly. (Batch 10 — confirmed scalar `TEXT`, so `DISTINCT network` is correct; added `ORDER BY network` for a deterministic list.)
 - [ ] Consider avoiding caching empty upstream results.
 - [ ] Verify module test coverage (`make test`).
