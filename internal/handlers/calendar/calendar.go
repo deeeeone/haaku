@@ -213,17 +213,45 @@ func handleCalendarShows(c *fiber.Ctx) error {
 		return response.InternalError(c)
 	}
 
+	// Batch-fetch the shows and seasons referenced by this page in two
+	// `WHERE id IN (...)` queries, then map in memory — replacing the previous
+	// per-episode `db.First` (N+1) lookups for show and season.
+	var showIDs, seasonIDs []int64
+	for _, ep := range episodes {
+		showIDs = append(showIDs, ep.ShowID)
+		seasonIDs = append(seasonIDs, ep.SeasonID)
+	}
+
+	showMap := make(map[int64]database.Show, len(showIDs))
+	if len(showIDs) > 0 {
+		var shows []database.Show
+		if err := db.Where("id IN ?", showIDs).Find(&shows).Error; err == nil {
+			for _, s := range shows {
+				showMap[s.ID] = s
+			}
+		}
+	}
+
+	seasonMap := make(map[int64]database.Season, len(seasonIDs))
+	if len(seasonIDs) > 0 {
+		var seasons []database.Season
+		if err := db.Where("id IN ?", seasonIDs).Find(&seasons).Error; err == nil {
+			for _, s := range seasons {
+				seasonMap[s.ID] = s
+			}
+		}
+	}
+
 	// Build response, merging season_number from seasons table.
 	resp := make([]CalendarEntry, 0, len(episodes))
 	for _, ep := range episodes {
-		var show database.Show
-		if err := db.First(&show, ep.ShowID).Error; err != nil {
+		show, ok := showMap[ep.ShowID]
+		if !ok {
 			continue
 		}
 
-		var season database.Season
 		seasonNumber := 0
-		if err := db.First(&season, ep.SeasonID).Error; err == nil {
+		if season, ok := seasonMap[ep.SeasonID]; ok {
 			seasonNumber = season.SeasonNumber
 		}
 
