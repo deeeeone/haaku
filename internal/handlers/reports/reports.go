@@ -2,6 +2,7 @@ package reports
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -54,6 +55,10 @@ var validReportReasons = map[string]bool{
 	"duplicate": true,
 	"other":     true,
 }
+
+// maxReportDescription caps free-form report detail. The schema column is
+// unbounded text; this cap keeps moderation notes reasonable and bounded.
+const maxReportDescription = 1000
 
 // ---------------------------------------------------------------------------
 // Request/Response types
@@ -128,6 +133,9 @@ func handleReportContent(c *fiber.Ctx, mediaType string) error {
 	}
 
 	description := strings.TrimSpace(req.Description)
+	if len(description) > maxReportDescription {
+		return response.BadRequest(c, fmt.Sprintf("description exceeds maximum length of %d characters", maxReportDescription))
+	}
 
 	db, err := database.GetDB()
 	if err != nil {
