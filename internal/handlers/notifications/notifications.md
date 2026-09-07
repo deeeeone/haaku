@@ -38,7 +38,7 @@ All routes auth-required via the shared `auth.AuthRequired()` middleware. Regist
 - [x] Return 400 on malformed JSON in `handleMarkRead` instead of marking everything read. (Batch 6)
 - [ ] Add a notification-settings update endpoint (spec check).
 - [ ] Enforce notification preferences in `CreateNotification` (respect follows/replies/list_invite).
-- [ ] Move `CreateNotification` into the outbox/cache-tx flow.
+- [x] Move `CreateNotification` into the outbox/cache-tx flow. (Batch 7 — now takes the caller's `cacheTx` and bumps the recipient's user version; inserts must run inside the caller's `cache.WithCacheTransaction`)
 - [x] Replace local error/pagination helpers with `internal/response` (Batch 0).
 - [x] Swap `requireAuth` for shared `auth.AuthRequired` (Batch 1).
 - [ ] Consider cursor pagination for the inbox.

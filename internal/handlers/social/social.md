@@ -42,7 +42,7 @@ Emits outbox events (`user.followed`, `user.unfollowed`, `user.follow_approved`)
 - [x] Attach `auth.AuthRequired` to all mutation routes; drop unchecked asserts (fail closed with 401). Public reads (followers/following/friends) stay open.
 - [x] Wrap follow/unfollow/approve/deny in `cache.WithCacheTransaction` with version-counter invalidation and in-tx outbox publish.
 - [x] Define typed outbox constants for follow events — `EventFollowCreated/Approved/Removed` matching the webhook catalog (`follow.created` / `follow.approved` / `follow.removed`); old `user.*` names were drift. Advisory locks on follow still pending.
-- [ ] Create inbox notifications on follow/approve.
+- [x] Create inbox notifications on follow/approve. (Batch 7 — in-tx via `notifications.CreateNotification`)
 - [x] Add pagination + stable ordering to all list endpoints.
 - [x] Handle all DB errors instead of ignoring them. (Batch 6)
 - [x] Use shared `internal/response` helpers (leaf envelope package now exists, unblocking this).
