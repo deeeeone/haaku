@@ -46,6 +46,43 @@ Registers OpenAPI metadata for all endpoints. Uses `comment_type`/`media_type` C
 - [x] Wrap write flows in `cache.WithCacheTransaction` + cache/version invalidation and outbox events. (Batch 7 — no comment/reaction/reply/report events exist in the webhook catalog, so invalidation only.)
 - [x] Paginate `GET /{id}/likes`. (Batch 8 — `?page&limit` default 25/max 100 with §7 `X-Pagination-*` headers + `Link: rel="next"`; stable `created_at DESC, user_id DESC` order.)
 - [ ] Add comment length validation per spec.
-- [ ] Add DB index strategy for trending query (`like_count+reply_count`, `created_at`).
+- [x] Add DB index strategy for trending query (`like_count+reply_count`, `created_at`). (Batch 10 — documented in the Databases section below; no schema change landed here per project rules.)
 - [x] Check the user lookup error in the moderator delete path. (Batch 6)
 - [ ] Verify module test coverage (`make test`).
+
+## Databases — trending index (migration needed, out of scope here)
+
+`GET /v1/comments/trending` filters to comments created in the last 7 days
+(`created_at >= now() - INTERVAL '7 days'`, `comment_type IN (...)`,
+`media_type IN (...)`) and orders by `like_count + reply_count DESC,
+created_at DESC`. That ordering expression is **not indexable** by the existing
+indexes — migration 0022 creates `idx_comments_trending ON comments
+(comment_type, media_type, created_at DESC) WHERE created_at >= now() -
+INTERVAL '7 days'`, which serves the WHERE clause but cannot accelerate an
+`ORDER BY (like_count + reply_count)` because it is a computed expression.
+
+Per project rules no schema change (new migration / `ALTER TABLE`) was made in
+Batch 10. The query was left unchanged to preserve identical results. When a
+schema change is next permitted, add an expression-index matching the exact
+query shape — same partial predicate + the score expression + `created_at`
+tiebreak:
+
+```sql
+CREATE INDEX idx_comments_trending_score ON comments
+    ((like_count + reply_count) DESC, created_at DESC)
+    WHERE created_at >= now() - INTERVAL '7 days';
+```
+
+Notes:
+- **When to create:** in a new append-only migration, coordinated with the
+  schema-doc update in `../trakt-killer-plan/02-architecture/data-model.md`
+  (rule: update the planning data-model BEFORE the migration). Not in this
+  batch — schema changes are disallowed here and no migration may be edited.
+- **Why this shape:** the partial predicate exactly mirrors the handler's 7-day
+  window so the index stays small; the score expression + `created_at` order
+  matches `ORDER BY` so Postgres can fetch in index order without a sort, then
+  the `comment_type`/`media_type` filter runs on the small post-window index.
+- **Alternative evergreen index** (covers both trending and a plain
+  like-count sort if the spec ever drops the 7-day window): create the same
+  expression index *without* the partial predicate and rely on the existing
+  `idx_comments_type_created` for the WHERE.
