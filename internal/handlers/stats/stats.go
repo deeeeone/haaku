@@ -77,17 +77,24 @@ func handleGetUserStats(c *fiber.Ctx) error {
 	if cachedStats == nil || isStale(cachedStats.ComputedAt) {
 		log.Printf("[stats] recomputing stats for user %s", userID)
 		if err := statsengine.ComputeUserStats(db, userID); err != nil {
+			// A recompute failure is a service-side fault — surface it instead of
+			// hiding the outage behind a 200-with-zeroed-stats body.
 			log.Printf("[stats] failed to recompute stats for %s: %v", userID, err)
-			// Fall through — return whatever we have (could be nil).
-		} else {
-			// Re-fetch the freshly computed stats.
-			cachedStats, _ = statsengine.GetUserStats(db, userID)
+			return response.ServiceUnavailable(c, "stats are temporarily unavailable")
+		}
 
-			// Bump user version for cache invalidation.
-			if rdb := projredis.GetClient(); rdb != nil {
-				if _, err := projredis.IncrementUserVersion(userID); err != nil {
-					log.Printf("[stats] failed to bump user version for %s: %v", userID, err)
-				}
+		// Re-fetch the freshly computed stats.
+		fresh, ferr := statsengine.GetUserStats(db, userID)
+		if ferr != nil {
+			log.Printf("[stats] failed to re-fetch recomputed stats for %s: %v", userID, ferr)
+			return response.ServiceUnavailable(c, "stats are temporarily unavailable")
+		}
+		cachedStats = fresh
+
+		// Bump user version for cache invalidation.
+		if rdb := projredis.GetClient(); rdb != nil {
+			if _, err := projredis.IncrementUserVersion(userID); err != nil {
+				log.Printf("[stats] failed to bump user version for %s: %v", userID, err)
 			}
 		}
 	}
