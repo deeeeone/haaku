@@ -31,7 +31,7 @@ Uses shared `auth.PrivacyFilter` for the public route; shared `auth.AuthRequired
 - **`uploadToS3` was a stub (RESOLVED — fail-closed)** — it validated then discarded the file and returned a placeholder URL (`fmt.Sprintf("%s/%s/%s", endpoint, bucket, key)`, users.go:607-616), and the handler persisted it to `avatar_url`, so users got a URL pointing at a file that was never stored. `uploadToS3` now returns an error and the handler returns **501 `{"error":{"code":"not_implemented","message":"..."}}`** without touching `avatar_url` (no placeholder URL is ever persisted). A real S3/MinIO client still needs an approved dependency.
 - **Block/unblock not wrapped in cache-tx** — plain `db` writes + outbox published outside a transaction (users.go:452-466); follows deletion is 2 separate deletes (no transaction), matching `social`'s pattern rather than the checkin/scrobble standard. Raw string event names (`"user.blocked"`/`"user.unblocked"`).
 - **No outbox/notification on delete-account** — `pending_deletion` status set, no `account.deletion_scheduled` event, no cache invalidation for the user's cached profiles.
-- **`handleUpdateMe` ignores the post-update `db.First` error** — a failed re-fetch returns the pre-update row with a 200.
+- **`handleUpdateMe` ignores the post-update `db.First` error (RESOLVED)** — a failed re-fetch now logs and returns 500 `internal` instead of returning the pre-update row with a 200.
 - **`parseSettings` backfill is asymmetric** — missing `privacy` fields are backfilled with defaults, but missing `notifications` fields are not (a partial settings JSON yields false notification prefs). Also the `notifications` module re-parses these independently — duplicated parsing logic.
 - **Public profile stats are stubs** — `Watched`/`Lists` hardcoded 0, `RecentActivity` empty; `StatsSummary` never wired to the stats engine. Followers/following counts don't filter `approved_at`.
 - **`/users/me` routes registered as `me.Get("/")`** — Fiber group prefix + `"/"` may only match `/users/me/` (trailing slash) and not `/users/me`; verify routing (the later `/users/:id` registration could swallow `/users/me`).
@@ -45,7 +45,7 @@ Uses shared `auth.PrivacyFilter` for the public route; shared `auth.AuthRequired
 - [ ] Implement real S3/MinIO upload once the dependency is approved.
 - [ ] Wrap block/unblock/delete-account in `cache.WithCacheTransaction` with version invalidation + in-tx outbox; use typed event constants.
 - [ ] Emit account-deletion outbox event and invalidate cached profiles.
-- [ ] Handle the post-update re-fetch error in `handleUpdateMe`.
+- [x] Handle the post-update re-fetch error in `handleUpdateMe`. (Batch 6)
 - [ ] Backfill notification settings symmetrically in `parseSettings`.
 - [x] Verify `/users/me` vs `/users/:id` route precedence (trailing-slash issue) — static route wins; added TestUsersMeRoutePrecedence regression test.
 - [ ] Wire real stats + recent activity into the public profile.
