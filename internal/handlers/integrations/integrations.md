@@ -44,7 +44,7 @@ All token-management routes are marked Auth-required in OpenAPI; the receiver ro
 
 - [x] Add `auth.AuthRequired` on token management routes; fail closed (401) on empty user. Receiver stays public.
 - [x] Map internal failures to 500/503 and only client mistakes to 400. (Batch 6)
-- [ ] Validate/allowlist scopes; reconsider the `*` default.
+- [x] Validate/allowlist scopes; reconsider the `*` default. (Batch 11)
 - [ ] Decide on token expiry and at-rest hashing.
 - [x] Replace local error helpers with `internal/response` (import-cycle claim verified; envelope moved to the leaf package).
 - [ ] Verify module test coverage (`make test`).
