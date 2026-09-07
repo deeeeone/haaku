@@ -552,61 +552,59 @@ func handleAnticipated(c *fiber.Ctx) error {
 
 	// Shows: upcoming episodes joined with shows, weighted by watchlist count.
 	// Movies: released in last 30 days + next 90 days, weighted similarly.
-	// Combined with weighted score: watchlist_count * 0.7 + popularity * 0.3
+	// Combined with weighted score: watchlist_count * 0.7 + popularity * 0.3.
+	// NOTE: full_count is intentionally NOT computed per CTE here — when both
+	// types are returned the two parts are UNIONed, so the row count must be
+	// taken over the combined set (see the "both" wrapper below), otherwise
+	// the reported total is the per-type count, not the combined total.
 	sql := `
-		SELECT * FROM (
-			SELECT
-				'show' AS media_type,
-				s.id,
-				s.tmdb_id,
-				s.title,
-				s.overview,
-				s.popularity,
-				COALESCE(wl.cnt, 0) AS watchlist_count,
-				(COALESCE(wl.cnt, 0) * 0.7 + s.popularity * 0.3) AS score,
-				NULL::date AS release_date,
-				MIN(e.aired_at) AS next_air_date,
-				s.status,
-				s.images,
-				COUNT(*) OVER() AS full_count
-			FROM shows s
-			INNER JOIN episodes e ON e.show_id = s.id
-			LEFT JOIN (
-				SELECT media_id, COUNT(*) AS cnt
-				FROM user_watchlist
-				WHERE media_type = 'show'
-				GROUP BY media_id
-			) wl ON wl.media_id = s.id
-			WHERE e.aired_at >= CURRENT_DATE
-			GROUP BY s.id, s.tmdb_id, s.title, s.overview, s.popularity, wl.cnt, s.status, s.images
-		) shows_part
+		SELECT
+			'show' AS media_type,
+			s.id,
+			s.tmdb_id,
+			s.title,
+			s.overview,
+			s.popularity,
+			COALESCE(wl.cnt, 0) AS watchlist_count,
+			(COALESCE(wl.cnt, 0) * 0.7 + s.popularity * 0.3) AS score,
+			NULL::date AS release_date,
+			MIN(e.aired_at) AS next_air_date,
+			s.status,
+			s.images
+		FROM shows s
+		INNER JOIN episodes e ON e.show_id = s.id
+		LEFT JOIN (
+			SELECT media_id, COUNT(*) AS cnt
+			FROM user_watchlist
+			WHERE media_type = 'show'
+			GROUP BY media_id
+		) wl ON wl.media_id = s.id
+		WHERE e.aired_at >= CURRENT_DATE
+		GROUP BY s.id, s.tmdb_id, s.title, s.overview, s.popularity, wl.cnt, s.status, s.images
 
 		UNION ALL
 
-		SELECT * FROM (
-			SELECT
-				'movie' AS media_type,
-				m.id,
-				m.tmdb_id,
-				m.title,
-				m.overview,
-				m.popularity,
-				COALESCE(wl.cnt, 0) AS watchlist_count,
-				(COALESCE(wl.cnt, 0) * 0.7 + m.popularity * 0.3) AS score,
-				m.released AS release_date,
-				NULL::date AS next_air_date,
-				NULL AS status,
-				m.images,
-				COUNT(*) OVER() AS full_count
-			FROM movies m
-			LEFT JOIN (
-				SELECT media_id, COUNT(*) AS cnt
-				FROM user_watchlist
-				WHERE media_type = 'movie'
-				GROUP BY media_id
-			) wl ON wl.media_id = m.id
-			WHERE m.released BETWEEN CURRENT_DATE - INTERVAL '30 days' AND CURRENT_DATE + INTERVAL '90 days'
-		) movies_part
+		SELECT
+			'movie' AS media_type,
+			m.id,
+			m.tmdb_id,
+			m.title,
+			m.overview,
+			m.popularity,
+			COALESCE(wl.cnt, 0) AS watchlist_count,
+			(COALESCE(wl.cnt, 0) * 0.7 + m.popularity * 0.3) AS score,
+			m.released AS release_date,
+			NULL::date AS next_air_date,
+			NULL AS status,
+			m.images
+		FROM movies m
+		LEFT JOIN (
+			SELECT media_id, COUNT(*) AS cnt
+			FROM user_watchlist
+			WHERE media_type = 'movie'
+			GROUP BY media_id
+		) wl ON wl.media_id = m.id
+		WHERE m.released BETWEEN CURRENT_DATE - INTERVAL '30 days' AND CURRENT_DATE + INTERVAL '90 days'
 	`
 
 	// Optionally filter by type.
@@ -670,11 +668,17 @@ func handleAnticipated(c *fiber.Ctx) error {
 		`
 		args = append(args, limit, (page-1)*limit)
 	} else {
-		// Both: wrap in subquery for ordering and pagination.
+		// Both: wrap in a subquery. full_count is computed here over the
+		// UNIONed result (not per-type) so the reported total matches the
+		// combined item set that ORDER/LIMIT paginate over. ORDER BY score
+		// applies to the whole combined set, then page slices.
 		sql = `
 			SELECT * FROM (
-				` + sql + `
-			) combined
+				SELECT combined.*, COUNT(*) OVER() AS full_count
+				FROM (
+					` + sql + `
+				) combined
+			) paged
 			ORDER BY score DESC
 			LIMIT ? OFFSET ?
 		`
