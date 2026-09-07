@@ -2,11 +2,14 @@ package notes
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
+	"trakt-api/internal/cache"
 	"trakt-api/internal/database"
 	"trakt-api/internal/openapi"
+	"trakt-api/redis"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -103,45 +106,53 @@ func handleCreateNote(c *fiber.Ctx) error {
 		return response.BadRequest(c, "media_type, media_id, and note are required")
 	}
 
-	db, err := database.GetDB()
-	if err != nil {
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
-	}
-
 	now := time.Now()
 
-	// Try to find existing note for upsert.
-	var existing database.UserNote
-	result := db.Where("user_id = ? AND media_type = ? AND media_id = ?", userID, req.MediaType, req.MediaID).First(&existing)
+	var resp noteResponse
+	err := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
 
-	if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
-	}
-
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		// Create new note.
-		note := database.UserNote{
-			UserID:    userID,
-			MediaType: req.MediaType,
-			MediaID:   req.MediaID,
-			Note:      req.Note,
-			CreatedAt: now,
-			UpdatedAt: now,
+		// Try to find existing note for upsert.
+		var existing database.UserNote
+		result := tx.Where("user_id = ? AND media_type = ? AND media_id = ?", userID, req.MediaType, req.MediaID).First(&existing)
+		if result.Error != nil && !errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, fmt.Errorf("lookup note: %w", result.Error)
 		}
-		if err := db.Create(&note).Error; err != nil {
-			return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to create note")
+
+		var note database.UserNote
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			// Create new note.
+			note = database.UserNote{
+				UserID:    userID,
+				MediaType: req.MediaType,
+				MediaID:   req.MediaID,
+				Note:      req.Note,
+				CreatedAt: now,
+				UpdatedAt: now,
+			}
+			if err := tx.Create(&note).Error; err != nil {
+				return nil, fmt.Errorf("create note: %w", err)
+			}
+		} else {
+			// Update existing note.
+			existing.Note = req.Note
+			existing.UpdatedAt = now
+			if err := tx.Save(&existing).Error; err != nil {
+				return nil, fmt.Errorf("update note: %w", err)
+			}
+			note = existing
 		}
-		return c.Status(fiber.StatusOK).JSON(toNoteResponse(&note))
+
+		queueNoteInvalidation(cacheTx, &note, userID)
+		resp = toNoteResponse(&note)
+		return cacheTx, nil
+	})
+	if err != nil {
+		fmt.Printf("notes: upsert note failed: %v\n", err)
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to save note")
 	}
 
-	// Update existing note.
-	existing.Note = req.Note
-	existing.UpdatedAt = now
-	if err := db.Save(&existing).Error; err != nil {
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to update note")
-	}
-
-	return c.Status(fiber.StatusOK).JSON(toNoteResponse(&existing))
+	return c.Status(fiber.StatusOK).JSON(resp)
 }
 
 // GET /v1/notes/:id — get single note (owner only)
@@ -205,13 +216,27 @@ func handleUpdateNote(c *fiber.Ctx) error {
 		return response.Forbidden(c, "note belongs to another user")
 	}
 
-	note.Note = req.Note
-	note.UpdatedAt = time.Now()
-	if err := db.Save(&note).Error; err != nil {
+	var resp noteResponse
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
+
+		now := time.Now()
+		note.Note = req.Note
+		note.UpdatedAt = now
+		if err := tx.Save(&note).Error; err != nil {
+			return nil, fmt.Errorf("update note: %w", err)
+		}
+
+		queueNoteInvalidation(cacheTx, &note, userID)
+		resp = toNoteResponse(&note)
+		return cacheTx, nil
+	})
+	if err != nil {
+		fmt.Printf("notes: update note %d failed: %v\n", id, err)
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to update note")
 	}
 
-	return c.JSON(toNoteResponse(&note))
+	return c.JSON(resp)
 }
 
 // DELETE /v1/notes/:id — delete note (owner only)
@@ -240,7 +265,16 @@ func handleDeleteNote(c *fiber.Ctx) error {
 		return response.Forbidden(c, "note belongs to another user")
 	}
 
-	if err := db.Delete(&note).Error; err != nil {
+	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
+		if err := tx.Delete(&note).Error; err != nil {
+			return nil, fmt.Errorf("delete note: %w", err)
+		}
+		queueNoteInvalidation(cacheTx, &note, userID)
+		return cacheTx, nil
+	})
+	if err != nil {
+		fmt.Printf("notes: delete note %d failed: %v\n", id, err)
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to delete note")
 	}
 
@@ -290,3 +324,26 @@ func handleListNotes(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+// queueNoteInvalidation bumps the user's version counter (their notes list)
+// and the target media's version counter (media responses can surface a note
+// presence/count) after any note write, invalidating caches in O(1). Notes are
+// private per-user; the webhook catalog defines no note event, so no outbox
+// event is emitted.
+func queueNoteInvalidation(cacheTx *cache.CacheTransaction, note *database.UserNote, userID string) {
+	uvk := redis.BuildUserVersionKey(userID)
+	cacheTx.AddInvalidation(uvk, map[string]interface{}{
+		"user_id":      userID,
+		"version_key":  uvk,
+		"version_only": true,
+	})
+	if note != nil && note.MediaType != "" && note.MediaID != 0 {
+		mvk := redis.BuildMediaVersionKey(note.MediaType, note.MediaID, nil, nil)
+		cacheTx.AddInvalidation(mvk, map[string]interface{}{
+			"media_id":     note.MediaID,
+			"media_type":   note.MediaType,
+			"version_key":  mvk,
+			"version_only": true,
+		})
+	}
+}
