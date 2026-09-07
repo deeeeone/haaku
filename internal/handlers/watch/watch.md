@@ -38,7 +38,7 @@ Both use `media.ResolveID` (numeric/slug), load the row from DB, then fetch prov
 - [x] Persist the `watch_providers` metadata back to the DB after fetch. (Batch 9 — handlers pass a `persist` closure writing the mutated metadata map to the row; regression-tested in `TestWatchProvidersCachePersistedAcrossRequests`.)
 - [x] Add `sync.Once` to the TMDB client init.
 - [ ] Map `ads`/`free`/`cinema` provider categories or document their exclusion.
-- [ ] Fix the `cpLink` hardcoded `"movie"` in the show country-miss path.
+- [x] Fix the `cpLink` hardcoded `"movie"` in the show country-miss path. (Batch 12 — `serveWatchProviders` now takes the resolved media type (`"movie"`/`"show"`) and passes it to `cpLink`, so the show branch builds a `/tv/{id}/watch` link instead of `/movie/`. Regression-tested in `TestWatchShowCountryMissLinkIsTV`.)
 - [x] Add negative caching for missing countries to avoid repeated full refetches. (Batch 9 — `watch_providers_absence` marker with 1h TTL in the metadata JSONB.)
 - [x] `itoa` replaced with `strconv.Itoa`; `storeCachedProviders` now handles marshal errors (Batch 4).
 - [x] Use shared `internal/response` helpers.
