@@ -3,7 +3,6 @@ package social
 import (
 	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
 	"trakt-api/internal/auth"
@@ -297,7 +296,7 @@ func handleListFriends(c *fiber.Ctx) error {
 		fmt.Printf("social: resolve user profiles failed: %v\n", err)
 		return response.InternalError(c)
 	}
-	setPaginationHeaders(c, page, limit, totalPages(total, limit), total, len(users))
+	response.SetPaginationHeaders(c, page, limit, total, len(users))
 	return c.JSON(users)
 }
 
@@ -353,7 +352,7 @@ func listFollowRelations(c *fiber.Ctx, targetID, direction string) error {
 		fmt.Printf("social: resolve user profiles failed: %v\n", err)
 		return response.InternalError(c)
 	}
-	setPaginationHeaders(c, page, limit, totalPages(total, limit), total, len(users))
+	response.SetPaginationHeaders(c, page, limit, total, len(users))
 	return c.JSON(users)
 }
 
@@ -418,7 +417,7 @@ func handleListFollowRequests(c *fiber.Ctx) error {
 		})
 	}
 
-	setPaginationHeaders(c, page, limit, totalPages(total, limit), total, len(resp))
+	response.SetPaginationHeaders(c, page, limit, total, len(resp))
 	return c.JSON(resp)
 }
 
@@ -575,24 +574,11 @@ func resolveUserStubs(db *gorm.DB, userIDs []string) ([]UserProfileStub, error) 
 	return stubs, nil
 }
 
-// ---------------------------------------------------------------------------
-// PAGINATION (api-conventions.md §7): ?page&limit, default 25, max 100.
-// ---------------------------------------------------------------------------
-
+// totalPages computes the §7 page count as ceil(total/limit); mirrored in
+// internal/response.SetPaginationHeaders and covered by TestTotalPages.
 func totalPages(total int64, limit int) int64 {
 	if total == 0 {
 		return 0
 	}
 	return (total-1)/int64(limit) + 1
-}
-
-func setPaginationHeaders(c *fiber.Ctx, page, limit int, pages int64, total int64, itemsCount int) {
-	c.Set("X-Pagination-Page", strconv.Itoa(page))
-	c.Set("X-Pagination-Limit", strconv.Itoa(limit))
-	c.Set("X-Pagination-Total-Pages", strconv.FormatInt(pages, 10))
-	c.Set("X-Pagination-Total-Items", strconv.FormatInt(total, 10))
-	c.Set("X-Pagination-Items-Count", strconv.Itoa(itemsCount))
-	if page < int(pages) {
-		c.Set("Link", `<`+c.Path()+"?page="+strconv.Itoa(page+1)+`&limit=`+strconv.Itoa(limit)+`>; rel="next"`)
-	}
 }
