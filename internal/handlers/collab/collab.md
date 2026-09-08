@@ -45,4 +45,4 @@ Ownership is enforced by checking `lists.id = ? AND lists.user_id = ?`. Register
 - [x] Route writes through `cache.WithCacheTransaction` with list version-key invalidation. (Batch 7)
 - [x] Replace local error helpers with shared `internal/response` (Batch 0).
 - [x] Consolidate the identical fiber.Ctx `parseID` copies in episodes/seasons/comments into a shared helper (`response.ParseIDParam`; collab's string `parseID` still uses `strconv.ParseInt`; Batch 5).
-- [ ] Verify module test coverage (`make test`).
+- [x] Verify module test coverage (`make test`). (Batch 14 — `internal/handlers/collab/collab_test.go` covers `parseID`. Handler-level integration for the list-ownership/invite/remove paths awaits a DB-driver approval.)
