@@ -14,7 +14,6 @@ import (
 	"net"
 	"net/url"
 	"os"
-	"strconv"
 	"time"
 
 	"trakt-api/internal/auth"
@@ -684,18 +683,7 @@ func handleDeliveries(c *fiber.Ctx) error {
 		results[i] = toDeliveryResponse(&d)
 	}
 
-	totalPages := int64(1)
-	if total > 0 {
-		totalPages = (total + int64(limit) - 1) / int64(limit)
-	}
-	c.Set("X-Pagination-Page", strconv.Itoa(page))
-	c.Set("X-Pagination-Limit", strconv.Itoa(limit))
-	c.Set("X-Pagination-Total-Pages", strconv.FormatInt(totalPages, 10))
-	c.Set("X-Pagination-Total-Items", strconv.FormatInt(total, 10))
-	c.Set("X-Pagination-Items-Count", strconv.Itoa(len(results)))
-	if page < int(totalPages) {
-		c.Set("Link", fmt.Sprintf(`<%s?page=%d>; rel="next"`, c.Path(), page+1))
-	}
+	response.SetPaginationHeaders(c, page, limit, total, len(results))
 
 	return c.JSON(results)
 }
