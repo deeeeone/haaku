@@ -38,4 +38,4 @@ Registers OpenAPI metadata for all six endpoints. Reuses `media.BuildMovieRespon
 - [ ] Align response envelope with the API conventions (add counts/pagination metadata if the spec requires).
 - [x] Add caching for hot public listings. (Batch 9 — 5m Redis TTL, keyed by type/kind/page/limit/extended; best-effort, DB fallback.)
 - [x] Cross-check the endpoint set against the roadmap (T1.7). (Batch 9 — audit documented in Oversights: roadmap expects anticipated + played/watched/collected/favorited with periods + rankings, none added here per scope.)
-- [ ] Verify module test coverage (`make test`).
+- [x] Verify module test coverage (`make test`). (Batch 14 — `internal/handlers/discovery/discovery_test.go` covers `discoveryCacheKey` key building incl. distinct-key guarantees. Handler-level integration for the DB/TMDB-fed lists awaits a DB-driver approval.)
