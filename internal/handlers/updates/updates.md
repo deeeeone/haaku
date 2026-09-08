@@ -40,4 +40,4 @@ Each paginates (`page`/`limit`, default 25, max 100) and honors `extended` (min/
 - [x] Return `[]` (never `null`) for empty result sets. (Batch 8 — response built with `make([]T, 0, …)`, so an empty/no-match result serializes as `[]`; a nil underlying slice never reaches the JSON encoder.)
 - [x] Add pagination metadata to the response. (Batch 8 — the array body is kept (matching the spec-compliant `webhooks`/`sync` convention); §7 `X-Pagination-*` headers + `Link: rel="next"` now carry `page`/`limit`/`total`/pages so a client can page deterministically against the stable `updated_at DESC, id DESC` order. No `row_count`/`total` envelope field is needed since headers suffice.)
 - [x] Remove dead `notFound` helper.
-- [ ] Verify module test coverage (`make test`).
+- [x] Verify module test coverage (`make test`). (Batch 14 — `internal/handlers/updates/updates_test.go` covers `updatesFeedCacheKey` (with/without extended) and `mustMarshal` (incl. unmarshalable → `[]` fallback). Handler-level integration for the DB-fed updates feed awaits a DB-driver approval.)
