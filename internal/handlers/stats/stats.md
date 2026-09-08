@@ -36,4 +36,4 @@ Single endpoint: `GET /v1/users/:id/stats` — public user statistics (plays, mi
 - [x] Handle non-404 DB errors separately from "not found". (Batch 6)
 - [x] Use shared `internal/response` helpers.
 - [ ] Verify stats engine output matches the spec'd fields.
-- [ ] Verify module test coverage (`make test`).
+- [x] Verify module test coverage (`make test`). (Batch 14 — `internal/handlers/stats/stats_test.go` covers `isStale` (nil/fresh/stale) and `statsVersionSnapshotKey`. Handler-level integration for the stats-engine + Redis compute path awaits a DB-driver approval.)
