@@ -66,7 +66,7 @@ func TestBuildShowIDs(t *testing.T) {
 }
 
 func TestBuildEpisode(t *testing.T) {
-	aired := database.Date{time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC)}
+	aired := database.Date{Time: time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC)}
 	ep := &database.Episode{
 		ID:            30,
 		SeasonID:      10,
