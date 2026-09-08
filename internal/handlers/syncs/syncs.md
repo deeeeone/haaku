@@ -41,4 +41,4 @@ Uses the shared `auth.AuthRequired()` middleware on all four routes (one of the 
 - [x] Replace unchecked `user_id` assert with a safe helper (`requireUserID`, 401 on missing).
 - [x] Validate `:id<int>` parse and return 400 on failure (`parseSyncID`).
 - [x] Separate "not found" from other DB errors — `First` failures that aren't `gorm.ErrRecordNotFound` now return 500 `internal` instead of 404.
-- [ ] Verify module test coverage (`make test`).
+- [x] Verify module test coverage (`make test`). (Batch 14 — `internal/handlers/syncs/syncs_test.go` covers `buildSyncResponse` and `parseSyncID` (valid / non-numeric / zero). Handler-level integration for the DB-backed sync-session CRUD awaits a DB-driver approval.)
