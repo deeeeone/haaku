@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"strconv"
 	"time"
 
 	"trakt-api/internal/database"
@@ -91,7 +90,7 @@ func handleMovieUpdates(c *fiber.Ctx) error {
 
 	cacheKey := updatesFeedCacheKey("movies", startDate, page, limit, extended)
 	if enc, ok := updatesGetCache(cacheKey); ok {
-		setPaginationHeaders(c, page, limit, enc.Total, enc.Count)
+		response.SetPaginationHeaders(c, page, limit, enc.Total, enc.Count)
 		c.Set("Content-Type", "application/json")
 		return c.Send(enc.Body)
 	}
@@ -121,7 +120,7 @@ func handleMovieUpdates(c *fiber.Ctx) error {
 	}
 
 	updatesSetCache(cacheKey, updatesCacheEnvelope{Total: total, Count: len(resp), Body: mustMarshal(resp)})
-	setPaginationHeaders(c, page, limit, total, len(resp))
+	response.SetPaginationHeaders(c, page, limit, total, len(resp))
 	return c.JSON(resp)
 }
 
@@ -137,7 +136,7 @@ func handleShowUpdates(c *fiber.Ctx) error {
 
 	cacheKey := updatesFeedCacheKey("shows", startDate, page, limit, extended)
 	if enc, ok := updatesGetCache(cacheKey); ok {
-		setPaginationHeaders(c, page, limit, enc.Total, enc.Count)
+		response.SetPaginationHeaders(c, page, limit, enc.Total, enc.Count)
 		c.Set("Content-Type", "application/json")
 		return c.Send(enc.Body)
 	}
@@ -167,7 +166,7 @@ func handleShowUpdates(c *fiber.Ctx) error {
 	}
 
 	updatesSetCache(cacheKey, updatesCacheEnvelope{Total: total, Count: len(resp), Body: mustMarshal(resp)})
-	setPaginationHeaders(c, page, limit, total, len(resp))
+	response.SetPaginationHeaders(c, page, limit, total, len(resp))
 	return c.JSON(resp)
 }
 
@@ -182,7 +181,7 @@ func handlePeopleUpdates(c *fiber.Ctx) error {
 
 	cacheKey := updatesFeedCacheKey("people", startDate, page, limit, "")
 	if enc, ok := updatesGetCache(cacheKey); ok {
-		setPaginationHeaders(c, page, limit, enc.Total, enc.Count)
+		response.SetPaginationHeaders(c, page, limit, enc.Total, enc.Count)
 		c.Set("Content-Type", "application/json")
 		return c.Send(enc.Body)
 	}
@@ -212,7 +211,7 @@ func handlePeopleUpdates(c *fiber.Ctx) error {
 	}
 
 	updatesSetCache(cacheKey, updatesCacheEnvelope{Total: total, Count: len(resp), Body: mustMarshal(resp)})
-	setPaginationHeaders(c, page, limit, total, len(resp))
+	response.SetPaginationHeaders(c, page, limit, total, len(resp))
 	return c.JSON(resp)
 }
 
@@ -283,19 +282,3 @@ func mustMarshal(v interface{}) json.RawMessage {
 	return data
 }
 
-// setPaginationHeaders emits the §7 pagination headers (api-conventions.md)
-// plus a Link: rel="next" header when more pages exist.
-func setPaginationHeaders(c *fiber.Ctx, page, limit int, total int64, itemsCount int) {
-	totalPages := int64(0)
-	if total > 0 {
-		totalPages = (total + int64(limit) - 1) / int64(limit)
-	}
-	c.Set("X-Pagination-Page", strconv.Itoa(page))
-	c.Set("X-Pagination-Limit", strconv.Itoa(limit))
-	c.Set("X-Pagination-Total-Pages", strconv.FormatInt(totalPages, 10))
-	c.Set("X-Pagination-Total-Items", strconv.FormatInt(total, 10))
-	c.Set("X-Pagination-Items-Count", strconv.Itoa(itemsCount))
-	if page < int(totalPages) {
-		c.Set("Link", `<`+c.Path()+`?page=`+strconv.Itoa(page+1)+`&limit=`+strconv.Itoa(limit)+`>; rel="next"`)
-	}
-}
