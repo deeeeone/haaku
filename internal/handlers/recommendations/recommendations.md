@@ -44,7 +44,7 @@ This is the **only** recommendations implementation (the `discovery` module's re
 - [x] Replace error + pagination helpers with `internal/response` (Batch 0).
 - [x] Swap local `authRequired` for shared `auth.AuthRequired` (Batch 1).
 - [x] `safeStrings`/`safeDateString`/`imageURL` consolidated into `database` package methods (`StringSlice.Values`, `Date.String`, `JSONMap.StringValue`; Batch 4).
-- [ ] Verify module test coverage (`make test`).
+- [x] Verify module test coverage (`make test`). (Batch 14 — `internal/handlers/recommendations/recommendations_test.go` covers `topGenresCacheKey` (version+user sensitive). Handler-level integration for the DB-fed personalized/social/anticipated lists awaits a DB-driver approval.)
 
 ## Databases — genre containment index (migration needed, out of scope here)
 
