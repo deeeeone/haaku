@@ -58,7 +58,7 @@ func TestBuildRatingSummary(t *testing.T) {
 }
 
 func TestBuildMovieResponseMinAndFull(t *testing.T) {
-	rel := database.Date{time.Date(2020, 5, 1, 0, 0, 0, 0, time.UTC)}
+	rel := database.Date{Time: time.Date(2020, 5, 1, 0, 0, 0, 0, time.UTC)}
 	m := &database.Movie{
 		ID:            1,
 		TmdbID:        550,
@@ -98,7 +98,7 @@ func TestBuildMovieResponseMinAndFull(t *testing.T) {
 }
 
 func TestBuildShowResponseExtended(t *testing.T) {
-	first := database.Date{time.Date(2011, 4, 17, 0, 0, 0, 0, time.UTC)}
+	first := database.Date{Time: time.Date(2011, 4, 17, 0, 0, 0, 0, time.UTC)}
 	s := &database.Show{
 		ID:           2,
 		TmdbID:       1399,
@@ -134,7 +134,7 @@ func TestBuildShowResponseExtended(t *testing.T) {
 }
 
 func TestBuildSeasonAndEpisodeResponse(t *testing.T) {
-	aired := database.Date{time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)}
+	aired := database.Date{Time: time.Date(2019, 1, 1, 0, 0, 0, 0, time.UTC)}
 	season := &database.Season{
 		ID:           10,
 		ShowID:       3,
