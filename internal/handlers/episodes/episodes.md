@@ -42,4 +42,4 @@ All handlers verify the episode exists before serving sub-resources. Registers O
 - [x] Fix `total_count` on the lists endpoint to reflect only visible lists (or filter in SQL). (Batch 8 — count and data query now `JOIN lists` and filter `privacy IN (public, link_only)` in SQL; `total_count` matches returned rows.)
 - [x] Consolidate error + pagination helpers into `internal/response`.
 - [ ] Consider caching stats/ratings.
-- [ ] Verify module test coverage (`make test`).
+- [ ] Verify module test coverage (`make test`). (Batch 14 — NOT covered: every episode endpoint (`get`, `stats`, `ratings`, `comments`, `lists`) and its helpers (`queryEpisodeStats`, `queryRatingDistribution`, `queryMediaComments`) require a live DB/GORM handle, and adding a DB driver (e.g. sqlite) is forbidden without an issue. Handler-level integration coverage awaits a DB-driver approval; only then can the episode handler layer be exercised.)
