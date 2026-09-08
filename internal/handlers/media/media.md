@@ -53,4 +53,4 @@ The **shared media-read foundation** for the API (4 files). Provides movie/show/
 - [x] Sanitize/log TMDB upstream errors instead of echoing raw text. (Batch 6)
 - [x] Replace duplicated error helpers with `internal/response`.
 - [ ] Reconsider always-embedded seasons on show detail.
-- [ ] Verify module test coverage (`make test`).
+- [x] Verify module test coverage (`make test`). (Batch 14 — `internal/handlers/media/media_test.go` adds unit coverage for the pure builders (`buildRatingSummary`, `buildMovieResponse`/`buildShowResponse`/`buildSeasonResponse`/`buildEpisodeResponse` min vs full/all extended levels, nil-map MarshalJSON guard, `GetExtended`), the TMDB JSON parsing helpers (`filterTranslations` incl. name-fallback + empty-slice contract, `parseAliases`), and `isNumeric`. Handler-level integration coverage for DB-backed get/people/translation proxy paths awaits a DB-driver approval.)
