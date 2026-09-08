@@ -52,4 +52,4 @@ Uses shared `auth.PrivacyFilter` for the public route; shared `auth.AuthRequired
 - [ ] Wire real stats + recent activity into the public profile (stats engine).
 - [x] Use shared `internal/response` error helpers (Batch 0).
 - [x] Swap local `requireAuth` for shared `auth.AuthRequired` (Batch 1).
-- [ ] Verify module test coverage (`make test`).
+- [x] Verify module test coverage (`make test`). (Batch 14 — `internal/handlers/users/users_test.go` covers `defaultSettings`, `parseSettings` (defaults/overrides + privacy-only backfill), `buildProfileResponse`, and `buildPublicProfileResponse`. Handler-level integration for the DB+Clerk profile/settings/block paths awaits a DB-driver approval.)
