@@ -39,4 +39,4 @@ Validation: `id` must parse; `reason` allowlisted (`spam`, `spoiler`, `offensive
 - [x] Swap `requireAuth` for shared `auth.AuthRequired` (Batch 1).
 - [ ] Consider whether `reporter_id` should be in the public response.
 - [x] Cap `description` length. (Batch 11)
-- [ ] Verify module test coverage (`make test`).
+- [x] Verify module test coverage (`make test`). (Batch 14 — `internal/handlers/reports/reports_test.go` covers the `validReportReasons` allowlist, `maxReportDescription` cap, and `toReportResponse`. Handler-level integration for the DB+Redis rate-limited submit path awaits a DB-driver approval.)
