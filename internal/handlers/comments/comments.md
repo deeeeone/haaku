@@ -48,7 +48,7 @@ Registers OpenAPI metadata for all endpoints. Uses `comment_type`/`media_type` C
 - [x] Add comment length validation per spec. (Batch 11)
 - [x] Add DB index strategy for trending query (`like_count+reply_count`, `created_at`). (Batch 10 — documented in the Databases section below; no schema change landed here per project rules.)
 - [x] Check the user lookup error in the moderator delete path. (Batch 6)
-- [ ] Verify module test coverage (`make test`).
+- [x] Verify module test coverage (`make test`). (Batch 14 — `internal/handlers/comments/comments_test.go` adds unit coverage for `validateCommentBody` (400 on empty / >5000-char), the reaction + report-reason allowlists, `parseCSV`, `maxCommentLength`, and `toCommentResponse` (incl. nil-EditedAt). Handler-level integration coverage for the DB-backed create/edit/delete paths awaits a DB-driver approval.)
 
 ## Databases — trending index (migration needed, out of scope here)
 
