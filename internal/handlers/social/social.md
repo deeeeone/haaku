@@ -46,4 +46,4 @@ Emits outbox events (`user.followed`, `user.unfollowed`, `user.follow_approved`)
 - [x] Add pagination + stable ordering to all list endpoints.
 - [x] Handle all DB errors instead of ignoring them. (Batch 6)
 - [x] Use shared `internal/response` helpers (leaf envelope package now exists, unblocking this).
-- [ ] Verify module test coverage (`make test`).
+- [x] Verify module test coverage (`make test`). (Batch 14 — `internal/handlers/social/social_test.go` covers `totalPages` and `buildFollowResponse` (approved vs pending). Handler-level integration for the DB-backed follow/unfollow/list paths awaits a DB-driver approval.)
