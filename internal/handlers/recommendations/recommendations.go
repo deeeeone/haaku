@@ -184,8 +184,7 @@ func handlePersonalizedMovies(c *fiber.Ctx) error {
 	var movies []database.Movie
 
 	baseQuery := db.
-		Joins("JOIN jsonb_array_elements_text(movies.genres) AS g ON TRUE").
-		Where("g IN ?", topGenres).
+		Where("movies.genres ?| ?", topGenres).
 		Where("NOT EXISTS (SELECT 1 FROM user_history WHERE user_id = ? AND media_type = ? AND media_id = movies.id)", userID, "movie").
 		Where("NOT EXISTS (SELECT 1 FROM user_hidden WHERE user_id = ? AND media_type = ? AND media_id = movies.id)", userID, "movie")
 
@@ -267,8 +266,7 @@ func handlePersonalizedShows(c *fiber.Ctx) error {
 	var shows []database.Show
 
 	baseQuery := db.
-		Joins("JOIN jsonb_array_elements_text(shows.genres) AS g ON TRUE").
-		Where("g IN ?", topGenres).
+		Where("shows.genres ?| ?", topGenres).
 		Where(`NOT EXISTS (
 			SELECT 1 FROM user_history uh
 			JOIN episodes e ON uh.media_id = e.id

@@ -86,3 +86,6 @@ Notes:
   like-count sort if the spec ever drops the 7-day window): create the same
   expression index *without* the partial predicate and rely on the existing
   `idx_comments_type_created` for the WHERE.
+
+**Landed:** migration `0032_comments_trending_score_index.sql` creates the
+partial expression index (issue #2); the handler query is unchanged.

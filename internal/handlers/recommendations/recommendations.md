@@ -73,3 +73,6 @@ array-contains operators, preserving the same "any of top genres" semantics:
 - shows: same pattern with `shows.genres ?| ?`.
 - The optional per-request `genre` filter already uses the `? ` (string-exists)
   operator, which also benefits from the GIN index.
+
+**Landed:** migration `0031_genres_gin_indexes.sql` creates both GIN indexes and
+the two personalized queries were rewritten to `?|` (issue #1).
