@@ -41,4 +41,4 @@ All routes are auth-required (shared `auth.AuthRequired()` middleware). Register
 - [x] Decide 403-vs-404 for cross-user delete; align with conventions. (Batch 6)
 - [ ] Optionally enforce uniqueness on (user, section, name) and harden the 20-cap.
 - [x] Route writes through `WithCacheTransaction`. (Batch 7)
-- [ ] Verify module test coverage (`make test`).
+- [x] Verify module test coverage (`make test`). (Batch 14 — `internal/handlers/filters/filters_test.go` covers the `validSections` allowlist, `errFilterLimitReached` sentinel, and `toFilterResponse`. Handler-level integration for the CRUD paths awaits a DB-driver approval.)
