@@ -92,3 +92,74 @@ func TestClampLimit(t *testing.T) {
 		}
 	}
 }
+
+func TestSetPaginationHeaders(t *testing.T) {
+	app := fiber.New()
+	app.Get("/list", func(c *fiber.Ctx) error {
+		SetPaginationHeaders(c, 2, 25, 60, 25) // 60 items, 25/page -> 3 pages
+		return c.SendStatus(fiber.StatusNoContent)
+	})
+
+	resp, err := app.Test(httptest.NewRequest(fiber.MethodGet, "/list", nil), -1)
+	if err != nil {
+		t.Fatalf("request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	h := func(k string) string { return resp.Header.Get(k) }
+	cases := map[string]string{
+		"X-Pagination-Page":        "2",
+		"X-Pagination-Limit":       "25",
+		"X-Pagination-Total-Pages": "3",
+		"X-Pagination-Total-Items": "60",
+		"X-Pagination-Items-Count": "25",
+		"Link":                     `</list?page=3&limit=25>; rel="next"`,
+	}
+	for k, want := range cases {
+		if got := h(k); got != want {
+			t.Errorf("%s = %q, want %q", k, got, want)
+		}
+	}
+}
+
+func TestSetPaginationHeadersNoNextOnLastPage(t *testing.T) {
+	app := fiber.New()
+	app.Get("/list", func(c *fiber.Ctx) error {
+		SetPaginationHeaders(c, 3, 25, 60, 10) // page 3 of 3 -> no Link
+		return c.SendStatus(fiber.StatusNoContent)
+	})
+
+	resp, err := app.Test(httptest.NewRequest(fiber.MethodGet, "/list", nil), -1)
+	if err != nil {
+		t.Fatalf("request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if got := resp.Header.Get("Link"); got != "" {
+		t.Errorf("Link = %q, want empty on last page", got)
+	}
+	if got := resp.Header.Get("X-Pagination-Total-Pages"); got != "3" {
+		t.Errorf("Total-Pages = %q, want 3", got)
+	}
+}
+
+func TestSetPaginationHeadersEmpty(t *testing.T) {
+	app := fiber.New()
+	app.Get("/list", func(c *fiber.Ctx) error {
+		SetPaginationHeaders(c, 1, 25, 0, 0) // empty result set
+		return c.SendStatus(fiber.StatusNoContent)
+	})
+
+	resp, err := app.Test(httptest.NewRequest(fiber.MethodGet, "/list", nil), -1)
+	if err != nil {
+		t.Fatalf("request: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if got := resp.Header.Get("X-Pagination-Total-Pages"); got != "0" {
+		t.Errorf("Total-Pages = %q, want 0 for empty set", got)
+	}
+	if got := resp.Header.Get("Link"); got != "" {
+		t.Errorf("Link = %q, want empty for empty set", got)
+	}
+}
