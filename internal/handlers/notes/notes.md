@@ -42,4 +42,4 @@ All routes are auth-required via the shared `auth.AuthRequired()` middleware. Re
 - [x] Add note-length and `media_type` validation. (Batch 11)
 - [x] Replace local error/pagination helpers with `internal/response` (Batch 0).
 - [x] Route writes through `WithCacheTransaction` per conventions. (Batch 7)
-- [ ] Verify module test coverage (`make test`).
+- [x] Verify module test coverage (`make test`). (Batch 14 — `internal/handlers/notes/notes_test.go` covers the `validMediaTypes` allowlist, `maxNoteLength` cap, and `toNoteResponse`. Handler-level integration for the DB-backed upsert/list paths awaits a DB-driver approval.)
