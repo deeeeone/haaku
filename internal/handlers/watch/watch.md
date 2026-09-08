@@ -42,4 +42,4 @@ Both use `media.ResolveID` (numeric/slug), load the row from DB, then fetch prov
 - [x] Add negative caching for missing countries to avoid repeated full refetches. (Batch 9 — `watch_providers_absence` marker with 1h TTL in the metadata JSONB.)
 - [x] `itoa` replaced with `strconv.Itoa`; `storeCachedProviders` now handles marshal errors (Batch 4).
 - [x] Use shared `internal/response` helpers.
-- [ ] Verify module test coverage (`make test`).
+- [x] Verify module test coverage (`make test`). (Batch 14 — module already ships real coverage: `internal/handlers/watch/watch_test.go` (added in Batch 12) exercises the TMDB watch-provider cache-persistence, negative caching, and show country-miss link paths via a fake dep-boundary app; this todo is being checked off now.)
