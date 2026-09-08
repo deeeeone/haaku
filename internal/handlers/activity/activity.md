@@ -48,4 +48,4 @@ Also registers OpenAPI route metadata (via `openapi.Register`) and exposes `Regi
 - [x] Move auth guard to a shared middleware package — route now runs `auth.AuthRequired()` (Batch 1).
 - [x] Return 400 on malformed `start_at` and on unknown `type` values. (Batch 6)
 - [x] Confirm pagination metadata contract against `api-conventions.md` and align response shape. (Batch 8 — body envelope kept; now emits the §7 `X-Pagination-*` headers + `Link: rel="next"` and a stable `created_at DESC, id DESC` order; default limit aligned to §7's 25.)
-- [ ] Verify the module has tests (`make test` TDD requirement).
+- [x] Verify the module has tests (`make test` TDD requirement). (Batch 14 — `internal/handlers/activity/activity_test.go` covers `toActivityResponse` incl. nil-payload→empty-map guard. Handler-level integration for the DB-fed feed awaits a DB-driver approval.)
