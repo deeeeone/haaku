@@ -11,6 +11,7 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/postgres v1.6.2
+	gorm.io/driver/sqlite v1.6.0 // test-only dep of the _tests_ suite; go mod tidy prunes it because _tests_ is underscore-ignored, keep pinned
 	gorm.io/gorm v1.31.2
 )
 
