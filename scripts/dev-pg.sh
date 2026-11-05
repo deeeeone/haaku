@@ -16,16 +16,38 @@
 #   eval "$(./scripts/dev-pg.sh start -q)"   # export DATABASE_URL in one line
 #
 # Environment:
-#   TKILLER_PG_DIR   data directory        (default: /tmp/tkiller-dev-pg)
-#   TKILLER_PG_SOCK  socket directory      (default: /tmp/tkiller-dev-pg-sock)
+#   TKILLER_PG_DIR   data directory        (default: /tmp/tkiller-dev-pg-<checkout id>)
+#   TKILLER_PG_SOCK  socket directory      (default: /tmp/tkiller-dev-pg-sock-<checkout id>)
 #   TKILLER_PG_DB    database name         (default: trakt)
 #   TKILLER_PG_USER  role name             (default: trakt)
 #   TKILLER_PG_BIN   directory of the postgres binaries (autodetected)
+#
+# The data directory defaults to a per-checkout path, so two clones or worktrees
+# of this repository never share a cluster. Run `./scripts/dev-pg.sh paths` to
+# see which ones this checkout uses.
 
 set -euo pipefail
 
-PG_DIR="${TKILLER_PG_DIR:-/tmp/tkiller-dev-pg}"
-PG_SOCK="${TKILLER_PG_SOCK:-/tmp/tkiller-dev-pg-sock}"
+# Default to a cluster PER CHECKOUT.
+#
+# Two working copies of this repository (a second clone, a git worktree, or two
+# agents in one sandbox) must never share a data directory: they would share one
+# cluster and one database, and one of them applying a migration, dropping a
+# table or seeding rows silently breaks the other's run. The suffix is derived
+# from the working copy's path, so the same checkout always reuses its own
+# cluster and different checkouts never collide.
+#
+# Override TKILLER_PG_DIR / TKILLER_PG_SOCK to share one deliberately.
+checkout_id() {
+  local root
+  root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+  printf '%s' "$root" | cksum | awk '{print $1}'
+}
+
+CHECKOUT_ID="$(checkout_id)"
+
+PG_DIR="${TKILLER_PG_DIR:-/tmp/tkiller-dev-pg-$CHECKOUT_ID}"
+PG_SOCK="${TKILLER_PG_SOCK:-/tmp/tkiller-dev-pg-sock-$CHECKOUT_ID}"
 PG_DB="${TKILLER_PG_DB:-trakt}"
 PG_USER="${TKILLER_PG_USER:-trakt}"
 PG_BIN="${TKILLER_PG_BIN:-}"
@@ -121,5 +143,6 @@ case "${1:-start}" in
   destroy) destroy ;;
   status)  status ;;
   url)     url ;;
-  *) echo "usage: $0 {start [-q]|stop|destroy|status|url}" >&2; exit 2 ;;
+  paths)   echo "TKILLER_PG_DIR=$PG_DIR"; echo "TKILLER_PG_SOCK=$PG_SOCK"; echo "PG_BIN=$PG_BIN" ;;
+  *) echo "usage: $0 {start [-q]|stop|destroy|status|url|paths}" >&2; exit 2 ;;
 esac
