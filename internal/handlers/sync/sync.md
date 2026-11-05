@@ -7,7 +7,7 @@ The sync workhorse — 17 endpoints over five collections (all auth-required, pe
 - **History** (4): GET paginated (+ `type`, `start_at`, `end_at` filters), GET single item, POST add (movies + shows expanded to episodes by season, all-episode expansion), POST remove (by IDs or media objects).
 - **Collection** (3): GET, POST add, POST remove (movies/shows).
 - **Watchlist** (4): GET (+`sort_by` rank/listed/title), POST add (assigns incrementing rank), POST remove, PUT reorder.
-- **Ratings** (3): GET, POST upsert (`OnConflict` on user+media), POST remove.
+- **Ratings** (3): GET, POST upsert (`OnConflict` on user+media), POST remove. Episode ratings carry `season`/`number` and resolve series→season→episode, exactly as history add does; an episode reference without them is rejected (400).
 - **Favorites** (3): GET, POST add (ranked), POST remove.
 
 Writes use `cache.WithCacheTransaction` with version-counter invalidation (`queueUserInvalidation`/`queueMediaInvalidation`/`queueEpisodeInvalidations`) and outbox events (`EventHistoryAdded`, `EventCollectionAdded`, `EventWatchlistAdded`, `EventRatingAdded`, `EventFavoriteAdded`). Batch responses follow the Trakt `added/not_found/duplicates` shape.
@@ -40,7 +40,8 @@ Writes use `cache.WithCacheTransaction` with version-counter invalidation (`queu
 - **`"unknown"` watched_at semantics undecided** — `"unknown"` in show/season expansion uses `now` rather than the episode `aired_at`; needs a spec decision (aired_at vs now).
 - **Bulk-add N+1** — per-item `findSeason`/`findEpisode` queries inside the transaction loop; fine for small batches, quadratic-ish for large syncs.
 - **No pagination on `handleGetHistoryItem`** — returns all history rows for one item.
-- **No episode support in collection/watchlist/favorites** — Trakt allows episodes in watchlist; only movies/shows handled here.
+- **Episode rating add/remove payload mismatch (RESOLVED, issue #25)** — `handleAddRatings` declared episodes as `{ids, rating}` (no season/number), so a Trakt episode payload had its `season`/`number` dropped by the decoder, the series TMDB id resolved to the *show*, and the rating was written against the whole series — while `handleRemoveRatings` correctly targeted the episode. Now the episodes payload uses a type carrying `season`/`number`, resolves series→season→episode and writes `media_type='episode'`; a reference without season/number is rejected with 400 `invalid_request` instead of falling back to the show. Regression test: `ratings_test.go` (seeds a series with two episodes, asserts the episode row is rated and the show is not, round-trips `/ratings/remove`, and asserts the 400).
+- **No episode support in collection/watchlist/favorites** — Trakt allows episodes in watchlist; only movies/shows handled here. Note this is *symmetric* across add and remove (both accept only movies/shows), so it is a feature gap, not the ratings-style add/remove asymmetry. Tracked on trakt-killer/tkiller-api#4.
 - **Error helpers (`authRequired`/`badRequest`/`internalError`) duplicated** — "match project conventions" per comment, but the shared package exists.
 - **Mixed timestamp formats (RESOLVED)** — all response timestamps now unified to `.000Z` via shared `response.FormatTime` (Batch 3); parse paths still accept RFC3339 input.
 

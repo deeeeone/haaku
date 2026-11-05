@@ -100,6 +100,9 @@ func isClientNil() bool { return rdb == nil }
 
 // Set wraps client.Set with circuit breaker.
 func Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
+	if _, err := requireClient(); err != nil {
+		return err // Redis not initialized — graceful no-op for tests
+	}
 	return globalCircuitBreaker.Call(func() error {
 		return rdb.Set(ctx, key, value, expiration).Err()
 	})
@@ -107,6 +110,9 @@ func Set(ctx context.Context, key string, value interface{}, expiration time.Dur
 
 // Get wraps client.Get with circuit breaker.
 func Get(ctx context.Context, key string) (string, error) {
+	if _, err := requireClient(); err != nil {
+		return "", err // Redis not initialized — graceful no-op for tests
+	}
 	var val string
 	err := globalCircuitBreaker.Call(func() error {
 		var getErr error
@@ -121,6 +127,9 @@ func Del(ctx context.Context, keys ...string) error {
 	if len(keys) == 0 {
 		return nil
 	}
+	if _, err := requireClient(); err != nil {
+		return err // Redis not initialized — graceful no-op for tests
+	}
 	return globalCircuitBreaker.Call(func() error {
 		return rdb.Del(ctx, keys...).Err()
 	})
@@ -128,6 +137,9 @@ func Del(ctx context.Context, keys ...string) error {
 
 // Incr wraps client.Incr with circuit breaker.
 func Incr(ctx context.Context, key string) (int64, error) {
+	if _, err := requireClient(); err != nil {
+		return 0, err // Redis not initialized — graceful no-op for tests
+	}
 	var val int64
 	err := globalCircuitBreaker.Call(func() error {
 		var incrErr error
@@ -139,6 +151,9 @@ func Incr(ctx context.Context, key string) (int64, error) {
 
 // Expire wraps client.Expire with circuit breaker.
 func Expire(ctx context.Context, key string, expiration time.Duration) error {
+	if _, err := requireClient(); err != nil {
+		return err // Redis not initialized — graceful no-op for tests
+	}
 	return globalCircuitBreaker.Call(func() error {
 		return rdb.Expire(ctx, key, expiration).Err()
 	})
@@ -146,6 +161,9 @@ func Expire(ctx context.Context, key string, expiration time.Duration) error {
 
 // Ping wraps client.Ping with circuit breaker.
 func Ping(ctx context.Context) error {
+	if _, err := requireClient(); err != nil {
+		return err // Redis not initialized — graceful no-op for tests
+	}
 	return globalCircuitBreaker.Call(func() error {
 		return rdb.Ping(ctx).Err()
 	})
@@ -153,6 +171,9 @@ func Ping(ctx context.Context) error {
 
 // Pipeline executes a pipeline function wrapped in the circuit breaker.
 func Pipeline(ctx context.Context, fn func(redis.Pipeliner) error) error {
+	if _, err := requireClient(); err != nil {
+		return err // Redis not initialized — graceful no-op for tests
+	}
 	return globalCircuitBreaker.Call(func() error {
 		pipe := rdb.Pipeline()
 		if err := fn(pipe); err != nil {
