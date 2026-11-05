@@ -1,8 +1,8 @@
 import { Bell, History, List, Search, Settings } from 'lucide-react'
 import type * as React from 'react'
+import { cn } from '../../lib/utils'
 import { ProfilePill } from '../shared/profile-pill'
 import { Dropdown } from './dropdown'
-import { cn } from '../../lib/utils'
 
 export type TopbarProps = {
   brand?: React.ReactNode
@@ -79,16 +79,20 @@ export function Topbar({
             <span className="absolute top-2 right-2.5 size-1.5 rounded-full bg-sf-accent-2" />
           </button>
 
-          {userMenu ?? (!hideUser && (
-          <Dropdown
-            trigger={<ProfilePill name="Alex Rivera" subtitle="Member" />}
-            items={[
-              { label: 'My List', icon: <List className="size-4" /> },
-              { label: 'Watch History', icon: <History className="size-4" /> },
-              { label: 'Settings', icon: <Settings className="size-4" /> },
-            ]}
-          />
-          ))}
+          {userMenu ??
+            (!hideUser && (
+              <Dropdown
+                trigger={<ProfilePill name="Alex Rivera" subtitle="Member" />}
+                items={[
+                  { label: 'My List', icon: <List className="size-4" /> },
+                  {
+                    label: 'Watch History',
+                    icon: <History className="size-4" />,
+                  },
+                  { label: 'Settings', icon: <Settings className="size-4" /> },
+                ]}
+              />
+            ))}
         </div>
       </div>
     </header>

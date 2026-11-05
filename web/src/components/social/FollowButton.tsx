@@ -1,6 +1,6 @@
-import { Button } from '@/components/ui'
-import { UserPlus, UserCheck, Loader2 } from 'lucide-react'
+import { Loader2, UserCheck, UserPlus } from 'lucide-react'
 import { useFollow, useUnfollow } from '@/api/hooks/useSocial'
+import { Button } from '@/components/ui'
 
 interface FollowButtonProps {
   userId: string
@@ -9,12 +9,16 @@ interface FollowButtonProps {
   size?: 'sm' | 'lg' | 'icon' | undefined
 }
 
-export function FollowButton({ userId, isFollowing = false, className, size = 'sm' }: FollowButtonProps) {
+export function FollowButton({
+  userId,
+  isFollowing = false,
+  className,
+  size = 'sm',
+}: FollowButtonProps) {
   const follow = useFollow()
   const unfollow = useUnfollow()
 
-  const isPending =
-    follow.isPending || unfollow.isPending
+  const isPending = follow.isPending || unfollow.isPending
 
   const handleClick = () => {
     if (isFollowing) {
@@ -39,9 +43,7 @@ export function FollowButton({ userId, isFollowing = false, className, size = 's
       ) : (
         <UserPlus className="size-4" />
       )}
-      <span className="ml-1.5">
-        {isFollowing ? 'Following' : 'Follow'}
-      </span>
+      <span className="ml-1.5">{isFollowing ? 'Following' : 'Follow'}</span>
     </Button>
   )
 }

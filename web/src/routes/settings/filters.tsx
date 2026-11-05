@@ -1,23 +1,18 @@
-import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Eye, EyeOff, Filter, Shield } from 'lucide-react'
+import { useState } from 'react'
 import { toast } from 'sonner'
-import {
-  Filter,
-  EyeOff,
-  Shield,
-  Eye,
-} from 'lucide-react'
 import { useApi } from '@/api/client'
 import {
+  Banner,
   Card,
+  CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
-  CardContent,
-  SectionHead,
   Label,
-  Banner,
+  SectionHead,
 } from '@/components/ui'
 import { cn } from '@/lib/utils'
 
@@ -34,7 +29,7 @@ function FiltersPage() {
     queryFn: async () => {
       if (!api) return null
       const res = await api.GET('/v1/users/me/settings')
-      return (res.data as unknown) as Record<string, unknown> | null
+      return res.data as unknown as Record<string, unknown> | null
     },
     enabled: !!api,
   })

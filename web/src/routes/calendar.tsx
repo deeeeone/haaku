@@ -1,10 +1,18 @@
-import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useState } from 'react'
+import { type CalendarTarget, useCalendar } from '@/api/hooks/useCalendar'
 import { Page, Section } from '@/components/layout'
-import { FilterPill, Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui'
 import { CalendarEntry } from '@/components/social/CalendarEntry'
-import { useCalendar, type CalendarTarget } from '@/api/hooks/useCalendar'
+import {
+  Button,
+  FilterPill,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui'
 import { cn } from '@/lib/utils'
 
 type EpisodeType = 'all' | 'new' | 'premieres' | 'finale'
@@ -101,7 +109,6 @@ function CalendarPage() {
 
   return (
     <Page>
-
       <Section>
         {/* Header with navigation */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -153,18 +160,29 @@ function CalendarPage() {
         {/* Type filter */}
         <div className="mb-6 flex items-center gap-3">
           <div className="flex gap-1 flex-wrap">
-            {(['all', 'new', 'premieres', 'finale'] as EpisodeType[]).map((f) => (
-              <FilterPill
-                key={f}
-                active={type === f}
-                onClick={() => setType(f)}
-              >
-                {f === 'all' ? 'All' : f === 'new' ? 'New Shows' : f === 'premieres' ? 'Season Premieres' : 'Season Finales'}
-              </FilterPill>
-            ))}
+            {(['all', 'new', 'premieres', 'finale'] as EpisodeType[]).map(
+              (f) => (
+                <FilterPill
+                  key={f}
+                  active={type === f}
+                  onClick={() => setType(f)}
+                >
+                  {f === 'all'
+                    ? 'All'
+                    : f === 'new'
+                      ? 'New Shows'
+                      : f === 'premieres'
+                        ? 'Season Premieres'
+                        : 'Season Finales'}
+                </FilterPill>
+              )
+            )}
           </div>
 
-          <Select value={String(days)} onValueChange={(v) => setDays(Number(v))}>
+          <Select
+            value={String(days)}
+            onValueChange={(v) => setDays(Number(v))}
+          >
             <SelectTrigger className="w-24">
               <SelectValue />
             </SelectTrigger>
@@ -214,18 +232,25 @@ function CalendarPage() {
               return (
                 <div key={dayKey}>
                   {/* Day header */}
-                  <div className={cn(
-                    'mb-2 flex items-center gap-2',
-                    isToday && 'text-sf-accent-2'
-                  )}>
+                  <div
+                    className={cn(
+                      'mb-2 flex items-center gap-2',
+                      isToday && 'text-sf-accent-2'
+                    )}
+                  >
                     <span className="font-display text-sm font-semibold">
                       {DAY_NAMES[day.getDay() === 0 ? 6 : day.getDay() - 1]}
                     </span>
-                    <span className={cn(
-                      'text-sm',
-                      isToday ? 'text-sf-accent-2' : 'text-sf-ink-muted'
-                    )}>
-                      {day.toLocaleDateString('default', { month: 'short', day: 'numeric' })}
+                    <span
+                      className={cn(
+                        'text-sm',
+                        isToday ? 'text-sf-accent-2' : 'text-sf-ink-muted'
+                      )}
+                    >
+                      {day.toLocaleDateString('default', {
+                        month: 'short',
+                        day: 'numeric',
+                      })}
                     </span>
                     {isToday && (
                       <span className="rounded-full bg-sf-accent/20 px-2 py-0.5 text-[10px] font-bold text-sf-accent-2">
@@ -236,11 +261,16 @@ function CalendarPage() {
 
                   {/* Episodes */}
                   {dayEpisodes.length === 0 ? (
-                    <p className="pl-1 text-xs text-sf-ink-muted">No episodes</p>
+                    <p className="pl-1 text-xs text-sf-ink-muted">
+                      No episodes
+                    </p>
                   ) : (
                     <div className="grid gap-1 sm:grid-cols-2 lg:grid-cols-3">
                       {dayEpisodes.map((ep, i) => (
-                        <CalendarEntry key={`${ep.episode.ids.trakt}-${i}`} item={ep} />
+                        <CalendarEntry
+                          key={`${ep.episode.ids.trakt}-${i}`}
+                          item={ep}
+                        />
                       ))}
                     </div>
                   )}

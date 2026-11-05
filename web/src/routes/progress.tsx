@@ -1,11 +1,11 @@
-import { useState } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { Play, EyeOff } from 'lucide-react'
-import { Page, Section, PosterGrid } from '@/components/layout'
-import { PosterCard, FilterPill } from '@/components/ui'
-import { ProgressBar } from '@/components/social/ProgressBar'
-import { usePlaybackMovies, usePlaybackEpisodes } from '@/api/hooks/useSync'
+import { EyeOff, Play } from 'lucide-react'
+import { useState } from 'react'
+import { usePlaybackEpisodes, usePlaybackMovies } from '@/api/hooks/useSync'
 import type { PlaybackItem } from '@/api/types'
+import { Page, PosterGrid, Section } from '@/components/layout'
+import { ProgressBar } from '@/components/social/ProgressBar'
+import { FilterPill, PosterCard } from '@/components/ui'
 
 type MediaFilter = 'all' | 'movies' | 'shows'
 
@@ -19,7 +19,8 @@ function ProgressPage() {
   const [hidden, setHidden] = useState<Set<number>>(new Set())
 
   const { data: movies = [], isLoading: moviesLoading } = usePlaybackMovies()
-  const { data: episodes = [], isLoading: episodesLoading } = usePlaybackEpisodes()
+  const { data: episodes = [], isLoading: episodesLoading } =
+    usePlaybackEpisodes()
 
   const isLoading = moviesLoading || episodesLoading
 
@@ -47,7 +48,6 @@ function ProgressPage() {
 
   return (
     <Page>
-
       <Section>
         <div className="mb-6">
           <h1 className="font-display text-2xl font-bold text-sf-ink">
@@ -105,8 +105,10 @@ function ProgressPage() {
                   : ''
 
               const onClick = () => {
-                if (item.movie) navigate({ to: `/movies/${item.movie.ids.trakt}` })
-                else if (item.episode) navigate({ to: `/episodes/${item.episode.ids.trakt}` })
+                if (item.movie)
+                  navigate({ to: `/movies/${item.movie.ids.trakt}` })
+                else if (item.episode)
+                  navigate({ to: `/episodes/${item.episode.ids.trakt}` })
               }
 
               return (
@@ -122,7 +124,11 @@ function ProgressPage() {
 
                   {/* Progress bar overlay */}
                   <div className="absolute bottom-8 left-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
-                    <ProgressBar value={item.progress * 100} size="sm" showLabel={false} />
+                    <ProgressBar
+                      value={item.progress * 100}
+                      size="sm"
+                      showLabel={false}
+                    />
                   </div>
 
                   {/* Progress badge */}

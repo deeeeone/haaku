@@ -1,30 +1,30 @@
-import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
+import { createFileRoute } from '@tanstack/react-router'
 import {
+  Clock,
+  Eye,
+  Film,
+  List,
+  Settings,
+  Star,
+  Tv,
   User,
   Users,
-  List,
-  Eye,
-  Clock,
-  Film,
-  Tv,
-  Star,
-  Settings,
 } from 'lucide-react'
-import { Page, Section } from '@/components/layout'
 import { useApi } from '@/api/client'
+import { Page, Section } from '@/components/layout'
 import {
+  Badge,
+  Banner,
   Button,
-  StatCard,
   Card,
+  CardContent,
   CardHeader,
   CardTitle,
-  CardContent,
-  SectionHead,
   MiniInfoCard,
-  Badge,
+  SectionHead,
   ShimmerText,
-  Banner,
+  StatCard,
 } from '@/components/ui'
 
 export const Route = createFileRoute('/profile')({
@@ -40,7 +40,7 @@ function ProfilePage() {
     queryFn: async () => {
       if (!api) return null
       const res = await api.GET('/v1/users/me')
-      return (res.data as unknown) as Record<string, unknown> | null
+      return res.data as unknown as Record<string, unknown> | null
     },
     enabled: !!api,
   })
@@ -51,7 +51,7 @@ function ProfilePage() {
     queryFn: async () => {
       if (!api) return null
       const res = await api.GET('/v1/users/me/stats' as never)
-      return (res.data as unknown) as Record<string, unknown> | null
+      return res.data as unknown as Record<string, unknown> | null
     },
     enabled: !!api,
   })
@@ -62,7 +62,7 @@ function ProfilePage() {
     queryFn: async () => {
       if (!api) return null
       const res = await api.GET('/v1/users/me/activity')
-      return (res.data as unknown) as unknown[] | null
+      return res.data as unknown as unknown[] | null
     },
     enabled: !!api,
   })
@@ -73,7 +73,7 @@ function ProfilePage() {
     queryFn: async () => {
       if (!api) return null
       const res = await api.GET('/v1/users/me/lists/collaborations')
-      return (res.data as unknown) as unknown[] | null
+      return res.data as unknown as unknown[] | null
     },
     enabled: !!api,
   })
@@ -84,7 +84,7 @@ function ProfilePage() {
     queryFn: async () => {
       if (!api) return null
       const res = await api.GET('/v1/users/me/followers' as never)
-      return (res.data as unknown) as unknown[] | null
+      return res.data as unknown as unknown[] | null
     },
     enabled: !!api,
   })
@@ -95,17 +95,27 @@ function ProfilePage() {
     queryFn: async () => {
       if (!api) return null
       const res = await api.GET('/v1/users/me/following' as never)
-      return (res.data as unknown) as unknown[] | null
+      return res.data as unknown as unknown[] | null
     },
     enabled: !!api,
   })
 
-  const displayName = (profile as Record<string, unknown>)?.name as string | undefined
-  const username = (profile as Record<string, unknown>)?.username as string | undefined
+  const displayName = (profile as Record<string, unknown>)?.name as
+    | string
+    | undefined
+  const username = (profile as Record<string, unknown>)?.username as
+    | string
+    | undefined
   const bio = (profile as Record<string, unknown>)?.bio as string | undefined
-  const avatarUrl = (profile as Record<string, unknown>)?.avatar_url as string | undefined
-  const bannerUrl = (profile as Record<string, unknown>)?.banner_url as string | undefined
-  const isPrivate = (profile as Record<string, unknown>)?.private as boolean | undefined
+  const avatarUrl = (profile as Record<string, unknown>)?.avatar_url as
+    | string
+    | undefined
+  const bannerUrl = (profile as Record<string, unknown>)?.banner_url as
+    | string
+    | undefined
+  const isPrivate = (profile as Record<string, unknown>)?.private as
+    | boolean
+    | undefined
 
   const statsData = stats as Record<string, Record<string, number>> | null
 
@@ -113,7 +123,6 @@ function ProfilePage() {
 
   return (
     <Page>
-
       {isLoading ? (
         <div className="space-y-6">
           <ShimmerText className="h-8 w-48" />
@@ -193,7 +202,9 @@ function ProfilePage() {
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
               <StatCard
                 label="Watched"
-                value={String(statsData?.movies?.watched ?? statsData?.plays ?? 0)}
+                value={String(
+                  statsData?.movies?.watched ?? statsData?.plays ?? 0
+                )}
                 icon={Eye}
                 badgeColor="purple"
               />
@@ -236,7 +247,8 @@ function ProfilePage() {
                   let actionLabel = 'interacted with'
                   if (action === 'watch') actionLabel = 'watched'
                   else if (action === 'rate') actionLabel = 'rated'
-                  else if (action === 'watchlist') actionLabel = 'added to watchlist'
+                  else if (action === 'watchlist')
+                    actionLabel = 'added to watchlist'
                   else if (action === 'list_add') actionLabel = 'added to list'
                   else if (action === 'favorite') actionLabel = 'favorited'
                   else if (action === 'comment') actionLabel = 'commented on'
@@ -249,9 +261,7 @@ function ProfilePage() {
                         </div>
                         <div>
                           <p className="text-sm text-sf-ink">
-                            <span className="font-medium">
-                              {actionLabel}
-                            </span>{' '}
+                            <span className="font-medium">{actionLabel}</span>{' '}
                             {mediaTitle}
                           </p>
                           {timestamp && (
@@ -311,20 +321,22 @@ function ProfilePage() {
             <Section>
               <SectionHead title="Your Lists" />
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {(lists as Record<string, unknown>[]).slice(0, 6).map((list, i) => (
-                  <Card key={i}>
-                    <CardHeader>
-                      <CardTitle>
-                        {(list.name as string) ?? 'Untitled List'}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-sf-ink-muted">
-                        {(list.description as string) ?? 'No description'}
-                      </p>
-                    </CardContent>
-                  </Card>
-                ))}
+                {(lists as Record<string, unknown>[])
+                  .slice(0, 6)
+                  .map((list, i) => (
+                    <Card key={i}>
+                      <CardHeader>
+                        <CardTitle>
+                          {(list.name as string) ?? 'Untitled List'}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-sm text-sf-ink-muted">
+                          {(list.description as string) ?? 'No description'}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))}
               </div>
             </Section>
           )}
@@ -333,37 +345,51 @@ function ProfilePage() {
           <Section>
             <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
               <div>
-                <SectionHead title={`Followers (${(followers as unknown[])?.length ?? 0})`} />
-                {followers && Array.isArray(followers) && followers.length > 0 ? (
+                <SectionHead
+                  title={`Followers (${(followers as unknown[])?.length ?? 0})`}
+                />
+                {followers &&
+                Array.isArray(followers) &&
+                followers.length > 0 ? (
                   <div className="space-y-2">
-                    {(followers as Record<string, unknown>[]).slice(0, 5).map((f: Record<string, unknown>, i: number) => (
-                      <MiniInfoCard
-                        key={i}
-                        icon={Users}
-                        label={(f.username as string) ?? 'User'}
-                        value={(f.display_name as string) ?? ''}
-                      />
-                    ))}
+                    {(followers as Record<string, unknown>[])
+                      .slice(0, 5)
+                      .map((f: Record<string, unknown>, i: number) => (
+                        <MiniInfoCard
+                          key={i}
+                          icon={Users}
+                          label={(f.username as string) ?? 'User'}
+                          value={(f.display_name as string) ?? ''}
+                        />
+                      ))}
                   </div>
                 ) : (
                   <p className="text-sm text-sf-ink-muted">No followers yet</p>
                 )}
               </div>
               <div>
-                <SectionHead title={`Following (${(following as unknown[])?.length ?? 0})`} />
-                {following && Array.isArray(following) && following.length > 0 ? (
+                <SectionHead
+                  title={`Following (${(following as unknown[])?.length ?? 0})`}
+                />
+                {following &&
+                Array.isArray(following) &&
+                following.length > 0 ? (
                   <div className="space-y-2">
-                    {(following as Record<string, unknown>[]).slice(0, 5).map((f: Record<string, unknown>, i: number) => (
-                      <MiniInfoCard
-                        key={i}
-                        icon={User}
-                        label={(f.username as string) ?? 'User'}
-                        value={(f.display_name as string) ?? ''}
-                      />
-                    ))}
+                    {(following as Record<string, unknown>[])
+                      .slice(0, 5)
+                      .map((f: Record<string, unknown>, i: number) => (
+                        <MiniInfoCard
+                          key={i}
+                          icon={User}
+                          label={(f.username as string) ?? 'User'}
+                          value={(f.display_name as string) ?? ''}
+                        />
+                      ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-sf-ink-muted">Not following anyone yet</p>
+                  <p className="text-sm text-sf-ink-muted">
+                    Not following anyone yet
+                  </p>
                 )}
               </div>
             </div>

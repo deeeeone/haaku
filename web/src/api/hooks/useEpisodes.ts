@@ -5,10 +5,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/api/fetch'
 import type {
+  CommentResponse,
   Episode,
   MediaStats,
   RatingDistribution,
-  CommentResponse,
   TraktList,
 } from '@/api/types'
 
@@ -18,8 +18,10 @@ export const episodeKeys = {
   all: ['episodes'] as const,
   detail: (id: string | number) => ['episodes', 'detail', String(id)] as const,
   stats: (id: string | number) => ['episodes', 'stats', String(id)] as const,
-  ratings: (id: string | number) => ['episodes', 'ratings', String(id)] as const,
-  comments: (id: string | number) => ['episodes', 'comments', String(id)] as const,
+  ratings: (id: string | number) =>
+    ['episodes', 'ratings', String(id)] as const,
+  comments: (id: string | number) =>
+    ['episodes', 'comments', String(id)] as const,
   lists: (id: string | number) => ['episodes', 'lists', String(id)] as const,
 }
 

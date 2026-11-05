@@ -1,6 +1,6 @@
 import type * as React from 'react'
-import { SectionHead } from './section-head'
 import { cn } from '../../lib/utils'
+import { SectionHead } from './section-head'
 
 export type InfoPanelProps = React.ComponentPropsWithoutRef<'div'> & {
   title?: React.ReactNode

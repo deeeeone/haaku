@@ -1,9 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { Bell, CheckCheck, Loader2 } from 'lucide-react'
+import {
+  useMarkNotificationsRead,
+  useNotifications,
+} from '@/api/hooks/useNotifications'
 import { Page, Section } from '@/components/layout'
-import { Button } from '@/components/ui'
 import { NotificationItem } from '@/components/social/NotificationItem'
-import { useNotifications, useMarkNotificationsRead } from '@/api/hooks/useNotifications'
+import { Button } from '@/components/ui'
 
 export const Route = createFileRoute('/notifications')({
   component: NotificationsPage,
@@ -23,7 +26,6 @@ function NotificationsPage() {
 
   return (
     <Page>
-
       <Section>
         <div className="mb-6 flex items-center justify-between">
           <div>
@@ -77,16 +79,14 @@ function NotificationsPage() {
               No notifications
             </h3>
             <p className="text-sm text-sf-ink-muted">
-              You'll see notifications here when someone interacts with your content.
+              You'll see notifications here when someone interacts with your
+              content.
             </p>
           </div>
         ) : (
           <div className="space-y-1">
             {notifications.map((n) => (
-              <NotificationItem
-                key={n.id}
-                notification={n}
-              />
+              <NotificationItem key={n.id} notification={n} />
             ))}
           </div>
         )}

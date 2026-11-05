@@ -4,7 +4,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/api/fetch'
-import type { Season, MediaStats, RatingDistribution } from '@/api/types'
+import type { MediaStats, RatingDistribution, Season } from '@/api/types'
 
 // ─── Keys ──────────────────────────────────────────────────────────────
 

@@ -1,15 +1,15 @@
-import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Star, Trash2 } from 'lucide-react'
-import { Page, Section, PosterGrid } from '@/components/layout'
-import {
-  PosterCard,
-  FilterPill,
-  RatingStars,
-  PaginationControls,
-} from '@/components/ui'
+import { useState } from 'react'
 import { useRatings, useRemoveRating } from '@/api/hooks'
 import type { RatingItem } from '@/api/types'
+import { Page, PosterGrid, Section } from '@/components/layout'
+import {
+  FilterPill,
+  PaginationControls,
+  PosterCard,
+  RatingStars,
+} from '@/components/ui'
 
 export const Route = createFileRoute('/ratings')({
   component: RatingsPage,
@@ -47,7 +47,6 @@ function RatingsPage() {
 
   return (
     <Page>
-
       <Section>
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -62,11 +61,16 @@ function RatingsPage() {
           </div>
 
           <div className="flex gap-1 flex-wrap">
-            {(['all', 'movies', 'shows', 'episodes', 'seasons'] as MediaFilter[]).map((f) => (
+            {(
+              ['all', 'movies', 'shows', 'episodes', 'seasons'] as MediaFilter[]
+            ).map((f) => (
               <FilterPill
                 key={f}
                 active={mediaType === f}
-                onClick={() => { setMediaType(f); setPage(1) }}
+                onClick={() => {
+                  setMediaType(f)
+                  setPage(1)
+                }}
               >
                 {f.charAt(0).toUpperCase() + f.slice(1)}
               </FilterPill>
@@ -99,15 +103,26 @@ function RatingsPage() {
           <>
             <PosterGrid>
               {items.map((item) => {
-                const media = item.movie ?? item.show ?? item.episode ?? item.season
+                const media =
+                  item.movie ?? item.show ?? item.episode ?? item.season
                 if (!media) return null
-                const title = 'title' in media ? (media as { title: string }).title : ''
-                const year = 'year' in media ? String((media as { year: number }).year) : ''
+                const title =
+                  'title' in media ? (media as { title: string }).title : ''
+                const year =
+                  'year' in media
+                    ? String((media as { year: number }).year)
+                    : ''
 
                 return (
-                  <div key={`${item.type}-${media.ids.trakt}-${item.rated_at}`} className="group relative">
+                  <div
+                    key={`${item.type}-${media.ids.trakt}-${item.rated_at}`}
+                    className="group relative"
+                  >
                     <PosterCard
-                      title={title || `Season ${'number' in media ? (media as { number: number }).number : ''}`}
+                      title={
+                        title ||
+                        `Season ${'number' in media ? (media as { number: number }).number : ''}`
+                      }
                       meta={year}
                       aspect="2:3"
                       type={item.type === 'movie' ? 'movie' : 'series'}

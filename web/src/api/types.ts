@@ -139,7 +139,13 @@ export interface CreditResponse {
 
 // ─── Search ───────────────────────────────────────────────────────────
 
-export type SearchType = 'movie' | 'show' | 'episode' | 'person' | 'list' | 'season'
+export type SearchType =
+  | 'movie'
+  | 'show'
+  | 'episode'
+  | 'person'
+  | 'list'
+  | 'season'
 
 export interface SearchResult {
   type: SearchType

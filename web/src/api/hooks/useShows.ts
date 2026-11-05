@@ -5,17 +5,17 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/api/fetch'
 import type {
-  Show,
-  CreditResponse,
-  MediaStats,
-  RatingDistribution,
-  WatchProviderCountry,
-  TrendingItem,
   Alias,
   CommentResponse,
-  TraktList,
-  Season,
+  CreditResponse,
   Episode,
+  MediaStats,
+  RatingDistribution,
+  Season,
+  Show,
+  TraktList,
+  TrendingItem,
+  WatchProviderCountry,
 } from '@/api/types'
 
 // ─── Keys ──────────────────────────────────────────────────────────────
@@ -30,7 +30,8 @@ export const showKeys = {
   lists: (id: string | number) => ['shows', 'lists', String(id)] as const,
   watching: (id: string | number) => ['shows', 'watching', String(id)] as const,
   aliases: (id: string | number) => ['shows', 'aliases', String(id)] as const,
-  recommendations: (id: string | number) => ['shows', 'recommendations', String(id)] as const,
+  recommendations: (id: string | number) =>
+    ['shows', 'recommendations', String(id)] as const,
   comments: (id: string | number) => ['shows', 'comments', String(id)] as const,
   seasons: (id: string | number) => ['shows', 'seasons', String(id)] as const,
   seasonDetail: (id: string | number, season: number) =>
@@ -144,7 +145,10 @@ export function useShowSeasons(id: string | number | undefined) {
   })
 }
 
-export function useShowSeason(id: string | number | undefined, season: number | undefined) {
+export function useShowSeason(
+  id: string | number | undefined,
+  season: number | undefined
+) {
   return useQuery({
     queryKey: showKeys.seasonDetail(id ?? '', season ?? 0),
     queryFn: () => api.get<Season>(`/v1/shows/${id}/seasons/${season}`),
@@ -159,7 +163,8 @@ export function useShowSeasonEpisodes(
 ) {
   return useQuery({
     queryKey: showKeys.seasonEpisodes(id ?? '', season ?? 0),
-    queryFn: () => api.get<Episode[]>(`/v1/shows/${id}/seasons/${season}/episodes`),
+    queryFn: () =>
+      api.get<Episode[]>(`/v1/shows/${id}/seasons/${season}/episodes`),
     enabled: !!id && season !== undefined,
     staleTime: 5 * 60_000,
   })
@@ -173,9 +178,7 @@ export function useShowEpisode(
   return useQuery({
     queryKey: showKeys.episodeDetail(id ?? '', season ?? 0, episode ?? 0),
     queryFn: () =>
-      api.get<Episode>(
-        `/v1/shows/${id}/seasons/${season}/episodes/${episode}`
-      ),
+      api.get<Episode>(`/v1/shows/${id}/seasons/${season}/episodes/${episode}`),
     enabled: !!id && season !== undefined && episode !== undefined,
     staleTime: 5 * 60_000,
   })
@@ -184,7 +187,8 @@ export function useShowEpisode(
 export function useTrendingShows(page = 1, limit = 20) {
   return useQuery({
     queryKey: showKeys.trending(page),
-    queryFn: () => api.get<TrendingItem[]>(`/v1/shows/trending`, { page, limit }),
+    queryFn: () =>
+      api.get<TrendingItem[]>(`/v1/shows/trending`, { page, limit }),
     staleTime: 60_000,
   })
 }

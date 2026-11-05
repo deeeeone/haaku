@@ -1,26 +1,24 @@
 import { useState } from 'react'
+import type { SmartListFilter } from '@/api/types/lists'
 import {
+  Badge,
+  Button,
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@/components/ui'
-import { Button } from '@/components/ui'
-import { Input } from '@/components/ui'
-import { Label } from '@/components/ui'
-import {
+  DialogHeader,
+  DialogTitle,
+  FilterPill,
+  Input,
+  Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui'
-import { FilterPill } from '@/components/ui'
-import { Badge } from '@/components/ui'
 import { cn } from '@/lib/utils'
-import type { SmartListFilter } from '@/api/types/lists'
 
 const MOVIE_GENRES = [
   'Action',
@@ -344,36 +342,22 @@ export function SmartListEditor({
                 </Badge>
               ))}
               {filter.year_min != null && (
-                <Badge variant="secondary">
-                  Year ≥ {filter.year_min}
-                </Badge>
+                <Badge variant="secondary">Year ≥ {filter.year_min}</Badge>
               )}
               {filter.year_max != null && (
-                <Badge variant="secondary">
-                  Year ≤ {filter.year_max}
-                </Badge>
+                <Badge variant="secondary">Year ≤ {filter.year_max}</Badge>
               )}
               {filter.rating_min != null && (
-                <Badge variant="secondary">
-                  Rating ≥ {filter.rating_min}
-                </Badge>
+                <Badge variant="secondary">Rating ≥ {filter.rating_min}</Badge>
               )}
               {filter.votes_min != null && (
-                <Badge variant="secondary">
-                  Votes ≥ {filter.votes_min}
-                </Badge>
+                <Badge variant="secondary">Votes ≥ {filter.votes_min}</Badge>
               )}
               {filter.status && (
-                <Badge variant="secondary">
-                  Status: {filter.status}
-                </Badge>
+                <Badge variant="secondary">Status: {filter.status}</Badge>
               )}
-              {filter.watched && (
-                <Badge variant="secondary">Watched</Badge>
-              )}
-              {filter.collected && (
-                <Badge variant="secondary">Collected</Badge>
-              )}
+              {filter.watched && <Badge variant="secondary">Watched</Badge>}
+              {filter.collected && <Badge variant="secondary">Collected</Badge>}
             </div>
           )}
 
@@ -396,16 +380,10 @@ export function SmartListEditor({
               Preview
             </Button>
           )}
-          <Button
-            variant="ghost"
-            onClick={() => onOpenChange(false)}
-          >
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button
-            onClick={() => onSave(name, filter)}
-            disabled={!name.trim()}
-          >
+          <Button onClick={() => onSave(name, filter)} disabled={!name.trim()}>
             Save Smart List
           </Button>
         </DialogFooter>

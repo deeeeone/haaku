@@ -1,23 +1,24 @@
-import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { TrendingUp, Flame } from 'lucide-react'
+import { Flame, TrendingUp } from 'lucide-react'
+import { useState } from 'react'
+import { useApi } from '@/api/client'
+import { usePopularLists, useTrendingLists } from '@/api/hooks/useLists'
+import type { TraktList } from '@/api/types/lists'
 import { Page, Section } from '@/components/layout'
+import { ListCard } from '@/components/lists/ListCard'
 import {
-  FilterPill,
   Banner,
+  FilterPill,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui'
-import { ListCard } from '@/components/lists/ListCard'
-import { useApi } from '@/api/client'
-import { useTrendingLists, usePopularLists } from '@/api/hooks/useLists'
-import type { TraktList } from '@/api/types/lists'
 
 export const Route = createFileRoute('/lists/community')({
-  component: CommunityListsPage })
+  component: CommunityListsPage,
+})
 
 function CommunityListsPage() {
   const api = useApi()
@@ -38,7 +39,6 @@ function CommunityListsPage() {
 
   return (
     <Page>
-
       <Section>
         <div className="mb-6">
           <h1 className="font-display text-2xl font-bold text-sf-ink">
@@ -87,10 +87,7 @@ function CommunityListsPage() {
         {isLoading ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="glass h-48 animate-pulse rounded-sf-lg"
-              />
+              <div key={i} className="glass h-48 animate-pulse rounded-sf-lg" />
             ))}
           </div>
         ) : lists.length === 0 ? (
@@ -102,11 +99,7 @@ function CommunityListsPage() {
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {lists.map((list) => (
-              <ListCard
-                key={list.ids.trakt}
-                list={list}
-                showActions={false}
-              />
+              <ListCard key={list.ids.trakt} list={list} showActions={false} />
             ))}
           </div>
         )}

@@ -1,19 +1,19 @@
-import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Grid3X3, Trash2 } from 'lucide-react'
-import { Page, Section, PosterGrid } from '@/components/layout'
+import { useState } from 'react'
+import { useRemoveFromWatchlist, useWatchlist } from '@/api/hooks'
+import type { WatchlistItem } from '@/api/types'
+import { Page, PosterGrid, Section } from '@/components/layout'
 import {
-  PosterCard,
   FilterPill,
+  PaginationControls,
+  PosterCard,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  PaginationControls,
 } from '@/components/ui'
-import { useWatchlist, useRemoveFromWatchlist } from '@/api/hooks'
-import type { WatchlistItem } from '@/api/types'
 
 export const Route = createFileRoute('/watchlist')({
   component: WatchlistPage,
@@ -51,7 +51,6 @@ function WatchlistPage() {
 
   return (
     <Page>
-
       <Section>
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -69,25 +68,40 @@ function WatchlistPage() {
             <div className="flex gap-1">
               <FilterPill
                 active={mediaType === 'all'}
-                onClick={() => { setMediaType('all'); setPage(1) }}
+                onClick={() => {
+                  setMediaType('all')
+                  setPage(1)
+                }}
               >
                 All
               </FilterPill>
               <FilterPill
                 active={mediaType === 'movies'}
-                onClick={() => { setMediaType('movies'); setPage(1) }}
+                onClick={() => {
+                  setMediaType('movies')
+                  setPage(1)
+                }}
               >
                 Movies
               </FilterPill>
               <FilterPill
                 active={mediaType === 'shows'}
-                onClick={() => { setMediaType('shows'); setPage(1) }}
+                onClick={() => {
+                  setMediaType('shows')
+                  setPage(1)
+                }}
               >
                 Shows
               </FilterPill>
             </div>
 
-            <Select value={sort} onValueChange={(v) => { setSort(v); setPage(1) }}>
+            <Select
+              value={sort}
+              onValueChange={(v) => {
+                setSort(v)
+                setPage(1)
+              }}
+            >
               <SelectTrigger className="w-36">
                 <SelectValue />
               </SelectTrigger>

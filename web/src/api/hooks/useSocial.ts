@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useApi } from '@/api/client'
 import type { Comment } from '@/api/types'
@@ -7,7 +7,10 @@ import type { Comment } from '@/api/types'
 // Follow hooks
 // ============================================================
 
-export function useFollowers(userId: string, params?: { page?: number; limit?: number }) {
+export function useFollowers(
+  userId: string,
+  params?: { page?: number; limit?: number }
+) {
   const api = useApi()
 
   return useQuery({
@@ -18,7 +21,10 @@ export function useFollowers(userId: string, params?: { page?: number; limit?: n
       if (params?.page) searchParams.page = String(params.page)
       if (params?.limit) searchParams.limit = String(params.limit)
       const res = await api.GET('/v1/users/{id}/followers', {
-        params: { path: { id: userId }, query: searchParams as Record<string, never> },
+        params: {
+          path: { id: userId },
+          query: searchParams as Record<string, never>,
+        },
       } as never)
       return (res.data as unknown as unknown[]) ?? []
     },
@@ -26,7 +32,10 @@ export function useFollowers(userId: string, params?: { page?: number; limit?: n
   })
 }
 
-export function useFollowing(userId: string, params?: { page?: number; limit?: number }) {
+export function useFollowing(
+  userId: string,
+  params?: { page?: number; limit?: number }
+) {
   const api = useApi()
 
   return useQuery({
@@ -37,7 +46,10 @@ export function useFollowing(userId: string, params?: { page?: number; limit?: n
       if (params?.page) searchParams.page = String(params.page)
       if (params?.limit) searchParams.limit = String(params.limit)
       const res = await api.GET('/v1/users/{id}/following', {
-        params: { path: { id: userId }, query: searchParams as Record<string, never> },
+        params: {
+          path: { id: userId },
+          query: searchParams as Record<string, never>,
+        },
       } as never)
       return (res.data as unknown as unknown[]) ?? []
     },
@@ -45,7 +57,10 @@ export function useFollowing(userId: string, params?: { page?: number; limit?: n
   })
 }
 
-export function useFriends(userId: string, params?: { page?: number; limit?: number }) {
+export function useFriends(
+  userId: string,
+  params?: { page?: number; limit?: number }
+) {
   const api = useApi()
 
   return useQuery({
@@ -56,7 +71,10 @@ export function useFriends(userId: string, params?: { page?: number; limit?: num
       if (params?.page) searchParams.page = String(params.page)
       if (params?.limit) searchParams.limit = String(params.limit)
       const res = await api.GET('/v1/users/{id}/friends', {
-        params: { path: { id: userId }, query: searchParams as Record<string, never> },
+        params: {
+          path: { id: userId },
+          query: searchParams as Record<string, never>,
+        },
       } as never)
       return (res.data as unknown as unknown[]) ?? []
     },
@@ -231,54 +249,105 @@ export function useComments(params: {
   return useQuery({
     queryKey: ['comments', params],
     queryFn: async () => {
-      if (!api) return { data: [] as Comment[], page: 1, limit: 20, total: 0, total_pages: 0 }
+      if (!api)
+        return {
+          data: [] as Comment[],
+          page: 1,
+          limit: 20,
+          total: 0,
+          total_pages: 0,
+        }
       const searchParams: Record<string, string> = {}
       if (params?.page) searchParams.page = String(params.page)
       if (params?.limit) searchParams.limit = String(params.limit)
 
-      const path = `/v1/${params.mediaType}s/${params.mediaId}/comments` as const
-      const res = await api.GET(path as never, {
-        params: { path: { id: params.mediaId }, query: searchParams as Record<string, never> },
-      } as never)
+      const path =
+        `/v1/${params.mediaType}s/${params.mediaId}/comments` as const
+      const res = await api.GET(
+        path as never,
+        {
+          params: {
+            path: { id: params.mediaId },
+            query: searchParams as Record<string, never>,
+          },
+        } as never
+      )
       const data = res.data as unknown as unknown[] | undefined
       if (!data || !Array.isArray(data))
-        return { data: [] as Comment[], page: 1, limit: 20, total: 0, total_pages: 0 }
+        return {
+          data: [] as Comment[],
+          page: 1,
+          limit: 20,
+          total: 0,
+          total_pages: 0,
+        }
 
       const headers = res.response?.headers
       const total = Number(headers?.get('x-pagination-total') ?? data.length)
       const pageNum = Number(headers?.get('x-pagination-page') ?? 1)
       const limitNum = Number(headers?.get('x-pagination-limit') ?? 20)
 
-      return { data: data as Comment[], page: pageNum, limit: limitNum, total, total_pages: Math.ceil(total / limitNum) }
+      return {
+        data: data as Comment[],
+        page: pageNum,
+        limit: limitNum,
+        total,
+        total_pages: Math.ceil(total / limitNum),
+      }
     },
     enabled: !!api && !!params.mediaId,
   })
 }
 
-export function useCommentReplies(commentId: number, params?: { page?: number; limit?: number }) {
+export function useCommentReplies(
+  commentId: number,
+  params?: { page?: number; limit?: number }
+) {
   const api = useApi()
 
   return useQuery({
     queryKey: ['comment-replies', commentId, params],
     queryFn: async () => {
-      if (!api) return { data: [] as Comment[], page: 1, limit: 20, total: 0, total_pages: 0 }
+      if (!api)
+        return {
+          data: [] as Comment[],
+          page: 1,
+          limit: 20,
+          total: 0,
+          total_pages: 0,
+        }
       const searchParams: Record<string, string> = {}
       if (params?.page) searchParams.page = String(params.page)
       if (params?.limit) searchParams.limit = String(params.limit)
 
       const res = await api.GET('/v1/comments/{id}/replies', {
-        params: { path: { id: commentId }, query: searchParams as Record<string, never> },
+        params: {
+          path: { id: commentId },
+          query: searchParams as Record<string, never>,
+        },
       } as never)
       const data = res.data as unknown as unknown[] | undefined
       if (!data || !Array.isArray(data))
-        return { data: [] as Comment[], page: 1, limit: 20, total: 0, total_pages: 0 }
+        return {
+          data: [] as Comment[],
+          page: 1,
+          limit: 20,
+          total: 0,
+          total_pages: 0,
+        }
 
       const headers = res.response?.headers
       const total = Number(headers?.get('x-pagination-total') ?? data.length)
       const pageNum = Number(headers?.get('x-pagination-page') ?? 1)
       const limitNum = Number(headers?.get('x-pagination-limit') ?? 20)
 
-      return { data: data as Comment[], page: pageNum, limit: limitNum, total, total_pages: Math.ceil(total / limitNum) }
+      return {
+        data: data as Comment[],
+        page: pageNum,
+        limit: limitNum,
+        total,
+        total_pages: Math.ceil(total / limitNum),
+      }
     },
     enabled: !!api && !!commentId,
   })
@@ -289,7 +358,12 @@ export function useCreateComment() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (body: { comment: string; spoiler: boolean; review: boolean; item: { type: string; id: number } }) => {
+    mutationFn: async (body: {
+      comment: string
+      spoiler: boolean
+      review: boolean
+      item: { type: string; id: number }
+    }) => {
       if (!api) throw new Error('Not authenticated')
       const res = await api.POST('/v1/comments', { body } as never)
       return res.data
@@ -333,7 +407,15 @@ export function useEditComment() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ id, comment, spoiler }: { id: number; comment: string; spoiler: boolean }) => {
+    mutationFn: async ({
+      id,
+      comment,
+      spoiler,
+    }: {
+      id: number
+      comment: string
+      spoiler: boolean
+    }) => {
       if (!api) throw new Error('Not authenticated')
       const res = await api.PUT('/v1/comments/{id}', {
         params: { path: { id } },
@@ -415,7 +497,13 @@ export function useAddReaction() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ commentId, reaction }: { commentId: number; reaction: string }) => {
+    mutationFn: async ({
+      commentId,
+      reaction,
+    }: {
+      commentId: number
+      reaction: string
+    }) => {
       if (!api) throw new Error('Not authenticated')
       await api.POST('/v1/comments/{id}/reactions', {
         params: { path: { id: commentId } },
@@ -434,7 +522,13 @@ export function useRemoveReaction() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ commentId, reaction }: { commentId: number; reaction: string }) => {
+    mutationFn: async ({
+      commentId,
+      reaction,
+    }: {
+      commentId: number
+      reaction: string
+    }) => {
       if (!api) throw new Error('Not authenticated')
       await api.DELETE('/v1/comments/{id}/reactions', {
         params: { path: { id: commentId } },
@@ -467,7 +561,11 @@ export function useReportComment() {
   })
 }
 
-export function useTrendingComments(params?: { type?: string; page?: number; limit?: number }) {
+export function useTrendingComments(params?: {
+  type?: string
+  page?: number
+  limit?: number
+}) {
   const api = useApi()
 
   return useQuery({
@@ -487,7 +585,11 @@ export function useTrendingComments(params?: { type?: string; page?: number; lim
   })
 }
 
-export function useRecentComments(params?: { type?: string; page?: number; limit?: number }) {
+export function useRecentComments(params?: {
+  type?: string
+  page?: number
+  limit?: number
+}) {
   const api = useApi()
 
   return useQuery({

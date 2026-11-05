@@ -4,7 +4,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/api/fetch'
-import type { Person, CastMember } from '@/api/types'
+import type { CastMember, Person } from '@/api/types'
 
 // ─── Keys ──────────────────────────────────────────────────────────────
 

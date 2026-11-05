@@ -7,7 +7,12 @@ interface ProgressBarProps {
   showLabel?: boolean
 }
 
-export function ProgressBar({ value, className, size = 'md', showLabel = true }: ProgressBarProps) {
+export function ProgressBar({
+  value,
+  className,
+  size = 'md',
+  showLabel = true,
+}: ProgressBarProps) {
   const clamped = Math.min(100, Math.max(0, value))
 
   const sizeClasses = {
@@ -25,7 +30,10 @@ export function ProgressBar({ value, className, size = 'md', showLabel = true }:
         )}
       >
         <div
-          className={cn('h-full rounded-full bg-sf-accent-2 transition-all duration-500', sizeClasses[size])}
+          className={cn(
+            'h-full rounded-full bg-sf-accent-2 transition-all duration-500',
+            sizeClasses[size]
+          )}
           style={{ width: `${clamped}%` }}
         />
       </div>

@@ -1,15 +1,20 @@
-import { Outlet, createFileRoute, Link, useLocation } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  useLocation,
+} from '@tanstack/react-router'
+import {
+  AlertTriangle,
+  Bell,
+  Filter,
+  Key,
+  Puzzle,
+  User,
+  Webhook,
+} from 'lucide-react'
 import { Page } from '@/components/layout'
 import { cn } from '@/lib/utils'
-import {
-  User,
-  Bell,
-  Key,
-  Webhook,
-  Puzzle,
-  Filter,
-  AlertTriangle,
-} from 'lucide-react'
 
 export const Route = createFileRoute('/settings')({
   component: SettingsLayout,
@@ -22,7 +27,12 @@ const sidebarItems = [
   { to: '/settings/webhooks', label: 'Webhooks', icon: Webhook },
   { to: '/settings/integrations', label: 'Integrations', icon: Puzzle },
   { to: '/settings/filters', label: 'Filters', icon: Filter },
-  { to: '/settings', label: 'Danger Zone', icon: AlertTriangle, hash: 'danger' },
+  {
+    to: '/settings',
+    label: 'Danger Zone',
+    icon: AlertTriangle,
+    hash: 'danger',
+  },
 ]
 
 function SettingsLayout() {
@@ -31,7 +41,6 @@ function SettingsLayout() {
 
   return (
     <Page>
-
       <div className="flex flex-col gap-6 lg:flex-row">
         {/* Sidebar */}
         <aside className="w-full shrink-0 lg:w-56">
