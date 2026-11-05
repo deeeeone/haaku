@@ -1,9 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
-import { Plus, Check, Loader2 } from 'lucide-react'
-import { Button } from '@/components/ui'
-import { Input } from '@/components/ui'
-import { cn } from '@/lib/utils'
+import { Check, Loader2, Plus } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import type { TraktList } from '@/api/types/lists'
+import { Button, Input } from '@/components/ui'
+import { cn } from '@/lib/utils'
 
 export interface AddToListDropdownProps {
   lists: TraktList[]

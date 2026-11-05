@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import type * as React from 'react'
-import { IconBadge, type IconBadgeColor } from './badge'
 import { cn } from '../../lib/utils'
+import { IconBadge, type IconBadgeColor } from './badge'
 
 export type StatCardProps = {
   label: string

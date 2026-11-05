@@ -1,10 +1,10 @@
-import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { Users, Loader2 } from 'lucide-react'
-import { Page, Section } from '@/components/layout'
-import { FilterPill, Button } from '@/components/ui'
-import { ActivityItem } from '@/components/social/ActivityItem'
+import { Loader2, Users } from 'lucide-react'
+import { useState } from 'react'
 import { useActivityFeed } from '@/api/hooks/useSync'
+import { Page, Section } from '@/components/layout'
+import { ActivityItem } from '@/components/social/ActivityItem'
+import { Button, FilterPill } from '@/components/ui'
 
 type ActivityFilter = 'all' | 'friends' | 'followers' | 'following'
 
@@ -17,7 +17,11 @@ function SocialPage() {
   const [page, setPage] = useState(1)
   const limit = 20
 
-  const { data: items = [], isLoading, isFetching } = useActivityFeed({
+  const {
+    data: items = [],
+    isLoading,
+    isFetching,
+  } = useActivityFeed({
     type: filter === 'all' ? undefined : filter,
     page,
     limit,
@@ -31,7 +35,6 @@ function SocialPage() {
 
   return (
     <Page>
-
       <Section>
         <div className="mb-6">
           <h1 className="font-display text-2xl font-bold text-sf-ink">
@@ -44,11 +47,16 @@ function SocialPage() {
 
         {/* Filters */}
         <div className="mb-6 flex gap-1 flex-wrap">
-          {(['friends', 'followers', 'following', 'all'] as ActivityFilter[]).map((f) => (
+          {(
+            ['friends', 'followers', 'following', 'all'] as ActivityFilter[]
+          ).map((f) => (
             <FilterPill
               key={f}
               active={filter === f}
-              onClick={() => { setFilter(f); setPage(1) }}
+              onClick={() => {
+                setFilter(f)
+                setPage(1)
+              }}
             >
               {f.charAt(0).toUpperCase() + f.slice(1)}
             </FilterPill>

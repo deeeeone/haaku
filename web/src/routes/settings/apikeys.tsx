@@ -1,37 +1,37 @@
-import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
 import {
-  Key,
-  Plus,
-  Trash2,
-  Copy,
   Check,
+  Copy,
   Eye,
   EyeOff,
+  Key,
+  Plus,
   Shield,
+  Trash2,
 } from 'lucide-react'
+import { useState } from 'react'
+import { toast } from 'sonner'
 import { useApi } from '@/api/client'
 import {
-  Button,
-  Input,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-  SectionHead,
-  Label,
   Badge,
   Banner,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Label,
+  SectionHead,
 } from '@/components/ui'
 
 export const Route = createFileRoute('/settings/apikeys')({
@@ -65,7 +65,7 @@ function ApiKeysPage() {
       const res = await api.POST('/v1/users/me/api_keys', {
         body: { name: newKeyName },
       } as never)
-      return (res.data as unknown) as Record<string, unknown>
+      return res.data as unknown as Record<string, unknown>
     },
     onSuccess: (data) => {
       setGeneratedKey((data?.key as string) ?? (data?.token as string) ?? '')
@@ -103,7 +103,7 @@ function ApiKeysPage() {
 
   const maskKey = (key: string): string => {
     if (key.length <= 8) return key
-    return key.slice(0, 4) + '****' + key.slice(-4)
+    return `${key.slice(0, 4)}****${key.slice(-4)}`
   }
 
   return (
@@ -135,75 +135,76 @@ function ApiKeysPage() {
         </div>
       ) : keys && (keys as unknown[]).length > 0 ? (
         <div className="space-y-3">
-          {(keys as Record<string, unknown>[]).map((key: Record<string, unknown>) => {
-            const id = (key.id as string) ?? ''
-            const name = (key.name as string) ?? 'Unnamed Key'
-            const maskedKey = (key.key as string) ?? (key.masked_key as string) ?? ''
-            const createdAt = (key.created_at as string) ?? ''
-            const isRevealed = revealedKeys.has(id)
+          {(keys as Record<string, unknown>[]).map(
+            (key: Record<string, unknown>) => {
+              const id = (key.id as string) ?? ''
+              const name = (key.name as string) ?? 'Unnamed Key'
+              const maskedKey =
+                (key.key as string) ?? (key.masked_key as string) ?? ''
+              const createdAt = (key.created_at as string) ?? ''
+              const isRevealed = revealedKeys.has(id)
 
-            return (
-              <Card key={id}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                      <Key className="size-4 text-sf-ink-muted" />
-                      {name}
-                    </CardTitle>
-                    {createdAt && (
-                      <Badge variant="secondary">
-                        {new Date(createdAt).toLocaleDateString()}
-                      </Badge>
-                    )}
-                  </div>
-                  <CardDescription className="font-mono">
-                    {isRevealed ? maskedKey : maskKey(maskedKey)}
-                  </CardDescription>
-                </CardHeader>
-                <CardFooter className="gap-2">
-                  <Button
-                    variant="glass"
-                    size="sm"
-                    onClick={() =>
-                      handleCopy(maskedKey, id)
-                    }
-                  >
-                    {copiedId === id ? (
-                      <Check className="size-3" />
-                    ) : (
-                      <Copy className="size-3" />
-                    )}
-                    Copy
-                  </Button>
-                  <Button
-                    variant="glass"
-                    size="sm"
-                    onClick={() => {
-                      const next = new Set(revealedKeys)
-                      if (isRevealed) next.delete(id)
-                      else next.add(id)
-                      setRevealedKeys(next)
-                    }}
-                  >
-                    {isRevealed ? (
-                      <EyeOff className="size-3" />
-                    ) : (
-                      <Eye className="size-3" />
-                    )}
-                    {isRevealed ? 'Hide' : 'Reveal'}
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onClick={() => setRevokeId(id)}
-                  >
-                    <Trash2 className="size-3" />
-                    Revoke
-                  </Button>
-                </CardFooter>
-              </Card>
-            )
-          })}
+              return (
+                <Card key={id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <Key className="size-4 text-sf-ink-muted" />
+                        {name}
+                      </CardTitle>
+                      {createdAt && (
+                        <Badge variant="secondary">
+                          {new Date(createdAt).toLocaleDateString()}
+                        </Badge>
+                      )}
+                    </div>
+                    <CardDescription className="font-mono">
+                      {isRevealed ? maskedKey : maskKey(maskedKey)}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardFooter className="gap-2">
+                    <Button
+                      variant="glass"
+                      size="sm"
+                      onClick={() => handleCopy(maskedKey, id)}
+                    >
+                      {copiedId === id ? (
+                        <Check className="size-3" />
+                      ) : (
+                        <Copy className="size-3" />
+                      )}
+                      Copy
+                    </Button>
+                    <Button
+                      variant="glass"
+                      size="sm"
+                      onClick={() => {
+                        const next = new Set(revealedKeys)
+                        if (isRevealed) next.delete(id)
+                        else next.add(id)
+                        setRevealedKeys(next)
+                      }}
+                    >
+                      {isRevealed ? (
+                        <EyeOff className="size-3" />
+                      ) : (
+                        <Eye className="size-3" />
+                      )}
+                      {isRevealed ? 'Hide' : 'Reveal'}
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => setRevokeId(id)}
+                    >
+                      <Trash2 className="size-3" />
+                      Revoke
+                    </Button>
+                  </CardFooter>
+                </Card>
+              )
+            }
+          )}
         </div>
       ) : (
         <Card>
@@ -301,11 +302,7 @@ function ApiKeysPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setRevokeId(null)}
-            >
+            <Button variant="ghost" size="sm" onClick={() => setRevokeId(null)}>
               Cancel
             </Button>
             <Button

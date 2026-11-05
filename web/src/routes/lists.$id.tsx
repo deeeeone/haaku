@@ -1,63 +1,59 @@
-import { useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import {
-  Heart,
-  Share2,
-  Edit,
-  Trash2,
-  UserPlus,
-  Plus,
-  X,
   ArrowUpDown,
+  Edit,
+  Heart,
+  Plus,
+  Share2,
+  Trash2,
   User,
+  UserPlus,
+  X,
 } from 'lucide-react'
-import { Page, Section, PosterGrid } from '@/components/layout'
+import { useState } from 'react'
+import { useApi } from '@/api/client'
 import {
+  useAddToList,
+  useDeleteList,
+  useInviteCollaborator,
+  useLikeList,
+  useListCollaborators,
+  useListComments,
+  useListDetail,
+  useListItems,
+  useRemoveCollaborator,
+  useRemoveFromList,
+  useSearchForList,
+  useUnlikeList,
+  useUpdateList,
+} from '@/api/hooks/useLists'
+import type { ListItem, ListPrivacy, SearchResult } from '@/api/types/lists'
+import { Page, PosterGrid, Section } from '@/components/layout'
+import {
+  Badge,
+  Banner,
   Button,
   Card,
+  Chip,
+  DetailStat,
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Dropdown,
   Input,
   Label,
-  Chip,
-  Badge,
+  MiniInfoCard,
+  PosterCard,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Banner,
   ShimmerText,
-  PosterCard,
-  Dropdown,
-  MiniInfoCard,
-  DetailStat,
 } from '@/components/ui'
-import { useApi } from '@/api/client'
-import {
-  useListDetail,
-  useListItems,
-  useAddToList,
-  useRemoveFromList,
-  useLikeList,
-  useUnlikeList,
-  useListComments,
-  useListCollaborators,
-  useInviteCollaborator,
-  useRemoveCollaborator,
-  useUpdateList,
-  useDeleteList,
-  useSearchForList,
-} from '@/api/hooks/useLists'
-import type {
-  ListPrivacy,
-  ListItem,
-  SearchResult,
-} from '@/api/types/lists'
 
 export const Route = createFileRoute('/lists/$id')({
   component: ListDetailPage,
@@ -86,7 +82,11 @@ function ListDetailPage() {
   const [addOpen, setAddOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchEnabled, setSearchEnabled] = useState(false)
-  const { data: searchResults } = useSearchForList(api, searchQuery, searchEnabled)
+  const { data: searchResults } = useSearchForList(
+    api,
+    searchQuery,
+    searchEnabled
+  )
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteUser, setInviteUser] = useState('')
   const [editOpen, setEditOpen] = useState(false)
@@ -103,7 +103,10 @@ function ListDetailPage() {
         <ShimmerText className="h-8 w-64" />
         <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {Array.from({ length: 10 }).map((_, i) => (
-            <div key={i} className="glass aspect-[2/3] animate-pulse rounded-sf" />
+            <div
+              key={i}
+              className="glass aspect-[2/3] animate-pulse rounded-sf"
+            />
           ))}
         </div>
       </Page>
@@ -150,12 +153,9 @@ function ListDetailPage() {
     if (!traktId) return
     const payload =
       result.type === 'movie'
-        ? { movies: [{ ids: { trakt: traktId, slug: "" } }] }
-        : { shows: [{ ids: { trakt: traktId, slug: "" } }] }
-    addItems.mutate(
-      { id, payload },
-      { onSuccess: () => setAddOpen(false) }
-    )
+        ? { movies: [{ ids: { trakt: traktId, slug: '' } }] }
+        : { shows: [{ ids: { trakt: traktId, slug: '' } }] }
+    addItems.mutate({ id, payload }, { onSuccess: () => setAddOpen(false) })
   }
 
   const handleRemoveItem = (item: ListItem) => {
@@ -164,8 +164,12 @@ function ListDetailPage() {
     removeItems.mutate({
       id,
       payload: {
-        ...(item.type === 'movie' ? { movies: [{ ids: { trakt: traktId } }] } : {}),
-        ...(item.type === 'show' ? { shows: [{ ids: { trakt: traktId } }] } : {}),
+        ...(item.type === 'movie'
+          ? { movies: [{ ids: { trakt: traktId } }] }
+          : {}),
+        ...(item.type === 'show'
+          ? { shows: [{ ids: { trakt: traktId } }] }
+          : {}),
       },
     })
   }
@@ -174,14 +178,26 @@ function ListDetailPage() {
     if (!inviteUser.trim()) return
     inviteCollab.mutate(
       { id, payload: { username: inviteUser.trim() } },
-      { onSuccess: () => { setInviteUser(''); setInviteOpen(false) } }
+      {
+        onSuccess: () => {
+          setInviteUser('')
+          setInviteOpen(false)
+        },
+      }
     )
   }
 
   const handleEdit = () => {
     if (!editName.trim()) return
     updateList.mutate(
-      { id, payload: { name: editName.trim(), description: editDesc.trim() || undefined, privacy: editPrivacy } },
+      {
+        id,
+        payload: {
+          name: editName.trim(),
+          description: editDesc.trim() || undefined,
+          privacy: editPrivacy,
+        },
+      },
       { onSuccess: () => setEditOpen(false) }
     )
   }
@@ -192,21 +208,22 @@ function ListDetailPage() {
     })
   }
 
-  const privacyLabel = {
-    public: 'Public',
-    private: 'Private',
-    link_only: 'Link Only',
-  }[list.privacy] ?? 'Private'
+  const privacyLabel =
+    {
+      public: 'Public',
+      private: 'Private',
+      link_only: 'Link Only',
+    }[list.privacy] ?? 'Private'
 
-  const privacyVariant = {
-    public: 'green' as const,
-    private: 'red' as const,
-    link_only: 'glass' as const,
-  }[list.privacy] ?? 'glass' as const
+  const privacyVariant =
+    {
+      public: 'green' as const,
+      private: 'red' as const,
+      link_only: 'glass' as const,
+    }[list.privacy] ?? ('glass' as const)
 
   return (
     <Page>
-
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -308,7 +325,10 @@ function ListDetailPage() {
         {itemsLoading ? (
           <PosterGrid>
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="glass aspect-[2/3] animate-pulse rounded-sf" />
+              <div
+                key={i}
+                className="glass aspect-[2/3] animate-pulse rounded-sf"
+              />
             ))}
           </PosterGrid>
         ) : sortedItems.length === 0 ? (
@@ -353,7 +373,8 @@ function ListDetailPage() {
             {collaborators.map((c) => (
               <div key={c.user.username} className="flex items-center gap-2">
                 <MiniInfoCard
-                  icon={User} label={c.user.name || c.user.username}
+                  icon={User}
+                  label={c.user.name || c.user.username}
                   value={c.role === 'owner' ? 'Owner' : 'Collaborator'}
                 />
                 {c.role !== 'owner' && (
@@ -410,7 +431,9 @@ function ListDetailPage() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Add to "{list.name}"</DialogTitle>
-            <DialogDescription>Search for movies and shows to add.</DialogDescription>
+            <DialogDescription>
+              Search for movies and shows to add.
+            </DialogDescription>
           </DialogHeader>
           <div className="mt-2 space-y-4">
             <div className="flex gap-2">
@@ -435,7 +458,9 @@ function ListDetailPage() {
                       className="flex items-center justify-between rounded-xl p-2 hover:bg-sf-panel-2 transition-colors"
                     >
                       <div>
-                        <p className="text-sm font-medium text-sf-ink">{title}</p>
+                        <p className="text-sm font-medium text-sf-ink">
+                          {title}
+                        </p>
                         <p className="text-xs text-sf-ink-muted">
                           {r.type} {year > 0 && `· ${year}`}
                         </p>
@@ -468,7 +493,10 @@ function ListDetailPage() {
             </DialogDescription>
           </DialogHeader>
           <form
-            onSubmit={(e) => { e.preventDefault(); handleInvite() }}
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleInvite()
+            }}
             className="mt-2 space-y-4"
           >
             <div>
@@ -485,7 +513,10 @@ function ListDetailPage() {
               <Button variant="ghost" onClick={() => setInviteOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={!inviteUser.trim() || inviteCollab.isPending}>
+              <Button
+                type="submit"
+                disabled={!inviteUser.trim() || inviteCollab.isPending}
+              >
                 {inviteCollab.isPending ? 'Inviting...' : 'Invite'}
               </Button>
             </DialogFooter>
@@ -501,7 +532,10 @@ function ListDetailPage() {
             <DialogDescription>Update your list details.</DialogDescription>
           </DialogHeader>
           <form
-            onSubmit={(e) => { e.preventDefault(); handleEdit() }}
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleEdit()
+            }}
             className="mt-2 space-y-4"
           >
             <div>
@@ -558,7 +592,8 @@ function ListDetailPage() {
           <DialogHeader>
             <DialogTitle>Delete List</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{list.name}"? This cannot be undone.
+              Are you sure you want to delete "{list.name}"? This cannot be
+              undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

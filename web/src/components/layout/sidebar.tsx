@@ -1,15 +1,15 @@
-import { Link } from '@tanstack/react-router'
 import { useClerk } from '@clerk/react'
+import { Link } from '@tanstack/react-router'
 import {
-  Home,
-  Search,
   Bookmark,
-  Clock,
-  List,
   Calendar,
-  Users,
-  User,
+  Clock,
+  Home,
+  List,
+  Search,
   Settings,
+  User,
+  Users,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 

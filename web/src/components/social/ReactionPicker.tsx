@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
 import { Smile } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 
 const REACTIONS = [
@@ -38,7 +38,10 @@ export function ReactionPicker({
   }, [])
 
   return (
-    <div ref={ref} className={cn('relative inline-flex items-center', className)}>
+    <div
+      ref={ref}
+      className={cn('relative inline-flex items-center', className)}
+    >
       {/* Reaction badges shown inline */}
       <div className="flex items-center gap-0.5 mr-1">
         {REACTIONS.map((r) => {

@@ -1,33 +1,33 @@
-import { useState } from 'react'
 import { useAuth } from '@clerk/react'
 import {
+  ChevronDown,
+  Edit3,
+  EyeOff,
+  Flag,
+  Loader2,
   MessageSquare,
   ThumbsUp,
-  Edit3,
   Trash2,
-  Flag,
-  EyeOff,
-  ChevronDown,
-  Loader2,
 } from 'lucide-react'
-import { Button, PaginationControls } from '@/components/ui'
-import { ReactionPicker } from '@/components/social/ReactionPicker'
-import { SpoilerOverlay } from '@/components/social/SpoilerOverlay'
+import { useState } from 'react'
 import {
-  useComments,
+  useAddReaction,
   useCommentReplies,
+  useComments,
   useCreateComment,
   useCreateReply,
-  useEditComment,
   useDeleteComment,
+  useEditComment,
   useLikeComment,
-  useUnlikeComment,
-  useAddReaction,
   useRemoveReaction,
   useReportComment,
+  useUnlikeComment,
 } from '@/api/hooks/useSocial'
-import { cn } from '@/lib/utils'
 import type { Comment } from '@/api/types'
+import { ReactionPicker } from '@/components/social/ReactionPicker'
+import { SpoilerOverlay } from '@/components/social/SpoilerOverlay'
+import { Button, PaginationControls } from '@/components/ui'
+import { cn } from '@/lib/utils'
 
 function timeAgo(dateStr: string): string {
   const date = new Date(dateStr)
@@ -62,7 +62,9 @@ function SingleComment({ comment, depth = 0, onReply }: SingleCommentProps) {
   const [replySpoiler, setReplySpoiler] = useState(false)
   const [replying, setReplying] = useState(false)
   const [activeReactions, setActiveReactions] = useState<string[]>([])
-  const [reactionCounts, setReactionCounts] = useState<Record<string, number>>({})
+  const [reactionCounts, setReactionCounts] = useState<Record<string, number>>(
+    {}
+  )
 
   const editMutation = useEditComment()
   const deleteMutation = useDeleteComment()
@@ -138,8 +140,15 @@ function SingleComment({ comment, depth = 0, onReply }: SingleCommentProps) {
   const bodyLines = comment.comment.split('\n')
 
   return (
-    <div className={cn('group', depth > 0 && 'ml-8 border-l border-white/5 pl-4')}>
-      <div className={cn('relative rounded-[--sf-radius] p-3', isPending && 'opacity-50')}>
+    <div
+      className={cn('group', depth > 0 && 'ml-8 border-l border-white/5 pl-4')}
+    >
+      <div
+        className={cn(
+          'relative rounded-[--sf-radius] p-3',
+          isPending && 'opacity-50'
+        )}
+      >
         {/* Spoiler overlay */}
         <SpoilerOverlay
           hidden={showSpoiler}
@@ -187,10 +196,23 @@ function SingleComment({ comment, depth = 0, onReply }: SingleCommentProps) {
                 Spoiler
               </label>
               <div className="flex gap-1.5">
-                <Button size="sm" variant="primary" onClick={handleEdit} disabled={editMutation.isPending}>
-                  {editMutation.isPending ? <Loader2 className="size-3 animate-spin" /> : 'Save'}
+                <Button
+                  size="sm"
+                  variant="primary"
+                  onClick={handleEdit}
+                  disabled={editMutation.isPending}
+                >
+                  {editMutation.isPending ? (
+                    <Loader2 className="size-3 animate-spin" />
+                  ) : (
+                    'Save'
+                  )}
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setEditing(false)}
+                >
                   Cancel
                 </Button>
               </div>
@@ -242,7 +264,10 @@ function SingleComment({ comment, depth = 0, onReply }: SingleCommentProps) {
               <>
                 <button
                   type="button"
-                  onClick={() => { setEditing(true); setEditText(comment.comment) }}
+                  onClick={() => {
+                    setEditing(true)
+                    setEditText(comment.comment)
+                  }}
                   className="rounded-full p-1 text-sf-ink-muted transition-colors hover:bg-white/10 hover:text-sf-ink"
                 >
                   <Edit3 className="size-3" />
@@ -288,10 +313,23 @@ function SingleComment({ comment, depth = 0, onReply }: SingleCommentProps) {
                 />
                 Spoiler
               </label>
-              <Button size="sm" variant="primary" onClick={handleReplySubmit} disabled={createReply.isPending}>
-                {createReply.isPending ? <Loader2 className="size-3 animate-spin" /> : 'Reply'}
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={handleReplySubmit}
+                disabled={createReply.isPending}
+              >
+                {createReply.isPending ? (
+                  <Loader2 className="size-3 animate-spin" />
+                ) : (
+                  'Reply'
+                )}
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => setReplying(false)}>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setReplying(false)}
+              >
                 Cancel
               </Button>
             </div>
@@ -308,9 +346,14 @@ function SingleComment({ comment, depth = 0, onReply }: SingleCommentProps) {
             className="flex items-center gap-1 text-xs text-sf-accent-2 hover:underline"
           >
             <ChevronDown
-              className={cn('size-3 transition-transform', showReplies && 'rotate-180')}
+              className={cn(
+                'size-3 transition-transform',
+                showReplies && 'rotate-180'
+              )}
             />
-            {showReplies ? 'Hide' : `Show ${replies.length} ${replies.length === 1 ? 'reply' : 'replies'}`}
+            {showReplies
+              ? 'Hide'
+              : `Show ${replies.length} ${replies.length === 1 ? 'reply' : 'replies'}`}
           </button>
 
           {showReplies && (
@@ -341,7 +384,11 @@ interface CommentThreadProps {
   className?: string
 }
 
-export function CommentThread({ mediaType, mediaId, className }: CommentThreadProps) {
+export function CommentThread({
+  mediaType,
+  mediaId,
+  className,
+}: CommentThreadProps) {
   const { isSignedIn } = useAuth()
   const [page, setPage] = useState(1)
   const [commentText, setCommentText] = useState('')
@@ -420,7 +467,10 @@ export function CommentThread({ mediaType, mediaId, className }: CommentThreadPr
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="animate-pulse space-y-2 rounded-[--sf-radius] p-3">
+            <div
+              key={i}
+              className="animate-pulse space-y-2 rounded-[--sf-radius] p-3"
+            >
               <div className="flex items-center gap-2">
                 <div className="h-6 w-6 rounded-full bg-white/10" />
                 <div className="h-4 w-24 rounded bg-white/10" />
@@ -433,7 +483,9 @@ export function CommentThread({ mediaType, mediaId, className }: CommentThreadPr
       ) : comments.length === 0 ? (
         <div className="rounded-[--sf-radius] py-8 text-center">
           <MessageSquare className="mx-auto size-8 text-sf-ink-muted" />
-          <p className="mt-2 text-sm text-sf-ink-muted">No comments yet. Be the first!</p>
+          <p className="mt-2 text-sm text-sf-ink-muted">
+            No comments yet. Be the first!
+          </p>
         </div>
       ) : (
         <div className="space-y-1">

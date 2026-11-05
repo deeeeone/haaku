@@ -1,7 +1,8 @@
 import { useNavigate } from '@tanstack/react-router'
 import { Calendar, Clock } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import type { CalendarEpisode } from '@/api/hooks/useCalendar'
+import { activateOnKey } from '@/lib/a11y'
+import { cn } from '@/lib/utils'
 
 interface CalendarEntryProps {
   item: CalendarEpisode
@@ -15,20 +16,26 @@ export function CalendarEntry({ item, className }: CalendarEntryProps) {
   const episodeType = item.type
 
   const typeLabel =
-    episodeType === 'premiere' ? 'Season Premiere'
-    : episodeType === 'finale' ? 'Season Finale'
-    : episodeType === 'new' ? 'New Show'
-    : null
+    episodeType === 'premiere'
+      ? 'Season Premiere'
+      : episodeType === 'finale'
+        ? 'Season Finale'
+        : episodeType === 'new'
+          ? 'New Show'
+          : null
 
   const episodeStr = `S${String(episode.season).padStart(2, '0')}E${String(episode.number).padStart(2, '0')}`
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       className={cn(
         'flex gap-3 rounded-[--sf-radius] p-2.5 transition-colors hover:bg-white/[0.04] cursor-pointer',
         className
       )}
       onClick={() => navigate({ to: `/episodes/${episode.ids.trakt}` })}
+      onKeyDown={activateOnKey}
     >
       {/* Show poster thumbnail */}
       <div className="h-14 w-10 shrink-0 overflow-hidden rounded">
@@ -47,9 +54,7 @@ export function CalendarEntry({ item, className }: CalendarEntryProps) {
 
       {/* Info */}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-sf-ink">
-          {show.title}
-        </p>
+        <p className="truncate text-sm font-medium text-sf-ink">{show.title}</p>
         <p className="truncate text-xs text-sf-ink-muted">
           {episodeStr}: {episode.title || `Episode ${episode.number}`}
         </p>

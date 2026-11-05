@@ -1,14 +1,10 @@
-import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Heart, Trash2 } from 'lucide-react'
-import { Page, Section, PosterGrid } from '@/components/layout'
-import {
-  PosterCard,
-  FilterPill,
-  PaginationControls,
-} from '@/components/ui'
+import { useState } from 'react'
 import { useFavorites, useRemoveFromFavorites } from '@/api/hooks'
 import type { FavoriteItem } from '@/api/types'
+import { Page, PosterGrid, Section } from '@/components/layout'
+import { FilterPill, PaginationControls, PosterCard } from '@/components/ui'
 
 export const Route = createFileRoute('/favorites')({
   component: FavoritesPage,
@@ -44,7 +40,6 @@ function FavoritesPage() {
 
   return (
     <Page>
-
       <Section>
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -61,19 +56,28 @@ function FavoritesPage() {
           <div className="flex gap-1">
             <FilterPill
               active={mediaType === 'all'}
-              onClick={() => { setMediaType('all'); setPage(1) }}
+              onClick={() => {
+                setMediaType('all')
+                setPage(1)
+              }}
             >
               All
             </FilterPill>
             <FilterPill
               active={mediaType === 'movies'}
-              onClick={() => { setMediaType('movies'); setPage(1) }}
+              onClick={() => {
+                setMediaType('movies')
+                setPage(1)
+              }}
             >
               Movies
             </FilterPill>
             <FilterPill
               active={mediaType === 'shows'}
-              onClick={() => { setMediaType('shows'); setPage(1) }}
+              onClick={() => {
+                setMediaType('shows')
+                setPage(1)
+              }}
             >
               Shows
             </FilterPill>

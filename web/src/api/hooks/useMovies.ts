@@ -5,15 +5,15 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/api/fetch'
 import type {
-  Movie,
-  CreditResponse,
-  MediaStats,
-  RatingDistribution,
-  WatchProviderCountry,
-  TrendingItem,
   Alias,
   CommentResponse,
+  CreditResponse,
+  MediaStats,
+  Movie,
+  RatingDistribution,
   TraktList,
+  TrendingItem,
+  WatchProviderCountry,
 } from '@/api/types'
 
 // ─── Keys ──────────────────────────────────────────────────────────────
@@ -26,10 +26,13 @@ export const movieKeys = {
   ratings: (id: string | number) => ['movies', 'ratings', String(id)] as const,
   watch: (id: string | number) => ['movies', 'watch', String(id)] as const,
   lists: (id: string | number) => ['movies', 'lists', String(id)] as const,
-  watching: (id: string | number) => ['movies', 'watching', String(id)] as const,
+  watching: (id: string | number) =>
+    ['movies', 'watching', String(id)] as const,
   aliases: (id: string | number) => ['movies', 'aliases', String(id)] as const,
-  recommendations: (id: string | number) => ['movies', 'recommendations', String(id)] as const,
-  comments: (id: string | number) => ['movies', 'comments', String(id)] as const,
+  recommendations: (id: string | number) =>
+    ['movies', 'recommendations', String(id)] as const,
+  comments: (id: string | number) =>
+    ['movies', 'comments', String(id)] as const,
   trending: (page?: number) => ['movies', 'trending', page ?? 1] as const,
   popular: (page?: number) => ['movies', 'popular', page ?? 1] as const,
 }
@@ -129,7 +132,8 @@ export function useMovieComments(id: string | number | undefined) {
 export function useTrendingMovies(page = 1, limit = 20) {
   return useQuery({
     queryKey: movieKeys.trending(page),
-    queryFn: () => api.get<TrendingItem[]>(`/v1/movies/trending`, { page, limit }),
+    queryFn: () =>
+      api.get<TrendingItem[]>(`/v1/movies/trending`, { page, limit }),
     staleTime: 60_000,
   })
 }

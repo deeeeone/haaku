@@ -1,6 +1,6 @@
 import { Play } from 'lucide-react'
-import { WatchProgress } from './watch-progress'
 import { cn } from '../../lib/utils'
+import { WatchProgress } from './watch-progress'
 
 export type ContinueOverlayProps = {
   title: string

@@ -43,13 +43,17 @@ export function useCalendar(params: {
       const searchParams: Record<string, string> = {}
       if (params.type) searchParams.type = params.type
 
-      const path = `/v1/calendars/${params.target}/shows/${params.startDate}/${params.days}` as const
-      const res = await api.GET(path as '/v1/calendars/my/shows/{start_date}/{days}', {
-        params: {
-          path: { start_date: params.startDate, days: params.days },
-          query: searchParams as Record<string, never>,
-        },
-      } as never)
+      const path =
+        `/v1/calendars/${params.target}/shows/${params.startDate}/${params.days}` as const
+      const res = await api.GET(
+        path as '/v1/calendars/my/shows/{start_date}/{days}',
+        {
+          params: {
+            path: { start_date: params.startDate, days: params.days },
+            query: searchParams as Record<string, never>,
+          },
+        } as never
+      )
       return (res.data as unknown as CalendarEpisode[]) ?? []
     },
     enabled: !!api && !!params.startDate,

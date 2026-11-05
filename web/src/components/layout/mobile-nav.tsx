@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { Home, Search, Bookmark, Clock, User } from 'lucide-react'
+import { Bookmark, Clock, Home, Search, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navItems = [

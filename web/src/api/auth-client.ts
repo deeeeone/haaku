@@ -4,11 +4,11 @@
  */
 
 import { useAuth } from '@clerk/react'
-import { api, ApiError } from '@/api/fetch'
+import { ApiError, api } from '@/api/fetch'
 
 export { ApiError }
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+const BASE_URL = import.meta.env.VITE_API_URL || '/'
 
 interface RequestOptions extends Omit<RequestInit, 'body'> {
   body?: unknown
@@ -40,7 +40,7 @@ async function authRequest<T>(
     ...(extraHeaders as Record<string, string>),
   }
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`
+    headers.Authorization = `Bearer ${token}`
   }
 
   const response = await fetch(url, {
@@ -73,8 +73,10 @@ export function useAuthApi() {
   if (!isSignedIn) return null
 
   return {
-    get: <T>(path: string, params?: Record<string, string | number | undefined>) =>
-      authRequest<T>(getToken, path, { method: 'GET', params }),
+    get: <T>(
+      path: string,
+      params?: Record<string, string | number | undefined>
+    ) => authRequest<T>(getToken, path, { method: 'GET', params }),
 
     post: <T>(path: string, body?: unknown) =>
       authRequest<T>(getToken, path, { method: 'POST', body }),
@@ -90,7 +92,9 @@ export function useAuthApi() {
  */
 export function usePublicApi() {
   return {
-    get: <T>(path: string, params?: Record<string, string | number | undefined>) =>
-      api.get<T>(path, params),
+    get: <T>(
+      path: string,
+      params?: Record<string, string | number | undefined>
+    ) => api.get<T>(path, params),
   }
 }

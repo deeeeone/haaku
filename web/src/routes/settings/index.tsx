@@ -1,36 +1,36 @@
-import { useState } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
 import { useClerk } from '@clerk/react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { createFileRoute } from '@tanstack/react-router'
 import {
-  User,
-  Lock,
-  Eye,
-  Shield,
   AlertTriangle,
-  Trash2,
+  Eye,
+  Lock,
   Save,
+  Shield,
+  Trash2,
+  User,
 } from 'lucide-react'
+import { useState } from 'react'
+import { toast } from 'sonner'
 import { useApi } from '@/api/client'
 import {
+  Banner,
   Button,
-  Input,
   Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-  SectionHead,
-  Label,
-  Banner,
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Label,
+  SectionHead,
 } from '@/components/ui'
 import { cn } from '@/lib/utils'
 
@@ -50,7 +50,7 @@ function SettingsIndexPage() {
     queryFn: async () => {
       if (!api) return null
       const res = await api.GET('/v1/users/me')
-      return (res.data as unknown) as Record<string, unknown> | null
+      return res.data as unknown as Record<string, unknown> | null
     },
     enabled: !!api,
   })
@@ -60,7 +60,7 @@ function SettingsIndexPage() {
     queryFn: async () => {
       if (!api) return null
       const res = await api.GET('/v1/users/me/settings')
-      return (res.data as unknown) as Record<string, unknown> | null
+      return res.data as unknown as Record<string, unknown> | null
     },
     enabled: !!api,
   })
@@ -216,7 +216,7 @@ function SettingsIndexPage() {
             <div>
               <Label>Username</Label>
               <p className="mt-1 text-sm text-sf-ink-muted">
-                @{profile?.username as string ?? user?.username ?? 'Unknown'}
+                @{(profile?.username as string) ?? user?.username ?? 'Unknown'}
               </p>
             </div>
             <div>
@@ -366,7 +366,11 @@ function SettingsIndexPage() {
             </CardDescription>
           </CardHeader>
           <CardFooter>
-            <Button variant="danger" size="sm" onClick={() => setDeleteOpen(true)}>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => setDeleteOpen(true)}
+            >
               <Trash2 className="size-4" />
               Delete Account
             </Button>
@@ -389,9 +393,7 @@ function SettingsIndexPage() {
             </Banner>
             <Input
               placeholder={
-                (profile?.username as string) ??
-                user?.username ??
-                'username'
+                (profile?.username as string) ?? user?.username ?? 'username'
               }
               value={deleteConfirm}
               onChange={(e) => setDeleteConfirm(e.target.value)}

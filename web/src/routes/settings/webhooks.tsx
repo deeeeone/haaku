@@ -1,36 +1,36 @@
-import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
 import {
-  Webhook,
-  Trash2,
-  Copy,
+  Activity,
   Check,
+  Copy,
+  Globe,
   RefreshCw,
   Send,
-  Globe,
-  Activity,
+  Trash2,
+  Webhook,
 } from 'lucide-react'
+import { useState } from 'react'
+import { toast } from 'sonner'
 import { useApi } from '@/api/client'
 import {
-  Button,
-  Input,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  CardFooter,
-  SectionHead,
-  Label,
   Badge,
   Banner,
+  Button,
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Label,
+  SectionHead,
 } from '@/components/ui'
 import { cn } from '@/lib/utils'
 
@@ -81,7 +81,7 @@ function WebhooksPage() {
       const res = await api.POST('/v1/webhooks', {
         body: { url: formUrl, events: formEvents, active: formActive },
       } as never)
-      return (res.data as unknown) as Record<string, unknown>
+      return res.data as unknown as Record<string, unknown>
     },
     onSuccess: (data) => {
       const secret = (data?.secret as string) ?? ''
@@ -151,7 +151,7 @@ function WebhooksPage() {
       const res = await api.POST('/v1/webhooks/{id}/rotate-secret', {
         params: { path: { id } },
       } as never)
-      return (res.data as unknown) as Record<string, unknown>
+      return res.data as unknown as Record<string, unknown>
     },
     onSuccess: (data) => {
       const newSecret = (data?.secret as string) ?? ''
@@ -220,157 +220,176 @@ function WebhooksPage() {
         </div>
       ) : webhooks && (webhooks as unknown[]).length > 0 ? (
         <div className="space-y-3">
-          {(webhooks as Record<string, unknown>[]).map((webhook: Record<string, unknown>) => {
-            const id = (webhook.id as string) ?? ''
-            const url = (webhook.url as string) ?? ''
-            const events = (webhook.events as string[]) ?? []
-            const active = (webhook.active as boolean) ?? true
+          {(webhooks as Record<string, unknown>[]).map(
+            (webhook: Record<string, unknown>) => {
+              const id = (webhook.id as string) ?? ''
+              const url = (webhook.url as string) ?? ''
+              const events = (webhook.events as string[]) ?? []
+              const active = (webhook.active as boolean) ?? true
 
-            return (
-              <Card key={id}>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="flex items-center gap-2">
-                      <Webhook className="size-4 text-sf-ink-muted" />
-                      <span className="truncate text-sm">{url}</span>
-                    </CardTitle>
-                    <Badge variant={active ? 'default' : 'secondary'}>
-                      {active ? 'Active' : 'Disabled'}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-1.5">
-                    {events.map((event: string) => (
-                      <Badge key={event} variant="secondary">
-                        {event}
+              return (
+                <Card key={id}>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <Webhook className="size-4 text-sf-ink-muted" />
+                        <span className="truncate text-sm">{url}</span>
+                      </CardTitle>
+                      <Badge variant={active ? 'default' : 'secondary'}>
+                        {active ? 'Active' : 'Disabled'}
                       </Badge>
-                    ))}
-                  </div>
-                </CardContent>
-                <CardFooter className="flex-wrap gap-2">
-                  <Button
-                    variant="glass"
-                    size="sm"
-                    onClick={() => {
-                      setEditingId(id)
-                      setFormUrl(url)
-                      setFormEvents(events)
-                      setFormActive(active)
-                      setGeneratedSecret('')
-                      setDialogOpen(true)
-                    }}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="glass"
-                    size="sm"
-                    onClick={() => testPingMutation.mutate(id)}
-                    loading={testPingMutation.isPending && testPingMutation.variables === id}
-                  >
-                    <Send className="size-3" />
-                    Test Ping
-                  </Button>
-                  <Button
-                    variant="glass"
-                    size="sm"
-                    onClick={() =>
-                      setDeliveryLogId(deliveryLogId === id ? null : id)
-                    }
-                  >
-                    <Activity className="size-3" />
-                    {deliveryLogId === id ? 'Hide Log' : 'Delivery Log'}
-                  </Button>
-                  <Button
-                    variant="glass"
-                    size="sm"
-                    onClick={() => rotateSecretMutation.mutate(id)}
-                    loading={rotateSecretMutation.isPending && rotateSecretMutation.variables === id}
-                  >
-                    <RefreshCw className="size-3" />
-                    Rotate Secret
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    onClick={() => setDeleteId(id)}
-                  >
-                    <Trash2 className="size-3" />
-                    Delete
-                  </Button>
-                </CardFooter>
-
-                {deliveryLogId === id && (
-                  <CardContent className="mt-4 border-t border-sf-line pt-4">
-                    <h4 className="mb-2 text-sm font-semibold text-sf-ink">
-                      Delivery Log
-                    </h4>
-                    {deliveries && (deliveries as unknown[]).length > 0 ? (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-xs">
-                          <thead>
-                            <tr className="text-sf-ink-muted">
-                              <th className="pb-2 pr-3 text-left">Event Type</th>
-                              <th className="pb-2 pr-3 text-left">Status</th>
-                              <th className="pb-2 pr-3 text-left">Attempts</th>
-                              <th className="pb-2 pr-3 text-left">Response</th>
-                              <th className="pb-2 pr-3 text-left">Duration</th>
-                              <th className="pb-2 text-left">Time</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {(deliveries as Record<string, unknown>[]).map(
-                              (d: Record<string, unknown>, i: number) => (
-                                <tr key={i} className="border-t border-sf-line/50">
-                                  <td className="py-2 pr-3 text-sf-ink">
-                                    {(d.event_type as string) ?? '-'}
-                                  </td>
-                                  <td className="py-2 pr-3">
-                                    <Badge
-                                      variant={
-                                        d.status === 'success'
-                                          ? 'default'
-                                          : 'destructive'
-                                      }
-                                    >
-                                      {(d.status as string) ?? '-'}
-                                    </Badge>
-                                  </td>
-                                  <td className="py-2 pr-3 text-sf-ink-muted">
-                                    {(d.attempts as number) ?? '-'}
-                                  </td>
-                                  <td className="py-2 pr-3 text-sf-ink-muted">
-                                    {(d.response_code as number) ?? '-'}
-                                  </td>
-                                  <td className="py-2 pr-3 text-sf-ink-muted">
-                                    {(d.duration_ms as number)
-                                      ? `${d.duration_ms}ms`
-                                      : '-'}
-                                  </td>
-                                  <td className="py-2 text-sf-ink-muted">
-                                    {d.timestamp
-                                      ? new Date(
-                                          d.timestamp as string
-                                        ).toLocaleString()
-                                      : '-'}
-                                  </td>
-                                </tr>
-                              )
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-sf-ink-muted">
-                        No deliveries recorded yet.
-                      </p>
-                    )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-1.5">
+                      {events.map((event: string) => (
+                        <Badge key={event} variant="secondary">
+                          {event}
+                        </Badge>
+                      ))}
+                    </div>
                   </CardContent>
-                )}
-              </Card>
-            )
-          })}
+                  <CardFooter className="flex-wrap gap-2">
+                    <Button
+                      variant="glass"
+                      size="sm"
+                      onClick={() => {
+                        setEditingId(id)
+                        setFormUrl(url)
+                        setFormEvents(events)
+                        setFormActive(active)
+                        setGeneratedSecret('')
+                        setDialogOpen(true)
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="glass"
+                      size="sm"
+                      onClick={() => testPingMutation.mutate(id)}
+                      loading={
+                        testPingMutation.isPending &&
+                        testPingMutation.variables === id
+                      }
+                    >
+                      <Send className="size-3" />
+                      Test Ping
+                    </Button>
+                    <Button
+                      variant="glass"
+                      size="sm"
+                      onClick={() =>
+                        setDeliveryLogId(deliveryLogId === id ? null : id)
+                      }
+                    >
+                      <Activity className="size-3" />
+                      {deliveryLogId === id ? 'Hide Log' : 'Delivery Log'}
+                    </Button>
+                    <Button
+                      variant="glass"
+                      size="sm"
+                      onClick={() => rotateSecretMutation.mutate(id)}
+                      loading={
+                        rotateSecretMutation.isPending &&
+                        rotateSecretMutation.variables === id
+                      }
+                    >
+                      <RefreshCw className="size-3" />
+                      Rotate Secret
+                    </Button>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => setDeleteId(id)}
+                    >
+                      <Trash2 className="size-3" />
+                      Delete
+                    </Button>
+                  </CardFooter>
+
+                  {deliveryLogId === id && (
+                    <CardContent className="mt-4 border-t border-sf-line pt-4">
+                      <h4 className="mb-2 text-sm font-semibold text-sf-ink">
+                        Delivery Log
+                      </h4>
+                      {deliveries && (deliveries as unknown[]).length > 0 ? (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="text-sf-ink-muted">
+                                <th className="pb-2 pr-3 text-left">
+                                  Event Type
+                                </th>
+                                <th className="pb-2 pr-3 text-left">Status</th>
+                                <th className="pb-2 pr-3 text-left">
+                                  Attempts
+                                </th>
+                                <th className="pb-2 pr-3 text-left">
+                                  Response
+                                </th>
+                                <th className="pb-2 pr-3 text-left">
+                                  Duration
+                                </th>
+                                <th className="pb-2 text-left">Time</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(deliveries as Record<string, unknown>[]).map(
+                                (d: Record<string, unknown>, i: number) => (
+                                  <tr
+                                    key={i}
+                                    className="border-t border-sf-line/50"
+                                  >
+                                    <td className="py-2 pr-3 text-sf-ink">
+                                      {(d.event_type as string) ?? '-'}
+                                    </td>
+                                    <td className="py-2 pr-3">
+                                      <Badge
+                                        variant={
+                                          d.status === 'success'
+                                            ? 'default'
+                                            : 'destructive'
+                                        }
+                                      >
+                                        {(d.status as string) ?? '-'}
+                                      </Badge>
+                                    </td>
+                                    <td className="py-2 pr-3 text-sf-ink-muted">
+                                      {(d.attempts as number) ?? '-'}
+                                    </td>
+                                    <td className="py-2 pr-3 text-sf-ink-muted">
+                                      {(d.response_code as number) ?? '-'}
+                                    </td>
+                                    <td className="py-2 pr-3 text-sf-ink-muted">
+                                      {(d.duration_ms as number)
+                                        ? `${d.duration_ms}ms`
+                                        : '-'}
+                                    </td>
+                                    <td className="py-2 text-sf-ink-muted">
+                                      {d.timestamp
+                                        ? new Date(
+                                            d.timestamp as string
+                                          ).toLocaleString()
+                                        : '-'}
+                                    </td>
+                                  </tr>
+                                )
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-sf-ink-muted">
+                          No deliveries recorded yet.
+                        </p>
+                      )}
+                    </CardContent>
+                  )}
+                </Card>
+              )
+            }
+          )}
         </div>
       ) : (
         <Card>
@@ -534,11 +553,7 @@ function WebhooksPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setDeleteId(null)}
-            >
+            <Button variant="ghost" size="sm" onClick={() => setDeleteId(null)}>
               Cancel
             </Button>
             <Button

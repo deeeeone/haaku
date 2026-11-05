@@ -1,31 +1,26 @@
-import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Globe, Puzzle, Shield, Trash2 } from 'lucide-react'
+import { useState } from 'react'
 import { toast } from 'sonner'
-import {
-  Puzzle,
-  Trash2,
-  Globe,
-  Shield,
-} from 'lucide-react'
 import { useApi } from '@/api/client'
 import {
-  Button,
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-  SectionHead,
   Badge,
   Banner,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  SectionHead,
 } from '@/components/ui'
 
 export const Route = createFileRoute('/settings/integrations')({
@@ -114,9 +109,7 @@ function IntegrationsPage() {
                     <CardDescription>{app.description}</CardDescription>
                   </div>
                 </div>
-                <Badge variant="secondary">
-                  Last used: {app.lastUsed}
-                </Badge>
+                <Badge variant="secondary">Last used: {app.lastUsed}</Badge>
               </div>
             </CardHeader>
             <CardContent>
@@ -149,52 +142,56 @@ function IntegrationsPage() {
             eyebrow="Active OAuth tokens for third-party apps"
           />
           <div className="space-y-3">
-            {(tokens as Record<string, unknown>[]).map((token: Record<string, unknown>, i: number) => {
-              const id = (token.id as string) ?? `token-${i}`
-              const appName = (token.application as string) ?? (token.name as string) ?? 'Unknown App'
-              const createdAt = (token.created_at as string) ?? ''
-              return (
-                <Card key={id}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base">
-                        {appName}
-                      </CardTitle>
-                      {createdAt && (
-                        <Badge variant="secondary">
-                          {new Date(createdAt).toLocaleDateString()}
-                        </Badge>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardFooter>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => setRevokeId(id)}
-                    >
-                      <Trash2 className="size-3" />
-                      Revoke
-                    </Button>
-                  </CardFooter>
-                </Card>
-              )
-            })}
+            {(tokens as Record<string, unknown>[]).map(
+              (token: Record<string, unknown>, i: number) => {
+                const id = (token.id as string) ?? `token-${i}`
+                const appName =
+                  (token.application as string) ??
+                  (token.name as string) ??
+                  'Unknown App'
+                const createdAt = (token.created_at as string) ?? ''
+                return (
+                  <Card key={id}>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base">{appName}</CardTitle>
+                        {createdAt && (
+                          <Badge variant="secondary">
+                            {new Date(createdAt).toLocaleDateString()}
+                          </Badge>
+                        )}
+                      </div>
+                    </CardHeader>
+                    <CardFooter>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => setRevokeId(id)}
+                      >
+                        <Trash2 className="size-3" />
+                        Revoke
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                )
+              }
+            )}
           </div>
         </div>
       )}
 
-      {(!tokens || (tokens as unknown[]).length === 0) && connectedApps.length === 0 && (
-        <Card>
-          <CardContent className="py-8 text-center">
-            <Puzzle className="mx-auto size-8 text-sf-ink-hint" />
-            <p className="mt-2 text-sm text-sf-ink-muted">
-              No connected applications yet. Third-party apps you authorize will
-              appear here.
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      {(!tokens || (tokens as unknown[]).length === 0) &&
+        connectedApps.length === 0 && (
+          <Card>
+            <CardContent className="py-8 text-center">
+              <Puzzle className="mx-auto size-8 text-sf-ink-hint" />
+              <p className="mt-2 text-sm text-sf-ink-muted">
+                No connected applications yet. Third-party apps you authorize
+                will appear here.
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
       <Dialog
         open={!!revokeId}
@@ -211,11 +208,7 @@ function IntegrationsPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setRevokeId(null)}
-            >
+            <Button variant="ghost" size="sm" onClick={() => setRevokeId(null)}>
               Cancel
             </Button>
             <Button

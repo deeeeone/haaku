@@ -1,5 +1,5 @@
-import { FilterPill } from './filter-pill'
 import { cn } from '../../lib/utils'
+import { FilterPill } from './filter-pill'
 
 export type GenreStripProps = {
   genres: Array<{ label: string; count?: number }>

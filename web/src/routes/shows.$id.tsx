@@ -1,34 +1,56 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useShow, useShowPeople, useShowStats, useShowSeasons, useShowSeasonEpisodes, useShowRecommendations } from '@/api/hooks/useShows'
-import { useAddToWatchlist, useRemoveFromWatchlist, useAddToFavorites, useRemoveFromFavorites, useAddRating } from '@/api/hooks/useSync'
 import { useAuth } from '@clerk/react'
-import { Page, Section, ScrollRow } from '@/components/layout'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import {
-  Hero,
-  GenreStrip,
+  Bookmark,
+  BookmarkCheck,
+  Heart,
+  Play,
+  Star,
+  Tv,
+  Users,
+} from 'lucide-react'
+import { useState } from 'react'
+import {
+  useShow,
+  useShowPeople,
+  useShowRecommendations,
+  useShowSeasonEpisodes,
+  useShowSeasons,
+  useShowStats,
+} from '@/api/hooks/useShows'
+import {
+  useAddRating,
+  useAddToFavorites,
+  useAddToWatchlist,
+  useRemoveFromFavorites,
+  useRemoveFromWatchlist,
+} from '@/api/hooks/useSync'
+import type { Ids } from '@/api/types'
+import { Page, ScrollRow, Section } from '@/components/layout'
+import {
+  Button,
   DetailStat,
+  FactRow,
+  GenreStrip,
+  Hero,
   InfoPanel,
   PosterCard,
-  StatCard,
-  SectionHead,
-  Button,
   Rail,
+  SectionHead,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
   ShimmerText,
-  FactRow,
+  StatCard,
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui'
-import { Star, Tv, Users, Play, Heart, Bookmark, BookmarkCheck } from 'lucide-react'
-import { formatDate, formatRuntime, cn } from '@/lib/utils'
-import { useState } from 'react'
-import type { Ids } from '@/api/types'
+import { activateOnKey } from '@/lib/a11y'
+import { cn, formatDate, formatRuntime } from '@/lib/utils'
 
 export const Route = createFileRoute('/shows/$id')({
   component: ShowDetailPage,
@@ -125,16 +147,13 @@ function ShowDetailPage() {
 
   return (
     <Page>
-
       <Hero
         eyebrow={String(show.year)}
         title={show.title}
         subtitle={show.overview}
         image={show.images?.backdrop ?? show.images?.poster}
         chips={
-          <GenreStrip
-            genres={(show.genres ?? []).map((g) => ({ label: g }))}
-          />
+          <GenreStrip genres={(show.genres ?? []).map((g) => ({ label: g }))} />
         }
         actions={
           <div className="flex flex-wrap items-center gap-2">
@@ -148,12 +167,18 @@ function ShowDetailPage() {
                         variant={isWatchlisted ? 'primary' : 'glass'}
                         onClick={handleWatchlistToggle}
                       >
-                        {isWatchlisted ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />}
+                        {isWatchlisted ? (
+                          <BookmarkCheck className="size-4" />
+                        ) : (
+                          <Bookmark className="size-4" />
+                        )}
                         {isWatchlisted ? 'Watchlisted' : 'Watchlist'}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      {isWatchlisted ? 'Remove from watchlist' : 'Add to watchlist'}
+                      {isWatchlisted
+                        ? 'Remove from watchlist'
+                        : 'Add to watchlist'}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -166,11 +191,18 @@ function ShowDetailPage() {
                         variant={isFavorited ? 'primary' : 'glass'}
                         onClick={handleFavoriteToggle}
                       >
-                        <Heart className={cn('size-4', isFavorited && 'fill-current text-sf-accent-3')} />
+                        <Heart
+                          className={cn(
+                            'size-4',
+                            isFavorited && 'fill-current text-sf-accent-3'
+                          )}
+                        />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      {isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+                      {isFavorited
+                        ? 'Remove from favorites'
+                        : 'Add to favorites'}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -213,14 +245,18 @@ function ShowDetailPage() {
           <DetailStat label="Rating" value={`${displayRating}/5`} />
         )}
         {show.runtime && (
-          <DetailStat label="Episode Runtime" value={formatRuntime(show.runtime)} />
+          <DetailStat
+            label="Episode Runtime"
+            value={formatRuntime(show.runtime)}
+          />
         )}
         {show.first_aired && (
-          <DetailStat label="First Aired" value={formatDate(show.first_aired)} />
+          <DetailStat
+            label="First Aired"
+            value={formatDate(show.first_aired)}
+          />
         )}
-        {show.status && (
-          <DetailStat label="Status" value={show.status} />
-        )}
+        {show.status && <DetailStat label="Status" value={show.status} />}
       </div>
 
       {show.overview && (
@@ -230,13 +266,22 @@ function ShowDetailPage() {
             <div className="mt-4 grid grid-cols-1 gap-1 sm:grid-cols-2">
               {show.network && <FactRow label="Network" value={show.network} />}
               {show.country && <FactRow label="Country" value={show.country} />}
-              {show.certification && <FactRow label="Rating" value={show.certification} />}
-              {show.aired_episodes !== undefined && <FactRow label="Episodes" value={show.aired_episodes} />}
+              {show.certification && (
+                <FactRow label="Rating" value={show.certification} />
+              )}
+              {show.aired_episodes !== undefined && (
+                <FactRow label="Episodes" value={show.aired_episodes} />
+              )}
               {show.homepage && (
                 <FactRow
                   label="Homepage"
                   value={
-                    <a href={show.homepage} target="_blank" rel="noopener noreferrer" className="text-sf-accent-2 hover:underline">
+                    <a
+                      href={show.homepage}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sf-accent-2 hover:underline"
+                    >
                       Visit
                     </a>
                   }
@@ -277,12 +322,18 @@ function ShowDetailPage() {
               {episodes.map((ep) => (
                 <div
                   key={ep.ids?.trakt ?? `${ep.season}-${ep.number}`}
+                  role="button"
+                  tabIndex={0}
                   className="glass flex cursor-pointer items-center gap-4 rounded-sf p-4 transition-colors hover:bg-sf-panel-2"
                   onClick={() => {
                     if (ep.ids?.trakt) {
-                      navigate({ to: '/episodes/$id', params: { id: String(ep.ids.trakt) } })
+                      navigate({
+                        to: '/episodes/$id',
+                        params: { id: String(ep.ids.trakt) },
+                      })
                     }
                   }}
+                  onKeyDown={activateOnKey}
                 >
                   <div className="flex h-16 w-28 shrink-0 items-center justify-center overflow-hidden rounded-sf-sm bg-sf-bg-3">
                     {ep.images?.poster ? (
@@ -333,12 +384,18 @@ function ShowDetailPage() {
             {cast.map((member, i) => (
               <div
                 key={`${member.person?.ids?.trakt ?? i}`}
+                role="button"
+                tabIndex={0}
                 className="shrink-0 w-[160px] cursor-pointer"
                 onClick={() => {
                   if (member.person?.ids?.trakt) {
-                    navigate({ to: '/people/$id', params: { id: String(member.person.ids.trakt) } })
+                    navigate({
+                      to: '/people/$id',
+                      params: { id: String(member.person.ids.trakt) },
+                    })
                   }
                 }}
+                onKeyDown={activateOnKey}
               >
                 <PosterCard
                   title={member.person?.name ?? 'Unknown'}
@@ -383,7 +440,12 @@ function ShowDetailPage() {
                 rating={s.rating ? (s.rating / 2).toFixed(1) : undefined}
                 type="series"
                 aspect="2:3"
-                onClick={() => navigate({ to: '/shows/$id', params: { id: String(s.ids?.trakt ?? s.ids?.slug) } })}
+                onClick={() =>
+                  navigate({
+                    to: '/shows/$id',
+                    params: { id: String(s.ids?.trakt ?? s.ids?.slug) },
+                  })
+                }
               />
             ))}
           </Rail>

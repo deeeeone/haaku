@@ -1,14 +1,11 @@
-import { useState, useMemo } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { motion } from 'framer-motion'
-import { Trash2, Camera } from 'lucide-react'
-import { Page, Section } from '@/components/layout'
-import {
-  FilterPill,
-  Button,
-} from '@/components/ui'
+import { Camera, Trash2 } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { useHistory, useRemoveFromHistory } from '@/api/hooks'
 import type { HistoryItem } from '@/api/types'
+import { Page, Section } from '@/components/layout'
+import { Button, FilterPill } from '@/components/ui'
 
 export const Route = createFileRoute('/history')({
   component: HistoryPage,
@@ -29,7 +26,11 @@ function formatDateLabel(dateStr: string): string {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const yesterday = new Date(today.getTime() - 86400000)
   const weekAgo = new Date(today.getTime() - 7 * 86400000)
-  const targetDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+  const targetDate = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate()
+  )
 
   if (targetDate.getTime() === today.getTime()) return 'Today'
   if (targetDate.getTime() === yesterday.getTime()) return 'Yesterday'
@@ -77,29 +78,31 @@ function HistoryPage() {
 
   return (
     <Page>
-
       <Section>
         <div className="mb-6">
           <h1 className="font-display text-2xl font-bold text-sf-ink">
             Watch History
           </h1>
           {data && (
-            <p className="mt-1 text-sm text-sf-ink-muted">
-              {data.total} items
-            </p>
+            <p className="mt-1 text-sm text-sf-ink-muted">{data.total} items</p>
           )}
         </div>
 
         <div className="mb-6 flex gap-1 flex-wrap">
-          {(['all', 'movies', 'shows', 'episodes'] as MediaFilter[]).map((f) => (
-            <FilterPill
-              key={f}
-              active={mediaType === f}
-              onClick={() => { setMediaType(f); setPage(1) }}
-            >
-              {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
-            </FilterPill>
-          ))}
+          {(['all', 'movies', 'shows', 'episodes'] as MediaFilter[]).map(
+            (f) => (
+              <FilterPill
+                key={f}
+                active={mediaType === f}
+                onClick={() => {
+                  setMediaType(f)
+                  setPage(1)
+                }}
+              >
+                {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1)}
+              </FilterPill>
+            )
+          )}
         </div>
 
         {isLoading && page === 1 ? (
@@ -176,11 +179,12 @@ function HistoryRow({
 }) {
   const media = item.movie ?? item.show
   const title = media?.title ?? item.episode?.title ?? 'Unknown'
-  const subtitle = item.type === 'episode'
-    ? `${item.show?.title ?? ''} — S${item.episode?.season ?? '?'}E${item.episode?.number ?? '?'}`
-    : item.type === 'season'
-      ? `${item.show?.title ?? ''} — Season ${item.season?.number ?? '?'}`
-      : String(media?.year ?? '')
+  const subtitle =
+    item.type === 'episode'
+      ? `${item.show?.title ?? ''} — S${item.episode?.season ?? '?'}E${item.episode?.number ?? '?'}`
+      : item.type === 'season'
+        ? `${item.show?.title ?? ''} — Season ${item.season?.number ?? '?'}`
+        : String(media?.year ?? '')
 
   const watchedDate = item.watched_at
     ? new Date(item.watched_at).toLocaleTimeString('en-US', {
@@ -196,13 +200,20 @@ function HistoryRow({
       className="glass sf-lift group flex items-center gap-4 rounded-[var(--sf-radius)] p-3"
     >
       <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-sf-bg-3 text-xs font-bold text-sf-ink-faint">
-        {item.type === 'movie' ? 'MOV' : item.type === 'show' ? 'TV' : item.type === 'episode' ? 'EP' : 'OT'}
+        {item.type === 'movie'
+          ? 'MOV'
+          : item.type === 'show'
+            ? 'TV'
+            : item.type === 'episode'
+              ? 'EP'
+              : 'OT'}
       </div>
 
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-sf-ink">{title}</p>
         <p className="truncate text-xs text-sf-ink-faint">
-          {subtitle}{watchedDate ? ` — ${watchedDate}` : ''}
+          {subtitle}
+          {watchedDate ? ` — ${watchedDate}` : ''}
         </p>
       </div>
 
