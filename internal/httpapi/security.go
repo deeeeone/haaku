@@ -1,50 +1,41 @@
 package httpapi
 
 import (
-	"log/slog"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+
+	"trakt-api/internal/obs"
 )
 
 // RequestLogger logs each request on completion using structured slog.
 // Fields: method, path, status, latency_ms, remote_ip.
-// Also updates metrics counters (total_requests, errors, active_requests).
+// It also records the HTTP metrics series (requests_total, request_duration_seconds,
+// requests_in_flight) and counts the request as in flight.
+//
+// The status it reports is the final one. On the success path Fiber's response
+// already carries it, so the logger completes the request itself. When a handler
+// (or the router, for an unknown route) returns an error, the app-level error
+// handler runs *after* this middleware returns and is what writes the final
+// status; reporting here would log the still-default 200 for a request the client
+// sees as 404. So the error path hands off to the error handler, which calls
+// finishRequest once the status is written.
 func RequestLogger() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		start := time.Now()
-		IncActiveRequests()
-		defer DecActiveRequests()
+		beginRequest(c, start)
+		defer obs.DecInFlight()
 
-		err := c.Next()
-
-		latencyMs := float64(time.Since(start).Microseconds()) / 1000.0
-		status := c.Response().StatusCode()
-
-		IncTotalRequests()
-
-		if status >= 400 {
-			IncErrors()
+		if err := c.Next(); err != nil {
+			// Leave logging and metrics to the error handler (server.go).
+			return err
 		}
 
-		attrs := []any{
-			"method", c.Method(),
-			"path", c.Path(),
-			"status", status,
-			"latency_ms", latencyMs,
-			"remote_ip", c.IP(),
-		}
-
-		if status >= 500 {
-			slog.Error("request completed", attrs...)
-		} else {
-			slog.Info("request completed", attrs...)
-		}
-
-		return err
+		finishRequest(c)
+		return nil
 	}
 }
 
