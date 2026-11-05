@@ -169,6 +169,16 @@ func RegisterRoutes(app *fiber.App) {
 		},
 	})
 
+	// Discovery endpoints (Phase 1: T1.7)
+	//
+	// Registered BEFORE media below, and that order is load-bearing: Fiber matches
+	// in registration order, so media's parameterised /movies/:id and /shows/:id
+	// would otherwise capture "trending" and "popular" as an id, leaving
+	// /v1/movies/{trending,popular} and /v1/shows/{trending,popular} unreachable.
+	// internal/httpapi's TestNoStaticRouteIsShadowed guards the general rule: at a
+	// given depth, static paths must be registered before parameterised ones.
+	discovery.RegisterRoutes(api)
+
 	// Media read endpoints (Phase 1: T1.5)
 	media.RegisterRoutes(api)
 
@@ -180,9 +190,6 @@ func RegisterRoutes(app *fiber.App) {
 
 	// Updates (Phase 1: T1.9)
 	updates.RegisterRoutes(api)
-
-	// Discovery endpoints (Phase 1: T1.7)
-	discovery.RegisterRoutes(api)
 
 	// Episode detail endpoints (T1.x)
 	episodes.RegisterRoutes(api)

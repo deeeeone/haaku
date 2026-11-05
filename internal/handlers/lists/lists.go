@@ -62,10 +62,20 @@ func registerOpenAPIRoutes() {
 }
 
 // RegisterRoutes wires all list route handlers.
+//
+// Order matters here: Fiber matches routes in registration order, so the static
+// /lists/popular and /lists/trending paths must be registered BEFORE /lists/:id.
+// Registering them after (as they were) made both unreachable — /lists/:id
+// captured "popular" and "trending" as a slug and answered "list not found".
+// internal/httpapi's TestNoStaticRouteIsShadowed now guards this class of bug.
 func RegisterRoutes(api fiber.Router) {
 	// User lists
 	api.Get("/users/:id/lists", auth.AuthRequired(), handleGetUserLists)
 	api.Post("/users/me/lists", auth.AuthRequired(), handleCreateList)
+
+	// Popular / Trending — must precede /lists/:id (see the note above).
+	api.Get("/lists/popular", handleGetPopularLists)
+	api.Get("/lists/trending", handleGetTrendingLists)
 
 	// Individual list CRUD
 	api.Get("/lists/:id", handleGetList)
@@ -85,10 +95,6 @@ func RegisterRoutes(api fiber.Router) {
 
 	// Comments
 	api.Get("/lists/:id/comments", handleGetListComments)
-
-	// Popular / Trending
-	api.Get("/lists/popular", handleGetPopularLists)
-	api.Get("/lists/trending", handleGetTrendingLists)
 
 	// Smart lists
 	api.Get("/users/me/smart-lists", auth.AuthRequired(), handleGetSmartLists)
