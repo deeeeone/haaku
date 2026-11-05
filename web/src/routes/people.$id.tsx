@@ -1,15 +1,19 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { usePerson, usePersonMovies, usePersonShows } from '@/api/hooks/usePeople'
+import {
+  usePerson,
+  usePersonMovies,
+  usePersonShows,
+} from '@/api/hooks/usePeople'
 import { Page, Section } from '@/components/layout'
 import {
-  Hero,
+  Button,
   DetailStat,
+  FactRow,
+  Hero,
   InfoPanel,
   PosterCard,
   Rail,
-  Button,
   ShimmerText,
-  FactRow,
 } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 
@@ -55,10 +59,15 @@ function PersonDetailPage() {
 
   return (
     <Page>
-
       <Hero
         title={person.name}
-        subtitle={person.biography ? (person.biography.length > 300 ? person.biography.slice(0, 300) + '...' : person.biography) : undefined}
+        subtitle={
+          person.biography
+            ? person.biography.length > 300
+              ? `${person.biography.slice(0, 300)}...`
+              : person.biography
+            : undefined
+        }
         image={person.images?.headshot ?? person.images?.poster}
       />
 
@@ -85,14 +94,25 @@ function PersonDetailPage() {
               {person.biography}
             </p>
             <div className="mt-4 grid grid-cols-1 gap-1 sm:grid-cols-2">
-              {person.birthday && <FactRow label="Born" value={formatDate(person.birthday)} />}
-              {person.birthplace && <FactRow label="Birthplace" value={person.birthplace} />}
-              {person.death && <FactRow label="Died" value={formatDate(person.death)} />}
+              {person.birthday && (
+                <FactRow label="Born" value={formatDate(person.birthday)} />
+              )}
+              {person.birthplace && (
+                <FactRow label="Birthplace" value={person.birthplace} />
+              )}
+              {person.death && (
+                <FactRow label="Died" value={formatDate(person.death)} />
+              )}
               {person.homepage && (
                 <FactRow
                   label="Homepage"
                   value={
-                    <a href={person.homepage} target="_blank" rel="noopener noreferrer" className="text-sf-accent-2 hover:underline">
+                    <a
+                      href={person.homepage}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sf-accent-2 hover:underline"
+                    >
                       Visit
                     </a>
                   }
@@ -113,13 +133,17 @@ function PersonDetailPage() {
                   title={movie.title}
                   meta={String(movie.year ?? '')}
                   image={movie.images?.poster}
-                  rating={movie.rating ? (movie.rating / 2).toFixed(1) : undefined}
+                  rating={
+                    movie.rating ? (movie.rating / 2).toFixed(1) : undefined
+                  }
                   type="movie"
                   aspect="2:3"
                   onClick={() =>
                     navigate({
                       to: '/movies/$id',
-                      params: { id: String(movie.ids?.trakt ?? movie.ids?.slug) },
+                      params: {
+                        id: String(movie.ids?.trakt ?? movie.ids?.slug),
+                      },
                     })
                   }
                 />
@@ -139,7 +163,9 @@ function PersonDetailPage() {
                   title={show.title}
                   meta={String(show.year ?? '')}
                   image={show.images?.poster}
-                  rating={show.rating ? (show.rating / 2).toFixed(1) : undefined}
+                  rating={
+                    show.rating ? (show.rating / 2).toFixed(1) : undefined
+                  }
                   type="series"
                   aspect="2:3"
                   onClick={() =>

@@ -1,4 +1,4 @@
-.PHONY: help build bin frontend embed-stub dev-backend dev-frontend fmt vet test test-go test-web lint lint-web \
+.PHONY: help build bin frontend api-client embed-stub dev-backend dev-frontend fmt vet test test-go test-web lint lint-web \
 	tidy run compose-up compose-down pg-up pg-down pg-status test-db clean
 
 # pnpm is expected on PATH (the frontend is a pnpm workspace). Override for a
@@ -17,6 +17,12 @@ help: ## Show this help
 
 frontend: ## Install frontend dependencies and build the UI into web/dist
 	cd web && $(PNPM) install --frozen-lockfile && $(PNPM) run build
+
+# The typed client (web/src/api/generated/schema.ts) is generated from the
+# contract and committed, so a normal build does not need this. Re-run it after
+# changing openapi.yaml; CI checks it stays in step (see the frontend job).
+api-client: ## Regenerate the typed API client from openapi.yaml
+	cd web && $(PNPM) run api:generate
 
 # The Go binary embeds web/dist, so every Go build and test needs the directory
 # to exist. Tests never serve it, so a placeholder is enough; `make frontend`

@@ -1,7 +1,7 @@
 import path from 'node:path'
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   plugins: [
@@ -66,15 +66,39 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, './src'),
-      // Point design-kit imports to the actual design-kit source
-      '@design-kit': path.resolve(import.meta.dirname, '../design-kit/src'),
+      // The design kit is vendored under src/design-kit-components/. The old
+      // `@design-kit` alias pointed at a sibling `../design-kit/src` checkout
+      // that does not exist in this repository and that nothing imports, so it
+      // is gone rather than silently resolving to the vendored copy — see the
+      // "Known gaps" section of README.md.
     },
   },
   server: {
     port: 5173,
     open: false,
+    // Dev only: the SPA calls the API on relative paths, so the dev server
+    // forwards the API prefixes to the Go server (make dev-backend). Override
+    // the target when the backend does not listen on :8080.
+    proxy: {
+      '/v1': {
+        target: process.env.VITE_API_PROXY_TARGET ?? 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/oauth': {
+        target: process.env.VITE_API_PROXY_TARGET ?? 'http://localhost:8080',
+        changeOrigin: true,
+      },
+    },
   },
   css: {
     postcss: './postcss.config.mjs',
+  },
+  // Vitest. Unit tests must not accidentally pick up the Playwright specs in
+  // e2e/ (they import @playwright/test and need a browser), so exclude them
+  // explicitly instead of relying on the default glob.
+  test: {
+    environment: 'node',
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    exclude: ['e2e/**', 'node_modules/**', 'dist/**'],
   },
 })

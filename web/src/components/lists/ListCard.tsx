@@ -1,23 +1,32 @@
 import { Link } from '@tanstack/react-router'
 import {
+  Edit,
+  Globe,
+  Heart,
+  Link2,
   List,
   Lock,
-  Globe,
-  Link2,
-  Edit,
-  Trash2,
-  Share2,
-  Heart,
   MessageCircle,
+  Share2,
+  Trash2,
 } from 'lucide-react'
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter, CardAction } from '@/components/ui'
-import { Badge, Chip } from '@/components/ui'
-import { Button } from '@/components/ui'
-import { StatCard } from '@/components/ui'
-import { Dropdown } from '@/components/ui'
+import type { TraktList } from '@/api/types/lists'
+import {
+  Badge,
+  Button,
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  Chip,
+  Dropdown,
+  StatCard,
+} from '@/components/ui'
 import type { DropdownItem } from '@/design-kit-components/ui/dropdown'
 import { cn } from '@/lib/utils'
-import type { TraktList } from '@/api/types/lists'
 
 export interface ListCardProps {
   list: TraktList
@@ -97,20 +106,21 @@ export function ListCard({
             </div>
             {showActions && actionItems.length > 0 && (
               <CardAction>
-                <div onClick={(e) => e.preventDefault()}>
-                  <Dropdown
-                    trigger={
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-sf-ink-muted hover:text-sf-ink"
-                      >
-                        <List className="size-4" />
-                      </Button>
-                    }
-                    items={actionItems}
-                  />
-                </div>
+                {/* The trigger sits inside the card's <Link>; preventDefault
+                    stops the menu button from also navigating the card. */}
+                <Dropdown
+                  trigger={
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-sf-ink-muted hover:text-sf-ink"
+                      onClick={(e) => e.preventDefault()}
+                    >
+                      <List className="size-4" />
+                    </Button>
+                  }
+                  items={actionItems}
+                />
               </CardAction>
             )}
           </div>
@@ -118,9 +128,7 @@ export function ListCard({
 
         <CardContent>
           <div className="flex flex-wrap gap-2">
-            <Badge count={list.item_count}>
-              {list.item_count} items
-            </Badge>
+            <Badge count={list.item_count}>{list.item_count} items</Badge>
             <Chip variant={privacy.variant}>{privacy.label}</Chip>
           </div>
         </CardContent>

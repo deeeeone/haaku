@@ -14,8 +14,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
-    "api:generate": "openapi-typescript ../trakt-api/openapi.yaml -o src/api/generated/schema.ts"
+    "api:generate": "openapi-typescript ../openapi.yaml -o src/api/generated/schema.ts"
   },
+  "packageManager": "pnpm@10.34.9",
   "dependencies": {
     "@clerk/react": "^6.14.3",
     "@hookform/resolvers": "^5.9.0",

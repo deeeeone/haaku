@@ -1,7 +1,15 @@
 import { useNavigate } from '@tanstack/react-router'
-import { Tv, Star, Bookmark, MessageSquare, Heart, UserPlus } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import {
+  Bookmark,
+  Heart,
+  MessageSquare,
+  Star,
+  Tv,
+  UserPlus,
+} from 'lucide-react'
 import type { ActivityItem as ActivityItemType } from '@/api/types'
+import { activateOnKey } from '@/lib/a11y'
+import { cn } from '@/lib/utils'
 
 const ACTIVITY_ICONS: Record<string, React.ReactNode> = {
   'history.added': <Tv className="size-4" />,
@@ -48,19 +56,31 @@ function getActivityText(item: ActivityItemType): string {
 
   switch (item.action) {
     case 'history.added':
-      return mediaName ? `${username} watched ${mediaName}${episodeInfo}` : `${username} watched something`
+      return mediaName
+        ? `${username} watched ${mediaName}${episodeInfo}`
+        : `${username} watched something`
     case 'rating.added':
-      return mediaName ? `${username} rated ${mediaName}${episodeInfo} ${'⭐'.repeat(item.rating ?? 0)}` : `${username} rated something`
+      return mediaName
+        ? `${username} rated ${mediaName}${episodeInfo} ${'⭐'.repeat(item.rating ?? 0)}`
+        : `${username} rated something`
     case 'watchlist.added':
-      return mediaName ? `${username} added ${mediaName} to their watchlist` : `${username} added to watchlist`
+      return mediaName
+        ? `${username} added ${mediaName} to their watchlist`
+        : `${username} added to watchlist`
     case 'comment.created':
-      return mediaName ? `${username} commented on ${mediaName}${episodeInfo}` : `${username} left a comment`
+      return mediaName
+        ? `${username} commented on ${mediaName}${episodeInfo}`
+        : `${username} left a comment`
     case 'favorite.added':
-      return mediaName ? `${username} favorited ${mediaName}` : `${username} added a favorite`
+      return mediaName
+        ? `${username} favorited ${mediaName}`
+        : `${username} added a favorite`
     case 'follow.created':
       return `${username} started following someone`
     case 'list.liked':
-      return listName ? `${username} liked list "${listName}"` : `${username} liked a list`
+      return listName
+        ? `${username} liked list "${listName}"`
+        : `${username} liked a list`
     default:
       return `${username} ${action}`
   }
@@ -125,8 +145,11 @@ export function ActivityItem({ item, className }: ActivityItemProps) {
       {/* Thumbnail */}
       {(item.movie?.images?.poster || item.show?.images?.poster) && (
         <div
+          role="button"
+          tabIndex={0}
           className="h-12 w-8 shrink-0 cursor-pointer overflow-hidden rounded"
           onClick={() => link && navigate({ to: link })}
+          onKeyDown={activateOnKey}
         >
           <img
             src={item.movie?.images?.poster ?? item.show?.images?.poster}

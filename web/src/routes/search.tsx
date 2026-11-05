@@ -1,22 +1,26 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { Film, List, Tv, User } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { z } from 'zod'
 import { useSearch as useSearchQuery } from '@/api/hooks/useSearch'
 import type { SearchType } from '@/api/types'
-import { Page, Section, PosterGrid } from '@/components/layout'
+import { Page, PosterGrid, Section } from '@/components/layout'
 import {
-  SearchBar,
-  FilterPill,
-  PosterCard,
-  PaginationControls,
-  ShimmerText,
   Button,
+  FilterPill,
+  PaginationControls,
+  PosterCard,
+  SearchBar,
+  ShimmerText,
 } from '@/components/ui'
-import { Tv, Film, User, List } from 'lucide-react'
-import { z } from 'zod'
+import { activateOnKey } from '@/lib/a11y'
 
 const searchSchema = z.object({
   q: z.string().optional().catch(''),
-  type: z.enum(['movie', 'show', 'episode', 'person', 'list']).optional().catch(undefined),
+  type: z
+    .enum(['movie', 'show', 'episode', 'person', 'list'])
+    .optional()
+    .catch(undefined),
   page: z.number().optional().catch(1),
 })
 
@@ -25,13 +29,14 @@ export const Route = createFileRoute('/search')({
   validateSearch: searchSchema,
 })
 
-const FILTER_TYPES: { value: SearchType; label: string; icon: typeof Film }[] = [
-  { value: 'movie', label: 'Movies', icon: Film },
-  { value: 'show', label: 'TV Shows', icon: Tv },
-  { value: 'episode', label: 'Episodes', icon: Tv },
-  { value: 'person', label: 'People', icon: User },
-  { value: 'list', label: 'Lists', icon: List },
-]
+const FILTER_TYPES: { value: SearchType; label: string; icon: typeof Film }[] =
+  [
+    { value: 'movie', label: 'Movies', icon: Film },
+    { value: 'show', label: 'TV Shows', icon: Tv },
+    { value: 'episode', label: 'Episodes', icon: Tv },
+    { value: 'person', label: 'People', icon: User },
+    { value: 'list', label: 'Lists', icon: List },
+  ]
 
 function SearchPage() {
   const navigate = useNavigate()
@@ -39,9 +44,15 @@ function SearchPage() {
   const [inputValue, setInputValue] = useState(searchParams.q ?? '')
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
-  const activeQuery = searchParams.q && searchParams.q.length > 0
-    ? { q: searchParams.q, type: searchParams.type, page: searchParams.page ?? 1, limit: 20 }
-    : null
+  const activeQuery =
+    searchParams.q && searchParams.q.length > 0
+      ? {
+          q: searchParams.q,
+          type: searchParams.type,
+          page: searchParams.page ?? 1,
+          limit: 20,
+        }
+      : null
 
   const { data, isLoading, isError, refetch } = useSearchQuery(activeQuery)
 
@@ -103,7 +114,6 @@ function SearchPage() {
 
   return (
     <Page>
-
       <Section>
         <SearchBar
           value={inputValue}
@@ -145,35 +155,44 @@ function SearchPage() {
           </div>
         )}
 
-        {!isLoading && !isError && data && data.data.length === 0 && searchParams.q && (
-          <div className="flex flex-col items-center gap-4 py-16 text-center">
-            <p className="text-lg font-semibold text-sf-ink">
-              No results for &ldquo;{searchParams.q}&rdquo;
-            </p>
-            <p className="text-sf-ink-muted">Try a different search term or adjust filters.</p>
-            <div className="mt-2 flex flex-wrap justify-center gap-2">
-              {['Action', 'Comedy', 'Drama', 'Horror', 'Sci-Fi'].map((g) => (
-                <FilterPill
-                  key={g}
-                  onClick={() => {
-                    navigate({
-                      to: '/search',
-                      search: { q: g, type: 'movie' as SearchType, page: 1 },
-                    })
-                  }}
-                >
-                  {g}
-                </FilterPill>
-              ))}
+        {!isLoading &&
+          !isError &&
+          data &&
+          data.data.length === 0 &&
+          searchParams.q && (
+            <div className="flex flex-col items-center gap-4 py-16 text-center">
+              <p className="text-lg font-semibold text-sf-ink">
+                No results for &ldquo;{searchParams.q}&rdquo;
+              </p>
+              <p className="text-sf-ink-muted">
+                Try a different search term or adjust filters.
+              </p>
+              <div className="mt-2 flex flex-wrap justify-center gap-2">
+                {['Action', 'Comedy', 'Drama', 'Horror', 'Sci-Fi'].map((g) => (
+                  <FilterPill
+                    key={g}
+                    onClick={() => {
+                      navigate({
+                        to: '/search',
+                        search: { q: g, type: 'movie' as SearchType, page: 1 },
+                      })
+                    }}
+                  >
+                    {g}
+                  </FilterPill>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {!isLoading && !isError && !searchParams.q && (
           <div className="flex flex-col items-center gap-3 py-16 text-center">
-            <p className="text-lg font-semibold text-sf-ink">Discover something new</p>
+            <p className="text-lg font-semibold text-sf-ink">
+              Discover something new
+            </p>
             <p className="text-sf-ink-muted">
-              Search for your favorite movies, shows, episodes, people, or lists.
+              Search for your favorite movies, shows, episodes, people, or
+              lists.
             </p>
           </div>
         )}
@@ -217,7 +236,12 @@ function SearchResultCard({ result }: { result: any }) {
           rating={m.rating ? (Number(m.rating) / 2).toFixed(1) : undefined}
           type="movie"
           aspect="2:3"
-          onClick={() => navigate({ to: '/movies/$id', params: { id: String(ids?.trakt ?? ids?.slug ?? '') } })}
+          onClick={() =>
+            navigate({
+              to: '/movies/$id',
+              params: { id: String(ids?.trakt ?? ids?.slug ?? '') },
+            })
+          }
         />
       )
     }
@@ -234,7 +258,12 @@ function SearchResultCard({ result }: { result: any }) {
           rating={s.rating ? (Number(s.rating) / 2).toFixed(1) : undefined}
           type="series"
           aspect="2:3"
-          onClick={() => navigate({ to: '/shows/$id', params: { id: String(ids?.trakt ?? ids?.slug ?? '') } })}
+          onClick={() =>
+            navigate({
+              to: '/shows/$id',
+              params: { id: String(ids?.trakt ?? ids?.slug ?? '') },
+            })
+          }
         />
       )
     }
@@ -250,7 +279,12 @@ function SearchResultCard({ result }: { result: any }) {
           image={images?.poster}
           type="episode"
           aspect="16:9"
-          onClick={() => navigate({ to: '/episodes/$id', params: { id: String(ids?.trakt ?? ids?.slug ?? '') } })}
+          onClick={() =>
+            navigate({
+              to: '/episodes/$id',
+              params: { id: String(ids?.trakt ?? ids?.slug ?? '') },
+            })
+          }
         />
       )
     }
@@ -261,8 +295,16 @@ function SearchResultCard({ result }: { result: any }) {
       const images = p.images as Record<string, string | undefined> | undefined
       return (
         <div
+          role="button"
+          tabIndex={0}
           className="cursor-pointer"
-          onClick={() => navigate({ to: '/people/$id', params: { id: String(ids?.trakt ?? ids?.slug ?? '') } })}
+          onClick={() =>
+            navigate({
+              to: '/people/$id',
+              params: { id: String(ids?.trakt ?? ids?.slug ?? '') },
+            })
+          }
+          onKeyDown={activateOnKey}
         >
           <PosterCard
             title={String(p.name ?? '')}
@@ -280,7 +322,8 @@ function SearchResultCard({ result }: { result: any }) {
         <div className="glass flex cursor-pointer flex-col gap-2 rounded-sf p-4">
           <p className="font-semibold text-sf-ink">{String(l.name ?? '')}</p>
           <p className="text-xs text-sf-ink-muted">
-            {String(l.item_count ?? 0)} items · by {String(user?.username ?? '')}
+            {String(l.item_count ?? 0)} items · by{' '}
+            {String(user?.username ?? '')}
           </p>
         </div>
       )

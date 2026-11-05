@@ -1,6 +1,6 @@
-import { useState, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Star } from 'lucide-react'
+import { useCallback, useState } from 'react'
 import { cn } from '@/lib/utils'
 
 export type RatingStarsProps = {
@@ -37,7 +37,7 @@ export function RatingStars({
       setTimeout(() => setAnimatingStar(null), 400)
       onChange?.(newVal)
     },
-    [readOnly, value, onChange],
+    [readOnly, value, onChange]
   )
 
   const activeValue = hoverValue || value
@@ -46,7 +46,7 @@ export function RatingStars({
     <div
       className={cn('inline-flex items-center gap-0.5', className)}
       onMouseLeave={() => setHoverValue(0)}
-      role={readOnly ? 'img' : 'radiogroup'}
+      role="radiogroup"
       aria-label={`Rating: ${value} out of ${max}`}
     >
       {Array.from({ length: max }, (_, i) => {
@@ -61,12 +61,12 @@ export function RatingStars({
             disabled={readOnly}
             className={cn(
               'relative cursor-pointer bg-transparent p-0.5 transition-colors',
-              readOnly && 'cursor-default',
+              readOnly && 'cursor-default'
             )}
             onClick={() => handleClick(starNum)}
             onMouseEnter={() => !readOnly && setHoverValue(starNum)}
             aria-label={`Rate ${starNum} out of ${max}`}
-            role={readOnly ? undefined : 'radio'}
+            role="radio"
             aria-checked={isFull}
           >
             <Star
@@ -75,7 +75,7 @@ export function RatingStars({
                 'transition-all duration-150',
                 isActive
                   ? 'fill-sf-accent-2 text-sf-accent-2'
-                  : 'fill-none text-sf-ink-faint',
+                  : 'fill-none text-sf-ink-faint'
               )}
               strokeWidth={1.5}
             />
@@ -91,7 +91,7 @@ export function RatingStars({
                   <Star
                     className={cn(
                       sizeMap[size],
-                      'fill-sf-accent-2 text-sf-accent-2',
+                      'fill-sf-accent-2 text-sf-accent-2'
                     )}
                     strokeWidth={1.5}
                   />

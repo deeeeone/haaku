@@ -1,11 +1,8 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
 import { ClerkProvider } from '@clerk/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import {
-  RouterProvider,
-  createRouter,
-} from '@tanstack/react-router'
+import { createRouter, RouterProvider } from '@tanstack/react-router'
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
 import { Toaster } from 'sonner'
 import './index.css'
 
@@ -33,8 +30,14 @@ declare module '@tanstack/react-router' {
 }
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
-const clerkConfigured =
-  clerkPubKey && !clerkPubKey.includes('YOUR_CLERK')
+const clerkConfigured = clerkPubKey && !clerkPubKey.includes('YOUR_CLERK')
+
+// Optional Clerk proxy (FAPI proxy / self-hosted frontend API). The dev stack's
+// `clerk-emulator` runs on :4000, but that host does not exist in production —
+// so only pass a proxy when the build actually configures one. Absent a value,
+// Clerk talks to its own hosted frontend API, as it does for every self-hoster
+// on a real Clerk tenant.
+const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL || undefined
 
 const root = document.getElementById('root')
 if (!root) throw new Error('Root element not found')
@@ -60,17 +63,19 @@ const app = (
 createRoot(root).render(
   <StrictMode>
     {clerkConfigured ? (
+      // `afterSignOutUrl` moved from <UserButton> to the provider in Clerk v6.
       <ClerkProvider
         publishableKey={clerkPubKey}
-        proxyUrl="http://localhost:4000"
+        proxyUrl={clerkProxyUrl}
+        afterSignOutUrl="/"
         appearance={{
           variables: {
             colorPrimary: '#8c6bff',
             colorBackground: '#0c1122',
-            colorText: '#f8fbff',
-            colorTextSecondary: 'rgba(248, 251, 255, 0.66)',
-            colorInputBackground: 'rgba(255, 255, 255, 0.072)',
-            colorInputText: '#f8fbff',
+            colorForeground: '#f8fbff',
+            colorMutedForeground: 'rgba(248, 251, 255, 0.66)',
+            colorInput: 'rgba(255, 255, 255, 0.072)',
+            colorInputForeground: '#f8fbff',
             borderRadius: '18px',
           },
         }}

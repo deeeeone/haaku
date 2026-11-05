@@ -4,7 +4,7 @@
  * Handles base URL, JSON parsing, and error normalization.
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+const BASE_URL = import.meta.env.VITE_API_URL || '/'
 
 export class ApiError extends Error {
   status: number
@@ -23,7 +23,10 @@ interface RequestOptions extends Omit<RequestInit, 'body'> {
   params?: Record<string, string | number | undefined>
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+async function request<T>(
+  path: string,
+  options: RequestOptions = {}
+): Promise<T> {
   const { params, body, headers: extraHeaders, ...init } = options
 
   // Build URL with query params
