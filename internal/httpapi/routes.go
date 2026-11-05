@@ -91,6 +91,20 @@ func RegisterRoutes(app *fiber.App) {
 		},
 	})
 
+	// The generated specification, served as JSON (issue #15). Built from the
+	// same registry the router uses, so it cannot drift from the served API.
+	api.Get("/openapi.json", handleOpenAPISpec)
+	openapi.Register(openapi.RouteDef{
+		Method:  "GET",
+		Path:    "/v1/openapi.json",
+		Summary: "OpenAPI 3.1 specification generated from the route registry",
+		Tags:    []string{"Meta"},
+		Auth:    "none",
+		StatusCodes: map[int]string{
+			200: "The OpenAPI document",
+		},
+	})
+
 	// Clerk webhook receiver (Phase 2: T2.2 — signature verified, no user auth required)
 	api.Post("/webhooks/clerk", auth.HandleClerkWebhook)
 
