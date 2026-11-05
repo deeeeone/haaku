@@ -1130,6 +1130,17 @@ func handleGetRatings(c *fiber.Ctx) error {
 	})
 }
 
+// ratingEpisode is the episode reference accepted by POST /v1/sync/ratings.
+// Season and Number are pointers so the handler can tell a genuinely absent
+// reference (malformed — rejected with 400) apart from an explicit season 0
+// (specials, a legitimate row). The remove path round-trips the same payload.
+type ratingEpisode struct {
+	IDs    idsObj `json:"ids"`
+	Season *int   `json:"season"`
+	Number *int   `json:"number"`
+	Rating int    `json:"rating"`
+}
+
 func handleAddRatings(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 
@@ -1146,13 +1157,19 @@ func handleAddRatings(c *fiber.Ctx) error {
 			IDs    idsObj `json:"ids"`
 			Rating int    `json:"rating"`
 		} `json:"seasons,omitempty"`
-		Episodes []struct {
-			IDs    idsObj `json:"ids"`
-			Rating int    `json:"rating"`
-		} `json:"episodes,omitempty"`
+		Episodes []ratingEpisode `json:"episodes,omitempty"`
 	}
 	if err := c.BodyParser(&req); err != nil {
 		return response.BadRequest(c, "invalid JSON body")
+	}
+
+	// An episode reference without season/number cannot be resolved to a row.
+	// Reject it instead of silently falling back to the series, which would
+	// rate the whole show (issue #25).
+	for _, e := range req.Episodes {
+		if e.Season == nil || e.Number == nil {
+			return response.BadRequest(c, "episode ratings require season and number")
+		}
 	}
 
 	addedMovies, addedShows, addedSeasons, addedEpisodes := 0, 0, 0, 0
@@ -1183,18 +1200,9 @@ func handleAddRatings(c *fiber.Ctx) error {
 			return nil, resolveErr
 		}
 
-		upsertRating := func(ids idsObj, rating int) {
-			if rating < 1 || rating > 10 {
-				notFound++
-				return
-			}
-			ref, ok := refs[ids.TMDB]
-			if !ok {
-				notFound++
-				return
-			}
-			mediaTypeResolved := ref.MediaType
-			mediaID := ref.MediaID
+		// writeRating persists a rating against an already-resolved media row
+		// and tallies it in the response.
+		writeRating := func(mediaTypeResolved string, mediaID int64, rating int) {
 			tx.Clauses(clause.OnConflict{
 				Columns:   []clause.Column{{Name: "user_id"}, {Name: "media_type"}, {Name: "media_id"}},
 				DoUpdates: clause.AssignmentColumns([]string{"rating", "rated_at", "updated_at"}),
@@ -1215,6 +1223,22 @@ func handleAddRatings(c *fiber.Ctx) error {
 			mediaRefs = append(mediaRefs, mediaRef{mediaType: mediaTypeResolved, mediaID: mediaID})
 		}
 
+		// upsertRating rates a media row whose own TMDB id identifies it:
+		// movies, shows and seasons. Episodes are handled separately below
+		// because their TMDB id identifies the series, not the episode.
+		upsertRating := func(ids idsObj, rating int) {
+			if rating < 1 || rating > 10 {
+				notFound++
+				return
+			}
+			ref, ok := refs[ids.TMDB]
+			if !ok {
+				notFound++
+				return
+			}
+			writeRating(ref.MediaType, ref.MediaID, rating)
+		}
+
 		for _, m := range req.Movies {
 			upsertRating(m.IDs, m.Rating)
 		}
@@ -1224,8 +1248,32 @@ func handleAddRatings(c *fiber.Ctx) error {
 		for _, s := range req.Seasons {
 			upsertRating(s.IDs, s.Rating)
 		}
+
+		// Episodes: the payload's TMDB id is the SERIES id, so resolve
+		// series -> season -> episode and rate the episode row, exactly as
+		// handleAddHistory does. The series TMDB id was batch-resolved above,
+		// so this adds no per-item external-id lookup.
 		for _, e := range req.Episodes {
-			upsertRating(e.IDs, e.Rating)
+			if e.Rating < 1 || e.Rating > 10 {
+				notFound++
+				continue
+			}
+			ref, ok := refs[e.IDs.TMDB]
+			if !ok || ref.MediaType != "show" {
+				notFound++
+				continue
+			}
+			seasonRow, found := findSeason(tx, ref.MediaID, *e.Season)
+			if !found {
+				notFound++
+				continue
+			}
+			epRow, found := findEpisode(tx, seasonRow.ID, *e.Number)
+			if !found {
+				notFound++
+				continue
+			}
+			writeRating("episode", epRow.ID, e.Rating)
 		}
 
 		if addedMovies+addedShows+addedSeasons+addedEpisodes > 0 {
