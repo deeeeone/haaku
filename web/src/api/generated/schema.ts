@@ -471,6 +471,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/dev/clerk-webhook-simulate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Simulate a Clerk webhook event (dev only — emulator cannot deliver webhooks; mirrors the real /v1/webhooks/clerk pipeline) */
+        post: operations["_v1_dev_clerk_webhook_simulate_POST"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/episodes/{id}": {
         parameters: {
             query?: never;
@@ -1202,6 +1219,23 @@ export interface paths {
         };
         /** Get notification settings */
         get: operations["_v1_notifications_settings_GET"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/openapi.json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** OpenAPI 3.1 specification generated from the route registry */
+        get: operations["_v1_openapijson_GET"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2465,6 +2499,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/users/me/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export the caller's complete data archive (streamed JSON, versioned) */
+        get: operations["_v1_users_me_export_GET"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/users/me/follow_requests": {
         parameters: {
             query?: never;
@@ -2752,23 +2803,6 @@ export interface paths {
         put?: never;
         /** Receive Clerk webhook events (user.created, user.updated, user.deleted) */
         post: operations["_v1_webhooks_clerk_POST"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/dev/clerk-webhook-simulate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Simulate a Clerk webhook event (dev only — emulator cannot deliver webhooks; mirrors the real /v1/webhooks/clerk pipeline) */
-        post: operations["_v1_dev_clerk_webhook_simulate_POST"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5577,6 +5611,85 @@ export interface operations {
             };
         };
     };
+    _v1_dev_clerk_webhook_simulate_POST: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Event processed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid payload */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unprocessable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     _v1_episodes_id_GET: {
         parameters: {
             query?: never;
@@ -8144,6 +8257,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description Not implemented (requires lists engine) */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     _v1_movies_id_people_GET: {
@@ -8462,6 +8582,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description Not implemented (requires stats engine) */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     _v1_movies_id_translations_lang_GET: {
@@ -8698,6 +8825,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
+            };
+            /** @description Not implemented (requires activity engine) */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -9213,6 +9347,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Not your note */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description Not found */
             404: {
                 headers: {
@@ -9369,6 +9510,13 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not your note */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -9608,6 +9756,87 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unprocessable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    _v1_openapijson_GET: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The OpenAPI document */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -11147,6 +11376,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description Not implemented (requires lists engine) */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     _v1_shows_id_people_GET: {
@@ -11947,6 +12183,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description Not implemented (requires stats engine) */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     _v1_shows_id_translations_lang_GET: {
@@ -12183,6 +12426,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
+            };
+            /** @description Not implemented (requires activity engine) */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -14835,12 +15085,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Sync session not found */
+            /** @description not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -14877,6 +15129,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
+            };
+            /** @description Not implemented (requires sync engine) */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -14912,12 +15171,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Sync session not found */
+            /** @description not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -14954,6 +15215,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
+            };
+            /** @description Not implemented (requires sync engine) */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -16525,6 +16793,92 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
+            };
+        };
+    };
+    _v1_users_me_export_GET: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Streamed JSON archive */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unprocessable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Database unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -18105,76 +18459,6 @@ export interface operations {
             };
             /** @description Invalid webhook signature */
             401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description unprocessable */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description rate limited */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-        };
-    };
-    _v1_dev_clerk_webhook_simulate_POST: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Event processed */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Invalid payload */
-            400: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -1,6 +1,7 @@
 .PHONY: help build bin frontend api-client embed-stub dev-backend dev-frontend fmt vet test test-go test-web lint lint-web \
 	tidy run compose-up compose-down pg-up pg-down pg-status test-db \
-	backup backup-list migrate-create migrate-validate migrate-status migrate-up clean
+	backup backup-list migrate-create migrate-validate migrate-status migrate-up \
+	api-spec api-check clean
 
 # pnpm is expected on PATH (the frontend is a pnpm workspace). Override for a
 # checkout that keeps its own toolchain, e.g. make frontend PNPM=/opt/node/bin/pnpm
@@ -125,6 +126,19 @@ pg-down: ## Stop the throwaway PostgreSQL
 pg-status: ## Show throwaway PostgreSQL status
 	./scripts/dev-pg.sh status
 
+# --- OpenAPI specification (issue #15) ---
+#
+# openapi.yaml is a generated artifact: it is produced from the code-first route
+# registry by cmd/openapi, never edited by hand. `api-check` is the gate — it
+# fails when the committed spec has drifted from the registry (freshness) or
+# when the route inventory differs in either direction.
+
+api-spec: embed-stub ## Regenerate openapi.yaml from the route registry
+	go run ./cmd/openapi
+
+api-check: embed-stub ## Verify openapi.yaml is fresh and its route inventory matches the registry
+	go run ./cmd/openapi -check
+	go test ./internal/httpapi/ -run TestOpenAPIRouteInventory -count=1
 # --- Backups (issue #16) ---
 #
 # One-shot backup commands. They need DATABASE_URL and pg_dump/pg_restore on the

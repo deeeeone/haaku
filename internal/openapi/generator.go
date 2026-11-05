@@ -1,6 +1,7 @@
 package openapi
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -21,13 +22,16 @@ var standardStatusCodes = map[int]string{
 }
 
 // GenerateYAML walks the route registry, builds an OpenAPI 3.1 document,
-// and writes it to the given path. Non-fatal on write errors (caller logs).
+// and writes it to the given path.
+//
+// The output is deterministic: every object is a Go map, and gopkg.in/yaml.v3
+// marshals map keys in sorted order, so two runs over the same registry are
+// byte-identical. That is what makes `git diff --exit-code` a meaningful
+// freshness check.
 func GenerateYAML(path string) error {
-	doc := buildDocument(AllRoutes())
-
-	out, err := yaml.Marshal(doc)
+	out, err := GenerateYAMLBytes()
 	if err != nil {
-		return fmt.Errorf("marshal openapi yaml: %w", err)
+		return err
 	}
 
 	if err := os.WriteFile(path, out, 0o644); err != nil {
@@ -36,6 +40,28 @@ func GenerateYAML(path string) error {
 	}
 
 	return nil
+}
+
+// GenerateYAMLBytes builds the OpenAPI document from the current registry and
+// returns it as marshalled YAML. Used by the freshness check so it can compare
+// against the file on disk without writing anything.
+func GenerateYAMLBytes() ([]byte, error) {
+	out, err := yaml.Marshal(buildDocument(AllRoutes()))
+	if err != nil {
+		return nil, fmt.Errorf("marshal openapi yaml: %w", err)
+	}
+	return out, nil
+}
+
+// GenerateJSON returns the OpenAPI document, built from the current registry,
+// as indented JSON. json.MarshalIndent sorts object keys, so it is
+// deterministic. Served by GET /v1/openapi.json.
+func GenerateJSON() ([]byte, error) {
+	out, err := json.MarshalIndent(buildDocument(AllRoutes()), "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("marshal openapi json: %w", err)
+	}
+	return out, nil
 }
 
 // buildDocument constructs the full OpenAPI 3.1 map from route definitions.

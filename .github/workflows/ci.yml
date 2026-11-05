@@ -32,6 +32,34 @@ jobs:
 
       # TODO(T0.3): govulncheck, gitleaks secret scan, golangci-lint.
 
+  # openapi.yaml is a generated artifact (see docs/architecture/api-versioning.md).
+  # This job regenerates it and fails if the committed copy differs, then runs
+  # the two-way route inventory check. Kept separate from the Go job so a spec
+  # drift produces an obvious, isolated failure. NOTE: the held frontend PR and
+  # upcoming CI-gate work also touch this file; a trivial conflict on this
+  # appended block is expected.
+  openapi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - name: Stub frontend
+        run: make embed-stub
+
+      - name: Regenerate the OpenAPI spec
+        run: make api-spec
+
+      - name: Fail if the committed spec is stale
+        run: git diff --exit-code -- openapi.yaml
+
+      - name: Check the route inventory (registry <-> spec)
+        run: make api-check
+
+
   # Independent of the Go job: the frontend is built and tested on its own, and
   # must not gate (or be gated by) the backend. `pnpm test` also fails if the
   # committed typed client has drifted from openapi.yaml.

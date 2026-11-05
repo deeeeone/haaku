@@ -20,7 +20,6 @@ import (
 	"trakt-api/internal/logging"
 	"trakt-api/internal/mode"
 	"trakt-api/internal/obs"
-	"trakt-api/internal/openapi"
 	"trakt-api/internal/outbox"
 	"trakt-api/internal/workers"
 	"trakt-api/redis"
@@ -145,11 +144,6 @@ func run() int {
 	}
 
 	app := httpapi.NewServer(cfg)
-
-	// Code-first OpenAPI generator (T0.6 — non-fatal, TIDB pattern)
-	if err := openapi.GenerateYAML("openapi.yaml"); err != nil {
-		logger.Warn("failed to generate openapi.yaml", "error", err)
-	}
 
 	// Cron jobs (T0.9 — TIDB pattern: UTC, panic recovery, startup refresh)
 	setupCronJobs(logger)
