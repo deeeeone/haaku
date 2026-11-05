@@ -1,0 +1,8 @@
+# web/dist is a build output directory.
+#
+# Only the placeholder index.html is tracked, so that `go build` and `go test`
+# succeed on a checkout that has never run pnpm (see web/embed.go). Everything
+# the frontend build emits is ignored.
+*
+!.gitignore
+!index.html

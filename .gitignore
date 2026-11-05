@@ -5,8 +5,12 @@
 
 # Build artifacts
 bin/
-dist/
+/dist/
 vendor/
+
+# Frontend
+web/node_modules/
+web/.pnpm-store/
 
 # Logs
 *.log
@@ -19,3 +23,7 @@ vendor/
 
 # Test artifacts
 coverage.out
+
+# Local development state (throwaway PostgreSQL, scratch data)
+.local/
+tmp/

@@ -2,11 +2,17 @@
 node_modules/
 .pnpm-store/
 
-# Build
-dist/
+# Build output.
+#
+# Only the placeholder index.html is tracked so `go build` / `go test` succeed
+# on a checkout that has never run pnpm (web/embed.go embeds web/dist).
+dist/*
+!dist/index.html
+!dist/.gitignore
 build/
 
 # Env
+.env
 .env.local
 .env.production
 
@@ -24,9 +30,6 @@ Thumbs.db
 coverage/
 e2e/test-results/
 e2e/playwright-report/
-
-# Generated
-src/api/generated/
 
 # Misc
 *.log
