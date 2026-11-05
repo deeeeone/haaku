@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"flag"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -12,6 +14,8 @@ import (
 	"trakt-api/internal/database"
 	"trakt-api/internal/httpapi"
 	"trakt-api/internal/logging"
+	"trakt-api/internal/mode"
+	"trakt-api/internal/obs"
 	"trakt-api/internal/openapi"
 	"trakt-api/internal/outbox"
 	"trakt-api/internal/workers"
@@ -21,16 +25,36 @@ import (
 )
 
 func main() {
+	os.Exit(run())
+}
+
+// run is main's body, returning the process exit code so that deferred cleanup
+// (database and Redis handles) still runs. A bare os.Exit in main would skip
+// those defers.
+func run() int {
+	migrateOnly := flag.Bool("migrate-only", false,
+		"apply pending schema migrations and exit (equivalent to "+mode.EnvVar+"=migrate)")
+	flag.Parse()
+
+	serverMode, err := mode.FromEnv()
+	if err != nil {
+		slog.Error("invalid server mode", "error", err)
+		return 2
+	}
+	if *migrateOnly {
+		serverMode = mode.Migrate
+	}
+
 	cfg, err := config.Load()
 	if err != nil {
 		slog.Error("failed to load config", "error", err)
-		os.Exit(1)
+		return 1
 	}
 
 	logger := logging.New(cfg.Env)
 	slog.SetDefault(logger)
 
-	logger.Info("starting trakt-api", "env", cfg.Env, "port", cfg.Port)
+	logger.Info("starting trakt-api", "env", cfg.Env, "port", cfg.Port, "mode", serverMode.String())
 
 	// Database (T0.4)
 	if cfg.DatabaseURL != "" {
@@ -44,6 +68,18 @@ func main() {
 		}()
 	} else {
 		logger.Warn("DATABASE_URL not set — running without persistence")
+		if serverMode == mode.Migrate {
+			logger.Error("migration requested without DATABASE_URL")
+			return 1
+		}
+	}
+
+	// Migrate-and-exit mode stops here: no Redis, no workers, no listener.
+	//
+	// Only this mode and the API mode may change the schema, and the API applies
+	// migrations before it serves; a worker never does (see internal/mode).
+	if serverMode == mode.Migrate {
+		return migrate(logger)
 	}
 
 	// Redis (T0.7 + T0.8: circuit breaker, single-flight, version counters)
@@ -54,13 +90,29 @@ func main() {
 		defer redis.CloseRedis()
 	}
 
+	// Observability listeners (issue #9). Off unless TKILLER_METRICS_LISTEN is set.
+	if err := obs.Start(context.Background()); err != nil {
+		logger.Warn("observability listeners unavailable", "error", err)
+	}
+
 	// Background workers (T0.9)
 	// - Webhooks: reads events_outbox rows via cron and delivers webhooks
 	// - Outbox publisher: polls events_outbox → Redis Streams "events"
 	// - Activity worker: consumes "events" → activity_feed fan-out
-	workers.StartWebhookWorker()
-	outbox.StartPublisher(redis.GetClient())
-	workers.StartActivityWorker()
+	//
+	// A worker mode runs exactly these and nothing else, so one image can serve
+	// every role.
+	if serverMode.RunsWorkers() {
+		workers.StartWebhookWorker()
+		outbox.StartPublisher(redis.GetClient())
+		workers.StartActivityWorker()
+	}
+
+	if !serverMode.ServesHTTP() {
+		logger.Info("worker mode — no HTTP listener")
+		waitForShutdown(logger)
+		return 0
+	}
 
 	app := httpapi.NewServer(cfg)
 
@@ -82,10 +134,7 @@ func main() {
 		}
 	}()
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-	logger.Info("shutting down server...")
+	waitForShutdown(logger)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -94,6 +143,29 @@ func main() {
 		logger.Error("server forced to shutdown", "error", err)
 	}
 	logger.Info("server stopped gracefully")
+	return 0
+}
+
+// migrate applies pending migrations and reports the outcome as an exit code.
+func migrate(logger *slog.Logger) int {
+	if err := database.Migrate(context.Background()); err != nil {
+		if errors.Is(err, database.ErrMigrationsNotImplemented) {
+			logger.Error("migrations are not available yet", "error", err)
+		} else {
+			logger.Error("migration failed", "error", err)
+		}
+		return 1
+	}
+	logger.Info("migrations applied")
+	return 0
+}
+
+// waitForShutdown blocks until SIGINT or SIGTERM.
+func waitForShutdown(logger *slog.Logger) {
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	sig := <-quit
+	logger.Info("shutting down", "signal", sig.String())
 }
 
 // setupCronJobs initializes cron with UTC timezone and panic recovery.

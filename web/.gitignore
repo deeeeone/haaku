@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output.
+#
+# Only the placeholder index.html is tracked so `go build` / `go test` succeed
+# on a checkout that has never run pnpm (web/embed.go embeds web/dist).
+dist/*
+!dist/index.html
+!dist/.gitignore
+build/
+
+# Env
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test
+coverage/
+e2e/test-results/
+e2e/playwright-report/
+
+# Misc
+*.log

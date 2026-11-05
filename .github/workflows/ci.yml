@@ -15,18 +15,22 @@ jobs:
         with:
           go-version: "1.26"
 
+      # The Go binary embeds web/dist (web/embed.go), so every Go step needs the
+      # directory to exist. Tests never serve it, so the placeholder is enough;
+      # the frontend job below builds the real bundle.
+      - name: Stub frontend
+        run: make embed-stub
+
       - name: Vet
-        run: go vet ./...
+        run: make vet
 
       - name: Build
-        run: go build ./...
+        run: make build
 
       - name: Test
-        run: |
-          go test ./...
-          # _tests_/ is a standalone "command-line-arguments" package (underscore
-          # dirs are invisible to `go test ./...`), so run it via explicit files.
-          go test ./_tests_/*.go
+        run: make test-go
 
       # TODO(T0.3): govulncheck, gitleaks secret scan, OpenAPI freshness check
       # (generated openapi.yaml diff), golangci-lint.
+      # TODO: a frontend job (`make lint-web`, `make test-web`, `make frontend`)
+      # once the web project builds in CI.

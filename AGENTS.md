@@ -7,7 +7,7 @@ Read this before touching anything. This file is the contract for every agent (H
 The API service for **trakt-killer** — an open, community-owned Trakt replacement (watch history, scrobbling, lists, ratings, social). We are building **feature parity with Trakt first**; importers and a Trakt-compat layer are post-MVP.
 
 - **Planning DB (READ ONLY — never edit):** `../trakt-killer-plan/` — specs, schema, patterns, roadmap. The `docs/` paths referenced throughout this file point there.
-- **Status:** Phase 0 skeleton. Features land per `../trakt-killer-plan/07-roadmap/roadmap.md` (T0 → T9).
+- **Status:** pre-release. The API surface is broad; the deployable pieces (schema migrations, the single image, backups) are still landing. The repository issues are the source of truth for status. See `docs/architecture/monorepo.md` for the layout.
 
 ## Stack
 
@@ -17,11 +17,16 @@ The API service for **trakt-killer** — an open, community-owned Trakt replacem
 ## Layout
 
 ```
-cmd/api/            entrypoint (config → middleware → routes → graceful shutdown)
+cmd/api/            entrypoint (config → mode → middleware → routes → graceful shutdown)
 internal/config/    env-only config (Load() once at startup)
 internal/httpapi/   Fiber app, middleware, error envelope, route registry
+internal/webui/     serves the embedded frontend (web/dist)
+internal/mode/      run modes (api | worker | migrate)
+web/                React frontend, embedded into the binary (web/embed.go)
 migrations/         SQL migrations (append-only, numbered — T0.4 tooling)
 deploy/             docker-compose (postgres, redis, minio, clerk-emulator, mailpit), .env.example
+docs/architecture/  design docs for decisions that outgrow a comment
+scripts/            developer tooling (dev-pg.sh boots a throwaway PostgreSQL)
 ```
 
 Domain packages arrive with the phases: `internal/media`, `internal/sync`, `internal/auth`, `internal/lists`, `internal/social`, `internal/webhooks`, `internal/cache`, `redis/`.
@@ -29,13 +34,21 @@ Domain packages arrive with the phases: `internal/media`, `internal/sync`, `inte
 ## Commands
 
 ```bash
-make build          # go build ./...
-make test           # go test ./... (TDD required — write failing tests first)
+make help           # list every target
+make build          # embed-stub + go build ./...
+make test           # Go suites (test-go) + frontend (test-web)
 make vet            # go vet ./...
-make run            # go run ./cmd/api (needs .env)
-make compose-up     # docker compose -f deploy/docker-compose.yml up -d
-make compose-down
+make bin            # frontend + the real single binary (bin/api)
+make dev-backend    # go run ./cmd/api (needs .env)
+make dev-frontend   # Vite dev server
+make pg-up          # throwaway PostgreSQL; prints DATABASE_URL
+make compose-up     # postgres, redis, minio, clerk-emulator, mailpit
 ```
+
+### Two things that will bite you
+
+1. **`web/dist` must exist for any Go build.** `web/embed.go` embeds it. `make build` and `make test` depend on `embed-stub`, which writes a placeholder; a bare `go build ./...` on a fresh checkout fails until you run it once.
+2. **Modes.** `TKILLER_MODE=api|worker|migrate` (or `--migrate-only`) selects the role. Only `api` and `migrate` may change the schema; a worker never does.
 
 ## Conventions (non-negotiable)
 
