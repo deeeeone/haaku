@@ -18,8 +18,9 @@ import (
 // Lifecycle pattern: config -> middleware chain -> routes (theintrodb-api main.go).
 func NewServer(cfg *config.Config) *fiber.App {
 	app := fiber.New(fiber.Config{
-		// Error handler renders the JSON envelope for panics/404s uniformly.
-		ErrorHandler: errorHandler,
+		// Error handler renders the JSON envelope for panics/404s uniformly, then
+		// completes the request's observability record with the status it wrote.
+		ErrorHandler: observedErrorHandler,
 		ReadTimeout:  35 * time.Second, // accommodates Timeout middleware (30s)
 		BodyLimit:    10 * 1024 * 1024, // 10MB
 	})
@@ -51,8 +52,10 @@ func NewServer(cfg *config.Config) *fiber.App {
 	// Register API routes.
 	RegisterRoutes(app)
 
-	// Register infrastructure routes (/metrics).
-	registerMetricsRoute(app)
+	// The metrics surface is NOT registered here. It lives on its own listener
+	// (internal/obs, TKILLER_METRICS_LISTEN) with no application auth, for a
+	// private monitoring network. The old public JSON /metrics route was removed:
+	// it published traffic volume on the main listener and described nothing.
 
 	// Serve the embedded single-page app. Mounted last, and mounted after every
 	// API route, so it only sees requests the router did not handle; API paths
@@ -69,4 +72,16 @@ func NewServer(cfg *config.Config) *fiber.App {
 	}
 
 	return app
+}
+
+// observedErrorHandler wraps the envelope error handler so the request's metrics
+// and log line are recorded with the final status. Fiber invokes the app-level
+// error handler after the middleware chain returns, and it is the error handler
+// that writes the status (404 for an unknown route, 500 for a panic), so this is
+// the only place the true status is visible. RequestLogger deliberately skips the
+// error path to avoid double-recording.
+func observedErrorHandler(c *fiber.Ctx, err error) error {
+	herr := errorHandler(c, err)
+	finishRequest(c)
+	return herr
 }
