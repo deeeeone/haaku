@@ -1,6 +1,6 @@
 .PHONY: help build bin frontend embed-stub dev-backend dev-frontend fmt vet test test-go test-web lint lint-web \
-	tidy run compose-up compose-down pg-up pg-down pg-status test-db clean \
-	migrate-create migrate-validate migrate-status migrate-up
+	tidy run compose-up compose-down pg-up pg-down pg-status test-db \
+	backup backup-list migrate-create migrate-validate migrate-status migrate-up clean
 
 # pnpm is expected on PATH (the frontend is a pnpm workspace). Override for a
 # checkout that keeps its own toolchain, e.g. make frontend PNPM=/opt/node/bin/pnpm
@@ -118,6 +118,18 @@ pg-down: ## Stop the throwaway PostgreSQL
 
 pg-status: ## Show throwaway PostgreSQL status
 	./scripts/dev-pg.sh status
+
+# --- Backups (issue #16) ---
+#
+# One-shot backup commands. They need DATABASE_URL and pg_dump/pg_restore on the
+# host; the destination is $TKILLER_BACKUP_DIR (default ./backups). See
+# docs/architecture/backups.md.
+
+backup: embed-stub ## Take a manual database backup and exit (needs DATABASE_URL)
+	TMDB_API_TOKEN=dummy go run ./cmd/api --backup
+
+backup-list: embed-stub ## List database backups and exit (needs DATABASE_URL)
+	TMDB_API_TOKEN=dummy go run ./cmd/api --backup-list
 
 # --- Housekeeping ---
 
