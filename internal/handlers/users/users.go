@@ -31,6 +31,7 @@ func registerOpenAPIRoutes() {
 		{Method: "GET", Path: "/v1/users/me/settings", Summary: "Get user settings", Tags: []string{"Users"}, Auth: "required", StatusCodes: map[int]string{200: "Settings", 401: "Unauthorized"}},
 		{Method: "PUT", Path: "/v1/users/me/settings", Summary: "Update user settings", Tags: []string{"Users"}, Auth: "required", StatusCodes: map[int]string{200: "Updated settings", 400: "Invalid request", 401: "Unauthorized"}},
 		{Method: "DELETE", Path: "/v1/users/me", Summary: "Delete account (deletes Clerk user; local data wiped)", Tags: []string{"Users"}, Auth: "required", StatusCodes: map[int]string{204: "Deletion scheduled", 401: "Unauthorized"}},
+		{Method: "GET", Path: "/v1/users/me/export", Summary: "Export the caller's complete data archive (streamed JSON, versioned)", Tags: []string{"Users"}, Auth: "required", StatusCodes: map[int]string{200: "Streamed JSON archive", 401: "Unauthorized", 503: "Database unavailable"}},
 		{Method: "POST", Path: "/v1/users/{id}/block", Summary: "Block a user", Tags: []string{"Users"}, Auth: "required", StatusCodes: map[int]string{204: "Blocked", 400: "Invalid request", 404: "User not found", 401: "Unauthorized"}},
 		{Method: "DELETE", Path: "/v1/users/{id}/block", Summary: "Unblock a user", Tags: []string{"Users"}, Auth: "required", StatusCodes: map[int]string{204: "Unblocked", 404: "Block not found", 401: "Unauthorized"}},
 	}
@@ -49,6 +50,7 @@ func RegisterRoutes(api fiber.Router) {
 	me.Put("/", auth.AuthRequired(), handleUpdateMe)
 	me.Get("/settings", auth.AuthRequired(), handleGetSettings)
 	me.Put("/settings", auth.AuthRequired(), handleUpdateSettings)
+	me.Get("/export", auth.AuthRequired(), handleExport)
 	me.Delete("/", auth.AuthRequired(), handleDeleteAccount)
 
 	// /users/:id routes (public, privacy-filtered)

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -247,10 +248,16 @@ func doWebhookPost(ep *database.WebhookEndpoint, body string) (int, string, int,
 
 	// HMAC signing with the recoverable (decrypted) secret, so consumers can
 	// verify with the plaintext shown once at creation/rotation.
-	secret, err := webhooks.DecryptSecret(ep.SecretHash)
+	secret, err := webhooks.DecryptSecret(ep.ID, ep.SecretHash)
 	if err != nil {
 		log.Printf("[webhook-worker] endpoint %d: %v", ep.ID, err)
 		return 0, "", 0, fmt.Errorf("cannot decrypt webhook secret: %w", err)
+	}
+	if secret == "" {
+		// An endpoint with no stored secret cannot be signed. Refuse rather than
+		// sign with an empty key (a row whose secret was never written).
+		log.Printf("[webhook-worker] endpoint %d has no stored secret", ep.ID)
+		return 0, "", 0, errors.New("webhook endpoint has no stored secret")
 	}
 	timestamp := time.Now().Unix()
 	sig := webhooks.GenerateHMAC(secret, timestamp, body)

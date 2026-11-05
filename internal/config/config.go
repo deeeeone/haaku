@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/joho/godotenv"
+
+	"trakt-api/internal/secret"
 )
 
 // Config holds all runtime configuration, loaded once from env vars.
@@ -83,6 +85,14 @@ func Load() (*Config, error) {
 
 	if cfg.TMDBAPIToken == "" {
 		return nil, fmt.Errorf("TMDB_API_TOKEN environment variable is required (TMDB v4 read token)")
+	}
+
+	// At-rest encryption root (issue #16 §2). The server must not run without a
+	// usable key: stored secrets would be unreadable, and a short key would be
+	// unsafe. Enforced here like TMDB_API_TOKEN so a misconfigured host fails
+	// fast at startup instead of at the first credential write.
+	if _, err := secret.RootKeyFromEnv(); err != nil {
+		return nil, err
 	}
 
 	return cfg, nil
