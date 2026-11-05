@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import type * as React from 'react'
-import { Eyebrow } from './eyebrow'
 import { cn } from '../../lib/utils'
+import { Eyebrow } from './eyebrow'
 
 export type HeroProps = {
   eyebrow?: string

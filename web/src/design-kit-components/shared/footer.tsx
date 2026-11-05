@@ -85,8 +85,7 @@ export function Footer({ className }: FooterProps) {
 
         <div className="mt-10 flex flex-col items-start justify-between gap-3 border-t border-sf-line pt-6 text-xs text-sf-ink-hint md:flex-row md:items-center">
           <p>
-            © {new Date().getFullYear()} Design Kit. For demonstration
-            only.
+            © {new Date().getFullYear()} Design Kit. For demonstration only.
           </p>
           <p className="font-mono">
             Tokens re-authored — not byte-identical to the source.

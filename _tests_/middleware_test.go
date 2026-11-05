@@ -46,8 +46,10 @@ func newMiddlewareTestApp() *fiber.App {
 		return c.SendString("ok")
 	})
 
+	// The public JSON /metrics endpoint was removed (issue #9): metrics now live
+	// on the separate Prometheus listener in internal/obs. This fixture stays a
+	// plain JSON route so the envelope tests below keep a stable shape to read.
 	app.Get("/test-metrics", func(c *fiber.Ctx) error {
-		httpapi.IncTotalRequests()
 		uptime := int64(3600)
 		return c.JSON(fiber.Map{
 			"uptime_seconds":  uptime,

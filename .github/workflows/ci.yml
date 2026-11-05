@@ -31,8 +31,6 @@ jobs:
         run: make test-go
 
       # TODO(T0.3): govulncheck, gitleaks secret scan, golangci-lint.
-      # TODO: a frontend job (`make lint-web`, `make test-web`, `make frontend`)
-      # once the web project builds in CI.
 
   # openapi.yaml is a generated artifact (see docs/architecture/api-versioning.md).
   # This job regenerates it and fails if the committed copy differs, then runs
@@ -60,3 +58,38 @@ jobs:
 
       - name: Check the route inventory (registry <-> spec)
         run: make api-check
+
+
+  # Independent of the Go job: the frontend is built and tested on its own, and
+  # must not gate (or be gated by) the backend. `pnpm test` also fails if the
+  # committed typed client has drifted from openapi.yaml.
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      # Reads the pinned version from web/package.json (`packageManager`).
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+
+      - name: Test
+        run: pnpm test

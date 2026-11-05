@@ -5,10 +5,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { api } from '@/api/fetch'
 import type {
+  Movie,
   SearchResponse,
   SearchResult,
   SearchType,
-  Movie,
   Show,
 } from '@/api/types'
 
@@ -18,7 +18,8 @@ export const searchKeys = {
   all: ['search'] as const,
   search: (params: SearchParams) => ['search', 'results', params] as const,
   exact: (q: string) => ['search', 'exact', q] as const,
-  lookup: (idType: string, id: string) => ['search', 'lookup', idType, id] as const,
+  lookup: (idType: string, id: string) =>
+    ['search', 'lookup', idType, id] as const,
   autocomplete: (q: string) => ['search', 'autocomplete', q] as const,
 }
 
@@ -43,7 +44,14 @@ export function useSearch(params: SearchParams | null) {
   return useQuery({
     queryKey: searchKeys.search(params ?? { q: '' }),
     queryFn: async () => {
-      if (!params?.q) return { data: [], page: 1, limit: 20, total: 0, total_pages: 0 } as SearchResponse
+      if (!params?.q)
+        return {
+          data: [],
+          page: 1,
+          limit: 20,
+          total: 0,
+          total_pages: 0,
+        } as SearchResponse
       const result = await api.get<SearchResult[]>('/v1/search', {
         q: params.q,
         type: params.type,
@@ -85,7 +93,8 @@ export function useExactSearch(q: string) {
 export function useLookup(idType: string, id: string) {
   return useQuery({
     queryKey: searchKeys.lookup(idType, id),
-    queryFn: () => api.get<SearchResult[]>('/v1/search/lookup', { id_type: idType, id }),
+    queryFn: () =>
+      api.get<SearchResult[]>('/v1/search/lookup', { id_type: idType, id }),
     enabled: !!idType && !!id,
     staleTime: 60_000,
   })

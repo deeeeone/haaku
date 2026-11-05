@@ -1,23 +1,23 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { useApi } from '@/api/client'
 import type {
-  WatchlistItem,
-  WatchlistResponse,
-  FavoriteItem,
-  FavoriteResponse,
-  RatingItem,
-  RatingResponse,
+  ActivityItem,
   CollectionItem,
   CollectionResponse,
+  FavoriteItem,
+  FavoriteResponse,
   HistoryItem,
   HistoryResponse,
+  Ids,
   PlaybackItem,
-  ActivityItem,
+  RatingItem,
+  RatingResponse,
   RecommendationItem,
   SyncActionPayload,
+  WatchlistItem,
   WatchlistReorderBody,
-  Ids,
+  WatchlistResponse,
 } from '@/api/types'
 
 // ============================================================
@@ -27,7 +27,7 @@ import type {
 export function buildSyncPayload(
   type: string,
   ids: Ids,
-  _rating?: number,
+  _rating?: number
 ): SyncActionPayload {
   switch (type) {
     case 'movie':
@@ -47,13 +47,25 @@ export function buildSyncPayload(
 // Watchlist hooks
 // ============================================================
 
-export function useWatchlist(params?: { page?: number; limit?: number; type?: string; sort?: string }) {
+export function useWatchlist(params?: {
+  page?: number
+  limit?: number
+  type?: string
+  sort?: string
+}) {
   const api = useApi()
 
   return useQuery({
     queryKey: ['watchlist', params],
     queryFn: async () => {
-      if (!api) return { data: [] as WatchlistItem[], page: 1, limit: 20, total: 0, total_pages: 0 }
+      if (!api)
+        return {
+          data: [] as WatchlistItem[],
+          page: 1,
+          limit: 20,
+          total: 0,
+          total_pages: 0,
+        }
       const searchParams: Record<string, string> = {}
       if (params?.page) searchParams.page = String(params.page)
       if (params?.limit) searchParams.limit = String(params.limit)
@@ -65,14 +77,26 @@ export function useWatchlist(params?: { page?: number; limit?: number; type?: st
       } as never)
       const data = res.data as unknown as unknown[] | undefined
       if (!data || !Array.isArray(data))
-        return { data: [] as WatchlistItem[], page: 1, limit: 20, total: 0, total_pages: 0 }
+        return {
+          data: [] as WatchlistItem[],
+          page: 1,
+          limit: 20,
+          total: 0,
+          total_pages: 0,
+        }
 
       const headers = res.response?.headers
       const total = Number(headers?.get('x-pagination-total') ?? data.length)
       const page = Number(headers?.get('x-pagination-page') ?? 1)
       const limit = Number(headers?.get('x-pagination-limit') ?? 20)
 
-      return { data: data as WatchlistItem[], page, limit, total, total_pages: Math.ceil(total / limit) } satisfies WatchlistResponse
+      return {
+        data: data as WatchlistItem[],
+        page,
+        limit,
+        total,
+        total_pages: Math.ceil(total / limit),
+      } satisfies WatchlistResponse
     },
     enabled: !!api,
   })
@@ -141,13 +165,26 @@ export function useReorderWatchlist() {
 // History hooks
 // ============================================================
 
-export function useHistory(params?: { page?: number; limit?: number; type?: string; start_at?: string; end_at?: string }) {
+export function useHistory(params?: {
+  page?: number
+  limit?: number
+  type?: string
+  start_at?: string
+  end_at?: string
+}) {
   const api = useApi()
 
   return useQuery({
     queryKey: ['history', params],
     queryFn: async () => {
-      if (!api) return { data: [] as HistoryItem[], page: 1, limit: 20, total: 0, total_pages: 0 }
+      if (!api)
+        return {
+          data: [] as HistoryItem[],
+          page: 1,
+          limit: 20,
+          total: 0,
+          total_pages: 0,
+        }
       const searchParams: Record<string, string> = {}
       if (params?.page) searchParams.page = String(params.page)
       if (params?.limit) searchParams.limit = String(params.limit)
@@ -160,14 +197,26 @@ export function useHistory(params?: { page?: number; limit?: number; type?: stri
       } as never)
       const data = res.data as unknown as unknown[] | undefined
       if (!data || !Array.isArray(data))
-        return { data: [] as HistoryItem[], page: 1, limit: 20, total: 0, total_pages: 0 }
+        return {
+          data: [] as HistoryItem[],
+          page: 1,
+          limit: 20,
+          total: 0,
+          total_pages: 0,
+        }
 
       const headers = res.response?.headers
       const total = Number(headers?.get('x-pagination-total') ?? data.length)
       const page = Number(headers?.get('x-pagination-page') ?? 1)
       const limit = Number(headers?.get('x-pagination-limit') ?? 20)
 
-      return { data: data as HistoryItem[], page, limit, total, total_pages: Math.ceil(total / limit) } satisfies HistoryResponse
+      return {
+        data: data as HistoryItem[],
+        page,
+        limit,
+        total,
+        total_pages: Math.ceil(total / limit),
+      } satisfies HistoryResponse
     },
     enabled: !!api,
   })
@@ -217,13 +266,24 @@ export function useRemoveFromHistory() {
 // Ratings hooks
 // ============================================================
 
-export function useRatings(params?: { page?: number; limit?: number; type?: string }) {
+export function useRatings(params?: {
+  page?: number
+  limit?: number
+  type?: string
+}) {
   const api = useApi()
 
   return useQuery({
     queryKey: ['ratings', params],
     queryFn: async () => {
-      if (!api) return { data: [] as RatingItem[], page: 1, limit: 20, total: 0, total_pages: 0 }
+      if (!api)
+        return {
+          data: [] as RatingItem[],
+          page: 1,
+          limit: 20,
+          total: 0,
+          total_pages: 0,
+        }
       const searchParams: Record<string, string> = {}
       if (params?.page) searchParams.page = String(params.page)
       if (params?.limit) searchParams.limit = String(params.limit)
@@ -234,14 +294,26 @@ export function useRatings(params?: { page?: number; limit?: number; type?: stri
       } as never)
       const data = res.data as unknown as unknown[] | undefined
       if (!data || !Array.isArray(data))
-        return { data: [] as RatingItem[], page: 1, limit: 20, total: 0, total_pages: 0 }
+        return {
+          data: [] as RatingItem[],
+          page: 1,
+          limit: 20,
+          total: 0,
+          total_pages: 0,
+        }
 
       const headers = res.response?.headers
       const total = Number(headers?.get('x-pagination-total') ?? data.length)
       const page = Number(headers?.get('x-pagination-page') ?? 1)
       const limit = Number(headers?.get('x-pagination-limit') ?? 20)
 
-      return { data: data as RatingItem[], page, limit, total, total_pages: Math.ceil(total / limit) } satisfies RatingResponse
+      return {
+        data: data as RatingItem[],
+        page,
+        limit,
+        total,
+        total_pages: Math.ceil(total / limit),
+      } satisfies RatingResponse
     },
     enabled: !!api,
   })
@@ -291,13 +363,24 @@ export function useRemoveRating() {
 // Collection hooks
 // ============================================================
 
-export function useCollection(params?: { page?: number; limit?: number; type?: string }) {
+export function useCollection(params?: {
+  page?: number
+  limit?: number
+  type?: string
+}) {
   const api = useApi()
 
   return useQuery({
     queryKey: ['collection', params],
     queryFn: async () => {
-      if (!api) return { data: [] as CollectionItem[], page: 1, limit: 20, total: 0, total_pages: 0 }
+      if (!api)
+        return {
+          data: [] as CollectionItem[],
+          page: 1,
+          limit: 20,
+          total: 0,
+          total_pages: 0,
+        }
       const searchParams: Record<string, string> = {}
       if (params?.page) searchParams.page = String(params.page)
       if (params?.limit) searchParams.limit = String(params.limit)
@@ -308,14 +391,26 @@ export function useCollection(params?: { page?: number; limit?: number; type?: s
       } as never)
       const data = res.data as unknown as unknown[] | undefined
       if (!data || !Array.isArray(data))
-        return { data: [] as CollectionItem[], page: 1, limit: 20, total: 0, total_pages: 0 }
+        return {
+          data: [] as CollectionItem[],
+          page: 1,
+          limit: 20,
+          total: 0,
+          total_pages: 0,
+        }
 
       const headers = res.response?.headers
       const total = Number(headers?.get('x-pagination-total') ?? data.length)
       const page = Number(headers?.get('x-pagination-page') ?? 1)
       const limit = Number(headers?.get('x-pagination-limit') ?? 20)
 
-      return { data: data as CollectionItem[], page, limit, total, total_pages: Math.ceil(total / limit) } satisfies CollectionResponse
+      return {
+        data: data as CollectionItem[],
+        page,
+        limit,
+        total,
+        total_pages: Math.ceil(total / limit),
+      } satisfies CollectionResponse
     },
     enabled: !!api,
   })
@@ -348,7 +443,9 @@ export function useRemoveFromCollection() {
   return useMutation({
     mutationFn: async (body: SyncActionPayload) => {
       if (!api) throw new Error('Not authenticated')
-      const res = await api.POST('/v1/sync/collection/remove', { body } as never)
+      const res = await api.POST('/v1/sync/collection/remove', {
+        body,
+      } as never)
       return res.data
     },
     onSuccess: () => {
@@ -365,13 +462,24 @@ export function useRemoveFromCollection() {
 // Favorites hooks
 // ============================================================
 
-export function useFavorites(params?: { page?: number; limit?: number; type?: string }) {
+export function useFavorites(params?: {
+  page?: number
+  limit?: number
+  type?: string
+}) {
   const api = useApi()
 
   return useQuery({
     queryKey: ['favorites', params],
     queryFn: async () => {
-      if (!api) return { data: [] as FavoriteItem[], page: 1, limit: 20, total: 0, total_pages: 0 }
+      if (!api)
+        return {
+          data: [] as FavoriteItem[],
+          page: 1,
+          limit: 20,
+          total: 0,
+          total_pages: 0,
+        }
       const searchParams: Record<string, string> = {}
       if (params?.page) searchParams.page = String(params.page)
       if (params?.limit) searchParams.limit = String(params.limit)
@@ -382,14 +490,26 @@ export function useFavorites(params?: { page?: number; limit?: number; type?: st
       } as never)
       const data = res.data as unknown as unknown[] | undefined
       if (!data || !Array.isArray(data))
-        return { data: [] as FavoriteItem[], page: 1, limit: 20, total: 0, total_pages: 0 }
+        return {
+          data: [] as FavoriteItem[],
+          page: 1,
+          limit: 20,
+          total: 0,
+          total_pages: 0,
+        }
 
       const headers = res.response?.headers
       const total = Number(headers?.get('x-pagination-total') ?? data.length)
       const page = Number(headers?.get('x-pagination-page') ?? 1)
       const limit = Number(headers?.get('x-pagination-limit') ?? 20)
 
-      return { data: data as FavoriteItem[], page, limit, total, total_pages: Math.ceil(total / limit) } satisfies FavoriteResponse
+      return {
+        data: data as FavoriteItem[],
+        page,
+        limit,
+        total,
+        total_pages: Math.ceil(total / limit),
+      } satisfies FavoriteResponse
     },
     enabled: !!api,
   })
@@ -473,7 +593,11 @@ export function usePlaybackEpisodes() {
 // Activity feed hooks
 // ============================================================
 
-export function useActivityFeed(params?: { page?: number; limit?: number; type?: string }) {
+export function useActivityFeed(params?: {
+  page?: number
+  limit?: number
+  type?: string
+}) {
   const api = useApi()
 
   return useQuery({

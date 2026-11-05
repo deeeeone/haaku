@@ -1,7 +1,7 @@
 import { ArrowRight } from 'lucide-react'
 import type * as React from 'react'
-import { Eyebrow } from './eyebrow'
 import { cn } from '../../lib/utils'
+import { Eyebrow } from './eyebrow'
 
 export type SectionHeadProps = {
   eyebrow?: string

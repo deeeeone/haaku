@@ -1,11 +1,11 @@
-import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { Page, Section } from '@/components/layout'
-import { Button, Banner, Badge } from '@/components/ui'
+import { useState } from 'react'
 import { useApi } from '@/api/client'
 import { useCreateSmartList, useMySmartLists } from '@/api/hooks/useLists'
+import type { SmartList, SmartListFilter } from '@/api/types/lists'
+import { Page, Section } from '@/components/layout'
 import { SmartListEditor } from '@/components/lists/SmartListEditor'
-import type { SmartListFilter, SmartList } from '@/api/types/lists'
+import { Badge, Banner, Button } from '@/components/ui'
 
 export const Route = createFileRoute('/lists/smart/new')({
   component: SmartListNewPage,
@@ -32,7 +32,6 @@ function SmartListNewPage() {
 
   return (
     <Page>
-
       <Section>
         <div className="mb-6">
           <h1 className="font-display text-2xl font-bold text-sf-ink">
@@ -51,10 +50,7 @@ function SmartListNewPage() {
         {smartLoading ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div
-                key={i}
-                className="glass h-32 animate-pulse rounded-sf-lg"
-              />
+              <div key={i} className="glass h-32 animate-pulse rounded-sf-lg" />
             ))}
           </div>
         ) : existingSmartLists && existingSmartLists.length > 0 ? (

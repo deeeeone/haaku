@@ -1,6 +1,6 @@
 import { Bookmark } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui'
+import { cn } from '@/lib/utils'
 
 export type WatchlistButtonProps = {
   isInWatchlist?: boolean
@@ -43,7 +43,7 @@ export function WatchlistButton({
         className={cn(
           sizeClasses[size],
           'transition-all',
-          isInWatchlist && 'fill-current',
+          isInWatchlist && 'fill-current'
         )}
       />
       <span className="hidden sm:inline">

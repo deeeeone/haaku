@@ -1,5 +1,5 @@
-import createClient from 'openapi-fetch'
 import { useAuth } from '@clerk/react'
+import createClient from 'openapi-fetch'
 import { toast } from 'sonner'
 import type { paths } from '@/api/generated/schema'
 
@@ -10,7 +10,7 @@ export type ApiClient = ReturnType<typeof createApiClient>
 
 export function createApiClient(getToken: () => Promise<string | null>) {
   const client = createClient<paths>({
-    baseUrl: import.meta.env.VITE_API_URL,
+    baseUrl: import.meta.env.VITE_API_URL || '/',
   })
 
   // Inject Clerk auth token on every request

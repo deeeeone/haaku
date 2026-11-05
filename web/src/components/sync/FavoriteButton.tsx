@@ -1,7 +1,7 @@
-import { Heart } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { cn } from '@/lib/utils'
+import { Heart } from 'lucide-react'
 import { Button } from '@/components/ui'
+import { cn } from '@/lib/utils'
 
 export type FavoriteButtonProps = {
   isFavorited?: boolean
@@ -49,7 +49,7 @@ export function FavoriteButton({
           className={cn(
             sizeClasses[size],
             'transition-colors',
-            isFavorited && 'fill-current',
+            isFavorited && 'fill-current'
           )}
         />
       </motion.span>

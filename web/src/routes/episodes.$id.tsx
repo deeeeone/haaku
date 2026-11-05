@@ -1,16 +1,16 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { Play, Star, Tv, Users } from 'lucide-react'
 import { useEpisode, useEpisodeStats } from '@/api/hooks/useEpisodes'
 import { Page, Section } from '@/components/layout'
 import {
-  Hero,
-  DetailStat,
-  InfoPanel,
-  StatCard,
   Button,
-  ShimmerText,
+  DetailStat,
   FactRow,
+  Hero,
+  InfoPanel,
+  ShimmerText,
+  StatCard,
 } from '@/components/ui'
-import { Star, Tv, Users, Play } from 'lucide-react'
 import { formatDate, formatRuntime } from '@/lib/utils'
 
 export const Route = createFileRoute('/episodes/$id')({
@@ -53,7 +53,6 @@ function EpisodeDetailPage() {
 
   return (
     <Page>
-
       <Hero
         eyebrow={`Season ${episode.season} · Episode ${episode.number}`}
         title={episode.title}
@@ -71,18 +70,33 @@ function EpisodeDetailPage() {
         {episode.first_aired && (
           <DetailStat label="Aired" value={formatDate(episode.first_aired)} />
         )}
-        <DetailStat label="Season / Episode" value={`S${episode.season} E${episode.number}`} />
+        <DetailStat
+          label="Season / Episode"
+          value={`S${episode.season} E${episode.number}`}
+        />
       </div>
 
       {episode.overview && (
         <Section title="Overview">
           <InfoPanel>
-            <p className="text-sf-ink-muted leading-relaxed">{episode.overview}</p>
+            <p className="text-sf-ink-muted leading-relaxed">
+              {episode.overview}
+            </p>
             <div className="mt-4 grid grid-cols-1 gap-1 sm:grid-cols-2">
               <FactRow label="Season" value={episode.season} />
               <FactRow label="Episode" value={episode.number} />
-              {episode.first_aired && <FactRow label="Air Date" value={formatDate(episode.first_aired)} />}
-              {episode.runtime && <FactRow label="Runtime" value={formatRuntime(episode.runtime)} />}
+              {episode.first_aired && (
+                <FactRow
+                  label="Air Date"
+                  value={formatDate(episode.first_aired)}
+                />
+              )}
+              {episode.runtime && (
+                <FactRow
+                  label="Runtime"
+                  value={formatRuntime(episode.runtime)}
+                />
+              )}
             </div>
           </InfoPanel>
         </Section>

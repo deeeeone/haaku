@@ -1,30 +1,30 @@
-import { useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
 import {
   Bell,
-  Heart,
-  MessageCircle,
-  UserPlus,
-  Star,
-  ListPlus,
-  Tv,
   Film,
+  Heart,
+  ListPlus,
+  MessageCircle,
   Save,
+  Star,
+  Tv,
+  UserPlus,
 } from 'lucide-react'
+import { useState } from 'react'
+import { toast } from 'sonner'
 import { useApi } from '@/api/client'
 import {
+  Banner,
   Button,
   Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-  SectionHead,
   Label,
-  Banner,
+  SectionHead,
 } from '@/components/ui'
 import { cn } from '@/lib/utils'
 
@@ -99,7 +99,7 @@ function NotificationsPage() {
     queryFn: async () => {
       if (!api) return null
       const res = await api.GET('/v1/notifications/settings')
-      return (res.data as unknown) as Record<string, unknown> | null
+      return res.data as unknown as Record<string, unknown> | null
     },
     enabled: !!api,
   })
@@ -187,9 +187,7 @@ function NotificationsPage() {
                 onClick={() => handleToggle(nt.key)}
                 className={cn(
                   'relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors',
-                  (toggles[nt.key] ?? true)
-                    ? 'bg-sf-accent'
-                    : 'bg-sf-panel-2'
+                  (toggles[nt.key] ?? true) ? 'bg-sf-accent' : 'bg-sf-panel-2'
                 )}
               >
                 <span

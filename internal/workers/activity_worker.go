@@ -8,11 +8,15 @@ import (
 	"time"
 
 	"trakt-api/internal/database"
+	"trakt-api/internal/obs"
 	"trakt-api/redis"
 
 	goredis "github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
+
+// activityWorkerMetrics instruments the activity worker for the metrics listener.
+var activityWorkerMetrics = obs.NewWorker("activity_worker")
 
 // StartActivityWorker launches a background goroutine that consumes events
 // from the Redis Stream "events" and transforms them into activity_feed rows
@@ -27,6 +31,7 @@ func StartActivityWorker() {
 		time.Sleep(2 * time.Second)
 
 		for {
+			activityWorkerMetrics.Heartbeat()
 			processActivityEvents()
 			time.Sleep(500 * time.Millisecond)
 		}
@@ -139,6 +144,7 @@ func processMessage(db *gorm.DB, msg goredis.XMessage) {
 	followers, err := getFollowers(db, actorID)
 	if err != nil {
 		log.Printf("[activity-worker] failed to get followers for %s: %v", actorID, err)
+		activityWorkerMetrics.Failed(1)
 		return
 	}
 
@@ -161,6 +167,7 @@ func processMessage(db *gorm.DB, msg goredis.XMessage) {
 	if len(followers) > 0 {
 		log.Printf("[activity-worker] fanned out %s from %s to %d followers", eventType, actorID, len(followers))
 	}
+	activityWorkerMetrics.Processed(1)
 }
 
 // getFollowers returns the list of user IDs who follow the given actor.

@@ -1,19 +1,15 @@
 package webhooks
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"net/url"
-	"os"
 	"time"
 
 	"trakt-api/internal/auth"
@@ -209,75 +205,6 @@ func getDB() (*gorm.DB, error) {
 	return db, nil
 }
 
-// SecretKeyFromEnv returns the AES-256 key used to encrypt webhook secrets at
-// rest. Required: WEBHOOK_SECRET_KEY (32 bytes, hex-encoded).
-func SecretKeyFromEnv() ([]byte, error) {
-	raw := os.Getenv("WEBHOOK_SECRET_KEY")
-	if raw == "" {
-		return nil, errors.New("WEBHOOK_SECRET_KEY is not set")
-	}
-	key, err := hex.DecodeString(raw)
-	if err != nil {
-		return nil, fmt.Errorf("WEBHOOK_SECRET_KEY must be hex-encoded: %w", err)
-	}
-	if len(key) != 32 {
-		return nil, errors.New("WEBHOOK_SECRET_KEY must be 32 bytes (64 hex chars)")
-	}
-	return key, nil
-}
-
-// EncryptSecret encrypts a webhook secret at rest with AES-256-GCM. Output is
-// base64(nonce || ciphertext). The stored value must be recoverable so the
-// delivery worker can sign requests with the plaintext consumers verify.
-func EncryptSecret(secret string) (string, error) {
-	key, err := SecretKeyFromEnv()
-	if err != nil {
-		return "", err
-	}
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return "", err
-	}
-	aead, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", err
-	}
-	nonce := make([]byte, aead.NonceSize())
-	if _, err := rand.Read(nonce); err != nil {
-		return "", err
-	}
-	return base64.StdEncoding.EncodeToString(aead.Seal(nonce, nonce, []byte(secret), nil)), nil
-}
-
-// DecryptSecret reverses EncryptSecret.
-func DecryptSecret(stored string) (string, error) {
-	key, err := SecretKeyFromEnv()
-	if err != nil {
-		return "", err
-	}
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return "", err
-	}
-	aead, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", err
-	}
-	raw, err := base64.StdEncoding.DecodeString(stored)
-	if err != nil {
-		return "", fmt.Errorf("webhook secret is not a valid encrypted blob: %w", err)
-	}
-	if len(raw) < aead.NonceSize() {
-		return "", errors.New("webhook secret blob is too short")
-	}
-	nonce, ct := raw[:aead.NonceSize()], raw[aead.NonceSize():]
-	pt, err := aead.Open(nil, nonce, ct, nil)
-	if err != nil {
-		return "", fmt.Errorf("webhook secret decryption failed (key changed or legacy value): %w", err)
-	}
-	return string(pt), nil
-}
-
 func generateSecret() (string, error) {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
@@ -435,22 +362,30 @@ func handleCreateEndpoint(c *fiber.Ctx) error {
 		return response.ServiceUnavailable(c, "database unavailable")
 	}
 
-	encSecret, err := EncryptSecret(secret)
-	if err != nil {
-		return response.InternalError(c, "failed to store webhook secret securely")
-	}
-
 	ep := database.WebhookEndpoint{
-		UserID:     uid,
-		URL:        req.URL,
-		Events:     database.StringSlice(req.Events),
-		SecretHash: encSecret,
-		Active:     true,
-		CreatedAt:  time.Now().UTC(),
-		UpdatedAt:  time.Now().UTC(),
+		UserID:    uid,
+		URL:       req.URL,
+		Events:    database.StringSlice(req.Events),
+		Active:    true,
+		CreatedAt: time.Now().UTC(),
+		UpdatedAt: time.Now().UTC(),
 	}
 
-	if err := db.Create(&ep).Error; err != nil {
+	// The stored secret is AAD-bound to the endpoint's row id, but the id is
+	// assigned by the database on insert, so insert first and encrypt the secret
+	// for that id inside the same transaction.
+	err = db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&ep).Error; err != nil {
+			return err
+		}
+		encSecret, err := EncryptSecret(ep.ID, secret)
+		if err != nil {
+			return err
+		}
+		ep.SecretHash = encSecret
+		return tx.Model(&ep).Update("secret_hash", encSecret).Error
+	})
+	if err != nil {
 		return response.InternalError(c, "failed to create webhook endpoint")
 	}
 
@@ -582,7 +517,7 @@ func handleRotateSecret(c *fiber.Ctx) error {
 		return response.InternalError(c, "failed to generate secret")
 	}
 
-	encSecret, err := EncryptSecret(secret)
+	encSecret, err := EncryptSecret(ep.ID, secret)
 	if err != nil {
 		return response.InternalError(c, "failed to store webhook secret securely")
 	}

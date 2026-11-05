@@ -4,12 +4,16 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
+	"trakt-api/internal/backup"
 	"trakt-api/internal/config"
 	"trakt-api/internal/database"
 	"trakt-api/internal/httpapi"
@@ -33,6 +37,10 @@ func main() {
 func run() int {
 	migrateOnly := flag.Bool("migrate-only", false,
 		"apply pending schema migrations and exit (equivalent to "+mode.EnvVar+"=migrate)")
+	backupNow := flag.Bool("backup", false, "take a manual database backup and exit")
+	backupList := flag.Bool("backup-list", false, "list database backups and exit")
+	backupRestore := flag.String("backup-restore", "", "restore the backup with this id and exit")
+	backupDir := flag.String("backup-dir", "", "backup destination directory (default $TKILLER_BACKUP_DIR or ./backups)")
 	flag.Parse()
 
 	serverMode, err := mode.FromEnv()
@@ -73,12 +81,34 @@ func run() int {
 		}
 	}
 
+	// Backup commands (issue #16): one-shot, then exit. They use the database and
+	// the backup destination and never start a listener.
+	if *backupNow || *backupList || *backupRestore != "" {
+		return runBackupCommand(logger, cfg, backupCommand{
+			take:    *backupNow,
+			list:    *backupList,
+			restore: *backupRestore,
+			dir:     *backupDir,
+		})
+	}
+
 	// Migrate-and-exit mode stops here: no Redis, no workers, no listener.
 	//
 	// Only this mode and the API mode may change the schema, and the API applies
 	// migrations before it serves; a worker never does (see internal/mode).
 	if serverMode == mode.Migrate {
 		return migrate(logger)
+	}
+
+	// API mode owns the schema: apply every pending migration before any worker
+	// or listener starts, so the tables are the ones the SQL migrations define
+	// and never the ones GORM's AutoMigrate used to invent. The runner is the
+	// same one `--migrate-only`/`TKILLER_MODE=migrate` uses, so there is a
+	// single, tested path; it is a fast no-op once the schema is current.
+	if serverMode.MayMigrate() && cfg.DatabaseURL != "" {
+		if code := migrate(logger); code != 0 {
+			return code
+		}
 	}
 
 	// Redis (T0.7 + T0.8: circuit breaker, single-flight, version counters)
@@ -183,4 +213,134 @@ func recoverFromPanic(logger *slog.Logger, context string) {
 	if r := recover(); r != nil {
 		logger.Error("panic recovered", "context", context, "panic", r)
 	}
+}
+
+// backupCommand is the parsed one-shot backup flags.
+type backupCommand struct {
+	take    bool
+	list    bool
+	restore string
+	dir     string
+}
+
+// runBackupCommand builds the backup service and runs one command: take a manual
+// backup, list backups, or restore one in full. It reports the outcome as an
+// exit code. Configuration is env-only, like the rest of the server.
+func runBackupCommand(logger *slog.Logger, cfg *config.Config, cmd backupCommand) int {
+	ctx := context.Background()
+	if cfg.DatabaseURL == "" {
+		logger.Error("backup commands need DATABASE_URL")
+		return 1
+	}
+	dir := cmd.dir
+	if dir == "" {
+		dir = envDefault("TKILLER_BACKUP_DIR", "./backups")
+	}
+	destination, err := backup.NewLocalDestination(dir)
+	if err != nil {
+		logger.Error("backup destination unavailable", "error", err, "dir", dir)
+		return 1
+	}
+	locker, err := backup.NewLocalLocker(dir)
+	if err != nil {
+		logger.Error("backup lock unavailable", "error", err)
+		return 1
+	}
+	requireTables := splitCSV(envDefault("TKILLER_BACKUP_REQUIRE_TABLES", "users"))
+	dumper, err := backup.NewPostgresDumper(ctx, cfg.DatabaseURL, requireTables)
+	if err != nil {
+		logger.Error("backup needs pg_dump and pg_restore on this host", "error", err)
+		return 1
+	}
+	restorer, err := backup.NewPostgresRestorer(ctx, cfg.DatabaseURL)
+	if err != nil {
+		logger.Error("restore needs pg_restore on this host", "error", err)
+		return 1
+	}
+	service, err := backup.New(backup.Options{
+		Destination:   destination,
+		Locker:        locker,
+		Dumper:        dumper,
+		Restorer:      restorer,
+		ServerID:      envDefault("TKILLER_SERVER_ID", backup.DefaultServerID),
+		AppVersion:    envDefault("TKILLER_VERSION", "dev"),
+		Keep:          envInt("TKILLER_BACKUP_KEEP", backup.DefaultKeep),
+		RequireTables: requireTables,
+		Logger:        logger,
+	})
+	if err != nil {
+		logger.Error("backup service unavailable", "error", err)
+		return 1
+	}
+
+	switch {
+	case cmd.list:
+		listing, err := service.List(ctx)
+		if err != nil {
+			logger.Error("listing backups failed", "error", err)
+			return 1
+		}
+		printListing(listing)
+		return 0
+	case cmd.restore != "":
+		result, err := service.Restore(ctx, cmd.restore)
+		if err != nil {
+			logger.Error("restore failed", "error", err, "id", cmd.restore)
+			return 1
+		}
+		logger.Info("restore complete", "id", result.ID, "bytes", result.Bytes, "verified", result.Verified)
+		return 0
+	default:
+		summary, err := service.Backup(ctx, backup.KindManual)
+		if err != nil {
+			logger.Error("backup failed", "error", err)
+			return 1
+		}
+		logger.Info("backup complete", "id", summary.ID, "objects", len(summary.Objects), "bytes", summary.SizeBytes, "location", summary.Location)
+		return 0
+	}
+}
+
+// printListing writes a listing as tab-separated lines, for a human at a shell.
+func printListing(listing backup.Listing) {
+	fmt.Printf("destination: %s\n", listing.Destination)
+	fmt.Printf("server: %s  keep: %d  complete: %d  incomplete: %d  unreadable: %d\n",
+		listing.ServerID, listing.Keep, listing.Complete, listing.Incomplete, listing.Unreadable)
+	for _, b := range listing.Backups {
+		completed := ""
+		if b.CompletedAt != nil {
+			completed = b.CompletedAt.UTC().Format(time.RFC3339)
+		}
+		fmt.Printf("%s	%s	%s	%d	%s\n", b.ID, b.Kind, b.Status, b.SizeBytes, completed)
+	}
+}
+
+func envDefault(key, fallback string) string {
+	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
+		return v
+	}
+	return fallback
+}
+
+func envInt(key string, fallback int) int {
+	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			return n
+		}
+	}
+	return fallback
+}
+
+func splitCSV(s string) []string {
+	if strings.TrimSpace(s) == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if p = strings.TrimSpace(p); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }

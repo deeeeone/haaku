@@ -1,18 +1,22 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { motion } from 'framer-motion'
-import { Play, Clock, Star, Bookmark, Heart } from 'lucide-react'
-import { Page, Section, ScrollRow } from '@/components/layout'
-import { SectionHead, PosterCard } from '@/components/ui'
+import { Bookmark, Clock, Heart, Play, Star } from 'lucide-react'
 import {
   useActivityFeed,
-  usePlaybackMovies,
   usePlaybackEpisodes,
+  usePlaybackMovies,
   useRecommendationsMovies,
   useRecommendationsShows,
   useSocialRecommendationsMovies,
   useSocialRecommendationsShows,
 } from '@/api/hooks'
-import type { PlaybackItem, RecommendationItem, ActivityItem } from '@/api/types'
+import type {
+  ActivityItem,
+  PlaybackItem,
+  RecommendationItem,
+} from '@/api/types'
+import { Page, ScrollRow, Section } from '@/components/layout'
+import { PosterCard, SectionHead } from '@/components/ui'
 import { formatDate } from '@/lib/utils'
 
 export const Route = createFileRoute('/')({
@@ -53,7 +57,6 @@ function HomePage() {
 
   return (
     <Page>
-
       {/* Continue Watching */}
       {continueWatching.length > 0 && (
         <Section>
@@ -64,8 +67,8 @@ function HomePage() {
                 key={`${item.type}-${item.movie?.ids.trakt ?? item.episode?.ids.trakt}`}
                 title={
                   item.type === 'episode'
-                    ? item.show?.title ?? item.episode?.title ?? 'Unknown'
-                    : item.movie?.title ?? 'Unknown'
+                    ? (item.show?.title ?? item.episode?.title ?? 'Unknown')
+                    : (item.movie?.title ?? 'Unknown')
                 }
                 meta={
                   item.type === 'episode'
@@ -172,13 +175,21 @@ function HomePage() {
 }
 
 function getActivityIcon(action: string) {
-  if (action.includes('watch') || action.includes('scrobble') || action.includes('checkin'))
+  if (
+    action.includes('watch') ||
+    action.includes('scrobble') ||
+    action.includes('checkin')
+  )
     return <Play className="size-3.5" />
   if (action.includes('rating') || action.includes('rate'))
     return <Star className="size-3.5" />
   if (action.includes('watchlist') || action.includes('list'))
     return <Bookmark className="size-3.5" />
-  if (action.includes('favorite') || action.includes('like') || action.includes('recommend'))
+  if (
+    action.includes('favorite') ||
+    action.includes('like') ||
+    action.includes('recommend')
+  )
     return <Heart className="size-3.5" />
   return <Clock className="size-3.5" />
 }
@@ -193,7 +204,10 @@ function ActivityRow({ item }: { item: ActivityItem }) {
     actionText = `${userName} watched ${mediaTitle}`
   } else if (item.action.includes('rating') || item.action.includes('rate')) {
     actionText = `${userName} rated ${mediaTitle} ${item.rating}/10`
-  } else if (item.action.includes('watchlist') || item.action.includes('list')) {
+  } else if (
+    item.action.includes('watchlist') ||
+    item.action.includes('list')
+  ) {
     actionText = `${userName} added ${mediaTitle} to their watchlist`
   } else if (item.action.includes('favorite')) {
     actionText = `${userName} favorited ${mediaTitle}`

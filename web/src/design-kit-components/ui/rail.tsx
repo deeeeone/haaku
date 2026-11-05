@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import * as React from 'react'
-import { SectionHead } from './section-head'
 import { cn } from '../../lib/utils'
+import { SectionHead } from './section-head'
 
 export type RailProps = {
   title?: React.ReactNode

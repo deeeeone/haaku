@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion'
 import { Play, RotateCcw } from 'lucide-react'
 import * as React from 'react'
-import { WatchProgress } from '../shared/watch-progress'
 import { cn } from '../../lib/utils'
+import { WatchProgress } from '../shared/watch-progress'
 
 export type PosterCardProps = Omit<
   React.ComponentPropsWithoutRef<'div'>,

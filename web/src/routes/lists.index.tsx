@@ -1,34 +1,36 @@
-import { useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { Plus, ListPlus } from 'lucide-react'
-import { Page, Section } from '@/components/layout'
-import { SectionHead, Button, FilterPill, Input, Label } from '@/components/ui'
+import { ListPlus, Plus } from 'lucide-react'
+import { useState } from 'react'
+import { useApi } from '@/api/client'
 import {
+  useCollaborations,
+  useCreateList,
+  useDeleteList,
+  useMyLists,
+  useUpdateList,
+} from '@/api/hooks/useLists'
+import type { ListPrivacy, TraktList } from '@/api/types/lists'
+import { Page, Section } from '@/components/layout'
+import { ListCard } from '@/components/lists/ListCard'
+import {
+  Button,
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@/components/ui'
-import {
+  DialogHeader,
+  DialogTitle,
+  EmptyState,
+  FilterPill,
+  Input,
+  Label,
+  SectionHead,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui'
-import { EmptyState } from '@/components/ui'
-import { ListCard } from '@/components/lists/ListCard'
-import { useApi } from '@/api/client'
-import {
-  useMyLists,
-  useCollaborations,
-  useCreateList,
-  useUpdateList,
-  useDeleteList,
-} from '@/api/hooks/useLists'
-import type { TraktList, ListPrivacy } from '@/api/types/lists'
 
 export const Route = createFileRoute('/lists/')({
   component: MyListsPage,
@@ -37,7 +39,8 @@ export const Route = createFileRoute('/lists/')({
 function MyListsPage() {
   const api = useApi()
   const { data: myLists, isLoading: myLoading } = useMyLists(api)
-  const { data: collaborations, isLoading: collabLoading } = useCollaborations(api)
+  const { data: collaborations, isLoading: collabLoading } =
+    useCollaborations(api)
   const createList = useCreateList(api)
   const updateList = useUpdateList(api)
   const deleteList = useDeleteList(api)
@@ -64,7 +67,11 @@ function MyListsPage() {
   const handleCreate = () => {
     if (!formName.trim()) return
     createList.mutate(
-      { name: formName.trim(), description: formDesc.trim() || undefined, privacy: formPrivacy },
+      {
+        name: formName.trim(),
+        description: formDesc.trim() || undefined,
+        privacy: formPrivacy,
+      },
       {
         onSuccess: () => {
           setCreateOpen(false)
@@ -79,7 +86,14 @@ function MyListsPage() {
   const handleEdit = () => {
     if (!editList || !formName.trim()) return
     updateList.mutate(
-      { id: editList.ids.trakt, payload: { name: formName.trim(), description: formDesc.trim() || undefined, privacy: formPrivacy } },
+      {
+        id: editList.ids.trakt,
+        payload: {
+          name: formName.trim(),
+          description: formDesc.trim() || undefined,
+          privacy: formPrivacy,
+        },
+      },
       {
         onSuccess: () => {
           setEditList(null)
@@ -116,7 +130,6 @@ function MyListsPage() {
 
   return (
     <Page>
-
       <div className="flex items-center justify-between">
         <SectionHead title="My Lists" />
         <div className="flex gap-2">
@@ -173,7 +186,7 @@ function MyListsPage() {
                 ? "You haven't created any lists yet."
                 : filter === 'collaborated'
                   ? "You're not collaborating on any lists."
-                  : "No lists yet. Create one to get started."
+                  : 'No lists yet. Create one to get started.'
             }
             description="Organize your favorite movies and shows into shareable lists."
             action={
@@ -208,7 +221,10 @@ function MyListsPage() {
             </DialogDescription>
           </DialogHeader>
           <form
-            onSubmit={(e) => { e.preventDefault(); handleCreate() }}
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleCreate()
+            }}
             className="space-y-4 mt-2"
           >
             <div>
@@ -251,10 +267,17 @@ function MyListsPage() {
               </Select>
             </div>
             <DialogFooter>
-              <Button variant="ghost" type="button" onClick={() => setCreateOpen(false)}>
+              <Button
+                variant="ghost"
+                type="button"
+                onClick={() => setCreateOpen(false)}
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={!formName.trim() || createList.isPending}>
+              <Button
+                type="submit"
+                disabled={!formName.trim() || createList.isPending}
+              >
                 {createList.isPending ? 'Creating...' : 'Create List'}
               </Button>
             </DialogFooter>
@@ -270,7 +293,10 @@ function MyListsPage() {
             <DialogDescription>Update your list details.</DialogDescription>
           </DialogHeader>
           <form
-            onSubmit={(e) => { e.preventDefault(); handleEdit() }}
+            onSubmit={(e) => {
+              e.preventDefault()
+              handleEdit()
+            }}
             className="space-y-4 mt-2"
           >
             <div>
@@ -311,10 +337,17 @@ function MyListsPage() {
               </Select>
             </div>
             <DialogFooter>
-              <Button variant="ghost" type="button" onClick={() => setEditList(null)}>
+              <Button
+                variant="ghost"
+                type="button"
+                onClick={() => setEditList(null)}
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={!formName.trim() || updateList.isPending}>
+              <Button
+                type="submit"
+                disabled={!formName.trim() || updateList.isPending}
+              >
                 {updateList.isPending ? 'Saving...' : 'Save'}
               </Button>
             </DialogFooter>
@@ -323,12 +356,16 @@ function MyListsPage() {
       </Dialog>
 
       {/* Delete Confirmation Dialog */}
-      <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+      <Dialog
+        open={!!deleteConfirm}
+        onOpenChange={() => setDeleteConfirm(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete List</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{deleteConfirm?.name}"? This cannot be undone.
+              Are you sure you want to delete "{deleteConfirm?.name}"? This
+              cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

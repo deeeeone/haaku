@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -15,6 +16,7 @@ import (
 
 	"trakt-api/internal/database"
 	"trakt-api/internal/handlers/webhooks"
+	"trakt-api/internal/obs"
 	"trakt-api/redis"
 
 	goredis "github.com/redis/go-redis/v9"
@@ -32,6 +34,11 @@ const (
 	consumerName           = "webhook-worker-1"
 )
 
+// webhookWorkerMetrics instruments this worker for the metrics listener: a
+// heartbeat so a dead worker is detectable (the gauge stops advancing) plus
+// delivery outcomes.
+var webhookWorkerMetrics = obs.NewWorker("webhook_worker")
+
 // StartWebhookWorker launches a background goroutine that consumes events
 // from the Redis Stream "events" and delivers them to matching webhook endpoints.
 //
@@ -43,6 +50,7 @@ func StartWebhookWorker() {
 		setupConsumerGroup()
 
 		for {
+			webhookWorkerMetrics.Heartbeat()
 			processWebhookEvents()
 			time.Sleep(500 * time.Millisecond)
 		}
@@ -179,6 +187,7 @@ func deliverWithRetries(db *gorm.DB, ep *database.WebhookEndpoint, eventID, even
 
 		if err == nil && code >= 200 && code < 300 {
 			recordDelivery(db, ep.ID, eventID, eventType, "success", attempt, &code, nil, &durMs)
+			webhookWorkerMetrics.Processed(1)
 			return
 		}
 
@@ -200,6 +209,7 @@ func deliverWithRetries(db *gorm.DB, ep *database.WebhookEndpoint, eventID, even
 
 	// All attempts exhausted — mark as failed.
 	recordDelivery(db, ep.ID, eventID, eventType, "failed", maxAttempts, &lastCode, &lastBody, &lastDuration)
+	webhookWorkerMetrics.Failed(1)
 
 	// Check consecutive failures.
 	consecFailures := countConsecutiveFailures(db, ep.ID)
@@ -238,10 +248,16 @@ func doWebhookPost(ep *database.WebhookEndpoint, body string) (int, string, int,
 
 	// HMAC signing with the recoverable (decrypted) secret, so consumers can
 	// verify with the plaintext shown once at creation/rotation.
-	secret, err := webhooks.DecryptSecret(ep.SecretHash)
+	secret, err := webhooks.DecryptSecret(ep.ID, ep.SecretHash)
 	if err != nil {
 		log.Printf("[webhook-worker] endpoint %d: %v", ep.ID, err)
 		return 0, "", 0, fmt.Errorf("cannot decrypt webhook secret: %w", err)
+	}
+	if secret == "" {
+		// An endpoint with no stored secret cannot be signed. Refuse rather than
+		// sign with an empty key (a row whose secret was never written).
+		log.Printf("[webhook-worker] endpoint %d has no stored secret", ep.ID)
+		return 0, "", 0, errors.New("webhook endpoint has no stored secret")
 	}
 	timestamp := time.Now().Unix()
 	sig := webhooks.GenerateHMAC(secret, timestamp, body)

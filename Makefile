@@ -1,9 +1,15 @@
-.PHONY: help build bin frontend embed-stub dev-backend dev-frontend fmt vet test test-go test-web lint lint-web \
-	tidy run compose-up compose-down pg-up pg-down pg-status test-db clean api-spec api-check
+.PHONY: help build bin frontend api-client embed-stub dev-backend dev-frontend fmt vet test test-go test-web lint lint-web \
+	tidy run compose-up compose-down pg-up pg-down pg-status test-db \
+	backup backup-list migrate-create migrate-validate migrate-status migrate-up \
+	api-spec api-check clean
 
 # pnpm is expected on PATH (the frontend is a pnpm workspace). Override for a
 # checkout that keeps its own toolchain, e.g. make frontend PNPM=/opt/node/bin/pnpm
 PNPM ?= pnpm
+
+# Goose, pinned so every machine and CI apply the same tool to the same files.
+GOOSE     := go run github.com/pressly/goose/v3/cmd/goose@v3.27.1
+GOOSE_DIR := migrations/sql
 
 # Where the bundled frontend build lands, and what gets embedded into the binary
 # (see web/embed.go).
@@ -17,6 +23,12 @@ help: ## Show this help
 
 frontend: ## Install frontend dependencies and build the UI into web/dist
 	cd web && $(PNPM) install --frozen-lockfile && $(PNPM) run build
+
+# The typed client (web/src/api/generated/schema.ts) is generated from the
+# contract and committed, so a normal build does not need this. Re-run it after
+# changing openapi.yaml; CI checks it stays in step (see the frontend job).
+api-client: ## Regenerate the typed API client from openapi.yaml
+	cd web && $(PNPM) run api:generate
 
 # The Go binary embeds web/dist, so every Go build and test needs the directory
 # to exist. Tests never serve it, so a placeholder is enough; `make frontend`
@@ -73,6 +85,33 @@ test-db: embed-stub ## Run tests against a real PostgreSQL (see scripts/dev-pg.s
 	@test -n "$$DATABASE_URL" || { echo 'DATABASE_URL is not set — run: make pg-up' >&2; exit 1; }
 	go test ./...
 
+# --- Migrations (issue #14) ---
+#
+# The server applies the embedded migrations at startup (internal/database.Migrate),
+# so these targets are for humans: authoring, validating offline, and inspecting
+# or applying a pending set from a shell. `migrate-up` deliberately runs the
+# binary, not the Goose CLI, so it also takes the advisory lock, seeds a legacy
+# `schema_versions` ledger and writes the pre-migration backup — the Goose CLI
+# does none of those.
+
+migrate-create: ## Author a timestamped Goose migration: make migrate-create NAME=add_thing
+	@if [ -z "$(NAME)" ]; then echo "usage: make migrate-create NAME=add_thing"; exit 1; fi
+	$(GOOSE) -dir $(GOOSE_DIR) create "$(NAME)" sql
+
+migrate-validate: ## Validate the Goose migration files offline (no database needed)
+	$(GOOSE) -dir $(GOOSE_DIR) validate
+
+# Reads the Goose ledger directly, so it does not seed a legacy ledger first;
+# on an install upgrading from the old numbering, run `make migrate-up` once
+# (it bootstraps) and status is accurate from then on.
+# Needs DATABASE_URL and, because it goes through config.Load, TMDB_API_TOKEN.
+migrate-status: ## Show migration status against $$DATABASE_URL
+	@test -n "$$DATABASE_URL" || { echo 'DATABASE_URL is not set — run: make pg-up' >&2; exit 1; }
+	$(GOOSE) -dir $(GOOSE_DIR) postgres "$$DATABASE_URL" status
+
+migrate-up: ## Apply pending migrations (locks, bootstraps a legacy ledger, backs up)
+	go run ./cmd/api --migrate-only
+
 # --- Local PostgreSQL (development and DB-backed tests) ---
 #
 # Docker is not available everywhere, so these targets run a throwaway cluster
@@ -100,6 +139,17 @@ api-spec: embed-stub ## Regenerate openapi.yaml from the route registry
 api-check: embed-stub ## Verify openapi.yaml is fresh and its route inventory matches the registry
 	go run ./cmd/openapi -check
 	go test ./internal/httpapi/ -run TestOpenAPIRouteInventory -count=1
+# --- Backups (issue #16) ---
+#
+# One-shot backup commands. They need DATABASE_URL and pg_dump/pg_restore on the
+# host; the destination is $TKILLER_BACKUP_DIR (default ./backups). See
+# docs/architecture/backups.md.
+
+backup: embed-stub ## Take a manual database backup and exit (needs DATABASE_URL)
+	TMDB_API_TOKEN=dummy go run ./cmd/api --backup
+
+backup-list: embed-stub ## List database backups and exit (needs DATABASE_URL)
+	TMDB_API_TOKEN=dummy go run ./cmd/api --backup-list
 
 # --- Housekeeping ---
 

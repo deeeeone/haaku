@@ -1,16 +1,17 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { Play, Star, Tv, Users } from 'lucide-react'
 import { useSeason, useSeasonStats } from '@/api/hooks/useSeasons'
 import { Page, Section } from '@/components/layout'
 import {
-  Hero,
-  DetailStat,
-  StatCard,
-  SectionHead,
   Button,
-  ShimmerText,
+  DetailStat,
+  Hero,
   InfoPanel,
+  SectionHead,
+  ShimmerText,
+  StatCard,
 } from '@/components/ui'
-import { Star, Tv, Users, Play } from 'lucide-react'
+import { activateOnKey } from '@/lib/a11y'
 import { formatDate } from '@/lib/utils'
 
 export const Route = createFileRoute('/seasons/$id')({
@@ -54,7 +55,6 @@ function SeasonDetailPage() {
 
   return (
     <Page>
-
       <Hero
         eyebrow={`Season ${season.number}`}
         title={season.title ?? `Season ${season.number}`}
@@ -73,14 +73,19 @@ function SeasonDetailPage() {
           <DetailStat label="Aired Episodes" value={season.aired_episodes} />
         )}
         {season.first_aired && (
-          <DetailStat label="First Aired" value={formatDate(season.first_aired)} />
+          <DetailStat
+            label="First Aired"
+            value={formatDate(season.first_aired)}
+          />
         )}
       </div>
 
       {season.overview && (
         <Section title="Overview">
           <InfoPanel>
-            <p className="text-sf-ink-muted leading-relaxed">{season.overview}</p>
+            <p className="text-sf-ink-muted leading-relaxed">
+              {season.overview}
+            </p>
           </InfoPanel>
         </Section>
       )}
@@ -92,12 +97,18 @@ function SeasonDetailPage() {
             {episodes.map((ep) => (
               <div
                 key={ep.ids?.trakt ?? `${ep.season}-${ep.number}`}
+                role="button"
+                tabIndex={0}
                 className="glass flex cursor-pointer items-center gap-4 rounded-sf p-4 transition-colors hover:bg-sf-panel-2"
                 onClick={() => {
                   if (ep.ids?.trakt) {
-                    navigate({ to: '/episodes/$id', params: { id: String(ep.ids.trakt) } })
+                    navigate({
+                      to: '/episodes/$id',
+                      params: { id: String(ep.ids.trakt) },
+                    })
                   }
                 }}
+                onKeyDown={activateOnKey}
               >
                 <div className="flex h-16 w-28 shrink-0 items-center justify-center overflow-hidden rounded-sf-sm bg-sf-bg-3">
                   {ep.images?.poster ? (

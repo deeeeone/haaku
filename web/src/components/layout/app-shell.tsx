@@ -1,8 +1,8 @@
-import type { PropsWithChildren } from 'react'
 import { UserButton } from '@clerk/react'
+import type { PropsWithChildren } from 'react'
 import { Topbar } from '@/components/ui'
-import { Sidebar } from './sidebar'
 import { MobileNav } from './mobile-nav'
+import { Sidebar } from './sidebar'
 
 export function AppShell({ children }: PropsWithChildren) {
   return (
@@ -11,14 +11,13 @@ export function AppShell({ children }: PropsWithChildren) {
         brand="TKiller"
         userMenu={
           <UserButton
-            afterSignOutUrl="/"
             appearance={{
               // Theme Clerk's account popout to the app's design tokens.
               variables: {
                 colorPrimary: 'var(--sf-accent)',
                 colorBackground: 'var(--sf-bg-2)',
-                colorText: 'var(--sf-ink)',
-                colorInputBackground: 'var(--sf-panel-2)',
+                colorForeground: 'var(--sf-ink)',
+                colorInput: 'var(--sf-panel-2)',
                 borderRadius: '0.75rem',
               },
               elements: {

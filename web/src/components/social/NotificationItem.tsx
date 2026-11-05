@@ -1,14 +1,15 @@
 import { useNavigate } from '@tanstack/react-router'
 import {
-  UserPlus,
-  MessageSquare,
-  Heart,
-  Bookmark,
-  Star,
   Bell,
+  Bookmark,
+  Heart,
+  MessageSquare,
+  Star,
+  UserPlus,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
 import type { Notification } from '@/api/hooks/useNotifications'
+import { activateOnKey } from '@/lib/a11y'
+import { cn } from '@/lib/utils'
 
 const NOTIFICATION_ICONS: Record<string, React.ReactNode> = {
   follow: <UserPlus className="size-4" />,
@@ -48,7 +49,11 @@ interface NotificationItemProps {
   className?: string
 }
 
-export function NotificationItem({ notification, onClick, className }: NotificationItemProps) {
+export function NotificationItem({
+  notification,
+  onClick,
+  className,
+}: NotificationItemProps) {
   const navigate = useNavigate()
 
   const handleClick = () => {
@@ -69,18 +74,22 @@ export function NotificationItem({ notification, onClick, className }: Notificat
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       className={cn(
         'flex items-start gap-3 rounded-[--sf-radius] p-3 transition-colors hover:bg-white/[0.03] cursor-pointer',
         !notification.read && 'bg-sf-accent/5',
-        className,
+        className
       )}
       onClick={handleClick}
+      onKeyDown={activateOnKey}
     >
       {/* Icon */}
       <div
         className={cn(
           'mt-0.5 grid size-8 shrink-0 place-items-center rounded-full',
-          NOTIFICATION_COLORS[notification.type] ?? 'text-sf-ink-muted bg-white/5'
+          NOTIFICATION_COLORS[notification.type] ??
+            'text-sf-ink-muted bg-white/5'
         )}
       >
         {NOTIFICATION_ICONS[notification.type] ?? <Bell className="size-4" />}
@@ -88,9 +97,7 @@ export function NotificationItem({ notification, onClick, className }: Notificat
 
       {/* Content */}
       <div className="min-w-0 flex-1">
-        <p className="text-sm text-sf-ink">
-          {notification.message}
-        </p>
+        <p className="text-sm text-sf-ink">{notification.message}</p>
         <p className="mt-0.5 text-xs text-sf-ink-muted">
           {timeAgo(notification.created_at)}
         </p>

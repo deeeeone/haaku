@@ -1,24 +1,24 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type { ApiClient } from '@/api/client'
 import type {
-  TraktList,
-  CreateListPayload,
-  UpdateListPayload,
-  ListItem,
   AddListItemPayload,
+  Collaborator,
+  CreateListPayload,
+  CreateSmartListPayload,
+  InviteCollaboratorPayload,
+  ListComment,
+  ListItem,
+  ListLike,
+  PopularList,
   RemoveListItemPayload,
   ReorderListItemPayload,
-  ListComment,
-  Collaborator,
-  InviteCollaboratorPayload,
-  ListLike,
-  SmartList,
-  CreateSmartListPayload,
-  UpdateSmartListPayload,
-  TrendingList,
-  PopularList,
   SearchResult,
+  SmartList,
+  TraktList,
+  TrendingList,
+  UpdateListPayload,
+  UpdateSmartListPayload,
 } from '@/api/types/lists'
 
 // The generated schema uses content?: never and params?: never for many endpoints.
@@ -32,8 +32,7 @@ export const listKeys = {
   detail: (id: number | string) => [...listKeys.all, 'detail', id] as const,
   items: (id: number | string, page?: number) =>
     [...listKeys.all, 'items', id, page ?? 1] as const,
-  comments: (id: number | string) =>
-    [...listKeys.all, 'comments', id] as const,
+  comments: (id: number | string) => [...listKeys.all, 'comments', id] as const,
   collaborators: (id: number | string) =>
     [...listKeys.all, 'collaborators', id] as const,
   likes: (id: number | string) => [...listKeys.all, 'likes', id] as const,
@@ -113,10 +112,10 @@ export function useUpdateList(client: ApiClient | null) {
       id: number | string
       payload: UpdateListPayload
     }): Promise<TraktList> => {
-      const { data, error } = await (client!.PUT as any)(
-        '/v1/lists/{id}',
-        { params: { path: { id: String(id) } }, body: payload }
-      )
+      const { data, error } = await (client!.PUT as any)('/v1/lists/{id}', {
+        params: { path: { id: String(id) } },
+        body: payload,
+      })
       if (error) throw error
       return data as TraktList
     },
@@ -136,10 +135,9 @@ export function useDeleteList(client: ApiClient | null) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: number | string) => {
-      const { error } = await (client!.DELETE as any)(
-        '/v1/lists/{id}',
-        { params: { path: { id: String(id) } } }
-      )
+      const { error } = await (client!.DELETE as any)('/v1/lists/{id}', {
+        params: { path: { id: String(id) } },
+      })
       if (error) throw error
     },
     onSuccess: () => {
@@ -158,10 +156,9 @@ export function useListDetail(client: ApiClient | null, id: number | string) {
   return useQuery({
     queryKey: listKeys.detail(id),
     queryFn: async (): Promise<TraktList> => {
-      const { data, error } = await (client!.GET as any)(
-        '/v1/lists/{id}',
-        { params: { path: { id: String(id) } } }
-      )
+      const { data, error } = await (client!.GET as any)('/v1/lists/{id}', {
+        params: { path: { id: String(id) } },
+      })
       if (error) throw error
       return data as TraktList
     },
@@ -278,10 +275,9 @@ export function useLikeList(client: ApiClient | null) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: number | string) => {
-      const { error } = await (client!.POST as any)(
-        '/v1/lists/{id}/like',
-        { params: { path: { id: String(id) } } }
-      )
+      const { error } = await (client!.POST as any)('/v1/lists/{id}/like', {
+        params: { path: { id: String(id) } },
+      })
       if (error) throw error
     },
     onSuccess: (_, id) => {
@@ -299,10 +295,9 @@ export function useUnlikeList(client: ApiClient | null) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: number | string) => {
-      const { error } = await (client!.DELETE as any)(
-        '/v1/lists/{id}/like',
-        { params: { path: { id: String(id) } } }
-      )
+      const { error } = await (client!.DELETE as any)('/v1/lists/{id}/like', {
+        params: { path: { id: String(id) } },
+      })
       if (error) throw error
     },
     onSuccess: (_, id) => {
@@ -317,10 +312,7 @@ export function useUnlikeList(client: ApiClient | null) {
 }
 
 // ─── Likes ───────────────────────────────────────────────
-export function useListLikes(
-  client: ApiClient | null,
-  id: number | string
-) {
+export function useListLikes(client: ApiClient | null, id: number | string) {
   return useQuery({
     queryKey: listKeys.likes(id),
     queryFn: async (): Promise<ListLike[]> => {
@@ -336,10 +328,7 @@ export function useListLikes(
 }
 
 // ─── Comments ────────────────────────────────────────────
-export function useListComments(
-  client: ApiClient | null,
-  id: number | string
-) {
+export function useListComments(client: ApiClient | null, id: number | string) {
   return useQuery({
     queryKey: listKeys.comments(id),
     queryFn: async (): Promise<ListComment[]> => {
@@ -443,9 +432,7 @@ export function useMySmartLists(client: ApiClient | null) {
 export function useCreateSmartList(client: ApiClient | null) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (
-      payload: CreateSmartListPayload
-    ): Promise<SmartList> => {
+    mutationFn: async (payload: CreateSmartListPayload): Promise<SmartList> => {
       const { data, error } = await (client!.POST as any)(
         '/v1/users/me/smart-lists',
         { body: payload }
@@ -473,10 +460,10 @@ export function useUpdateSmartList(client: ApiClient | null) {
       id: number | string
       payload: UpdateSmartListPayload
     }) => {
-      const { error } = await (client!.PUT as any)(
-        '/v1/smart-lists/{id}',
-        { params: { path: { id: String(id) } }, body: payload }
-      )
+      const { error } = await (client!.PUT as any)('/v1/smart-lists/{id}', {
+        params: { path: { id: String(id) } },
+        body: payload,
+      })
       if (error) throw error
     },
     onSuccess: (_, { id }) => {
@@ -494,10 +481,9 @@ export function useDeleteSmartList(client: ApiClient | null) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: number | string) => {
-      const { error } = await (client!.DELETE as any)(
-        '/v1/smart-lists/{id}',
-        { params: { path: { id: String(id) } } }
-      )
+      const { error } = await (client!.DELETE as any)('/v1/smart-lists/{id}', {
+        params: { path: { id: String(id) } },
+      })
       if (error) throw error
     },
     onSuccess: () => {
@@ -553,9 +539,7 @@ export function useTrendingLists(client: ApiClient | null) {
   return useQuery({
     queryKey: listKeys.trending(),
     queryFn: async (): Promise<TrendingList[]> => {
-      const { data, error } = await (client!.GET as any)(
-        '/v1/lists/trending'
-      )
+      const { data, error } = await (client!.GET as any)('/v1/lists/trending')
       if (error) throw error
       return (data as TrendingList[]) ?? []
     },
@@ -570,10 +554,9 @@ export function usePopularLists(
   return useQuery({
     queryKey: listKeys.popular(period),
     queryFn: async (): Promise<PopularList[]> => {
-      const { data, error } = await (client!.GET as any)(
-        '/v1/lists/popular',
-        { params: { query: { period } } }
-      )
+      const { data, error } = await (client!.GET as any)('/v1/lists/popular', {
+        params: { query: { period } },
+      })
       if (error) throw error
       return (data as PopularList[]) ?? []
     },

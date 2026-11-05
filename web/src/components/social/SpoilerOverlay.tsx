@@ -8,7 +8,11 @@ interface SpoilerOverlayProps {
   className?: string
 }
 
-export function SpoilerOverlay({ hidden, onToggle, className }: SpoilerOverlayProps) {
+export function SpoilerOverlay({
+  hidden,
+  onToggle,
+  className,
+}: SpoilerOverlayProps) {
   if (!hidden) return null
 
   return (

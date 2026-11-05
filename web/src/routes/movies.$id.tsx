@@ -1,29 +1,41 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useMovie, useMoviePeople, useMovieStats, useMovieRecommendations } from '@/api/hooks/useMovies'
-import { useAddToWatchlist, useRemoveFromWatchlist, useAddToFavorites, useRemoveFromFavorites, useAddRating } from '@/api/hooks/useSync'
 import { useAuth } from '@clerk/react'
-import { Page, Section, ScrollRow } from '@/components/layout'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { Bookmark, BookmarkCheck, Heart, Play, Star, Users } from 'lucide-react'
+import { useState } from 'react'
 import {
-  Hero,
-  GenreStrip,
+  useMovie,
+  useMoviePeople,
+  useMovieRecommendations,
+  useMovieStats,
+} from '@/api/hooks/useMovies'
+import {
+  useAddRating,
+  useAddToFavorites,
+  useAddToWatchlist,
+  useRemoveFromFavorites,
+  useRemoveFromWatchlist,
+} from '@/api/hooks/useSync'
+import type { Ids } from '@/api/types'
+import { Page, ScrollRow, Section } from '@/components/layout'
+import {
+  Button,
   DetailStat,
+  FactRow,
+  GenreStrip,
+  Hero,
   InfoPanel,
   PosterCard,
-  StatCard,
-  SectionHead,
-  Button,
   Rail,
+  SectionHead,
   ShimmerText,
-  FactRow,
+  StatCard,
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui'
-import { Star, Users, Play, Heart, Bookmark, BookmarkCheck } from 'lucide-react'
-import { formatDate, formatRuntime, cn } from '@/lib/utils'
-import { useState } from 'react'
-import type { Ids } from '@/api/types'
+import { activateOnKey } from '@/lib/a11y'
+import { cn, formatDate, formatRuntime } from '@/lib/utils'
 
 export const Route = createFileRoute('/movies/$id')({
   component: MovieDetailPage,
@@ -116,7 +128,6 @@ function MovieDetailPage() {
 
   return (
     <Page>
-
       <Hero
         eyebrow={String(movie.year)}
         title={movie.title}
@@ -139,12 +150,18 @@ function MovieDetailPage() {
                         variant={isWatchlisted ? 'primary' : 'glass'}
                         onClick={handleWatchlistToggle}
                       >
-                        {isWatchlisted ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />}
+                        {isWatchlisted ? (
+                          <BookmarkCheck className="size-4" />
+                        ) : (
+                          <Bookmark className="size-4" />
+                        )}
                         {isWatchlisted ? 'Watchlisted' : 'Watchlist'}
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      {isWatchlisted ? 'Remove from watchlist' : 'Add to watchlist'}
+                      {isWatchlisted
+                        ? 'Remove from watchlist'
+                        : 'Add to watchlist'}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -157,11 +174,18 @@ function MovieDetailPage() {
                         variant={isFavorited ? 'primary' : 'glass'}
                         onClick={handleFavoriteToggle}
                       >
-                        <Heart className={cn('size-4', isFavorited && 'fill-current text-sf-accent-3')} />
+                        <Heart
+                          className={cn(
+                            'size-4',
+                            isFavorited && 'fill-current text-sf-accent-3'
+                          )}
+                        />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      {isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+                      {isFavorited
+                        ? 'Remove from favorites'
+                        : 'Add to favorites'}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -210,24 +234,33 @@ function MovieDetailPage() {
         {movie.released && (
           <DetailStat label="Released" value={formatDate(movie.released)} />
         )}
-        {movie.country && (
-          <DetailStat label="Country" value={movie.country} />
-        )}
+        {movie.country && <DetailStat label="Country" value={movie.country} />}
       </div>
 
       {movie.overview && (
         <Section title="Overview">
           <InfoPanel>
-            <p className="text-sf-ink-muted leading-relaxed">{movie.overview}</p>
+            <p className="text-sf-ink-muted leading-relaxed">
+              {movie.overview}
+            </p>
             <div className="mt-4 grid grid-cols-1 gap-1 sm:grid-cols-2">
               {movie.status && <FactRow label="Status" value={movie.status} />}
-              {movie.language && <FactRow label="Language" value={movie.language} />}
-              {movie.certification && <FactRow label="Rating" value={movie.certification} />}
+              {movie.language && (
+                <FactRow label="Language" value={movie.language} />
+              )}
+              {movie.certification && (
+                <FactRow label="Rating" value={movie.certification} />
+              )}
               {movie.homepage && (
                 <FactRow
                   label="Homepage"
                   value={
-                    <a href={movie.homepage} target="_blank" rel="noopener noreferrer" className="text-sf-accent-2 hover:underline">
+                    <a
+                      href={movie.homepage}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sf-accent-2 hover:underline"
+                    >
                       Visit
                     </a>
                   }
@@ -245,12 +278,18 @@ function MovieDetailPage() {
             {cast.map((member, i) => (
               <div
                 key={`${member.person?.ids?.trakt ?? i}`}
+                role="button"
+                tabIndex={0}
                 className="shrink-0 w-[160px] cursor-pointer"
                 onClick={() => {
                   if (member.person?.ids?.trakt) {
-                    navigate({ to: '/people/$id', params: { id: String(member.person.ids.trakt) } })
+                    navigate({
+                      to: '/people/$id',
+                      params: { id: String(member.person.ids.trakt) },
+                    })
                   }
                 }}
+                onKeyDown={activateOnKey}
               >
                 <PosterCard
                   title={member.person?.name ?? 'Unknown'}
@@ -295,7 +334,12 @@ function MovieDetailPage() {
                 rating={m.rating ? (m.rating / 2).toFixed(1) : undefined}
                 type="movie"
                 aspect="2:3"
-                onClick={() => navigate({ to: '/movies/$id', params: { id: String(m.ids?.trakt ?? m.ids?.slug) } })}
+                onClick={() =>
+                  navigate({
+                    to: '/movies/$id',
+                    params: { id: String(m.ids?.trakt ?? m.ids?.slug) },
+                  })
+                }
               />
             ))}
           </Rail>
