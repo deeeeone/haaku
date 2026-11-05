@@ -48,8 +48,14 @@ const (
 
 // --- PostgreSQL ---
 
-// InitDB opens the Postgres connection, configures the pool, and runs
-// AutoMigrate. Safe to call multiple times (sync.Once).
+// InitDB opens the Postgres connection and configures the pool. Safe to call
+// multiple times (sync.Once).
+//
+// It deliberately does NOT create or alter the schema. The schema is owned by
+// the embedded SQL migrations (see Migrate); letting GORM's AutoMigrate create
+// tables first produced GORM-flavoured column types (search_vector as text,
+// users.username as text) that then broke the SQL migrations built on top of
+// them, and left SQL and the models free to drift. Apply Migrate after InitDB.
 func InitDB() (*gorm.DB, error) {
 	var err error
 	dbOnce.Do(func() {
@@ -85,24 +91,8 @@ func InitDB() (*gorm.DB, error) {
 
 		log.Printf("[db] pool configured: idle=%d open=%d lifetime=%dm slow_query_threshold=%dms",
 			maxIdle, maxOpen, maxLifetimeMin, threshold)
-		// AutoMigrate all tables; safe for repeated calls.
-		models := []interface{}{&User{}, &EventsOutbox{}, &UserStats{}, &SyncSession{}, &UserHidden{}, &ScrobbleSession{}, &UserPlayback{}, &UserCheckin{}}
-		models = append(models, MediaModels()...)
-		models = append(models, &OAuthClient{}, &OAuthGrant{}, &OAuthToken{})
-		models = append(models, ListModels()...)
-		models = append(models, SyncModels()...)
-		models = append(models, SocialModels()...)
-		models = append(models, CommentModels()...)
-		models = append(models, ActivityModels()...)
-		models = append(models, NotifModels()...)
-		models = append(models, WebhookModels()...)
-		models = append(models, NotesFiltersReportsModels()...)
-		if err = db.AutoMigrate(models...); err != nil {
-			err = fmt.Errorf("automigrate failed: %w", err)
-			return
-		}
 
-		log.Println("[db] connection established and schema migrated")
+		log.Println("[db] connection established")
 	})
 	return db, err
 }

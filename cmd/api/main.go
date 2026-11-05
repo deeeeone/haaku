@@ -101,6 +101,17 @@ func run() int {
 		return migrate(logger)
 	}
 
+	// API mode owns the schema: apply every pending migration before any worker
+	// or listener starts, so the tables are the ones the SQL migrations define
+	// and never the ones GORM's AutoMigrate used to invent. The runner is the
+	// same one `--migrate-only`/`TKILLER_MODE=migrate` uses, so there is a
+	// single, tested path; it is a fast no-op once the schema is current.
+	if serverMode.MayMigrate() && cfg.DatabaseURL != "" {
+		if code := migrate(logger); code != 0 {
+			return code
+		}
+	}
+
 	// Redis (T0.7 + T0.8: circuit breaker, single-flight, version counters)
 	if cfg.RedisURL != "" {
 		if err := redis.InitRedis(); err != nil {
