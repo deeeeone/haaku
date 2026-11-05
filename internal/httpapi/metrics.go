@@ -1,60 +1,108 @@
 package httpapi
 
 import (
-	"sync/atomic"
+	"log/slog"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+
+	"trakt-api/internal/obs"
 )
 
-// Metrics counters — tracked with atomic int64, reset on restart.
-var (
-	startTime      = time.Now()
-	totalRequests  atomic.Int64
-	errorCount     atomic.Int64
-	rateLimited    atomic.Int64
-	activeRequests atomic.Int64
+// HTTP observability lives on the separate metrics listener (internal/obs),
+// served in Prometheus format. The former hand-rolled JSON /metrics handler —
+// five atomic counters, reset on restart, public on the main listener — is gone:
+// it leaked traffic volume to anyone who could reach the app and described
+// nothing (no route, no latency, no status).
+//
+// Recording happens at two sites because Fiber runs the app-level error handler
+// *after* the middleware chain returns (see errors.go and security.go): the
+// logger records the response directly, and the error handler records it once the
+// status is final. finishRequest below is that shared completion path.
+
+const (
+	// routeUnmatched is the single label for any request that matched no
+	// registered route, including the SPA catch-all. Using one sentinel instead
+	// of the raw path is what keeps a hostile client from minting a series per
+	// unique URL.
+	routeUnmatched = "unmatched"
+
+	// locals keys on the request context. Kept unexported and namespaced.
+	localsReqStart = "obs_req_start"
 )
 
-// IncTotalRequests atomically increments the total request counter.
-func IncTotalRequests() { totalRequests.Add(1) }
-
-// IncErrors atomically increments the error counter (4xx/5xx).
-func IncErrors() { errorCount.Add(1) }
-
-// IncRateLimited atomically increments the rate-limited counter.
-func IncRateLimited() { rateLimited.Add(1) }
-
-// IncActiveRequests atomically increments active request count.
-func IncActiveRequests() { activeRequests.Add(1) }
-
-// DecActiveRequests atomically decrements active request count.
-func DecActiveRequests() { activeRequests.Add(-1) }
-
-// metricsResponse is the JSON shape for GET /metrics.
-type metricsResponse struct {
-	UptimeSeconds  int64 `json:"uptime_seconds"`
-	TotalRequests  int64 `json:"total_requests"`
-	Errors         int64 `json:"errors"`
-	RateLimited    int64 `json:"rate_limited"`
-	ActiveRequests int64 `json:"active_requests"`
+// knownMethods bounds the method label to real verbs: Fiber accepts an arbitrary
+// method token, so echoing c.Method() verbatim would be unbounded too.
+var knownMethods = map[string]struct{}{
+	fiber.MethodGet:     {},
+	fiber.MethodHead:    {},
+	fiber.MethodPost:    {},
+	fiber.MethodPut:     {},
+	fiber.MethodPatch:   {},
+	fiber.MethodDelete:  {},
+	fiber.MethodOptions: {},
 }
 
-// metricsHandler handles GET /metrics — public, no auth.
-// Returns JSON with service health counters.
-func metricsHandler(c *fiber.Ctx) error {
-	resp := metricsResponse{
-		UptimeSeconds:  int64(time.Since(startTime).Seconds()),
-		TotalRequests:  totalRequests.Load(),
-		Errors:         errorCount.Load(),
-		RateLimited:    rateLimited.Load(),
-		ActiveRequests: activeRequests.Load(),
+// routeLabel returns the registered route pattern for matched requests, or the
+// "unmatched" sentinel otherwise. Fiber reports "/" both for an unmatched
+// request and for the middleware tree (which is where the SPA handler lives);
+// neither is a route name, and c.Route().Path is a pattern — never the raw path —
+// for anything that did match.
+func routeLabel(c *fiber.Ctx) string {
+	p := c.Route().Path
+	if p == "" || p == "/" {
+		return routeUnmatched
 	}
-	return c.JSON(resp)
+	return p
 }
 
-// registerMetricsRoute registers the /metrics endpoint on the app.
-// This is infrastructure, not an API route — registered directly, not via routes.go.
-func registerMetricsRoute(app *fiber.App) {
-	app.Get("/metrics", metricsHandler)
+func methodLabel(method string) string {
+	if _, ok := knownMethods[method]; ok {
+		return method
+	}
+	return "other"
 }
+
+// beginRequest stamps the start time and counts the request as in flight. The
+// start time is stashed on the context so the completion site — which may be the
+// error handler, not the middleware — can compute latency.
+func beginRequest(c *fiber.Ctx, start time.Time) {
+	c.Locals(localsReqStart, start)
+	obs.IncInFlight()
+}
+
+// finishRequest records the final status and latency and emits the completion
+// log line. Call it exactly once per request, at the point the response status is
+// final.
+func finishRequest(c *fiber.Ctx) {
+	start, _ := c.Locals(localsReqStart).(time.Time)
+	if start.IsZero() {
+		start = time.Now()
+	}
+	status := c.Response().StatusCode()
+	obs.ObserveHTTPRequest(routeLabel(c), methodLabel(c.Method()), status, time.Since(start).Seconds())
+
+	logCompleted(c, status, start)
+}
+
+// logCompleted writes the structured completion line. Fields are unchanged from
+// the original logger: method, path, status, latency_ms, remote_ip.
+func logCompleted(c *fiber.Ctx, status int, start time.Time) {
+	latencyMs := float64(time.Since(start).Microseconds()) / 1000.0
+	attrs := []any{
+		"method", c.Method(),
+		"path", c.Path(),
+		"status", status,
+		"latency_ms", latencyMs,
+		"remote_ip", c.IP(),
+	}
+	if status >= 500 {
+		slog.Error("request completed", attrs...)
+	} else {
+		slog.Info("request completed", attrs...)
+	}
+}
+
+// IncRateLimited counts a request rejected by the rate limiter. Rate limiting
+// runs before routing, so the counter carries no route label.
+func IncRateLimited() { obs.IncRateLimited() }

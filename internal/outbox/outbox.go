@@ -7,11 +7,16 @@ import (
 	"time"
 
 	"trakt-api/internal/database"
+	"trakt-api/internal/obs"
 	"trakt-api/redis"
 
 	goredis "github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
+
+// outboxWorkerMetrics instruments the outbox publisher for the metrics listener;
+// its heartbeat is what makes a stalled publisher detectable.
+var outboxWorkerMetrics = obs.NewWorker("outbox_publisher")
 
 // Event type constants — the canonical event names emitted to the outbox.
 // Names match the webhook event catalog (plan 03-api/webhooks.md §Event catalog).
@@ -88,6 +93,7 @@ func StartPublisher(rdb interface{}) {
 		defer ticker.Stop()
 
 		for range ticker.C {
+			outboxWorkerMetrics.Heartbeat()
 			publishBatch()
 		}
 	}()
@@ -145,6 +151,7 @@ func publishBatch() {
 			Values: values,
 		}).Err(); err != nil {
 			log.Printf("[outbox] failed to publish event %d to Redis Stream: %v", event.ID, err)
+			outboxWorkerMetrics.Failed(1)
 			continue
 		}
 
@@ -159,6 +166,7 @@ func publishBatch() {
 			log.Printf("[outbox] failed to mark events as published: %v", err)
 		} else {
 			log.Printf("[outbox] published %d events to Redis Stream", len(publishedIDs))
+			outboxWorkerMetrics.Processed(len(publishedIDs))
 		}
 	}
 }
