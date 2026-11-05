@@ -8,6 +8,7 @@ Account/profile management:
 - `PUT /v1/users/me` — partial profile update (name, bio, location, timezone, language, is_private).
 - `GET /v1/users/:id` — public profile wrapped in the shared `auth.PrivacyFilter("id")` middleware; stats/activity are not fabricated (followers/following are real; watched/lists/activity omitted until the stats engine lands).
 - `GET|PUT /v1/users/me/settings` — settings as JSON on the user row (privacy + notification prefs, defaulted/backfilled).
+- `GET /v1/users/me/export` — owner-scoped, **streamed** JSON archive of everything the caller owns (`export.go`, issue #10 §1). See "Data export" below.
 - ~~`POST /v1/users/me/avatar`~~ — **removed (2026-08)**. Avatars are Clerk-managed (mirrored via webhook/lazy sync); there is no upload route, so a placeholder `avatar_url` can never be persisted.
 - `DELETE /v1/users/me` — soft-delete (`status = pending_deletion`; async cleanup is a stub).
 - `POST|DELETE /v1/users/:id/block` — block (removes follows both directions, outbox `user.blocked`) / unblock.
@@ -18,13 +19,45 @@ Uses shared `auth.PrivacyFilter` for the public route; shared `auth.AuthRequired
 
 | Piece | Status |
 |---|---|
-| OpenAPI registration (9 routes) | Done |
+| OpenAPI registration (10 routes) | Done |
 | Me profile get/update | Done |
 | Public profile + privacy filter | Done |
 | Settings get/update | Done |
+| **Data export** (`GET /users/me/export`, streamed, versioned) | Done (issue #10 §1) |
 | Avatar upload | N/A — endpoint removed (Clerk-managed identity); no placeholder `avatar_url` ever persisted |
 | Account deletion | Partial (no async cleanup) |
 | Block/unblock | Done |
+
+## Data export (`GET /v1/users/me/export`)
+
+Owner-scoped archive of everything the caller owns. Registered in OpenAPI with
+`200` / `401` / `503`. The response is **streamed** — a `json.Encoder` writes into
+the body stream (`SetBodyStreamWriter`) and each table is walked with a
+`database/sql` cursor (`streamModel`) so no section — let alone the whole archive
+— is held in memory. `lists` is paged by keyset and each list's `items` array is
+streamed nested inside it. `DB unavailable → 503`, `missing auth → 401`,
+`user not found → 404` are all emitted as the standard envelope *before* the
+stream starts (a status code cannot change once the body begins).
+
+Archive shape (`ExportFormatVersion = 1`), documented in `export.go`:
+
+```
+{ version, exported_at, user, settings,
+  history[], ratings[], watchlist[], collection[], favorites[],
+  lists[{ ...list, items[] }], comments[], notes[], hidden[],
+  follows{ following[], followers[] }, blocks[],
+  checkins[], playback[], webhook_endpoints[] }
+```
+
+Empty sections serialise as `[]` (or `{}` for `follows`/`settings`), never `null`.
+
+**Secrets are never exported.** The webhook section exposes the endpoint's
+existence/URL/events — not `secret_hash`; integration tokens, API keys and OAuth
+credentials are not read at all. A test asserts the seeded secret *values* are
+absent from the serialised bytes.
+
+Intended to round-trip with the importer in issue #7 (same format family). A
+Trakt-compatible export shape is a **follow-up**, not a second format today.
 
 ## Oversights
 
