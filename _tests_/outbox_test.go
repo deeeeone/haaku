@@ -85,10 +85,10 @@ func TestOutboxRoutesRegistered(t *testing.T) {
 	routes := openapi.AllRoutes()
 
 	expectedPaths := map[string]bool{
-		"/v1/syncs":               true,
-		"/v1/syncs/{id}":          true,
-		"/v1/syncs/{id}/paused":   true,
-		"/v1/syncs/{id}/skipped":  true,
+		"/v1/syncs":                  true,
+		"/v1/syncs/{id}":             true,
+		"/v1/syncs/{id}/paused":      true,
+		"/v1/syncs/{id}/skipped":     true,
 		"/v1/users/hidden/{section}": true,
 	}
 

@@ -263,12 +263,6 @@ func buildIDsFromLookup(lookup map[mediaRef][]database.ExternalID, mediaType str
 	return ids
 }
 
-// buildIDs builds the IDs object from a media row and external ID lookups
-// (single-item path — one batched lookup for this item).
-func buildIDs(mediaType string, mediaID int64, movie *database.Movie, show *database.Show) IDs {
-	return buildIDsFromLookup(mediaBatchLookup(mediaType, mediaID), mediaType, mediaID, movie, show)
-}
-
 // BuildMovieResponse builds a MovieResponse from a database Movie (exported for cross-package use).
 func BuildMovieResponse(m *database.Movie, extended string) MovieResponse {
 	return buildMovieResponse(mediaBatchLookup("movie", m.ID), m, extended)
@@ -401,7 +395,7 @@ func buildSeasonResponse(lookup map[mediaRef][]database.ExternalID, s *database.
 	if s.AiredAt != nil {
 		resp.AiredAt = s.AiredAt.String()
 	}
-	if s.Images == nil || len(s.Images) == 0 {
+	if len(s.Images) == 0 {
 		resp.Images = make(map[string]any)
 	}
 	return resp

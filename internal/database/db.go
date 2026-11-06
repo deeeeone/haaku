@@ -21,13 +21,6 @@ var (
 
 // --- env helpers ---
 
-func getEnv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
-}
-
 func getEnvInt(key string, fallback int) int {
 	if v := os.Getenv(key); v != "" {
 		if iv, err := strconv.Atoi(v); err == nil {

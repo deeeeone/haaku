@@ -34,7 +34,7 @@ func TestValidateCommentBodyRejectsEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400 (empty body)", resp.StatusCode)
 	}
@@ -47,7 +47,7 @@ func TestValidateCommentBodyRejectsTooLong(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusBadRequest {
 		t.Fatalf("status = %d, want 400 (body exceeds max length)", resp.StatusCode)
 	}
@@ -60,7 +60,7 @@ func TestValidateCommentBodyAcceptsAtLimit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, want 200 (body at exact max length)", resp.StatusCode)
 	}

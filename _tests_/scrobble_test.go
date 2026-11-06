@@ -18,10 +18,10 @@ func TestScrobbleRoutesRegistered(t *testing.T) {
 	routes := openapi.AllRoutes()
 
 	expectedPaths := map[string]bool{
-		"/v1/scrobble/start":                    true,
-		"/v1/scrobble/pause":                    true,
-		"/v1/scrobble/stop":                     true,
-		"/v1/sync/playback":                     true,
+		"/v1/scrobble/start":                        true,
+		"/v1/scrobble/pause":                        true,
+		"/v1/scrobble/stop":                         true,
+		"/v1/sync/playback":                         true,
 		"/v1/sync/playback/{media_type}/{media_id}": true,
 	}
 
@@ -455,12 +455,12 @@ func TestPlaybackResponseShape(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 type checkinTestResponse struct {
-	ID        int64                  `json:"id"`
-	ExpiresAt string                 `json:"expires_at"`
-	WatchedAt string                 `json:"watched_at"`
-	Movie     *checkinTestMediaRef   `json:"movie,omitempty"`
-	Episode   *checkinTestMediaRef   `json:"episode,omitempty"`
-	Message   string                 `json:"message,omitempty"`
+	ID        int64                `json:"id"`
+	ExpiresAt string               `json:"expires_at"`
+	WatchedAt string               `json:"watched_at"`
+	Movie     *checkinTestMediaRef `json:"movie,omitempty"`
+	Episode   *checkinTestMediaRef `json:"episode,omitempty"`
+	Message   string               `json:"message,omitempty"`
 }
 
 type checkinTestMediaRef struct {

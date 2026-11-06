@@ -104,7 +104,7 @@ func getExport(t *testing.T, app *fiber.App, path string) (*http.Response, []byt
 		t.Fatalf("request %s failed: %v", path, err)
 	}
 	body, err := io.ReadAll(resp.Body)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if err != nil {
 		t.Fatalf("read body: %v", err)
 	}

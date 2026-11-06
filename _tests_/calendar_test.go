@@ -140,15 +140,15 @@ func TestCalendarDaysBounds(t *testing.T) {
 		input string
 		want  int
 	}{
-		{"", 7},      // default
+		{"", 7}, // default
 		{"7", 7},
 		{"1", 1},
 		{"30", 30},
-		{"31", 30},   // capped at 30
-		{"100", 30},  // capped
-		{"0", 1},     // floor at 1
-		{"-5", 7},    // invalid (minus sign) → default 7
-		{"abc", 7},   // invalid → default
+		{"31", 30},  // capped at 30
+		{"100", 30}, // capped
+		{"0", 1},    // floor at 1
+		{"-5", 7},   // invalid (minus sign) → default 7
+		{"abc", 7},  // invalid → default
 	}
 
 	for _, tt := range tests {
@@ -177,7 +177,9 @@ func TestCalendarShowShape(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 	if raw["title"] != "Test Show" {
 		t.Errorf("title = %v", raw["title"])
 	}
@@ -237,7 +239,9 @@ func TestCalendarPaginationEnvelope(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 	if raw["page"] == nil || raw["limit"] == nil || raw["row_count"] == nil {
 		t.Error("pagination envelope missing required fields")
 	}

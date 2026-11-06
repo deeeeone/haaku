@@ -1,0 +1,25 @@
+# gitleaks configuration (issue #8).
+#
+# `make secrets` runs `gitleaks git`, so the whole history is scanned: a secret
+# that was committed and later removed still fails the gate. That is the point.
+#
+# The allowlist below is deliberately narrow — a rule AND the exact file — so it
+# grandfathers two synthetic high-entropy literals in test fixtures and nothing
+# else. A real key pasted into any other file, or into these files in a new
+# commit, is still reported.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = '''
+Synthetic credential-shaped literals in test fixtures, not secrets:
+ - internal/handlers/webhooks/ssrf_test.go: a webhook secret literal used to drive SSRF checks
+ - _tests_/oauth_test.go: an API-key-shaped string used to prove hashing is deterministic
+Both are `generic-api-key` matches on high entropy alone. Any other rule, or any
+other file, is still reported.
+'''
+paths = [
+  '''^internal/handlers/webhooks/ssrf_test\.go$''',
+  '''^_tests_/oauth_test\.go$''',
+]
+targetRules = ['generic-api-key']

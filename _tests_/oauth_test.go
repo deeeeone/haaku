@@ -36,7 +36,7 @@ func TestScopeValidation(t *testing.T) {
 		input    []string
 		expected int // minimum number of valid scopes
 	}{
-		{"empty", []string{}, 1},       // defaults to "profile"
+		{"empty", []string{}, 1}, // defaults to "profile"
 		{"valid", []string{"profile", "history:read"}, 2},
 		{"invalid", []string{"admin", "nope"}, 1}, // defaults to "profile"
 		{"mixed", []string{"profile", "invalid", "watchlist:read"}, 2},
@@ -63,8 +63,8 @@ func TestRefreshTokenReuseDetection(t *testing.T) {
 
 	// Verify data model supports the pattern
 	_ = database.OAuthClient{
-		Name:    "test-app",
-		UserID:  "user_test",
+		Name:   "test-app",
+		UserID: "user_test",
 	}
 	_ = database.OAuthToken{
 		RefreshTokenFamily: "family-1",

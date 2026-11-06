@@ -273,9 +273,10 @@ func handleCheckinCreate(c *fiber.Ctx) error {
 			WatchedAt: response.FormatTime(now),
 			Message:   req.Message,
 		}
-		if mediaType == "movie" {
+		switch mediaType {
+		case "movie":
 			result.Movie = &checkinMediaRef{IDs: mediaRefIDs{TMDB: int(mediaID)}}
-		} else if mediaType == "episode" {
+		case "episode":
 			result.Episode = &checkinMediaRef{IDs: mediaRefIDs{TMDB: int(mediaID)}}
 		}
 

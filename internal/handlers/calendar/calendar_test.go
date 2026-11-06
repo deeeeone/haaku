@@ -12,16 +12,16 @@ func TestClampDays(t *testing.T) {
 		in   string
 		want int
 	}{
-		{"", 7},       // default
-		{"7", 7},      // in range
-		{"1", 1},      // min
-		{"30", 30},    // max
-		{"0", 1},      // below min → clamp to 1
-		{"31", 30},    // above max → clamp to 30
-		{"999", 30},   // above max
-		{"abc", 7},    // non-numeric → default
-		{"1a", 7},     // partial non-numeric → default
-		{"12", 12},    // multi-digit
+		{"", 7},     // default
+		{"7", 7},    // in range
+		{"1", 1},    // min
+		{"30", 30},  // max
+		{"0", 1},    // below min → clamp to 1
+		{"31", 30},  // above max → clamp to 30
+		{"999", 30}, // above max
+		{"abc", 7},  // non-numeric → default
+		{"1a", 7},   // partial non-numeric → default
+		{"12", 12},  // multi-digit
 	}
 	for _, tc := range cases {
 		if got := clampDays(tc.in); got != tc.want {
@@ -39,7 +39,7 @@ func TestDeriveTarget(t *testing.T) {
 		{"/v1/calendars/all/shows", "all"},
 		{"/v1/calendars/premieres/shows", "premieres"},
 		{"/v1/calendars/my/shows/premieres", "my"},
-		{"/v1/calendars/", ""},   // trailing slash yields empty target (impl behavior)
+		{"/v1/calendars/", ""}, // trailing slash yields empty target (impl behavior)
 		{"/", "all"},
 		{"", "all"},
 	}
@@ -68,16 +68,16 @@ func TestBuildShowIDs(t *testing.T) {
 func TestBuildEpisode(t *testing.T) {
 	aired := database.Date{Time: time.Date(2020, 3, 15, 0, 0, 0, 0, time.UTC)}
 	ep := &database.Episode{
-		ID:            30,
-		SeasonID:      10,
-		ShowID:        11,
-		EpisodeNumber: 4,
-		Title:         "Ep 4",
-		Overview:      "o",
-		Runtime:       45,
-		Images:        database.JSONMap{"poster": "x"},
+		ID:             30,
+		SeasonID:       10,
+		ShowID:         11,
+		EpisodeNumber:  4,
+		Title:          "Ep 4",
+		Overview:       "o",
+		Runtime:        45,
+		Images:         database.JSONMap{"poster": "x"},
 		AbsoluteNumber: intPtr(5),
-		AiredAt:       &aired,
+		AiredAt:        &aired,
 	}
 	got := buildEpisode(ep)
 	if got.IDs.ID != 30 || got.SeasonID != 10 || got.ShowID != 11 || got.EpisodeNumber != 4 {

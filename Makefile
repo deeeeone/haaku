@@ -1,11 +1,17 @@
 .PHONY: help build bin frontend api-client embed-stub dev-backend dev-frontend fmt vet test test-go test-web lint lint-web \
 	tidy run compose-up compose-down pg-up pg-down pg-status test-db \
 	backup backup-list migrate-create migrate-validate migrate-status migrate-up \
-	api-spec api-check clean
+	api-spec api-check clean lint-go vuln secrets workflow-lint check-size check-bidi coverage check
 
 # pnpm is expected on PATH (the frontend is a pnpm workspace). Override for a
 # checkout that keeps its own toolchain, e.g. make frontend PNPM=/opt/node/bin/pnpm
 PNPM ?= pnpm
+
+# Minimum total statement coverage for `make coverage` (merged profile from both
+# Go suites). Measured on main at ~24.6%; the floor sits below that so ordinary
+# untested additions do not turn main red, but a whole suite going missing does.
+# Raise it as coverage improves.
+COVERAGE_FLOOR ?= 22
 
 # Goose, pinned so every machine and CI apply the same tool to the same files.
 GOOSE     := go run github.com/pressly/goose/v3/cmd/goose@v3.27.1
@@ -36,7 +42,7 @@ api-client: ## Regenerate the typed API client from openapi.yaml
 # checkout that has never run pnpm — which is most of them.
 embed-stub: ## Create a placeholder web/dist so Go builds work without a frontend build
 	@mkdir -p $(WEB_DIST)
-	@[ -e $(WEB_DIST)/index.html ] || printf '%s\n' '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>trakt-killer</title></head><body><p>Frontend not built. Run: make frontend</p></body></html>' > $(WEB_DIST)/index.html
+	@[ -e $(WEB_DIST)/index.html ] || printf '%s\n' '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>haaku</title></head><body><p>Frontend not built. Run: make frontend</p></body></html>' > $(WEB_DIST)/index.html
 
 # --- Backend ---
 
@@ -68,15 +74,48 @@ lint: vet lint-web ## Vet the backend and lint the frontend
 lint-web: ## Lint the frontend
 	cd web && $(PNPM) run lint
 
+# --- Gates (issue #8) ---
+#
+# CI calls these targets and nothing else, so `make check` locally is the same
+# gate CI runs. Tools that must be on PATH: golangci-lint, govulncheck, gitleaks,
+# actionlint, shellcheck (versions pinned in .github/workflows/ci.yml).
+
+lint-go: embed-stub ## Lint Go with the committed golangci-lint config
+	golangci-lint run ./...
+	# _tests_/ is a standalone "command-line-arguments" package (a leading
+	# underscore hides it from ./...), so it needs its own invocation.
+	golangci-lint run ./_tests_/*.go
+
+vuln: embed-stub ## Fail on known vulnerabilities reachable from this code
+	govulncheck ./...
+
+secrets: ## Scan the whole git history for committed secrets (gitleaks)
+	gitleaks git --no-banner --redact --config .gitleaks.toml
+
+workflow-lint: ## Lint the workflow files (actionlint) and shell scripts (shellcheck)
+	actionlint
+	shellcheck scripts/*.sh
+
+check-size: ## Size ratchet: files over the soft limit may only shrink
+	./scripts/check-size.sh
+
+check-bidi: ## Fail on bidi control characters in tracked text (CVE-2021-42574)
+	./scripts/check-bidi.sh
+
+coverage: embed-stub ## Run both Go suites under coverage and enforce COVERAGE_FLOOR
+	COVERAGE_OUT=coverage.out COVERAGE_FLOOR=$(COVERAGE_FLOOR) ./scripts/test-go.sh
+
+check: lint-go vuln secrets workflow-lint check-size check-bidi api-check ## Run every gate CI runs
+
 # --- Test ---
 
 test: test-go test-web ## Run backend and frontend tests
 
-test-go: embed-stub ## Run the Go test suites
-	go test ./...
-	# _tests_/ is a standalone "command-line-arguments" package (underscore dirs
-	# are invisible to `go test ./...`), so run it via explicit files.
-	go test ./_tests_/*.go
+# One runner for both Go suites: `go test ./...` cannot see _tests_/ (a leading
+# underscore hides a directory from the ./... pattern), so the harness used to be
+# skipped unless you remembered the second command. See scripts/test-go.sh.
+test-go: embed-stub ## Run both Go test suites (./... and the _tests_ harness)
+	./scripts/test-go.sh
 
 test-web: ## Run the frontend test suite
 	cd web && $(PNPM) run test

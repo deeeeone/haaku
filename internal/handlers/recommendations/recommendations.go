@@ -607,7 +607,8 @@ func handleAnticipated(c *fiber.Ctx) error {
 
 	// Optionally filter by type.
 	var args []interface{}
-	if mediaType == "movies" {
+	switch mediaType {
+	case "movies":
 		sql = `
 			SELECT
 				'movie' AS media_type,
@@ -635,7 +636,7 @@ func handleAnticipated(c *fiber.Ctx) error {
 			LIMIT ? OFFSET ?
 		`
 		args = append(args, limit, (page-1)*limit)
-	} else if mediaType == "shows" {
+	case "shows":
 		sql = `
 			SELECT
 				'show' AS media_type,
@@ -665,7 +666,7 @@ func handleAnticipated(c *fiber.Ctx) error {
 			LIMIT ? OFFSET ?
 		`
 		args = append(args, limit, (page-1)*limit)
-	} else {
+	default:
 		// Both: wrap in a subquery. full_count is computed here over the
 		// UNIONed result (not per-type) so the reported total matches the
 		// combined item set that ORDER/LIMIT paginate over. ORDER BY score

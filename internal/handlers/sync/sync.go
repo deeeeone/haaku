@@ -106,9 +106,10 @@ func handleGetHistory(c *fiber.Ctx) error {
 	endAt := c.Query("end_at")
 
 	query := db.Where("user_id = ?", userID)
-	if mediaType == "movie" {
+	switch mediaType {
+	case "movie":
 		query = query.Where("media_type = ?", "movie")
-	} else if mediaType == "episode" {
+	case "episode":
 		query = query.Where("media_type = ?", "episode")
 	}
 	if startAt != "" {

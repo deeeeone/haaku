@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 )
 
 // metricsNamespace prefixes every metric this service publishes, so a scrape
@@ -72,8 +73,8 @@ func init() {
 	registry.MustRegister(
 		// Runtime + process metrics, so a scrape can answer "is it up and is it
 		// slow" without a second exporter.
-		prometheus.NewGoCollector(),
-		prometheus.NewProcessCollector(prometheus.ProcessCollectorOpts{}),
+		collectors.NewGoCollector(),
+		collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 		// Service metrics.
 		httpRequests,
 		httpDuration,

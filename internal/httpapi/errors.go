@@ -61,4 +61,3 @@ func writeError(c *fiber.Ctx, status int, code, message string) error {
 }
 func notFound(c *fiber.Ctx, msg string) error   { return response.NotFound(c, msg) }
 func badRequest(c *fiber.Ctx, msg string) error { return response.BadRequest(c, msg) }
-func unauthorized(c *fiber.Ctx) error           { return response.Unauthorized(c) }

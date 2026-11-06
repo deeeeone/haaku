@@ -204,16 +204,11 @@ func migrateTo(ctx context.Context, db *gorm.DB, opts migrateOptions) error {
 // re-read the environment. Falls back to DATABASE_URL when the dialector is not
 // a Postgres one.
 func dsnFromDB(db *gorm.DB) string {
-	if db == nil {
+	if db == nil || db.Config == nil {
 		return ""
 	}
 	if d, ok := db.Dialector.(*pgdriver.Dialector); ok {
 		return d.DSN
-	}
-	if db.Config != nil && db.Config.Dialector != nil {
-		if d, ok := db.Config.Dialector.(*pgdriver.Dialector); ok {
-			return d.DSN
-		}
 	}
 	return ""
 }

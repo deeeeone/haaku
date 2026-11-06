@@ -54,7 +54,7 @@ PG_BIN="${TKILLER_PG_BIN:-}"
 
 # Autodetect the newest installed server binaries.
 if [ -z "$PG_BIN" ]; then
-  PG_BIN="$(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -V | tail -1 || true)"
+  PG_BIN="$(find /usr/lib/postgresql -mindepth 2 -maxdepth 2 -type d -name bin 2>/dev/null | sort -V | tail -1 || true)"
 fi
 if [ -z "$PG_BIN" ]; then
   PG_BIN="$(dirname "$(command -v initdb 2>/dev/null || echo /nonexistent)")"

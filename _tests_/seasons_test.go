@@ -85,7 +85,9 @@ func TestSeasonStatsResponseShape(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 
 	required := []string{"watchers", "plays", "episodes_count", "rating"}
 	for _, field := range required {
@@ -113,7 +115,9 @@ func TestSeasonRatingsDistributionShape(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 	if raw["distribution"] == nil {
 		t.Error("distribution missing")
 	}

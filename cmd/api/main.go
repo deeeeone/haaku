@@ -116,7 +116,7 @@ func run() int {
 		if err := redis.InitRedis(); err != nil {
 			logger.Warn("redis unavailable — running without cache", "error", err)
 		}
-		defer redis.CloseRedis()
+		defer func() { _ = redis.CloseRedis() }()
 	}
 
 	// Observability listeners (issue #9). Off unless TKILLER_METRICS_LISTEN is set.
@@ -206,13 +206,6 @@ func setupCronJobs(logger *slog.Logger) {
 	// Start the scheduler; jobs are added by domain agents as phases land.
 	c.Start()
 	logger.Info("cron scheduler started")
-}
-
-// recoverFromPanic logs and recovers from goroutine panics.
-func recoverFromPanic(logger *slog.Logger, context string) {
-	if r := recover(); r != nil {
-		logger.Error("panic recovered", "context", context, "panic", r)
-	}
 }
 
 // backupCommand is the parsed one-shot backup flags.

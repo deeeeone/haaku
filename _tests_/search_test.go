@@ -48,7 +48,7 @@ func TestSearchRouteExists(t *testing.T) {
 	app := newTestApp(t)
 
 	resp := doTestRequest(t, app, "GET", "/v1/search?query=test")
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound {
 		body, _ := io.ReadAll(resp.Body)
@@ -61,7 +61,7 @@ func TestSearchExactRouteExists(t *testing.T) {
 	app := newTestApp(t)
 
 	resp := doTestRequest(t, app, "GET", "/v1/search/exact?query=test&type=movie")
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound {
 		body, _ := io.ReadAll(resp.Body)
@@ -74,7 +74,7 @@ func TestSearchLookupRouteExists(t *testing.T) {
 	app := newTestApp(t)
 
 	resp := doTestRequest(t, app, "GET", "/v1/search/lookup?id_type=imdb&id=tt1234567")
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound {
 		body, _ := io.ReadAll(resp.Body)
@@ -87,7 +87,7 @@ func TestSearchMissingQuery(t *testing.T) {
 	app := newTestApp(t)
 
 	resp := doTestRequest(t, app, "GET", "/v1/search")
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusBadRequest {
 		body, _ := io.ReadAll(resp.Body)
@@ -100,7 +100,7 @@ func TestSearchExactMissingQuery(t *testing.T) {
 	app := newTestApp(t)
 
 	resp := doTestRequest(t, app, "GET", "/v1/search/exact")
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusBadRequest {
 		body, _ := io.ReadAll(resp.Body)
@@ -113,7 +113,7 @@ func TestSearchExactInvalidType(t *testing.T) {
 	app := newTestApp(t)
 
 	resp := doTestRequest(t, app, "GET", "/v1/search/exact?query=test&type=invalid")
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusBadRequest {
 		body, _ := io.ReadAll(resp.Body)
@@ -137,7 +137,7 @@ func TestSearchLookupMissingParams(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resp := doTestRequest(t, app, "GET", tt.path)
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode != http.StatusBadRequest {
 				body, _ := io.ReadAll(resp.Body)
 				t.Errorf("expected 400 for %s, got %d. body=%s", tt.name, resp.StatusCode, body)
@@ -151,7 +151,7 @@ func TestSearchDefaultType(t *testing.T) {
 	app := newTestApp(t)
 
 	resp := doTestRequest(t, app, "GET", "/v1/search?query=test")
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound {
 		t.Error("search route not found")
@@ -163,7 +163,7 @@ func TestSearchPaginationDefaults(t *testing.T) {
 	app := newTestApp(t)
 
 	resp := doTestRequest(t, app, "GET", "/v1/search?query=test&page=2&limit=10")
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound {
 		t.Error("search route not found with pagination params")
@@ -181,7 +181,7 @@ func TestSearchErrorEnvelope(t *testing.T) {
 	app := newTestApp(t)
 
 	resp := doTestRequest(t, app, "GET", "/v1/search") // missing query
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, _ := io.ReadAll(resp.Body)
 	bodyStr := string(body)
