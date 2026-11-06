@@ -10,6 +10,10 @@
 #   * a row names a registered route but a status that contradicts it (a serving
 #     route must be implemented/divergent; a 501 route must be blocked-engine),
 #   * a registered route that answers 501 is not recorded here as blocked-engine,
+#   * a route we serve has an inventory row here graded blocked/out-of-scope/
+#     blocked-data - the manifest may not under-report what we ship (matched by
+#     Trakt-shaped path, so our {media_type} and Trakt's {type} are the same
+#     segment),
 #   * a blocked-engine row does not name its engine, or a divergent row has no
 #     compat note.
 #
@@ -134,9 +138,9 @@ sections:
         status: blocked-data
         rationale: "No videos table and no TMDB video ingest, so there is nothing to serve."
       - trakt: "GET /movies/{id}/comments/{sort}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: buildable on comments(media_type, media_id); no per-item comment listing route exists yet and nothing blocks it."
+        ours: "GET /v1/movies/{id}/comments/{sort}"
+        status: implemented
+        rationale: "Landed with the media comment reads: real rows from comments(media_type='movie', media_id) with the same sort vocabulary as Trakt (newest|oldest|likes|replies|trending)."
       - trakt: "GET /movies/{id}/sentiments"
         ours: ""
         status: out-of-scope
@@ -210,9 +214,9 @@ sections:
         status: blocked-data
         rationale: "No videos table and no TMDB video ingest."
       - trakt: "GET /shows/{id}/comments/{sort}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: buildable on comments(media_type, media_id); no per-item comment listing route yet."
+        ours: "GET /v1/shows/{id}/comments/{sort}"
+        status: implemented
+        rationale: "Landed with the media comment reads: real rows from comments(media_type='show', media_id), same sort vocabulary as Trakt."
       - trakt: "GET /shows/{id}/sentiments"
         ours: ""
         status: out-of-scope
@@ -234,25 +238,22 @@ sections:
         status: implemented
         rationale: "Landed: most recently aired episode, 204 when there is none."
       - trakt: "GET /shows/{id}/progress/watched"
-        ours: ""
-        status: blocked-engine
-        rationale: "Per-show watched progress is an aggregate over user_history that the stats engine owns."
-        engine: "stats/rankings engine (issue #5)"
+        ours: "GET /v1/shows/{id}/progress/watched"
+        status: implemented
+        rationale: "Landed: aired vs watched episodes per season computed from the episodes table plus the caller's user_history rows; Trakt's reset_at is omitted because nothing stores it."
       - trakt: "GET /shows/{id}/progress/collection"
-        ours: ""
-        status: blocked-engine
-        rationale: "Per-show collected progress needs the same rollup over user_collection."
-        engine: "stats/rankings engine (issue #5)"
+        ours: "GET /v1/shows/{id}/progress/collection"
+        status: implemented
+        rationale: "Landed: same per-season breakdown pinned to the caller's user_collection rows (aired vs collected episodes)."
       - trakt: "GET /shows/{id}/progress/watched/reset"
         ours: ""
         status: blocked-engine
         rationale: "Resetting progress can only exist once progress is computed and stored."
         engine: "stats/rankings engine (issue #5)"
       - trakt: "POST /shows/{id}/progress/watched/reset"
-        ours: ""
-        status: blocked-engine
-        rationale: "Same as the GET reset: the write path needs a stored progress aggregate to reset."
-        engine: "stats/rankings engine (issue #5)"
+        ours: "POST /v1/shows/{id}/progress/watched/reset"
+        status: implemented
+        rationale: "Landed: deletes the caller's episode watch-history for that show only and returns the recomputed watched progress (Trakt's shape)."
       - trakt: "GET /shows/{id}/lists/{type}/{sort}"
         ours: "GET /v1/shows/{id}/lists"
         status: blocked-engine
@@ -298,9 +299,10 @@ sections:
         rationale: "Season stats (watchers/plays/rating) are served flat, keyed by our season id."
         compat: "listener resolves show+season_number to the flat route."
       - trakt: "GET /shows/{id}/seasons/{season}/comments"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: comments(media_type, media_id) can already hold a season comment, but no per-season listing route exists."
+        ours: "GET /v1/shows/{id}/seasons/{season}/comments/{sort}"
+        status: divergent
+        rationale: "Season comments landed served nested under the show, but our route carries a trailing {sort} segment Trakt's does not (and defaults to newest)."
+        compat: "listener maps /shows/{id}/seasons/{season}/comments -> our route with {sort}=newest; the media_type/season are already the ones Trakt asks for."
       - trakt: "GET /shows/{id}/seasons/{season}/lists"
         ours: ""
         status: out-of-scope
@@ -314,10 +316,10 @@ sections:
         status: blocked-data
         rationale: "No videos table and no TMDB video ingest."
       - trakt: "GET /shows/{id}/seasons/{s}/episodes/{e}/comments"
-        ours: "GET /v1/episodes/{id}/comments"
+        ours: "GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/comments/{sort}"
         status: divergent
-        rationale: "Episode comments exist, served flat by episode id rather than nested."
-        compat: "listener resolves the nested episode to our id and delegates to the flat route."
+        rationale: "Episode comments are now served nested under the show (landed with the media comment reads); our route carries a trailing {sort} segment Trakt's does not. A flat /v1/episodes/{id}/comments route also still exists."
+        compat: "listener resolves show+season+episode to our episode id and delegates; the trailing {sort} defaults to newest."
       - trakt: "GET /shows/{id}/seasons/{s}/episodes/{e}/lists"
         ours: "GET /v1/episodes/{id}/lists"
         status: divergent
@@ -357,29 +359,25 @@ sections:
         status: implemented
         rationale: "Landed with issue #6: MAX() stamps per collection, same path and contract."
       - trakt: "GET /sync/collection/movies"
-        ours: "GET /v1/sync/collection"
-        status: divergent
-        rationale: "The collection is served with the media type as a query param."
-        compat: "ours is /v1/sync/collection?type=movie; Trakt's segment is plural ('movies') and the compat listener maps the path to the query value."
+        ours: "GET /v1/sync/collection/movies"
+        status: implemented
+        rationale: "Landed as a per-type read: the collection handler with media_type pinned to 'movie' by the path segment, Trakt's exact path."
       - trakt: "GET /sync/collection/shows"
-        ours: "GET /v1/sync/collection"
-        status: divergent
-        rationale: "Same route with ?type=show."
-        compat: "listener maps /sync/collection/shows -> /v1/sync/collection?type=show."
+        ours: "GET /v1/sync/collection/shows"
+        status: implemented
+        rationale: "Landed as a per-type read pinned to media_type='show'."
       - trakt: "GET /sync/collection/episodes"
         ours: ""
         status: blocked-data
         rationale: "user_collection.media_type is 'movie' or 'show' only; an episode collection row cannot be stored."
       - trakt: "GET /sync/watchlist/movies"
-        ours: "GET /v1/sync/watchlist"
-        status: divergent
-        rationale: "Watchlist is served with ?type= instead of a path segment."
-        compat: "listener maps /sync/watchlist/movies -> /v1/sync/watchlist?type=movie."
+        ours: "GET /v1/sync/watchlist/movies"
+        status: implemented
+        rationale: "Landed as a per-type read pinned to media_type='movie'."
       - trakt: "GET /sync/watchlist/shows"
-        ours: "GET /v1/sync/watchlist"
-        status: divergent
-        rationale: "Same route with ?type=show."
-        compat: "listener maps /sync/watchlist/shows -> /v1/sync/watchlist?type=show."
+        ours: "GET /v1/sync/watchlist/shows"
+        status: implemented
+        rationale: "Landed as a per-type read pinned to media_type='show'."
       - trakt: "GET /sync/watchlist/seasons"
         ours: ""
         status: blocked-data
@@ -389,45 +387,37 @@ sections:
         status: blocked-data
         rationale: "user_watchlist.media_type is 'movie' or 'show' only."
       - trakt: "GET /sync/ratings/movies"
-        ours: "GET /v1/sync/ratings"
-        status: divergent
-        rationale: "Ratings are served with ?type=; ratings support all four media types."
-        compat: "listener maps /sync/ratings/movies -> /v1/sync/ratings?type=movie."
+        ours: "GET /v1/sync/ratings/movies"
+        status: implemented
+        rationale: "Landed as a per-type read pinned to media_type='movie'."
       - trakt: "GET /sync/ratings/shows"
-        ours: "GET /v1/sync/ratings"
-        status: divergent
-        rationale: "Same route with ?type=show."
-        compat: "listener maps the segment to ?type=show."
+        ours: "GET /v1/sync/ratings/shows"
+        status: implemented
+        rationale: "Landed as a per-type read pinned to media_type='show'."
       - trakt: "GET /sync/ratings/seasons"
-        ours: "GET /v1/sync/ratings"
-        status: divergent
-        rationale: "Same route with ?type=season."
-        compat: "listener maps the segment to ?type=season."
+        ours: "GET /v1/sync/ratings/seasons"
+        status: implemented
+        rationale: "Landed as a per-type read pinned to media_type='season'."
       - trakt: "GET /sync/ratings/episodes"
-        ours: "GET /v1/sync/ratings"
-        status: divergent
-        rationale: "Same route with ?type=episode."
-        compat: "listener maps the segment to ?type=episode."
+        ours: "GET /v1/sync/ratings/episodes"
+        status: implemented
+        rationale: "Landed as a per-type read pinned to media_type='episode'."
       - trakt: "GET /sync/favorites/movies"
-        ours: "GET /v1/sync/favorites"
-        status: divergent
-        rationale: "Favorites are served with ?type= (favorites store movie/show)."
-        compat: "listener maps /sync/favorites/movies -> /v1/sync/favorites?type=movie."
+        ours: "GET /v1/sync/favorites/movies"
+        status: implemented
+        rationale: "Landed as a per-type read pinned to media_type='movie'."
       - trakt: "GET /sync/favorites/shows"
-        ours: "GET /v1/sync/favorites"
-        status: divergent
-        rationale: "Same route with ?type=show."
-        compat: "listener maps the segment to ?type=show."
+        ours: "GET /v1/sync/favorites/shows"
+        status: implemented
+        rationale: "Landed as a per-type read pinned to media_type='show'."
       - trakt: "GET /sync/history/movies"
-        ours: "GET /v1/sync/history"
-        status: divergent
-        rationale: "History is served with ?type=movie|episode."
-        compat: "listener maps /sync/history/movies -> /v1/sync/history?type=movie."
+        ours: "GET /v1/sync/history/movies"
+        status: implemented
+        rationale: "Landed as a per-type read pinned to media_type='movie'."
       - trakt: "GET /sync/history/episodes"
-        ours: "GET /v1/sync/history"
-        status: divergent
-        rationale: "Same route with ?type=episode."
-        compat: "listener maps the segment to ?type=episode."
+        ours: "GET /v1/sync/history/episodes"
+        status: implemented
+        rationale: "Landed as a per-type read pinned to media_type='episode'."
       - trakt: "GET /sync/history/shows"
         ours: "GET /v1/sync/history"
         status: divergent
@@ -446,62 +436,61 @@ sections:
   - name: "Users"
     rows:
       - trakt: "GET /users/{id}/collection"
-        ours: ""
-        status: out-of-scope
-        rationale: "decision: haaku profiles are private by default; a public collection read surface is a product decision for the maintainers to ratify, not an engine gap. Covers the minimal/extended variants too."
+        ours: "GET /v1/users/{id}/collection"
+        status: implemented
+        rationale: "Landed with the public-profile reads: real rows from user_collection, gated by auth.PrivacyFilter (403 for a private profile to a stranger). Covers the minimal/extended variants too (the narrowing params are accepted and ignored)."
       - trakt: "GET /users/{id}/collection/{type}"
-        ours: ""
-        status: out-of-scope
-        rationale: "decision: same public-profile decision as /users/{id}/collection."
+        ours: "GET /v1/users/{id}/collection/{media_type}"
+        status: implemented
+        rationale: "Same handler, media type as a path segment (movie|show|all), same PrivacyFilter gate."
       - trakt: "GET /users/{id}/history"
-        ours: ""
-        status: out-of-scope
-        rationale: "decision: same public-profile decision; the data exists but the surface is not shipped."
+        ours: "GET /v1/users/{id}/history"
+        status: implemented
+        rationale: "Landed: real rows from user_history in our sync HistoryResponse shape, PrivacyFilter-gated."
       - trakt: "GET /users/{id}/history/{type}"
-        ours: ""
-        status: out-of-scope
-        rationale: "decision: same public-profile decision as /users/{id}/history."
+        ours: "GET /v1/users/{id}/history/{media_type}"
+        status: implemented
+        rationale: "Same handler pinned to the media type segment (movies|shows|seasons|episodes|all)."
       - trakt: "GET /users/{id}/history/{type}/{id}"
-        ours: ""
-        status: out-of-scope
-        rationale: "decision: same public-profile decision; the per-item variant included."
+        ours: "GET /v1/users/{id}/history/{media_type}/{media_id}"
+        status: implemented
+        rationale: "Landed: one item's play rows, resolving {media_id} by local id, slug or ?id_type= external id. The per-item variant is included."
       - trakt: "GET /users/{id}/ratings"
-        ours: ""
-        status: out-of-scope
-        rationale: "decision: public rating surfaces are part of the same profile decision."
+        ours: "GET /v1/users/{id}/ratings"
+        status: implemented
+        rationale: "Landed: real rows from user_ratings, PrivacyFilter-gated."
       - trakt: "GET /users/{id}/ratings/{type}"
-        ours: ""
-        status: out-of-scope
-        rationale: "decision: same public-profile decision as /users/{id}/ratings."
+        ours: "GET /v1/users/{id}/ratings/{media_type}"
+        status: implemented
+        rationale: "Same handler pinned to the media type segment (four media types support ratings)."
       - trakt: "GET /users/{id}/watchlist"
-        ours: ""
-        status: out-of-scope
-        rationale: "decision: a public watchlist read is part of the same profile decision."
+        ours: "GET /v1/users/{id}/watchlist"
+        status: implemented
+        rationale: "Landed: real rows from user_watchlist with Trakt's sort_by=rank|listed|added|title, PrivacyFilter-gated. (The per-type /watchlist/{media_type} variant is served too.)"
       - trakt: "GET /users/{id}/watching"
-        ours: ""
-        status: blocked-engine
-        rationale: "Users currently watching comes from live scrobble sessions and shares the activity engine's blocker."
-        engine: "activity engine"
+        ours: "GET /v1/users/{id}/watching"
+        status: implemented
+        rationale: "Landed: reads the newest non-expired scrobble session (a pause/stop session means not watching); {} when there is none, matching Trakt."
       - trakt: "GET /users/{id}/comments/{comment_type}/{type}"
-        ours: ""
-        status: out-of-scope
-        rationale: "decision: a per-user comment index is a public-profile surface, same decision as the collection read."
+        ours: "GET /v1/users/{id}/comments/{comment_type}/{media_type}"
+        status: implemented
+        rationale: "Landed: real rows from comments keyed by the user, comment_type all|reviews|shouts and media_type incl. lists, PrivacyFilter-gated."
       - trakt: "GET /users/{id}/notes/{type}"
-        ours: ""
-        status: out-of-scope
-        rationale: "decision: notes are private by design (user_notes is owner-scoped); exposing another user's notes contradicts that."
+        ours: "GET /v1/users/{id}/notes/{media_type}"
+        status: implemented
+        rationale: "Landed with the public-profile reads: user_notes rows are now served for a visible profile (PrivacyFilter returns 403 to a stranger on a private one), superseding the earlier 'notes are private by design' decision."
       - trakt: "GET /users/{id}/likes/{type}"
-        ours: ""
-        status: out-of-scope
-        rationale: "decision: we expose likes per item (lists/{id}/likes, comments/{id}/likes); a per-user likes index is a profile surface, not shipped."
+        ours: "GET /v1/users/{id}/likes/comments"
+        status: implemented
+        rationale: "Landed: a user's liked comments (/likes/comments) and liked lists (/likes/lists) are both served, matching Trakt's {type} in {comments, lists}; list likes not visible to the caller are omitted rather than leaked."
       - trakt: "GET /users/me/likes/comments"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the caller's own liked comments are readable from comment_likes; no route exists yet and nothing blocks it."
+        ours: "GET /v1/users/me/likes/comments"
+        status: implemented
+        rationale: "Landed: the caller's own liked comments from comment_likes."
       - trakt: "GET /users/me/likes/lists"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: same as me/likes/comments, over list_likes."
+        ours: "GET /v1/users/me/likes/lists"
+        status: implemented
+        rationale: "Landed: the caller's own liked lists from list_likes."
       - trakt: "PUT /users/me/avatar"
         ours: ""
         status: out-of-scope

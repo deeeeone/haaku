@@ -47,8 +47,36 @@ tell them apart is not a measurement.
   `blocked-engine`;
 - a registered route answers `501` and no row records it as `blocked-engine` —
   new honest-501 stubs have to be measured, not quietly added;
+- **a route we serve has an inventory row graded anything other than
+  `implemented`/`divergent`** — the manifest may never under-report what we
+  ship (see below);
 - a `blocked-engine` row names no engine, a `divergent` row has no `compat`
   note, a row has no rationale, or a Trakt endpoint appears twice.
+
+### The no-under-report rule
+
+The staleness this manifest exists to stop is a route landing while the row
+that names its Trakt endpoint keeps an old grade. So the gate checks the
+registry in the other direction too: for every registered route that *serves*
+(anything but a `501`), it looks up the inventory row for that route's
+Trakt-shaped path and fails if that row is graded `blocked-engine`,
+`blocked-data` or `out-of-scope`.
+
+- "Trakt-shaped path" means our registered path with the `/v1` mount stripped
+  and every `{param}` segment collapsed to `{}`, so our `{media_type}` reads the
+  same as Trakt's `{type}`. A route is matched to a row by shape+method, not by
+  a hand-kept list.
+- A `501` route is skipped — it is not served, and the existing "record every
+  501 as `blocked-engine`" rule already covers it.
+- A serving route with **no** matching inventory row is left alone. That is our
+  own surface (`/v1/webhooks`, `/v1/movies/trending`, …), which is deliberately
+  not in the Trakt inventory; section C rows have an empty `trakt` column and
+  are never matched. Distinguishing "our surface" from "a Trakt endpoint whose
+  row is missing entirely" would need a hand-maintained route→row map, which is
+  the drift this file is meant to remove — so the rule only fires where a row
+  already exists and is graded wrongly. Adding a route in Trakt's *exact* shape
+  is therefore always caught; adding one in a divergent shape still needs a
+  human to write the `compat` note.
 
 `501` is read from the route definitions themselves (the registration that
 declares the `501` response is exactly what puts `501` in `openapi.yaml`), so
@@ -74,3 +102,31 @@ because yaml.v3 is already in the module graph.
   (copy it verbatim from `internal/httpapi/routes.go` / `openapi.yaml`).
 - A route is deliberately stubbed with `501`: mark it `blocked-engine` and name
   the engine, or the gate fails.
+
+### When you add a route
+
+`make parity-check` runs in `make check` and in CI, so the fastest path is to
+run it after wiring the route:
+
+1. **If the route's path is Trakt's, exactly** (same segments, our `/v1` prefix
+   and our `{media_type}` wording aside): the gate will fail with "is served,
+   but its inventory row … is graded …". Flip that row to `implemented`, copy
+   the registered path into `ours`, and say in the rationale what the handler
+   actually returns. Do not mark it `implemented` if the handler returns a
+   hard-coded empty payload — implement it or make it an honest `501`; a
+   fabricated `200` is the one thing this file will not accept.
+2. **If the shape diverges** (an extra `{sort}` segment, a query param where
+   Trakt uses a path segment): set the row `divergent` and add the `compat` note
+   saying how the listener bridges it. The rule cannot see a route that is only
+   *close* to Trakt's path, so this step is on you — run `go run ./cmd/parity`
+   and read the table.
+3. **If the route is our own surface** (no Trakt equivalent): add a row with an
+   empty `trakt` column, `ours` set, and `out-of-scope` with a `custom:`
+   rationale — or nothing at all if it is not worth recording; the rule ignores
+   routes that match no inventory row either way.
+4. **If the route is a new `501`**: add `blocked-engine` with its engine, or the
+   gate fails on the unrecorded-501 rule.
+
+Run `go run ./cmd/parity` (exit 0, prints coverage) while you work; run
+`make parity-check` before committing.
+
