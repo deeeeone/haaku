@@ -1,7 +1,7 @@
 .PHONY: help build bin frontend api-client embed-stub dev-backend dev-frontend fmt vet test test-go test-web lint lint-web \
 	tidy run compose-up compose-down pg-up pg-down pg-status test-db \
 	backup backup-list migrate-create migrate-validate migrate-status migrate-up \
-	api-spec api-check clean docker-base docker-omnibus docker-lint lint-go vuln secrets workflow-lint check-size check-bidi coverage check
+	api-spec api-check clean docker-base docker-omnibus docker-lint lint-go vuln secrets workflow-lint check-size check-bidi coverage check parity-check
 
 # pnpm is expected on PATH (the frontend is a pnpm workspace). Override for a
 # checkout that keeps its own toolchain, e.g. make frontend PNPM=/opt/node/bin/pnpm
@@ -105,7 +105,20 @@ check-bidi: ## Fail on bidi control characters in tracked text (CVE-2021-42574)
 coverage: embed-stub ## Run both Go suites under coverage and enforce COVERAGE_FLOOR
 	COVERAGE_OUT=coverage.out COVERAGE_FLOOR=$(COVERAGE_FLOOR) ./scripts/test-go.sh
 
-check: lint-go vuln secrets workflow-lint check-size check-bidi api-check ## Run every gate CI runs
+check: lint-go vuln secrets workflow-lint check-size check-bidi api-check parity-check ## Run every gate CI runs
+
+# --- Trakt parity manifest (issue #4) ---
+#
+# docs/parity/parity.yaml grades every Trakt endpoint in issue #4 against the
+# same route registry openapi.yaml is generated from, so "how much of Trakt do we
+# serve" is measured rather than asserted. cmd/parity prints the coverage table
+# and fails when a row disagrees with the registry (a route that does not exist,
+# a serving route marked blocked, a 501 route marked implemented, an
+# unrecorded 501). See docs/parity/README.md.
+
+parity-check: embed-stub ## Grade docs/parity/parity.yaml against the route registry
+	go run ./cmd/parity -check
+	go test ./internal/parity/ -run 'TestCommittedManifestMatchesTheRegistry|TestManifestFileIsWhereTheDocsSay' -count=1
 
 # --- Test ---
 

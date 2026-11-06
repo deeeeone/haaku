@@ -16,10 +16,12 @@ Every gate is a `make` target; the workflow only calls those targets, so
 | `hygiene` | `actionlint`, `shellcheck`, size ratchet, bidi-controls check | `make workflow-lint`, `make check-size`, `make check-bidi` |
 | `coverage` | both Go suites under one merged profile, with a floor | `make coverage` |
 | `openapi` | `openapi.yaml` freshness + two-way route inventory | `make api-check` |
+| `openapi` | Trakt parity manifest graded against the route registry | `make parity-check` |
 | `frontend` | frontend lint, build, tests (incl. typed-client drift) | `make lint-web`, `make test-web` |
 
 `make check` is `lint-go vuln secrets workflow-lint check-size check-bidi
-api-check`; the frontend job has its own toolchain and stays separate.
+api-check parity-check`; the frontend job has its own toolchain and stays
+separate.
 
 ## Two things that surprise people
 

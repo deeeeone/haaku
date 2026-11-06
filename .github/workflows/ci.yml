@@ -134,6 +134,12 @@ jobs:
       - name: Check the route inventory (registry <-> spec)
         run: make api-check
 
+      # The parity manifest grades every Trakt endpoint inventoried in issue #4
+      # against the same registry, so a route that does not exist, a 501 marked
+      # implemented, or an unrecorded 501 fails the build.
+      - name: Grade the Trakt parity manifest (registry <-> docs/parity/parity.yaml)
+        run: make parity-check
+
 
   # Independent of the Go job: the frontend is built and tested on its own, and
   # must not gate (or be gated by) the backend. `pnpm test` also fails if the
