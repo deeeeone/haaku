@@ -25,12 +25,12 @@ func registerOpenAPIRoutes() {
 		// Movies discovery
 		{Method: "GET", Path: "/v1/movies/trending", Summary: "Get trending movies", Tags: []string{"Discovery"}, Auth: "none", StatusCodes: map[int]string{200: "Trending movies"}},
 		{Method: "GET", Path: "/v1/movies/popular", Summary: "Get popular movies", Tags: []string{"Discovery"}, Auth: "none", StatusCodes: map[int]string{200: "Popular movies"}},
-		{Method: "GET", Path: "/v1/movies/recommendations/{id}", Summary: "Get movie recommendations", Tags: []string{"Discovery"}, Auth: "none", StatusCodes: map[int]string{200: "Recommendations"}},
+		{Method: "GET", Path: "/v1/movies/recommendations/{id}", Summary: "Get movie recommendations", Tags: []string{"Discovery"}, Auth: "none", StatusCodes: map[int]string{200: "Recommendations", 501: "Not implemented (requires recommendations engine)"}},
 
 		// Shows discovery
 		{Method: "GET", Path: "/v1/shows/trending", Summary: "Get trending shows", Tags: []string{"Discovery"}, Auth: "none", StatusCodes: map[int]string{200: "Trending shows"}},
 		{Method: "GET", Path: "/v1/shows/popular", Summary: "Get popular shows", Tags: []string{"Discovery"}, Auth: "none", StatusCodes: map[int]string{200: "Popular shows"}},
-		{Method: "GET", Path: "/v1/shows/recommendations/{id}", Summary: "Get show recommendations", Tags: []string{"Discovery"}, Auth: "none", StatusCodes: map[int]string{200: "Recommendations"}},
+		{Method: "GET", Path: "/v1/shows/recommendations/{id}", Summary: "Get show recommendations", Tags: []string{"Discovery"}, Auth: "none", StatusCodes: map[int]string{200: "Recommendations", 501: "Not implemented (requires recommendations engine)"}},
 	}
 
 	for _, r := range routes {
@@ -141,15 +141,20 @@ func showsList(c *fiber.Ctx, kind string) error {
 }
 
 // ---------------------------------------------------------------------------
-// Recommendations — stubs (Phase 2+)
+// Recommendations — blocked on the recommendations engine (issue #5)
 // ---------------------------------------------------------------------------
 
 func handleMoviesRecommendations(c *fiber.Ctx) error {
-	return c.JSON(make([]media.MovieResponse, 0))
+	// Recommendations require the recommendation graph (issue #5), which has not
+	// landed. Fails closed with 501 rather than return a fabricated empty array
+	// with a 200 — a made-up payload is worse than an honest "not implemented".
+	return response.NotImplemented(c, "recommendations require the recommendations engine, which is not implemented")
 }
 
 func handleShowsRecommendations(c *fiber.Ctx) error {
-	return c.JSON(make([]media.ShowResponse, 0))
+	// Same blocker as movies: the recommendations engine has not landed. Fails
+	// closed with 501 rather than return a fabricated empty array.
+	return response.NotImplemented(c, "recommendations require the recommendations engine, which is not implemented")
 }
 
 // ---------------------------------------------------------------------------

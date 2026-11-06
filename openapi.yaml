@@ -3923,6 +3923,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
+                "501":
+                    description: Not implemented (requires recommendations engine)
             security: []
             summary: Get movie recommendations
             tags:
@@ -6685,6 +6687,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
+                "501":
+                    description: Not implemented (requires recommendations engine)
             security: []
             summary: Get show recommendations
             tags:
