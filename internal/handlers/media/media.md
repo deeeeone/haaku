@@ -5,8 +5,8 @@
 The **shared media-read foundation** for the API (4 files). Provides movie/show/season/episode/person detail routes and the response builders + ID resolver reused across every other handler package.
 
 **`media.go` — media detail routes (public):**
-- Movies: `GET /movies/{id}`, `/{id}/people`, `/{id}/ratings`, `/{id}/stats`, `/{id}/lists`, `/{id}/watching`.
-- Shows: `GET /shows/{id}` (embeds seasons), `/{id}/seasons`, `/{id}/seasons/{season}`, `/{id}/seasons/{season}/episodes`, `/{id}/seasons/{season}/episodes/{episode}`, `/{id}/people`, `/{id}/ratings`, `/{id}/stats`, `/{id}/lists`, `/{id}/watching`, `/{id}/next_episode`, `/{id}/last_episode`.
+- Movies: `GET /movies/{id}`, `/{id}/people`, `/{id}/ratings`, `/{id}/stats`, `/{id}/lists`, `/{id}/watching`, `/{id}/comments/{sort}`.
+- Shows: `GET /shows/{id}` (embeds seasons), `/{id}/seasons`, `/{id}/seasons/{season}`, `/{id}/seasons/{season}/episodes`, `/{id}/seasons/{season}/episodes/{episode}`, `/{id}/people`, `/{id}/ratings`, `/{id}/stats`, `/{id}/lists`, `/{id}/watching`, `/{id}/next_episode`, `/{id}/last_episode`, `/{id}/comments/{sort}`, `/{id}/seasons/{season}/comments/{sort}`, `/{id}/seasons/{season}/episodes/{episode}/comments/{sort}`.
 - People: `GET /people/{id}` (with credits), `/{id}/movies`, `/{id}/shows`.
 
 **`id_resolver.go` — canonical ID resolution (`ResolveID`)**: accepts numeric internal ids, slugs, or external ids via `?id_type=tmdb|imdb|tvdb`; disambiguates type by probing movies/shows/people tables.
@@ -33,6 +33,13 @@ The **shared media-read foundation** for the API (4 files). Provides movie/show/
 
 Shipped: `GET /shows/{id}/next_episode` and `/shows/{id}/last_episode` — thin reads over `episodes.aired_at` (next = earliest episode airing today/later; last = latest aired). Both return the shared `EpisodeResponse`, and `204` when there is nothing on that side of today.
 
+Shipped: `GET /{movies,shows}/{id}/comments/{sort}` and the nested
+`GET /shows/{id}/seasons/{season}/comments/{sort}` /
+`GET /shows/{id}/seasons/{season}/episodes/{episode}/comments/{sort}` — thin
+reads over the `comments` table (see `internal/handlers/comments/comments.md` for
+the sort table). Each resolves its parent chain with real lookups and 404s on a
+missing parent; the shared `comments.ListMediaComments` does the querying.
+
 Not here, with reasons:
 
 | Trakt path | Why |
@@ -42,6 +49,21 @@ Not here, with reasons:
 | `/movies|shows/{id}/studios` | No studios table. |
 | `/movies/{id}/boxoffice` | Box office needs revenue ranking — issue #5. |
 | `/shows/{id}/certifications` | We store one `certification` string; Trakt wants a per-country map. Needs certification ingestion. |
+
+### Season / episode sub-resources left out (issue #4 §A)
+
+The issue also lists `seasons/{season}/{ratings,stats,people,videos,lists,translations}`
+and `episodes/{episode}/{people,videos,lists}` under the show path. None are
+stubbed (stubbing is forbidden); each is skipped for a stated reason:
+
+| Sub-resource | Reason |
+|---|---|
+| `seasons/{s}/ratings`, `episodes/{e}/ratings` | Real per-season/episode rating distributions are computed in `internal/handlers/episodes` (`/v1/episodes/{id}/ratings`) but not exposed from the show path yet; the media package's `buildRatingSummary` returns an empty distribution, so wiring it here would ship a hollow payload. Needs the rating-distribution helper to move to a shared builder — follow-up, not engine-blocked. |
+| `seasons/{s}/stats`, `episodes/{e}/stats` | Engine-blocked (issue #5): watchers/plays/collectors need the stats/rankings engine. `/v1/shows|movies/{id}/stats` already fail closed with 501 for the same reason. |
+| `seasons/{s}/people` | No season-level credit rows are ingested (`credits` is keyed by movie/show only); a lookup would always be empty, i.e. fabricated. |
+| `{movies,shows,seasons,episodes}/{id}/videos` | Data absent: nothing ingests videos. |
+| `seasons/{s}/lists`, `episodes/{e}/lists` | Lists engine not landed; the existing movie/show `lists` routes fail closed with 501. Note `/v1/episodes/{id}/lists` exists in the flat surface, so episode lists are reachable there. |
+| `seasons/{s}/translations` | Covered by the flat `/v1/seasons/{id}/translations/{lang}` TMDB proxy in `translations.go`; only the nested path is missing (a routing, not a data, gap). |
 
 ## Oversights
 

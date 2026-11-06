@@ -3375,6 +3375,52 @@ paths:
             summary: Movie alternative titles
             tags:
                 - Movies
+    /v1/movies/{id}/comments/{sort}:
+        get:
+            operationId: _v1_movies_id_comments_sort_GET
+            responses:
+                "200":
+                    description: Comments
+                "400":
+                    description: Invalid sort
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    description: Movie not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Get comments for a movie, sorted (newest, oldest, likes, replies, trending)
+            tags:
+                - Movies
     /v1/movies/{id}/lists:
         get:
             operationId: _v1_movies_id_lists_GET
@@ -5457,6 +5503,52 @@ paths:
             summary: Show alternative titles
             tags:
                 - Shows
+    /v1/shows/{id}/comments/{sort}:
+        get:
+            operationId: _v1_shows_id_comments_sort_GET
+            responses:
+                "200":
+                    description: Comments
+                "400":
+                    description: Invalid sort
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    description: Show not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Get comments for a show, sorted (newest, oldest, likes, replies, trending)
+            tags:
+                - Shows
     /v1/shows/{id}/last_episode:
         get:
             operationId: _v1_shows_id_last_episode_GET
@@ -5663,6 +5755,144 @@ paths:
             summary: Get cast and crew for a show
             tags:
                 - Shows
+    /v1/shows/{id}/progress/collection:
+        get:
+            operationId: _v1_shows_id_progress_collection_GET
+            responses:
+                "200":
+                    description: Collection progress
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    description: Unauthorized
+                "404":
+                    description: Show not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Get collection progress for a show (aired vs collected episodes, per-season breakdown)
+            tags:
+                - Shows
+    /v1/shows/{id}/progress/watched:
+        get:
+            operationId: _v1_shows_id_progress_watched_GET
+            responses:
+                "200":
+                    description: Watched progress
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    description: Unauthorized
+                "404":
+                    description: Show not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Get watched progress for a show (aired vs watched episodes, per-season breakdown)
+            tags:
+                - Shows
+    /v1/shows/{id}/progress/watched/reset:
+        post:
+            operationId: _v1_shows_id_progress_watched_reset_POST
+            responses:
+                "200":
+                    description: Progress after reset
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    description: Unauthorized
+                "404":
+                    description: Show not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Reset the caller's watched-episode history for one show (ratings/collection untouched)
+            tags:
+                - Shows
     /v1/shows/{id}/ratings:
         get:
             operationId: _v1_shows_id_ratings_GET
@@ -5863,6 +6093,52 @@ paths:
             summary: Get a single season
             tags:
                 - Shows
+    /v1/shows/{id}/seasons/{season}/comments/{sort}:
+        get:
+            operationId: _v1_shows_id_seasons_season_comments_sort_GET
+            responses:
+                "200":
+                    description: Comments
+                "400":
+                    description: Invalid sort or season number
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    description: Show or season not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Get comments for a season, sorted (newest, oldest, likes, replies, trending)
+            tags:
+                - Shows
     /v1/shows/{id}/seasons/{season}/episodes:
         get:
             operationId: _v1_shows_id_seasons_season_episodes_GET
@@ -5965,6 +6241,52 @@ paths:
                     description: internal server error
             security: []
             summary: Get a single episode
+            tags:
+                - Shows
+    /v1/shows/{id}/seasons/{season}/episodes/{episode}/comments/{sort}:
+        get:
+            operationId: _v1_shows_id_seasons_season_episodes_episode_comments_sort_GET
+            responses:
+                "200":
+                    description: Comments
+                "400":
+                    description: Invalid sort, season or episode number
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    description: Show, season or episode not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Get comments for an episode, sorted (newest, oldest, likes, replies, trending)
             tags:
                 - Shows
     /v1/shows/{id}/seasons/{season}/episodes/{episode}/translations/{lang}:

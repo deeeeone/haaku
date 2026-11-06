@@ -2,6 +2,7 @@ package tests
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
@@ -469,16 +470,31 @@ func TestMediaRoutesRegistered(t *testing.T) {
 	}
 }
 
-// TestMediaRoutesHaveCorrectAuth verifies all media routes are public.
+// TestMediaRoutesHaveCorrectAuth verifies the auth level of media-tagged routes.
+//
+// These split into two kinds, and the assertion keeps both honest:
+//   - media detail/listing reads must be reachable anonymously
+//     (auth "none" or "optional" — comments are readable without a login);
+//   - user-scoped reads that happen to live under a media path
+//     (/{shows|movies}/{id}/progress/*) must require auth, because they read the
+//     caller's own history/collection and cannot be served to an anonymous
+//     client.
 func TestMediaRoutesHaveCorrectAuth(t *testing.T) {
 	routes := openapi.AllRoutes()
 	mediaTags := map[string]bool{"Movies": true, "Shows": true, "People": true}
 
 	for _, r := range routes {
-		if len(r.Tags) > 0 && mediaTags[r.Tags[0]] {
-			if r.Auth != "none" {
-				t.Errorf("media route %s %s has auth=%q, want 'none'", r.Method, r.Path, r.Auth)
+		if len(r.Tags) == 0 || !mediaTags[r.Tags[0]] {
+			continue
+		}
+		if strings.Contains(r.Path, "/progress/") {
+			if r.Auth != "required" {
+				t.Errorf("user-scoped media route %s %s has auth=%q, want 'required'", r.Method, r.Path, r.Auth)
 			}
+			continue
+		}
+		if r.Auth != "none" && r.Auth != "optional" {
+			t.Errorf("media route %s %s has auth=%q, want 'none' or 'optional'", r.Method, r.Path, r.Auth)
 		}
 	}
 }

@@ -9,6 +9,51 @@ Implements the full comment subsystem (17 endpoints):
 
 Registers OpenAPI metadata for all endpoints. Uses `comment_type`/`media_type` CSV query filters on the listing endpoints and a shared paginated response envelope.
 
+## Media comments by sort (issue #4 §A)
+
+`media_comments.go` adds the four Trakt media-scoped comment lists, all backed by
+the existing `comments` table and rendered with this package's `toCommentResponse`
+builder:
+
+- `GET /v1/movies/{id}/comments/{sort}`
+- `GET /v1/shows/{id}/comments/{sort}`
+- `GET /v1/shows/{id}/seasons/{season}/comments/{sort}`
+- `GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/comments/{sort}`
+
+The routes are registered in `internal/handlers/media` (which already owns the
+movie/show sub-routes), and the shared lister lives here so the response shape
+and ordering cannot drift between the four. The nested paths resolve the parent
+chain with real lookups and 404 on a missing show/season/episode.
+
+`{sort}` is a closed set — anything else is a 400, not a silent default:
+
+| sort | ORDER BY |
+|---|---|
+| `newest` | `created_at DESC, id DESC` |
+| `oldest` | `created_at ASC, id ASC` |
+| `likes` | `like_count DESC, created_at DESC, id DESC` |
+| `replies` | `reply_count DESC, created_at DESC, id DESC` |
+| `trending` | `(like_count + reply_count) DESC, created_at DESC, id DESC` |
+
+Only top-level comments are listed (`parent_id IS NULL`); replies stay on
+`GET /v1/comments/{id}/replies`. Every `comment_type` is included — the sort
+segment does not narrow type. The response is a bare JSON array (Trakt's shape)
+plus the §7 `X-Pagination-*` headers and `Link: rel="next"`; an empty page is
+`[]`, never `null`.
+
+`trending` here orders over all top-level comments on the item; the 7-day
+recency window stays on the global `GET /v1/comments/trending`, because hiding a
+years-old comment with 500 likes from its own movie page would be wrong.
+
+### Query plans
+
+`likes`, `replies` and `trending` order by counters, not by `created_at`, so
+`idx_comments_media (media_type, media_id, created_at DESC)` serves the filter
+and the planner sorts. That is acceptable for a per-item page (bounded rows per
+media id); a dedicated `(media_type, media_id, like_count)` index is left for
+when real traffic justifies it. `newest`/`oldest` are index-only on
+`idx_comments_media`.
+
 ## Completion
 
 | Piece | Status |
@@ -49,6 +94,24 @@ Registers OpenAPI metadata for all endpoints. Uses `comment_type`/`media_type` C
 - [x] Add DB index strategy for trending query (`like_count+reply_count`, `created_at`). (Batch 10 — documented below; the index landed in migration 0032 — see the Databases section for why the requested partial predicate is impossible.)
 - [x] Check the user lookup error in the moderator delete path. (Batch 6)
 - [x] Verify module test coverage (`make test`). (Batch 14 — `internal/handlers/comments/comments_test.go` adds unit coverage for `validateCommentBody` (400 on empty / >5000-char), the reaction + report-reason allowlists, `parseCSV`, `maxCommentLength`, and `toCommentResponse` (incl. nil-EditedAt). Handler-level integration coverage for the DB-backed create/edit/delete paths awaits a DB-driver approval.)
+
+## Update — media comments by sort (issue #4 §A)
+
+Added `media_comments.go` (`mediaCommentSorts`, `ListMediaComments`) reusing this
+package's existing `toCommentResponse` builder; the four media routes are wired
+in `internal/handlers/media`. (The builder stays package-private deliberately —
+`comments.go` is over the size ratchet's soft limit and may only shrink, so no
+line was added to it. See the "Media comments by sort" section above for the sort
+table, response shape and query-plan note.)
+
+Coverage: `internal/handlers/media/media_comments_test.go` — sqlite-backed, via
+the real `RegisterRoutes` — asserts each sort's exact ordering, the 400 on an
+unknown sort, the empty array (not null), pagination edges (page-1 headers +
+`Link: rel="next"`, last page has no `Link`, page beyond the end is `[]`, limit
+clamp), the missing show/season/episode/movie 404s, the 400 on a non-numeric
+season, that replies are excluded, and that the payload carries the full shared
+builder shape (`updated_at`/`edited_at`), which the old episodes-local copy
+omitted.
 
 ## Databases — trending index
 

@@ -38,6 +38,42 @@ func registerOpenAPIRoutes() {
 				401: "Unauthorized",
 			},
 		},
+		{
+			Method:  "GET",
+			Path:    "/v1/shows/{id}/progress/watched",
+			Summary: "Get watched progress for a show (aired vs watched episodes, per-season breakdown)",
+			Tags:    []string{"Shows"},
+			Auth:    "required",
+			StatusCodes: map[int]string{
+				200: "Watched progress",
+				401: "Unauthorized",
+				404: "Show not found",
+			},
+		},
+		{
+			Method:  "GET",
+			Path:    "/v1/shows/{id}/progress/collection",
+			Summary: "Get collection progress for a show (aired vs collected episodes, per-season breakdown)",
+			Tags:    []string{"Shows"},
+			Auth:    "required",
+			StatusCodes: map[int]string{
+				200: "Collection progress",
+				401: "Unauthorized",
+				404: "Show not found",
+			},
+		},
+		{
+			Method:  "POST",
+			Path:    "/v1/shows/{id}/progress/watched/reset",
+			Summary: "Reset the caller's watched-episode history for one show (ratings/collection untouched)",
+			Tags:    []string{"Shows"},
+			Auth:    "required",
+			StatusCodes: map[int]string{
+				200: "Progress after reset",
+				401: "Unauthorized",
+				404: "Show not found",
+			},
+		},
 	}
 	for _, r := range routes {
 		openapi.Register(r)
@@ -49,6 +85,14 @@ func RegisterRoutes(api fiber.Router) {
 	sync := api.Group("/sync/playback")
 	sync.Get("/movies", auth.AuthRequired(), handlePlaybackMovies)
 	sync.Get("/episodes", auth.AuthRequired(), handlePlaybackEpisodes)
+
+	// Show watch/collection progress. Static-vs-param ordering is safe here:
+	// every segment before {id} is static and the media package's "/shows/:id"
+	// is a single-segment route, so it cannot shadow these deeper paths.
+	shows := api.Group("/shows")
+	shows.Get("/:id/progress/watched", auth.AuthRequired(), handleShowProgressWatched)
+	shows.Get("/:id/progress/collection", auth.AuthRequired(), handleShowProgressCollection)
+	shows.Post("/:id/progress/watched/reset", auth.AuthRequired(), handleShowProgressReset)
 }
 
 // ---------------------------------------------------------------------------

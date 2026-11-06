@@ -27,6 +27,7 @@ func registerOpenAPIRoutes() {
 		{Method: "GET", Path: "/v1/movies/{id}/stats", Summary: "Get stats for a movie", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "Stats", 501: "Not implemented (requires stats engine)"}},
 		{Method: "GET", Path: "/v1/movies/{id}/lists", Summary: "Get lists containing a movie", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "Lists", 501: "Not implemented (requires lists engine)"}},
 		{Method: "GET", Path: "/v1/movies/{id}/watching", Summary: "Users watching a movie right now", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "Watching", 501: "Not implemented (requires activity engine)"}},
+		{Method: "GET", Path: "/v1/movies/{id}/comments/{sort}", Summary: "Get comments for a movie, sorted (newest, oldest, likes, replies, trending)", Tags: []string{"Movies"}, Auth: "optional", StatusCodes: map[int]string{200: "Comments", 400: "Invalid sort", 404: "Movie not found"}},
 
 		// Shows
 		{Method: "GET", Path: "/v1/shows/{id}", Summary: "Get a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Show"}},
@@ -41,6 +42,9 @@ func registerOpenAPIRoutes() {
 		{Method: "GET", Path: "/v1/shows/{id}/watching", Summary: "Users watching a show right now", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Watching", 501: "Not implemented (requires activity engine)"}},
 		{Method: "GET", Path: "/v1/shows/{id}/next_episode", Summary: "Get the next scheduled episode for a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Next episode", 204: "No next episode", 404: "Show not found"}},
 		{Method: "GET", Path: "/v1/shows/{id}/last_episode", Summary: "Get the most recently aired episode for a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Last episode", 204: "No aired episode", 404: "Show not found"}},
+		{Method: "GET", Path: "/v1/shows/{id}/comments/{sort}", Summary: "Get comments for a show, sorted (newest, oldest, likes, replies, trending)", Tags: []string{"Shows"}, Auth: "optional", StatusCodes: map[int]string{200: "Comments", 400: "Invalid sort", 404: "Show not found"}},
+		{Method: "GET", Path: "/v1/shows/{id}/seasons/{season}/comments/{sort}", Summary: "Get comments for a season, sorted (newest, oldest, likes, replies, trending)", Tags: []string{"Shows"}, Auth: "optional", StatusCodes: map[int]string{200: "Comments", 400: "Invalid sort or season number", 404: "Show or season not found"}},
+		{Method: "GET", Path: "/v1/shows/{id}/seasons/{season}/episodes/{episode}/comments/{sort}", Summary: "Get comments for an episode, sorted (newest, oldest, likes, replies, trending)", Tags: []string{"Shows"}, Auth: "optional", StatusCodes: map[int]string{200: "Comments", 400: "Invalid sort, season or episode number", 404: "Show, season or episode not found"}},
 
 		// People
 		{Method: "GET", Path: "/v1/people/{id}", Summary: "Get a person", Tags: []string{"People"}, Auth: "none", StatusCodes: map[int]string{200: "Person"}},
@@ -64,6 +68,7 @@ func RegisterRoutes(api fiber.Router) {
 	movies.Get("/:id/stats", handleGetMovieStats)
 	movies.Get("/:id/lists", handleGetMovieLists)
 	movies.Get("/:id/watching", handleGetMovieWatching)
+	movies.Get("/:id/comments/:sort", handleGetMovieComments)
 
 	// --- Shows ---
 	shows := api.Group("/shows")
@@ -80,6 +85,9 @@ func RegisterRoutes(api fiber.Router) {
 	shows.Get("/:id/watching", handleGetShowWatching)
 	shows.Get("/:id/next_episode", handleGetShowNextEpisode)
 	shows.Get("/:id/last_episode", handleGetShowLastEpisode)
+	shows.Get("/:id/comments/:sort", handleGetShowComments)
+	shows.Get("/:id/seasons/:season/comments/:sort", handleGetShowSeasonComments)
+	shows.Get("/:id/seasons/:season/episodes/:episode/comments/:sort", handleGetShowEpisodeComments)
 
 	// --- People ---
 	people := api.Group("/people")
