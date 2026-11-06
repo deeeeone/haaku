@@ -6,7 +6,7 @@ The **shared media-read foundation** for the API (4 files). Provides movie/show/
 
 **`media.go` — media detail routes (public):**
 - Movies: `GET /movies/{id}`, `/{id}/people`, `/{id}/ratings`, `/{id}/stats`, `/{id}/lists`, `/{id}/watching`.
-- Shows: `GET /shows/{id}` (embeds seasons), `/{id}/seasons`, `/{id}/seasons/{season}`, `/{id}/seasons/{season}/episodes`, `/{id}/seasons/{season}/episodes/{episode}`, `/{id}/people`, `/{id}/ratings`, `/{id}/stats`, `/{id}/lists`, `/{id}/watching`.
+- Shows: `GET /shows/{id}` (embeds seasons), `/{id}/seasons`, `/{id}/seasons/{season}`, `/{id}/seasons/{season}/episodes`, `/{id}/seasons/{season}/episodes/{episode}`, `/{id}/people`, `/{id}/ratings`, `/{id}/stats`, `/{id}/lists`, `/{id}/watching`, `/{id}/next_episode`, `/{id}/last_episode`.
 - People: `GET /people/{id}` (with credits), `/{id}/movies`, `/{id}/shows`.
 
 **`id_resolver.go` — canonical ID resolution (`ResolveID`)**: accepts numeric internal ids, slugs, or external ids via `?id_type=tmdb|imdb|tvdb`; disambiguates type by probing movies/shows/people tables.
@@ -19,14 +19,29 @@ The **shared media-read foundation** for the API (4 files). Provides movie/show/
 
 | Piece | Status |
 |---|---|
-| OpenAPI registration (19 + 6 routes) | Done |
+| OpenAPI registration (21 + 6 routes) | Done |
 | Movie/show/season/episode/person detail | Done |
+| Show `next_episode` / `last_episode` (episode-boundary reads, 204 when none) | Done |
 | People (cast/crew) and person credits | Done |
 | Ratings summary + `extended` levels | Done |
 | Shared `ResolveID` (numeric/slug/external) | Done |
 | Exported builders reused by other packages | Done |
 | Translation/alias TMDB proxy with Redis cache | Done |
 | Nil-safe `MarshalJSON` guards | Done |
+
+## Trakt parity / residue (issue #4 §A)
+
+Shipped: `GET /shows/{id}/next_episode` and `/shows/{id}/last_episode` — thin reads over `episodes.aired_at` (next = earliest episode airing today/later; last = latest aired). Both return the shared `EpisodeResponse`, and `204` when there is nothing on that side of today.
+
+Not here, with reasons:
+
+| Trakt path | Why |
+|---|---|
+| `/movies/{id}/related`, `/shows/{id}/related` | Similarity/related engine — issue #5. |
+| `/movies|shows/{id}/videos`, `/releases/{country}` | No videos / per-country release data is ingested (the schema keeps one `trailer_url` and one `released` date); returning anything else would be fabricated. |
+| `/movies|shows/{id}/studios` | No studios table. |
+| `/movies/{id}/boxoffice` | Box office needs revenue ranking — issue #5. |
+| `/shows/{id}/certifications` | We store one `certification` string; Trakt wants a per-country map. Needs certification ingestion. |
 
 ## Oversights
 

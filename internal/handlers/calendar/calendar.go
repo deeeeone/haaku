@@ -80,6 +80,29 @@ func registerOpenAPIRoutes() {
 				401: "Unauthorized",
 			},
 		},
+		{
+			Method:  "GET",
+			Path:    "/v1/calendars/all/movies/{start_date}/{days}",
+			Summary: "Get all movies releasing within a date range",
+			Tags:    []string{"Calendars"},
+			Auth:    "none",
+			StatusCodes: map[int]string{
+				200: "Calendar movie entries",
+				400: "Invalid start_date or days parameter",
+			},
+		},
+		{
+			Method:  "GET",
+			Path:    "/v1/calendars/my/movies/{start_date}/{days}",
+			Summary: "Get movies releasing within a date range from your watchlist or history",
+			Tags:    []string{"Calendars"},
+			Auth:    "required",
+			StatusCodes: map[int]string{
+				200: "Calendar movie entries",
+				400: "Invalid parameters",
+				401: "Unauthorized",
+			},
+		},
 	}
 
 	for _, r := range routes {
@@ -94,11 +117,17 @@ func RegisterRoutes(api fiber.Router) {
 	// Public: all shows
 	calendars.Get("/all/shows/:start_date/:days", handleCalendarShows)
 
+	// Public: all movies
+	calendars.Get("/all/movies/:start_date/:days", handleCalendarMovies)
+
 	// Auth-required: my, friends, favorites, watched
 	calendars.Get("/my/shows/:start_date/:days", auth.AuthRequired(), handleCalendarShows)
 	calendars.Get("/friends/shows/:start_date/:days", auth.AuthRequired(), handleCalendarShows)
 	calendars.Get("/favorites/shows/:start_date/:days", auth.AuthRequired(), handleCalendarShows)
 	calendars.Get("/watched/shows/:start_date/:days", auth.AuthRequired(), handleCalendarShows)
+
+	// Auth-required: my movies (watchlist + history, hidden excluded)
+	calendars.Get("/my/movies/:start_date/:days", auth.AuthRequired(), handleCalendarMovies)
 }
 
 // ---------------------------------------------------------------------------
@@ -492,4 +521,141 @@ func buildShowIDs(s *database.Show) media.IDs {
 		ids.IMDB = s.ImdbID
 	}
 	return ids
+}
+
+// ---------------------------------------------------------------------------
+// Movie calendars (Trakt: /calendars/{target}/movies/{start_date}/{days})
+// ---------------------------------------------------------------------------
+
+// CalendarMovieEntry is one movie calendar item. It matches Trakt's calendar
+// movie shape — {"released": "YYYY-MM-DD", "movie": {...}} — rather than the
+// {items, page, limit, row_count} envelope the pre-existing show calendars use,
+// which is a section-B divergence tracked for the compatibility layer.
+type CalendarMovieEntry struct {
+	Released string              `json:"released"`
+	Movie    media.MovieResponse `json:"movie"`
+}
+
+// handleCalendarMovies serves the movie calendars: /calendars/all/movies (public)
+// and /calendars/my/movies (auth). Path params: start_date (YYYY-MM-DD), days
+// (1-30, default 7). The window is [start_date, start_date+days).
+//
+// "my" is restricted to movies the caller has watched or watchlisted (movies
+// hidden in the "calendar" section are excluded); "all" is public.
+func handleCalendarMovies(c *fiber.Ctx) error {
+	target := deriveTarget(c.Path())
+
+	startDate, err := time.Parse("2006-01-02", c.Params("start_date"))
+	if err != nil {
+		return response.BadRequest(c, "invalid start_date format, expected YYYY-MM-DD")
+	}
+	days := clampDays(c.Params("days"))
+	endDate := startDate.AddDate(0, 0, days)
+
+	// Auth is enforced at route registration for "my"; the public "all" route
+	// just gets an empty userID here.
+	userID, _ := c.Locals("user_id").(string)
+
+	db, dbErr := database.GetDB()
+	if dbErr != nil {
+		return response.ServiceUnavailable(c, "database unavailable")
+	}
+
+	page, limit := response.ParsePagination(c, 25)
+
+	// Resolve the per-user movie filter once, then build count and page queries
+	// from it (GORM finishers mutate the statement, so they must not share one).
+	var movieIDs []int64
+	if target != "all" {
+		movieIDs = getMovieIDsForUser(db, userID)
+		if len(movieIDs) == 0 {
+			response.SetPaginationHeaders(c, page, limit, 0, 0)
+			return c.JSON([]CalendarMovieEntry{})
+		}
+	}
+
+	build := func() *gorm.DB {
+		q := db.Model(&database.Movie{}).
+			Where("released >= ? AND released < ?",
+				startDate.Format("2006-01-02"),
+				endDate.Format("2006-01-02"))
+		if movieIDs != nil {
+			q = q.Where("id IN ?", movieIDs)
+		}
+		return q
+	}
+
+	var total int64
+	if err := build().Count(&total).Error; err != nil {
+		fmt.Printf("calendar: movie count error: %v\n", err)
+		return response.InternalError(c)
+	}
+
+	var movies []database.Movie
+	if err := build().
+		Order("released ASC, id ASC").
+		Offset((page - 1) * limit).
+		Limit(limit).
+		Find(&movies).Error; err != nil {
+		fmt.Printf("calendar: movie query error: %v\n", err)
+		return response.InternalError(c)
+	}
+
+	extended := media.GetExtended(c)
+	resp := make([]CalendarMovieEntry, 0, len(movies))
+	for i := range movies {
+		m := movies[i]
+		entry := CalendarMovieEntry{Movie: media.BuildMovieResponse(&m, extended)}
+		if m.Released != nil {
+			entry.Released = m.Released.String()
+		}
+		resp = append(resp, entry)
+	}
+
+	response.SetPaginationHeaders(c, page, limit, total, len(resp))
+	return c.JSON(resp)
+}
+
+// getMovieIDsForUser returns the canonical movie IDs the user has watched or
+// watchlisted, excluding movies hidden in the "calendar" section. It mirrors
+// getShowIDsForTarget's "my" target (history ∪ watchlist, hidden removed).
+func getMovieIDsForUser(db *gorm.DB, userID string) []int64 {
+	idSet := make(map[int64]bool)
+
+	var historyMovieIDs []int64
+	db.Table("user_history").
+		Where("user_id = ? AND media_type = ?", userID, "movie").
+		Distinct("media_id").
+		Pluck("media_id", &historyMovieIDs)
+
+	var watchlistMovieIDs []int64
+	db.Table("user_watchlist").
+		Where("user_id = ? AND media_type = ?", userID, "movie").
+		Pluck("media_id", &watchlistMovieIDs)
+
+	for _, id := range historyMovieIDs {
+		idSet[id] = true
+	}
+	for _, id := range watchlistMovieIDs {
+		idSet[id] = true
+	}
+
+	excludeHiddenMovieIDs(db, userID, idSet)
+
+	ids := make([]int64, 0, len(idSet))
+	for id := range idSet {
+		ids = append(ids, id)
+	}
+	return ids
+}
+
+// excludeHiddenMovieIDs removes movie IDs hidden in the "calendar" section.
+func excludeHiddenMovieIDs(db *gorm.DB, userID string, idSet map[int64]bool) {
+	var hiddenIDs []int64
+	db.Table("user_hidden").
+		Where("user_id = ? AND section = ? AND media_type = ?", userID, "calendar", "movie").
+		Pluck("media_id", &hiddenIDs)
+	for _, id := range hiddenIDs {
+		delete(idSet, id)
+	}
 }

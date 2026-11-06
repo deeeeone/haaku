@@ -9,13 +9,32 @@ Implements the calendar endpoints, all sharing one unified handler:
 - `GET /v1/calendars/friends/shows/{start_date}/{days}` — episodes from shows mutual friends watched in the last 90 days.
 - `GET /v1/calendars/favorites/shows/{start_date}/{days}` — episodes from favorited shows.
 - `GET /v1/calendars/watched/shows/{start_date}/{days}` — episodes from watched shows.
+- `GET /v1/calendars/all/movies/{start_date}/{days}` — every movie releasing in the range (public).
+- `GET /v1/calendars/my/movies/{start_date}/{days}` — movies from the caller's watchlist **or** history (hidden excluded).
 
 Behavior:
 - `start_date` is `YYYY-MM-DD`; `days` is clamped to 1–30 (default 7). The range is `[start_date, start_date+days)`.
 - Optional `type` query filter: `new` (S01E01), `premieres` (S02+E01), `finale` (max episode of a season).
 - Target is derived by parsing the raw request path (`deriveTarget`), and auth is enforced for all targets except `all`.
-- Returns `{items, page, limit, row_count}`; each entry embeds episode (via `media.EpisodeResponse`), minimal show, and season number.
-- Registers OpenAPI route metadata for all five endpoints.
+- The show calendars return `{items, page, limit, row_count}`; each entry embeds episode (via `media.EpisodeResponse`), minimal show, and season number.
+- The movie calendars return Trakt's `[{released, movie}]` array (a `media.MovieResponse` per entry, honoring `extended`). "my" is history ∪ watchlist minus movies hidden in the `calendar` section — the movie analogue of `getShowIDsForTarget`'s `my` target.
+- Registers OpenAPI route metadata for all seven endpoints.
+
+## Trakt parity / residue
+
+Shipped (issue #4 §A calendars):
+
+| Trakt path | Ours | Shape |
+|---|---|---|
+| `/calendars/:target/movies/:start_date/:days` | `/v1/calendars/{all,my}/movies/...` | Trakt `[{released, movie}]` |
+
+Still absent, with reasons:
+
+| Trakt path | Why it is not here |
+|---|---|
+| `/calendars/:target/dvd/...`, `/calendars/:target/streaming/...` | We store a single `movies.released` (theatrical) date. DVD and streaming release dates are not ingested (no TMDB `/release_dates` fetch, no column) — implementing these would mean **fabricating** dates from the theatrical one. Blocked on release-date ingestion, not on a handler. |
+| `/calendars/releases/hot[...]` | Curated trending/anticipated feed — blocked on the rankings engine (issue #5). |
+| `/calendars/:target/shows/{new,premieres,finales}/...` | We support `?type=` as a query param today; the Trakt **path-segment** shape is a §B divergence deferred to the compat listener (issue #7). |
 
 ## Completion
 
@@ -30,6 +49,8 @@ Behavior:
 | Target resolution: my / friends / favorites / watched / all | Done |
 | Hidden-items exclusion (calendar section) | Done |
 | Pagination (`page`, `limit` ≤ 100) | Done |
+| Movie calendars (`all/movies`, `my/movies`): `released` window, history ∪ watchlist, hidden excluded | Done |
+| Handler tests (in-memory sqlite): window, empty window, invalid date, `my` filter, 401 | Done |
 | N+1-style per-episode show/season lookups | Done (see oversight) |
 
 ## Oversights

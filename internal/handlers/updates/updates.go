@@ -55,6 +55,28 @@ func registerOpenAPIRoutes() {
 				400: "Invalid start_date format",
 			},
 		},
+		{
+			Method:  "GET",
+			Path:    "/v1/movies/updates/id/{start_date}",
+			Summary: "Get IDs of movies updated since a date",
+			Tags:    []string{"Updates"},
+			Auth:    "none",
+			StatusCodes: map[int]string{
+				200: "Updated movie IDs",
+				400: "Invalid start_date format",
+			},
+		},
+		{
+			Method:  "GET",
+			Path:    "/v1/shows/updates/id/{start_date}",
+			Summary: "Get IDs of shows updated since a date",
+			Tags:    []string{"Updates"},
+			Auth:    "none",
+			StatusCodes: map[int]string{
+				200: "Updated show IDs",
+				400: "Invalid start_date format",
+			},
+		},
 	}
 
 	for _, r := range routes {
@@ -65,9 +87,11 @@ func registerOpenAPIRoutes() {
 // RegisterRoutes wires updates route handlers to the Fiber router.
 func RegisterRoutes(api fiber.Router) {
 	movies := api.Group("/movies")
+	movies.Get("/updates/id/:start_date", handleMovieUpdatedIDs) // static segment first
 	movies.Get("/updates/:start_date", handleMovieUpdates)
 
 	shows := api.Group("/shows")
+	shows.Get("/updates/id/:start_date", handleShowUpdatedIDs) // static segment first
 	shows.Get("/updates/:start_date", handleShowUpdates)
 
 	people := api.Group("/people")
@@ -280,4 +304,58 @@ func mustMarshal(v interface{}) json.RawMessage {
 		return json.RawMessage("[]")
 	}
 	return data
+}
+
+// ---------------------------------------------------------------------------
+// Updated-ID feeds
+//
+// Trakt's GET /movies/updates/id/:start_date and /shows/updates/id/:start_date
+// return a bare array of Trakt IDs — the cheap "what changed" poll a sync
+// client uses before fetching only the entities it does not already have.
+// Thin read over the same `updated_at` column the full feeds use; no engine.
+// ---------------------------------------------------------------------------
+
+// handleMovieUpdatedIDs returns the IDs of movies updated since start_date.
+func handleMovieUpdatedIDs(c *fiber.Ctx) error {
+	return handleUpdatedIDs(c, &database.Movie{})
+}
+
+// handleShowUpdatedIDs returns the IDs of shows updated since start_date.
+func handleShowUpdatedIDs(c *fiber.Ctx) error {
+	return handleUpdatedIDs(c, &database.Show{})
+}
+
+// handleUpdatedIDs is the shared body for the two updated-ID feeds. It parses
+// start_date, paginates, and returns the matching canonical IDs as a bare JSON
+// array (never null — an empty result is []).
+func handleUpdatedIDs(c *fiber.Ctx, model interface{}) error {
+	startDate, err := time.Parse("2006-01-02", c.Params("start_date"))
+	if err != nil {
+		return response.BadRequest(c, "invalid start_date format, expected YYYY-MM-DD")
+	}
+
+	page, limit := response.ParsePagination(c, 25)
+
+	db, dbErr := database.GetDB()
+	if dbErr != nil {
+		return response.ServiceUnavailable(c, "database unavailable")
+	}
+
+	var total int64
+	if err := db.Model(model).Where("updated_at >= ?", startDate).Count(&total).Error; err != nil {
+		return response.InternalError(c, "database count error")
+	}
+
+	ids := make([]int64, 0, limit)
+	if err := db.Model(model).
+		Where("updated_at >= ?", startDate).
+		Order("updated_at ASC, id ASC"). // stable order for pagination
+		Offset((page-1)*limit).
+		Limit(limit).
+		Pluck("id", &ids).Error; err != nil {
+		return response.InternalError(c, "database query error")
+	}
+
+	response.SetPaginationHeaders(c, page, limit, total, len(ids))
+	return c.JSON(ids)
 }

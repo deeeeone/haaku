@@ -68,7 +68,7 @@ The server refuses to start without `TKILLER_SECRET_KEY` (32+ characters — `op
 
 - `/v1` is the versioned surface: JSON in, JSON out, one error envelope — `{"error":{"code":"…","message":"…"}}`.
 - Authenticate with `X-API-Key: tk_…` from an integration, or an OAuth bearer token from the UI.
-- The spec is **generated from the route registry** and never hand-written: 163 paths / 197 operations in [`openapi.yaml`](openapi.yaml), served live at `GET /v1/openapi.json`. `make api-spec` regenerates it, `make api-check` fails if it is stale or the route inventory drifts, and CI runs both.
+- The spec is **generated from the route registry** and never hand-written: 169 paths / 203 operations in [`openapi.yaml`](openapi.yaml), served live at `GET /v1/openapi.json`. `make api-spec` regenerates it, `make api-check` fails if it is stale or the route inventory drifts, and CI runs both.
 - `GET /healthz` for liveness, `GET /readyz` for readiness. Prometheus metrics are on a **separate listener**, deliberately not on the app port.
 - The Trakt-shaped surface is coming rather than here: `/v1` is our own shape today, and the compatibility listener plus importer are [#4](https://github.com/haaku-tv/haaku/issues/4) and [#7](https://github.com/haaku-tv/haaku/issues/7).
 
@@ -99,7 +99,7 @@ Pre-release, and specific about it. `main` builds, migrates a fresh database and
 
 | Area | State |
 |---|---|
-| API surface | 163 paths registered, Trakt coverage incomplete — [#4](https://github.com/haaku-tv/haaku/issues/4) |
+| API surface | 169 paths registered, Trakt coverage incomplete — [#4](https://github.com/haaku-tv/haaku/issues/4) |
 | Stats, rankings, discovery | Several endpoints answer `501` on purpose until the engines land — [#5](https://github.com/haaku-tv/haaku/issues/5) |
 | Sync engine | `POST /v1/syncs` accepts a session that nothing processes yet — [#6](https://github.com/haaku-tv/haaku/issues/6) |
 | Trakt importer | Not started; this is what gates moving off trakt.tv — [#7](https://github.com/haaku-tv/haaku/issues/7) |
