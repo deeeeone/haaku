@@ -58,7 +58,7 @@ func registerOpenAPIRoutes() {
 func RegisterRoutes(api fiber.Router) {
 	sync := api.Group("/sync")
 	sync.Use(auth.AuthRequired())
-
+	sync.Get("/last_activities", handleGetLastActivities) // static path: register before dynamic siblings
 	// History
 	sync.Get("/history", handleGetHistory)
 	sync.Get("/history/:media_type/:media_id", handleGetHistoryItem)
