@@ -2,13 +2,14 @@
 
 [![Go 1.26+](https://img.shields.io/badge/Go-1.26%2B-00ADD8?style=flat-square&logo=go&logoColor=d8b4fe&labelColor=0d0d0d)](https://go.dev)
 [![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-4169E1?style=flat-square&logo=postgresql&logoColor=d8b4fe&labelColor=0d0d0d)](https://www.postgresql.org)
-[![Status](https://img.shields.io/badge/status-pre--release-c4a5f0?style=flat-square&labelColor=0d0d0d)](https://github.com/haaku-tv/haaku-api/issues)
+[![License GPLv3](https://img.shields.io/badge/License-GPLv3-c4a5f0?style=flat-square&logo=gnu&logoColor=d8b4fe&labelColor=0d0d0d)](https://github.com/haaku-tv/haaku/blob/main/LICENSE)
+[![Status](https://img.shields.io/badge/status-pre--release-c4a5f0?style=flat-square&labelColor=0d0d0d)](https://github.com/haaku-tv/haaku/issues)
 
-[![Stars](https://img.shields.io/github/stars/haaku-tv/haaku-api?style=flat-square&logo=github&logoColor=d8b4fe&label=Stars&labelColor=0d0d0d&color=c4a5f0)](https://github.com/haaku-tv/haaku-api/stargazers)
-[![Issues](https://img.shields.io/github/issues/haaku-tv/haaku-api?style=flat-square&logo=github&logoColor=d8b4fe&label=Issues&labelColor=0d0d0d&color=c4a5f0)](https://github.com/haaku-tv/haaku-api/issues)
-[![Last commit](https://img.shields.io/github/last-commit/haaku-tv/haaku-api?style=flat-square&logo=git&logoColor=d8b4fe&label=Last%20commit&labelColor=0d0d0d&color=c4a5f0)](https://github.com/haaku-tv/haaku-api/commits)
+[![Stars](https://img.shields.io/github/stars/haaku-tv/haaku?style=flat-square&logo=github&logoColor=d8b4fe&label=Stars&labelColor=0d0d0d&color=c4a5f0)](https://github.com/haaku-tv/haaku/stargazers)
+[![Issues](https://img.shields.io/github/issues/haaku-tv/haaku?style=flat-square&logo=github&logoColor=d8b4fe&label=Issues&labelColor=0d0d0d&color=c4a5f0)](https://github.com/haaku-tv/haaku/issues)
+[![Last commit](https://img.shields.io/github/last-commit/haaku-tv/haaku?style=flat-square&logo=git&logoColor=d8b4fe&label=Last%20commit&labelColor=0d0d0d&color=c4a5f0)](https://github.com/haaku-tv/haaku/commits)
 
-### haaku – server
+### haaku
 
 ---
 
@@ -36,11 +37,11 @@ This repository is the whole server. The Go API and the React UI compile into **
 
 ### Docker — one container, its own PostgreSQL
 
-> The omnibus image is in review in [#32](https://github.com/haaku-tv/haaku-api/pull/32). Until it merges, use the source install below.
+> The omnibus image is in review in [#32](https://github.com/haaku-tv/haaku/pull/32). Until it merges, use the source install below.
 
 ```bash
-git clone https://github.com/haaku-tv/haaku-api.git
-cd haaku-api
+git clone https://github.com/haaku-tv/haaku.git
+cd haaku
 cp .env.example .env       # set TKILLER_SECRET_KEY and TMDB_API_TOKEN
 docker compose up -d
 ```
@@ -69,7 +70,7 @@ The server refuses to start without `TKILLER_SECRET_KEY` (32+ characters — `op
 - Authenticate with `X-API-Key: tk_…` from an integration, or an OAuth bearer token from the UI.
 - The spec is **generated from the route registry** and never hand-written: 163 paths / 197 operations in [`openapi.yaml`](openapi.yaml), served live at `GET /v1/openapi.json`. `make api-spec` regenerates it, `make api-check` fails if it is stale or the route inventory drifts, and CI runs both.
 - `GET /healthz` for liveness, `GET /readyz` for readiness. Prometheus metrics are on a **separate listener**, deliberately not on the app port.
-- The Trakt-shaped surface is coming rather than here: `/v1` is our own shape today, and the compatibility listener plus importer are [#4](https://github.com/haaku-tv/haaku-api/issues/4) and [#7](https://github.com/haaku-tv/haaku-api/issues/7).
+- The Trakt-shaped surface is coming rather than here: `/v1` is our own shape today, and the compatibility listener plus importer are [#4](https://github.com/haaku-tv/haaku/issues/4) and [#7](https://github.com/haaku-tv/haaku/issues/7).
 
 ## Clients
 
@@ -98,15 +99,15 @@ Pre-release, and specific about it. `main` builds, migrates a fresh database and
 
 | Area | State |
 |---|---|
-| API surface | 163 paths registered, Trakt coverage incomplete — [#4](https://github.com/haaku-tv/haaku-api/issues/4) |
-| Stats, rankings, discovery | Several endpoints answer `501` on purpose until the engines land — [#5](https://github.com/haaku-tv/haaku-api/issues/5) |
-| Sync engine | `POST /v1/syncs` accepts a session that nothing processes yet — [#6](https://github.com/haaku-tv/haaku-api/issues/6) |
-| Trakt importer | Not started; this is what gates moving off trakt.tv — [#7](https://github.com/haaku-tv/haaku-api/issues/7) |
+| API surface | 163 paths registered, Trakt coverage incomplete — [#4](https://github.com/haaku-tv/haaku/issues/4) |
+| Stats, rankings, discovery | Several endpoints answer `501` on purpose until the engines land — [#5](https://github.com/haaku-tv/haaku/issues/5) |
+| Sync engine | `POST /v1/syncs` accepts a session that nothing processes yet — [#6](https://github.com/haaku-tv/haaku/issues/6) |
+| Trakt importer | Not started; this is what gates moving off trakt.tv — [#7](https://github.com/haaku-tv/haaku/issues/7) |
 | Identity | Clerk-only today, so a self-hoster depends on a third-party sign-in service; built-in accounts are an open decision |
-| Moderation and retention | Reports are accepted but nothing actions them yet — [#10](https://github.com/haaku-tv/haaku-api/issues/10) |
-| Single image (API + PostgreSQL) | In review — [#32](https://github.com/haaku-tv/haaku-api/pull/32) |
-| CI gates | Lint, vulnerability, secret and coverage gates in review — [#31](https://github.com/haaku-tv/haaku-api/pull/31) |
-| Tracing and alerting | Metrics and worker heartbeats exist; tracing, request-id propagation and alerts do not — [#9](https://github.com/haaku-tv/haaku-api/issues/9) |
+| Moderation and retention | Reports are accepted but nothing actions them yet — [#10](https://github.com/haaku-tv/haaku/issues/10) |
+| Single image (API + PostgreSQL) | In review — [#32](https://github.com/haaku-tv/haaku/pull/32) |
+| CI gates | Lint, vulnerability, secret and coverage gates in review — [#31](https://github.com/haaku-tv/haaku/pull/31) |
+| Tracing and alerting | Metrics and worker heartbeats exist; tracing, request-id propagation and alerts do not — [#9](https://github.com/haaku-tv/haaku/issues/9) |
 
 Do not put real data behind this yet.
 
@@ -136,7 +137,7 @@ make api-check   # spec freshness and route inventory
 
 ## License
 
-This repository has no license file yet, so all rights are reserved until one is added.
+[GNU GPLv3](https://www.gnu.org/licenses/gpl-3.0.html) — see [LICENSE](LICENSE).
 
 ---
 
