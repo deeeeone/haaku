@@ -6,7 +6,7 @@ Implements public discovery listings:
 
 - `GET /v1/movies/trending`, `/v1/movies/popular` — paginated movie lists ordered by `popularity DESC`, honoring `extended` (via `media.GetExtended`).
 - `GET /v1/shows/trending`, `/v1/shows/popular` — same for shows.
-- `GET /v1/movies/recommendations/{id}`, `GET /v1/shows/recommendations/{id}` — **stubs** that return empty arrays (Phase 2+).
+- `GET /v1/movies/recommendations/{id}`, `GET /v1/shows/recommendations/{id}` — **blocked** on the recommendations engine (issue #5). They fail closed with `501 not_implemented` (declared in the `RouteDef`, so `openapi.yaml` matches reality), never a fabricated empty `200`.
 
 Registers OpenAPI metadata for all six endpoints. Reuses `media.BuildMovieResponse`/`BuildShowResponse`. All routes are public (Auth: none).
 
@@ -18,12 +18,12 @@ Registers OpenAPI metadata for all six endpoints. Reuses `media.BuildMovieRespon
 | Trending / popular listings (movies + shows) | Done |
 | Pagination (page=1, limit=20, max 100) | Done |
 | `extended` support via media package | Done |
-| Recommendation endpoints | Stub — return empty arrays |
+| Recommendation endpoints | 501 not_implemented (blocked on the recommendations engine, issue #5) |
 
 ## Oversights
 
 - **"Trending" is just popularity** — `trending` and `popular` use identical queries (`popularity DESC`); the `_ string` param in `moviesList`/`showsList` is unused. Real trending (recent watch momentum) is not implemented.
-- **Recommendation stubs** — handlers ignore the `{id}` param and always return `[]`; documented as Phase 2+ but registered as complete routes in OpenAPI.
+- **Recommendation stubs** — handlers ignore the `{id}` param and answer `501 not_implemented`; declared as such in OpenAPI. A real "more like this" (genre overlap over `movies/shows.genres` + `popularity`) is technically implementable but is not shipped here — it belongs to the recommendations engine (issue #5). The prior fabricated empty `200` was removed (AGENTS.md, issue #4).
 - **`fiber.NewError` for DB failures** — unstructured error message rather than the envelope `internal` code (also diverges from other handlers that use `writeError`).
 - **No count/total in the response** — raw arrays, no pagination envelope or `row_count`; inconsistent with calendar/comments/activity pagination shapes.
 - **No `movies/collected`/`watched` variants** — only trending/popular/recommendations exist; check the spec for missing discovery endpoints.
@@ -33,7 +33,7 @@ Registers OpenAPI metadata for all six endpoints. Reuses `media.BuildMovieRespon
 ## Todos
 
 - [x] Decide trending-vs-popular semantics (need a real trending signal or drop the distinction). (Batch 12 — DECISION: keep both endpoints but document that `trending` is currently an alias of `popular`.) The `metadata-api` spec defines trending as "by current watcher activity" and popular as "by popularity (TMDB seed + our watch data)". A real trending signal requires per-item watcher momentum, which lives in the `trending_rankings` table rebuilt by a stats-worker (data-model §9, roadmap T1.7) — that engine is not yet implemented. Rather than drop the endpoint or invent a half-signal, `trending` and `popular` both return the same `popularity DESC` ordering for now, and this equivalence is documented so clients don't expect different results. Real trending is tracked as roadmap follow-up work (Batch 9 audit).
-- [ ] Implement recommendations or mark the routes as `not-implemented` in OpenAPI.
+- [x] Implement recommendations or mark the routes as `not-implemented` in OpenAPI. (Decision: mark as not-implemented — `501` in the handler and `501` in the `RouteDef`; registered as custom `blocked-engine` rows in `docs/parity/parity.yaml`.)
 - [x] Use `internal/response` error constructors instead of `fiber.NewError`.
 - [ ] Align response envelope with the API conventions (add counts/pagination metadata if the spec requires).
 - [x] Add caching for hot public listings. (Batch 9 — 5m Redis TTL, keyed by type/kind/page/limit/extended; best-effort, DB fallback.)

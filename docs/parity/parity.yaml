@@ -34,7 +34,7 @@
 manifest: 1
 upstream: "trakt/trakt-api contracts (projects/api/src/contracts), as inventoried in issue #4 on 2026-11-05"
 notes:
-  - "GET /v1/movies/recommendations/{id} and GET /v1/shows/recommendations/{id} are registered but return a hard-coded empty array with 200 - a fabricated 200, which this repo forbids. They are not recorded as parity anywhere above; either implement them or make them 501 (follow-up, not this PR)."
+  - "GET /v1/movies/recommendations/{id} and GET /v1/shows/recommendations/{id} were registered as handlers returning a hard-coded empty array with 200 - a fabricated 200, which this repo forbids (a made-up payload is worse than an honest 501). They now answer 501 not_implemented and are recorded as custom blocked-engine rows in the last section, so make parity-check measures them rather than trusting prose."
 sections:
   - name: "Calendars"
     rows:
@@ -123,7 +123,7 @@ sections:
       - trakt: "GET /movies/{id}/related"
         ours: ""
         status: blocked-engine
-        rationale: "Needs the recommendation graph. Note the closest route, GET /v1/movies/recommendations/{id}, is registered but returns a hard-coded empty array, so it is not evidence of parity (see notes)."
+        rationale: "Needs the recommendation graph. Our own route GET /v1/movies/recommendations/{id} is the nearest surface but answers 501 not_implemented (its custom-surface row is in the last section), and Trakt's /movies/{id}/related is a distinct surface, so neither is parity here."
         engine: "recommendations engine (issue #5)"
       - trakt: "GET /movies/{id}/releases/{country}"
         ours: ""
@@ -203,7 +203,7 @@ sections:
       - trakt: "GET /shows/{id}/related"
         ours: ""
         status: blocked-engine
-        rationale: "Needs the recommendation graph; GET /v1/shows/recommendations/{id} exists but returns a hard-coded empty array (see notes)."
+        rationale: "Needs the recommendation graph; our own route GET /v1/shows/recommendations/{id} is the nearest surface but answers 501 not_implemented (see the custom-surface row in the last section)."
         engine: "recommendations engine (issue #5)"
       - trakt: "GET /shows/{id}/videos"
         ours: ""
@@ -634,3 +634,13 @@ sections:
         status: blocked-engine
         rationale: "Custom 501: skipped items require the sync engine."
         engine: "sync engine (issue #6)"
+      - trakt: ""
+        ours: "GET /v1/movies/recommendations/{id}"
+        status: blocked-engine
+        rationale: "Custom 501: our own movie 'more like this' route (Trakt's nearest surface is /movies/{id}/related). Answers 501 not_implemented until the recommendations engine lands, so it is a stub, not parity. Recorded here so a 501 route cannot go unmeasured."
+        engine: "recommendations engine (issue #5)"
+      - trakt: ""
+        ours: "GET /v1/shows/recommendations/{id}"
+        status: blocked-engine
+        rationale: "Custom 501: our own show 'more like this' route; answers 501 not_implemented until the recommendations engine lands. Recorded here so a 501 route cannot go unmeasured."
+        engine: "recommendations engine (issue #5)"
