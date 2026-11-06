@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"trakt-api/internal/auth"
 	"trakt-api/internal/cache"
 	"trakt-api/internal/database"
 	"trakt-api/internal/openapi"
@@ -34,6 +35,7 @@ func registerOpenAPIRoutes() {
 			Auth:    "optional",
 			StatusCodes: map[int]string{
 				200: "User stats",
+				403: "Private profile",
 				404: "User not found",
 			},
 		},
@@ -45,8 +47,14 @@ func registerOpenAPIRoutes() {
 
 // RegisterRoutes wires stats routes to the Fiber router.
 func RegisterRoutes(api fiber.Router) {
-	// Nested under /users/{id}/stats
-	api.Get("/users/:id/stats", handleGetUserStats)
+	// Nested under /users/{id}/stats.
+	//
+	// Privacy-gated with the same auth.PrivacyFilter("id") the rest of the
+	// /users/:id read surface uses: a block in either direction and an unknown
+	// user are 404, a private profile is 403 to a stranger and 200 to
+	// self/admins/followers. Without it an anonymous or authenticated stranger
+	// could read a private user's aggregate stats (plays/minutes/ratings).
+	api.Get("/users/:id/stats", auth.PrivacyFilter("id"), handleGetUserStats)
 }
 
 // ---------------------------------------------------------------------------
