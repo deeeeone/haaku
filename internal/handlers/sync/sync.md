@@ -2,27 +2,81 @@
 
 ## What it does
 
-The sync workhorse — 18 endpoints over five collections plus the last-activities delta (all auth-required, per-handler checks):
+The sync workhorse — 30 endpoints over five collections plus the last-activities delta (all auth-required, per-handler checks):
 
 - **History** (4): GET paginated (+ `type`, `start_at`, `end_at` filters), GET single item, POST add (movies + shows expanded to episodes by season, all-episode expansion), POST remove (by IDs or media objects).
 - **Collection** (3): GET, POST add, POST remove (movies/shows).
 - **Watchlist** (4): GET (+`sort_by` rank/listed/title), POST add (assigns incrementing rank), POST remove, PUT reorder.
 - **Ratings** (3): GET, POST upsert (`OnConflict` on user+media), POST remove. Episode ratings carry `season`/`number` and resolve series→season→episode, exactly as history add does; an episode reference without them is rejected (400).
 - **Favorites** (3): GET, POST add (ranked), POST remove.
+- **Per-type reads** (12): GET `/v1/sync/{history,collection,watchlist,ratings,favorites}/{segment}` — see "Per-type reads" below.
 - **Last activities** (1): GET `/v1/sync/last_activities` — Trakt's "what changed since" delta, per-collection timestamps sourced from the rows we already write (issue #6). See "Last activities" below.
 
 Writes use `cache.WithCacheTransaction` with version-counter invalidation (`queueUserInvalidation`/`queueMediaInvalidation`/`queueEpisodeInvalidations`) and outbox events (`EventHistoryAdded`, `EventCollectionAdded`, `EventWatchlistAdded`, `EventRatingAdded`, `EventFavoriteAdded`). Batch responses follow the Trakt `added/not_found/duplicates` shape.
+
+## Per-type reads (`GET /v1/sync/<kind>/<segment>`)
+
+Trakt exposes each sync collection a second time, filtered by media type. Those
+variants are **the same list handlers with the media type pinned by the path
+segment** — no second query, no second response builder: `per_type_reads.go`
+holds one table (`perTypeReads`) that the routes, the OpenAPI defs and the
+tests all read, and a per-type registration is
+`sync.Get("/"+kind+"/"+segment, forceMediaType(mediaType), handler)`. The pinned
+type wins over `?type=` (`mediaTypeFilter`), so a per-type route cannot be
+widened back to the mixed list; the mixed list still honours `?type=` and
+`?type=` absent still means "all".
+
+A variant exists only where the backing table can hold rows of that media type —
+a route that could only ever answer `[]` would be a stub, and is not registered:
+
+| Collection | `media_type` stored | Variants served | Variants blocked, and why |
+|---|---|---|---|
+| `user_history` (0006) | `movie`, `episode` | `/history/movies`, `/history/episodes` | `/history/shows`, `/history/seasons` — we store no show/season history row. Trakt's `shows`/`seasons` variants are the *episode* rows with an embedded `show`/`season` object; the history row carries `season_id`/`episode_id` but no show identity, so a `shows` variant would return a byte-identical duplicate of `/history/episodes` labelled `media_type: "episode"`. Serving it needs the embedded media object (a shape change), or a show-level history row — a separate piece of work. |
+| `user_collection` (0007) | `movie`, `show` | `/collection/movies`, `/collection/shows` | `/collection/episodes`, `/collection/seasons` — the table's own comment (`-- 'movie' or 'show'`) is the contract; the column has no CHECK constraint, but the API's only collection writer resolves movies/shows (`handleAddCollection`), so no episode/season collection row exists through the product and a variant could only ever answer `[]`. |
+| `user_watchlist` (0008) | `movie`, `show` | `/watchlist/movies`, `/watchlist/shows` | `/watchlist/seasons`, `/watchlist/episodes` — same gap: `user_watchlist` is movie/show only and watchlist add accepts nothing else. |
+| `user_ratings` (0009) | `movie`, `show`, `season`, `episode` | `/ratings/movies`, `/ratings/shows`, `/ratings/seasons`, `/ratings/episodes` | none — all four are real `media_type` values on this table. |
+| `user_favorites` (0010) | `movie`, `show` | `/favorites/movies`, `/favorites/shows` | none beyond the issue's list: favorites are movie/show only, which is exactly what Trakt's favorites endpoint offers. |
+
+**Response shape decision.** A per-type response is the mixed list's envelope
+(`{"items": [...], "page", "limit", "row_count"}`) with the same row fields
+(`id`, `media_type`, `media_id`, and the collection's stored timestamp —
+`watched_at` / `collected_at` / `listed_at` / `rated_at` / `favorited_at`).
+It is deliberately **not** Trakt's nested `movie`/`show`/`episode` object with
+an `ids` block: our sync rows are not joined to their media (the mixed lists
+don't join either), and our canonical ids are internal — the external
+`trakt`/`tmdb`/`imdb` ids live in `external_ids`, which a read of these
+collections does not currently touch. Turning one per-type route into Trakt's
+media-object shape while its mixed twin stayed row-shaped would be worse than
+either consistency or parity; the object shape is a follow-up across all five
+collections (and belongs with the `shows`/`seasons` history variants above).
+
+**`?extended=min` / `?minimal` — decided, not implemented.** The narrowing the
+issue asks for exists to drop Trakt's extra payload (translations, images,
+`rating_summary`, nested media). Our sync rows carry none of that: the row shape
+above *is* the minimal shape, and there is nothing for `min`/`minimal` to
+remove and nothing for `full` to add without the media join. Implementing the
+parameter now would be a no-op that lies about what the server can widen to, so
+it is left to the same follow-up as the media-object response shape.
+
+Empty is `"items": []` — never `null` — for every variant, in the tests and in
+the handlers (`build*Responses` always allocate).
+
+Handler tests: `per_type_reads_test.go` (sqlite in-memory, real PostgreSQL when
+`DATABASE_URL` is set) — per-variant pinned type, caller scoping, non-empty
+fixtures, `[]`-not-null for an empty account, pagination, path-wins-over-`?type=`,
+and a table check that no unbacked `(collection, media_type)` pair is declared.
 
 ## Completion
 
 | Piece | Status |
 |---|---|
-| OpenAPI registration (17 routes) | Done |
+| OpenAPI registration (30 routes) | Done |
 | History GET/add/remove (show→episode expansion) | Done |
 | Collection GET/add/remove | Done |
 | Watchlist GET/add/remove/reorder | Done |
 | Ratings GET/upsert/remove | Done |
 | Favorites GET/add/remove | Done |
+| Per-type reads (12 GET variants, `per_type_reads.go`) | Done (issue #4) — pinned `media_type` over the same handlers; blocked variants documented above |
 | Last activities (GET `/v1/sync/last_activities`) | Done (issue #6) — real per-collection aggregates, no cache |
 | Cache-tx + version invalidation + outbox | Done |
 
@@ -95,7 +149,7 @@ transaction) is the natural next step — none exists today.
 - **Bulk-add N+1** — per-item `findSeason`/`findEpisode` queries inside the transaction loop; fine for small batches, quadratic-ish for large syncs.
 - **No pagination on `handleGetHistoryItem`** — returns all history rows for one item.
 - **Episode rating add/remove payload mismatch (RESOLVED, issue #25)** — `handleAddRatings` declared episodes as `{ids, rating}` (no season/number), so a Trakt episode payload had its `season`/`number` dropped by the decoder, the series TMDB id resolved to the *show*, and the rating was written against the whole series — while `handleRemoveRatings` correctly targeted the episode. Now the episodes payload uses a type carrying `season`/`number`, resolves series→season→episode and writes `media_type='episode'`; a reference without season/number is rejected with 400 `invalid_request` instead of falling back to the show. Regression test: `ratings_test.go` (seeds a series with two episodes, asserts the episode row is rated and the show is not, round-trips `/ratings/remove`, and asserts the 400).
-- **No episode support in collection/watchlist/favorites** — Trakt allows episodes in watchlist; only movies/shows handled here. Note this is *symmetric* across add and remove (both accept only movies/shows), so it is a feature gap, not the ratings-style add/remove asymmetry. Tracked on haaku-tv/haaku#4.
+- **No episode support in collection/watchlist/favorites** — Trakt allows episodes in watchlist; only movies/shows handled here. Note this is *symmetric* across add and remove (both accept only movies/shows), so it is a feature gap, not the ratings-style add/remove asymmetry. Tracked on haaku-tv/haaku#4. **Read-side consequence (issue #4):** it is also why `/sync/watchlist/{seasons,episodes}` and `/sync/collection/{seasons,episodes}` are not registered — see "Per-type reads". The write gap (persisting those media types) is the prerequisite, not a read variant.
 - **Error helpers (`authRequired`/`badRequest`/`internalError`) duplicated** — "match project conventions" per comment, but the shared package exists.
 - **Mixed timestamp formats (RESOLVED)** — all response timestamps now unified to `.000Z` via shared `response.FormatTime` (Batch 3); parse paths still accept RFC3339 input.
 - **`last_activities` runs many small reads, not one query** — ~24 `SELECT col ... WHERE user_id = ? ORDER BY col DESC LIMIT 1` round trips per call, one per leaf in the mapping table above. Each is index-backed (every source table has a `user_id` index) so they are cheap, but this is a chatty shape; folding it into per-table conditional aggregates (or one `UNION ALL`) is the obvious optimisation if it ever shows up hot. Deliberately not done yet — clarity first, and the issue's own framing is "cheap because the timestamps already exist". (These are read as latest-row reads, not `MAX(col)`, because an aggregate strips the column type and sqlite then returns undecodable text — see the mapping note above.)
@@ -113,4 +167,5 @@ transaction) is the natural next step — none exists today.
 - [x] Decide `watched_at` semantics for `"unknown"` (aired_at vs now) and align with spec. (Batch 12 — DECISION: `"unknown"` → *now* (the moment the watch is recorded), matching Trakt's default when no `watched_at` is supplied.) `api-conventions.md` §11 says history `watched_at` accepts the `"released"`/`"unknown"` sentinels (Trakt parity) but does not map them; `sync-api.md` lists the same two sentinels without defining their values. The existing code resolves `"released"` → the item's aired/release date (for calendar-accurate dating of known-released watches) and `"unknown"` → `now` — the same value Trakt uses when a client omits `watched_at` entirely, and the least-surprising choice for an "I don't know when, record it as of the sync" watch. Using `aired_at` for `"unknown"` would backdate every unknown watch to its release date, over-stating history and distorting feeds — a worse default. No code change; current `parseWatchedAt` behavior is correct and now documented as the decided semantics.)
 - [x] Use shared `internal/response` error helpers (Batch 0); per-handler `authRequired` is tracked at the route-attachment item above.
 - [x] Implement `GET /v1/sync/last_activities` (issue #6, first slice) — Trakt-shaped per-collection timestamps from real aggregates; unsupported fields null, empty sections null. Handler + sqlite tests in `last_activities.go`/`last_activities_test.go`.
+- [x] Per-type read variants (issue #4) — 12 GET routes pinning `media_type` over the existing list handlers (`per_type_reads.go`, `per_type_reads_test.go`); unbacked variants (history shows/seasons, watchlist/collection seasons/episodes) left unregistered and documented; `?extended=` narrowing decided against (nothing to narrow). See "Per-type reads".
 - [ ] Verify module test coverage (`make test`).
