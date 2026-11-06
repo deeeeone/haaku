@@ -2,7 +2,7 @@
 
 ## Decision
 
-`trakt-killer/tkiller-api` is the **monorepo** for the server:
+`haaku-tv/haaku` is the **monorepo** for the server:
 
 ```
 cmd/                     entrypoints: one binary, several modes
@@ -15,9 +15,9 @@ docs/architecture/       design docs (this directory)
 scripts/                 developer tooling
 ```
 
-The frontend was previously a separate repository (`trakt-killer/tkiller-web`),
+The frontend was previously a separate repository (`haaku-tv/tkiller-web`),
 imported here with its history preserved. The C# Jellyfin plugin stays in
-`tkiller-jellyfin`: it targets Jellyfin's ABI and ships through Jellyfin's plugin
+`haaku-jellyfin`: it targets Jellyfin's ABI and ships through Jellyfin's plugin
 catalogue, so it has a genuinely independent release cycle.
 
 ## Why

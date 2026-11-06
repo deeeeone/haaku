@@ -1,4 +1,4 @@
-# web — trakt-killer frontend
+# web — haaku frontend
 
 The React + TypeScript single-page app. It lives in this repository and is
 **embedded into the API binary**, so a deploy is one artifact serving both the
@@ -79,7 +79,7 @@ Tracked in the repository issues; the ones that bite contributors:
   design-kit decision in the architecture ADR. There is no `@design-kit` alias;
   the old one pointed at a sibling checkout that does not exist here.
 - The contract is thin: most operations emit `requestBody?: never` and
-  `content?: never` (trakt-killer/tkiller-api#15), so the generated types only
+  `content?: never` ([haaku-tv/haaku#15](https://github.com/haaku-tv/haaku/issues/15)), so the generated types only
   cover paths and error envelopes. `src/api/hooks/useLists.ts` therefore casts
   the openapi-fetch methods and those casts surface as Biome
   `noExplicitAny` / `noNonNullAssertion` **warnings** (they do not fail lint).

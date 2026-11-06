@@ -9,7 +9,7 @@ package comment states only the rules the code must keep.
 A backup is a recovery point for **this server's own database**. It is not
 point-in-time recovery — a deployment that needs that archives WAL at the
 PostgreSQL layer. It does not carry the `SECRET_KEY`, `.env`, or Compose files,
-and it does not carry media files (trakt-killer keeps media in a separate store).
+and it does not carry media files (haaku keeps media in a separate store).
 Those belong to the operator's own off-server copy.
 
 ## Layout
@@ -108,7 +108,7 @@ deleted, oldest first.
 
 ## Restore
 
-`tkiller-api --backup-restore <id>` replaces the current database with the named
+`api --backup-restore <id>` replaces the current database with the named
 backup. It:
 
 1. Refuses a folder that is not complete (incomplete, or unreadable).
@@ -186,9 +186,9 @@ reads the inventory. A `pg_dump` older than the database server is refused.
 ## Commands
 
 ```
-tkiller-api --backup                       take a manual backup and exit
-tkiller-api --backup-list                  list backups and exit
-tkiller-api --backup-restore <id>          restore the backup in full and exit
+api --backup                       take a manual backup and exit   # make backup
+api --backup-list                  list backups and exit           # make backup-list
+api --backup-restore <id>          restore the backup in full and exit
 ```
 
 They need `DATABASE_URL`, `pg_dump`/`pg_restore` on the host, and

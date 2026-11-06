@@ -1,6 +1,6 @@
 # Release, upgrade and rollback policy
 
-trakt-killer is pre-release: there is no release process and no release tag yet.
+haaku is pre-release: there is no release process and no release tag yet.
 This document states the policy the first release must follow, because the pivot
 to a bundled-database image (issue #13) makes us the ones shipping a database —
 and a self-hosted product that cannot be safely upgraded cannot be shipped.
