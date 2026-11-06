@@ -3,6 +3,7 @@ package progress
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"testing"
 	"time"
 
@@ -274,4 +275,180 @@ func TestPlaybackRequiresAuth(t *testing.T) {
 			t.Errorf("expected 401, got %d", resp.StatusCode)
 		}
 	})
+}
+
+func itoa(n int) string { return strconv.Itoa(n) }
+
+// seedMoviePlaybackN creates n movies, each with a playback row owned by userID
+// and strictly increasing paused_at, so paused_at DESC ordering is deterministic.
+func seedMoviePlaybackN(t *testing.T, db *gorm.DB, userID string, n int) {
+	t.Helper()
+	base := time.Now().UTC()
+	for i := 0; i < n; i++ {
+		m := database.Movie{
+			Title: "Movie " + strconv.Itoa(i), TmdbID: 1000 + i,
+			CreatedAt: base, UpdatedAt: base,
+		}
+		if err := db.Create(&m).Error; err != nil {
+			t.Fatalf("seed movie: %v", err)
+		}
+		row := database.UserPlayback{
+			UserID: userID, MediaType: "movie", MediaID: m.ID,
+			Progress: float64(i) / 10,
+			PausedAt: base.Add(time.Duration(i) * time.Second),
+		}
+		if err := db.Create(&row).Error; err != nil {
+			t.Fatalf("seed movie playback: %v", err)
+		}
+	}
+}
+
+// seedEpisodePlaybackN creates one show + season with n episodes, each with a
+// playback row owned by userID and paused_at increasing with the episode number.
+func seedEpisodePlaybackN(t *testing.T, db *gorm.DB, userID string, n int) {
+	t.Helper()
+	base := time.Now().UTC()
+	show := database.Show{Title: "Breaking Go Paged", TmdbID: 9100, ImdbID: "tt9100"}
+	if err := db.Create(&show).Error; err != nil {
+		t.Fatalf("seed show: %v", err)
+	}
+	season := database.Season{ShowID: show.ID, SeasonNumber: 3}
+	if err := db.Create(&season).Error; err != nil {
+		t.Fatalf("seed season: %v", err)
+	}
+	for i := 0; i < n; i++ {
+		ep := database.Episode{
+			SeasonID: season.ID, ShowID: show.ID, EpisodeNumber: i + 1,
+			Title: "Paged " + strconv.Itoa(i),
+		}
+		if err := db.Create(&ep).Error; err != nil {
+			t.Fatalf("seed episode: %v", err)
+		}
+		row := database.UserPlayback{
+			UserID: userID, MediaType: "episode", MediaID: ep.ID,
+			Progress: float64(i) / 10,
+			PausedAt: base.Add(time.Duration(i) * time.Second),
+		}
+		if err := db.Create(&row).Error; err != nil {
+			t.Fatalf("seed episode playback: %v", err)
+		}
+	}
+}
+
+// TestPlaybackMoviesPagination drives the movies endpoint's page/limit handling:
+// defaults, the next-page Link, the tail page, an out-of-range page (empty page,
+// totals intact), the 100 limit cap, and invalid-input fallback.
+func TestPlaybackMoviesPagination(t *testing.T) {
+	db := setupTestDB(t)
+	seedMoviePlaybackN(t, db, "user-1", 3)
+	app := makeAuthedApp("user-1")
+
+	cases := []struct {
+		name                                                                string
+		query                                                               string
+		wantPage, wantLimit, wantTotalPages, wantTotalItems, wantItemsCount int
+		wantNextLink                                                        string
+	}{
+		{"defaults", "", 1, 25, 1, 3, 3, ""},
+		{"page 1 limit 2 advertises a next link", "?page=1&limit=2", 1, 2, 2, 3, 2, `</sync/playback/movies?page=2&limit=2>; rel="next"`},
+		{"page 2 limit 2 returns the tail row", "?page=2&limit=2", 2, 2, 2, 3, 1, ""},
+		{"out-of-range page is empty but totals hold", "?page=99&limit=2", 99, 2, 2, 3, 0, ""},
+		{"limit above the 100 cap clamps", "?limit=1000", 1, 100, 1, 3, 3, ""},
+		{"non-positive/invalid page and limit fall back", "?page=0&limit=abc", 1, 25, 1, 3, 3, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			resp := doGET(t, app, "/sync/playback/movies"+tc.query)
+			if resp.StatusCode != http.StatusOK {
+				t.Fatalf("expected 200, got %d", resp.StatusCode)
+			}
+			assertPagination(t, resp,
+				itoa(tc.wantPage), itoa(tc.wantLimit), itoa(tc.wantTotalPages),
+				itoa(tc.wantTotalItems), itoa(tc.wantItemsCount))
+			if got := resp.Header.Get("Link"); got != tc.wantNextLink {
+				t.Errorf("Link = %q, want %q", got, tc.wantNextLink)
+			}
+			var body []json.RawMessage
+			decodeBody(t, resp, &body)
+			if len(body) != tc.wantItemsCount {
+				t.Errorf("body rows = %d, want %d", len(body), tc.wantItemsCount)
+			}
+		})
+	}
+}
+
+// TestPlaybackEpisodesPagination is the episode analogue of
+// TestPlaybackMoviesPagination (same cases, episode+show join).
+func TestPlaybackEpisodesPagination(t *testing.T) {
+	db := setupTestDB(t)
+	seedEpisodePlaybackN(t, db, "user-1", 3)
+	app := makeAuthedApp("user-1")
+
+	cases := []struct {
+		name                                                                string
+		query                                                               string
+		wantPage, wantLimit, wantTotalPages, wantTotalItems, wantItemsCount int
+		wantNextLink                                                        string
+	}{
+		{"defaults", "", 1, 25, 1, 3, 3, ""},
+		{"page 1 limit 2 advertises a next link", "?page=1&limit=2", 1, 2, 2, 3, 2, `</sync/playback/episodes?page=2&limit=2>; rel="next"`},
+		{"page 2 limit 2 returns the tail row", "?page=2&limit=2", 2, 2, 2, 3, 1, ""},
+		{"out-of-range page is empty but totals hold", "?page=99&limit=2", 99, 2, 2, 3, 0, ""},
+		{"limit above the 100 cap clamps", "?limit=1000", 1, 100, 1, 3, 3, ""},
+		{"non-positive/invalid page and limit fall back", "?page=0&limit=abc", 1, 25, 1, 3, 3, ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			resp := doGET(t, app, "/sync/playback/episodes"+tc.query)
+			if resp.StatusCode != http.StatusOK {
+				t.Fatalf("expected 200, got %d", resp.StatusCode)
+			}
+			assertPagination(t, resp,
+				itoa(tc.wantPage), itoa(tc.wantLimit), itoa(tc.wantTotalPages),
+				itoa(tc.wantTotalItems), itoa(tc.wantItemsCount))
+			if got := resp.Header.Get("Link"); got != tc.wantNextLink {
+				t.Errorf("Link = %q, want %q", got, tc.wantNextLink)
+			}
+			var body []json.RawMessage
+			decodeBody(t, resp, &body)
+			if len(body) != tc.wantItemsCount {
+				t.Errorf("body rows = %d, want %d", len(body), tc.wantItemsCount)
+			}
+		})
+	}
+}
+
+// TestPlaybackQueryErrors asserts the 500 branch each playback handler takes
+// when GORM returns a real query error — distinct from the GetDB() failure
+// already covered by TestPlaybackMoviesDBUnavailable. Dropping the table a query
+// needs is the portable way to force a non-not-found error on sqlite.
+func TestPlaybackQueryErrors(t *testing.T) {
+	seedMovies := func(t *testing.T, db *gorm.DB) { seedMoviePlaybackN(t, db, "user-1", 3) }
+	seedEpisodes := func(t *testing.T, db *gorm.DB) { seedEpisodePlaybackN(t, db, "user-1", 3) }
+
+	cases := []struct {
+		name string
+		path string
+		seed func(t *testing.T, db *gorm.DB)
+		drop string
+	}{
+		{"movies count query fails", "/sync/playback/movies", seedMovies, "user_playback"},
+		{"movies batch-fetch fails", "/sync/playback/movies", seedMovies, "movies"},
+		{"episodes count query fails", "/sync/playback/episodes", seedEpisodes, "user_playback"},
+		{"episodes triple join fails", "/sync/playback/episodes", seedEpisodes, "seasons"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			db := setupTestDB(t)
+			tc.seed(t, db)
+			if err := db.Exec("DROP TABLE " + tc.drop).Error; err != nil {
+				t.Fatalf("drop %s: %v", tc.drop, err)
+			}
+			app := makeAuthedApp("user-1")
+			resp := doGET(t, app, tc.path)
+			if resp.StatusCode != http.StatusInternalServerError {
+				t.Fatalf("expected 500, got %d", resp.StatusCode)
+			}
+		})
+	}
 }
