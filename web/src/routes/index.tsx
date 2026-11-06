@@ -156,7 +156,7 @@ function HomePage() {
 
       {/* Empty state for fresh accounts */}
       {!hasContent && (
-        <Section title="Welcome to TKiller">
+        <Section title="Welcome to haaku">
           <p className="text-sf-ink-muted">
             Track what you watch. Build your library. Discover new favorites.
           </p>
