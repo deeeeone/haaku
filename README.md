@@ -1,69 +1,148 @@
-# trakt-killer
+<img align="right" width="88" src="https://raw.githubusercontent.com/haaku-tv/.github/main/assets/mark.svg" alt="haaku">
 
-The server for **trakt-killer** — an open, community-owned Trakt replacement:
-watch history, scrobbling, lists, ratings, social. Feature parity with Trakt
-first; importers and a Trakt-compatibility layer follow.
+[![Go 1.26+](https://img.shields.io/badge/Go-1.26%2B-00ADD8?style=flat-square&logo=go&logoColor=d8b4fe&labelColor=0d0d0d)](https://go.dev)
+[![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-4169E1?style=flat-square&logo=postgresql&logoColor=d8b4fe&labelColor=0d0d0d)](https://www.postgresql.org)
+[![Status](https://img.shields.io/badge/status-pre--release-c4a5f0?style=flat-square&labelColor=0d0d0d)](https://github.com/haaku-tv/haaku-api/issues)
 
-This repository is the whole server: the Go API and the React frontend, compiled
-into one binary. See [docs/architecture/monorepo.md](docs/architecture/monorepo.md)
-for the layout and why.
+[![Stars](https://img.shields.io/github/stars/haaku-tv/haaku-api?style=flat-square&logo=github&logoColor=d8b4fe&label=Stars&labelColor=0d0d0d&color=c4a5f0)](https://github.com/haaku-tv/haaku-api/stargazers)
+[![Issues](https://img.shields.io/github/issues/haaku-tv/haaku-api?style=flat-square&logo=github&logoColor=d8b4fe&label=Issues&labelColor=0d0d0d&color=c4a5f0)](https://github.com/haaku-tv/haaku-api/issues)
+[![Last commit](https://img.shields.io/github/last-commit/haaku-tv/haaku-api?style=flat-square&logo=git&logoColor=d8b4fe&label=Last%20commit&labelColor=0d0d0d&color=c4a5f0)](https://github.com/haaku-tv/haaku-api/commits)
 
-## Status
+### haaku – server
 
-**Pre-release.** The API surface is broad (161 registered endpoints across ~30
-handler packages) and the frontend exists, but the pieces that make it
-*deployable* are still landing:
+---
 
-| Area | State |
+> **把握** — *haaku*: “to have a handle on; to keep tabs on a situation.”
+> The word Japanese speakers use for the whole picture of where things stand — which is what a tracker does for everything you watch.
+
+---
+
+**haaku** is an open, self-hostable replacement for trakt.tv: watch history, scrobbling, ratings, watchlists, lists, comments and a social feed — on a server you own, in a database you can `psql` into.
+
+This repository is the whole server. The Go API and the React UI compile into **one binary**, and the image that ships it carries **its own PostgreSQL and Redis**, so the install is one `docker compose up -d` and a backup is a directory plus one key.
+
+## What's in it
+
+| | |
 |---|---|
-| API endpoints | Broad, but Trakt coverage is incomplete and several endpoints answer `501` until the stats/rankings engine lands |
-| Frontend | In-repo and embedded; not yet building in CI |
-| Schema migrations | **No runner yet** — the server cannot create its own schema |
-| Single image (API + bundled PostgreSQL) | Planned, not built |
-| Backups, at-rest secret encryption | Not built |
-| Jellyfin client | Separate repository: [`trakt-killer/tkiller-jellyfin`](https://github.com/trakt-killer/tkiller-jellyfin) |
+| **Watch history** | Scrobble start / pause / stop with progress, plus check-ins for what you watch once |
+| **Ratings** | Movies, shows, seasons and individual episodes — episodes rate against the episode, not the show |
+| **Lists** | Manual, smart and collaborative lists, alongside collection, watchlist and favourites |
+| **Social** | Comments and an activity feed, follows and blocks, notifications, notes and saved filters |
+| **Clients** | `tk_…` API keys and OAuth for integrations, outbound webhooks for events |
+| **Operations** | Migrations applied on start, a `pg_dump` safety copy before every migration, backup / restore / rotation, secrets encrypted at rest with HKDF-SHA256 → AES-256-GCM, Prometheus metrics on a separate listener |
 
-Do not run this in front of real data yet. The tracking issues say what is
-missing; they are the source of truth for status, not this table.
+## Install
 
-## Quick start
+### Docker — one container, its own PostgreSQL
 
-Requires Go 1.26+, Node 20+ with pnpm, and a PostgreSQL database.
-
-```bash
-cp deploy/.env.example .env        # fill TMDB_API_TOKEN and a DATABASE_URL
-make pg-up                         # throwaway PostgreSQL, prints DATABASE_URL
-make embed-stub                    # placeholder web/dist so Go builds work
-make dev-backend                   # API on :8080
-```
-
-For the frontend, in a second terminal:
+> The omnibus image is in review in [#32](https://github.com/haaku-tv/haaku-api/pull/32). Until it merges, use the source install below.
 
 ```bash
-make dev-frontend                  # Vite on :5173, proxies /v1 to :8080
+git clone https://github.com/haaku-tv/haaku-api.git
+cd haaku-api
+cp .env.example .env       # set TKILLER_SECRET_KEY and TMDB_API_TOKEN
+docker compose up -d
 ```
 
-`make build` produces the binary with the real UI embedded (`make bin`), and
-`make help` lists every target.
+Then open <http://localhost:8080>. Everything the server owns lives in `./config`: the database, Redis' append-only file, the pre-migration backups and the app's own directory. **Back that directory up together with `TKILLER_SECRET_KEY`** — a dump without the key is unreadable, and the key without the dump is useless.
+
+`docker-compose.advanced.yml` runs the same image against a PostgreSQL and Redis of your own. Setting `DATABASE_URL` / `REDIS_URL` is what switches the bundled services off.
+
+### From source
+
+Go 1.26+, Node 20+ with pnpm, and a PostgreSQL 17. Redis is optional — the code degrades without it.
+
+```bash
+cp deploy/.env.example .env      # set TMDB_API_TOKEN and DATABASE_URL
+make pg-up                       # throwaway PostgreSQL (unix socket); prints DATABASE_URL
+make embed-stub                  # placeholder web/dist so Go builds without a frontend build
+make dev-backend                 # API on :8080; migrations run on start
+make dev-frontend                # second terminal: Vite on :5173, proxies /v1 to the API
+```
+
+The server refuses to start without `TKILLER_SECRET_KEY` (32+ characters — `openssl rand -base64 48`), and a first start on an empty database migrates it for you. `make bin` builds the single binary with the real UI embedded; `make help` lists every target.
+
+## API
+
+- `/v1` is the versioned surface: JSON in, JSON out, one error envelope — `{"error":{"code":"…","message":"…"}}`.
+- Authenticate with `X-API-Key: tk_…` from an integration, or an OAuth bearer token from the UI.
+- The spec is **generated from the route registry** and never hand-written: 163 paths / 197 operations in [`openapi.yaml`](openapi.yaml), served live at `GET /v1/openapi.json`. `make api-spec` regenerates it, `make api-check` fails if it is stale or the route inventory drifts, and CI runs both.
+- `GET /healthz` for liveness, `GET /readyz` for readiness. Prometheus metrics are on a **separate listener**, deliberately not on the app port.
+- The Trakt-shaped surface is coming rather than here: `/v1` is our own shape today, and the compatibility listener plus importer are [#4](https://github.com/haaku-tv/haaku-api/issues/4) and [#7](https://github.com/haaku-tv/haaku-api/issues/7).
+
+## Clients
+
+| Client | What it does |
+|---|---|
+| **web UI** | In this repo, embedded in the binary — no separate deployment, no CORS setup |
+| [haaku-jellyfin](https://github.com/haaku-tv/haaku-jellyfin) | Jellyfin plugin: scrobbles playback and syncs watch state to your server |
 
 ## Layout
 
 ```
-cmd/api/            entrypoint (TKILLER_MODE=api|worker|migrate)
-internal/           domain packages: handlers, auth, database, cache, workers
+cmd/api/            one binary: TKILLER_MODE=api|worker|migrate, or --migrate-only
+internal/           ~30 domain packages — handlers, auth, database, cache, workers,
+                    obs, backup, secret, mode, webui — each with an audit *.md beside it
 internal/webui/     serves the embedded frontend
-web/                React + TypeScript frontend (embedded into the binary)
-migrations/         SQL migrations
-deploy/             compose file and env template for local services
+web/                React + TypeScript frontend, embedded via web/embed.go
+migrations/sql/     32 Goose migrations (append-only)
+deploy/             compose file and env template for running from source
 docs/architecture/  design docs
-scripts/            developer tooling
+scripts/            developer tooling (dev-pg.sh boots a throwaway PostgreSQL)
 ```
 
-## Conventions
+## Status
 
-- Go + Fiber + GORM + PostgreSQL + Redis; TMDB for metadata.
-- Error envelope everywhere; code-first OpenAPI generated from the route registry.
-- Patterns inherited from theintrodb-api: `WithCacheTransaction`, version-counter
-  invalidation, advisory locks, a Redis circuit breaker.
-- **Read [AGENTS.md](AGENTS.md)** — it is the contract for all contributors and
-  agents working in this repository.
+Pre-release, and specific about it. `main` builds, migrates a fresh database and serves, but the pieces that make it a *Trakt replacement* are still landing. **The issues are the source of truth**, not this table.
+
+| Area | State |
+|---|---|
+| API surface | 163 paths registered, Trakt coverage incomplete — [#4](https://github.com/haaku-tv/haaku-api/issues/4) |
+| Stats, rankings, discovery | Several endpoints answer `501` on purpose until the engines land — [#5](https://github.com/haaku-tv/haaku-api/issues/5) |
+| Sync engine | `POST /v1/syncs` accepts a session that nothing processes yet — [#6](https://github.com/haaku-tv/haaku-api/issues/6) |
+| Trakt importer | Not started; this is what gates moving off trakt.tv — [#7](https://github.com/haaku-tv/haaku-api/issues/7) |
+| Identity | Clerk-only today, so a self-hoster depends on a third-party sign-in service; built-in accounts are an open decision |
+| Moderation and retention | Reports are accepted but nothing actions them yet — [#10](https://github.com/haaku-tv/haaku-api/issues/10) |
+| Single image (API + PostgreSQL) | In review — [#32](https://github.com/haaku-tv/haaku-api/pull/32) |
+| CI gates | Lint, vulnerability, secret and coverage gates in review — [#31](https://github.com/haaku-tv/haaku-api/pull/31) |
+| Tracing and alerting | Metrics and worker heartbeats exist; tracing, request-id propagation and alerts do not — [#9](https://github.com/haaku-tv/haaku-api/issues/9) |
+
+Do not put real data behind this yet.
+
+## Documentation
+
+| Doc | Subject |
+|---|---|
+| [monorepo.md](docs/architecture/monorepo.md) | Why one repo, one binary, one image |
+| [backups.md](docs/architecture/backups.md) | Backups, restore, rotation and the pre-migration safety copy |
+| [api-versioning.md](docs/architecture/api-versioning.md) | API versioning, the generated spec and its gates |
+| [release-versioning.md](docs/architecture/release-versioning.md) | Release, upgrade and rollback policy |
+| [webhooks.md](docs/webhooks.md) | Outbound webhooks and inbound integrations |
+
+Every handler package carries a `*.md` audit next to it — what it does, what it got wrong, what is left. Read the one for the package you touch.
+
+## Contributing
+
+Open an issue before a large change; the open issues are the roadmap. [AGENTS.md](AGENTS.md) is the contract for anyone — human or agent — working here: failing test first, the error envelope everywhere, configuration via environment only, and no re-implementing the cache transaction, advisory-lock or response helpers.
+
+```bash
+make test        # Go suites (including _tests_/) + frontend
+make lint        # vet + frontend lint
+make api-check   # spec freshness and route inventory
+```
+
+`openapi.yaml` and `web/src/api/generated/schema.ts` are generated — never hand-edit them; `make api-spec && make api-client` and commit both.
+
+## License
+
+This repository has no license file yet, so all rights are reserved until one is added.
+
+---
+
+<p align="center">
+  <a href="https://haaku.tv"><img src="https://raw.githubusercontent.com/haaku-tv/.github/main/assets/mark.svg" alt="haaku" width="44" height="44"></a>
+  <br><br>
+  <sub><b>haaku</b> · keep tabs on everything you watch<br>
+  <a href="https://haaku.tv">haaku.tv</a> · <a href="https://github.com/haaku-tv">GitHub</a></sub>
+</p>
