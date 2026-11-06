@@ -58,6 +58,8 @@ func registerOpenAPIRoutes() {
 func RegisterRoutes(api fiber.Router) {
 	sync := api.Group("/sync")
 	sync.Use(auth.AuthRequired())
+	// Per-type reads: the same list handlers, media_type pinned by the path segment.
+	registerPerTypeReads(sync)
 	sync.Get("/last_activities", handleGetLastActivities) // static path: register before dynamic siblings
 	// History
 	sync.Get("/history", handleGetHistory)
@@ -100,17 +102,15 @@ func handleGetHistory(c *fiber.Ctx) error {
 		return response.InternalError(c)
 	}
 
-	mediaType := c.Query("type", "") // movie,episode or empty=all
+	mediaType := mediaTypeFilter(c) // pinned by a per-type route, else ?type=; empty=all
 	page, limit := response.ParsePagination(c, 25)
 	startAt := c.Query("start_at")
 	endAt := c.Query("end_at")
 
 	query := db.Where("user_id = ?", userID)
 	switch mediaType {
-	case "movie":
-		query = query.Where("media_type = ?", "movie")
-	case "episode":
-		query = query.Where("media_type = ?", "episode")
+	case "movie", "episode":
+		query = query.Where("media_type = ?", mediaType)
 	}
 	if startAt != "" {
 		if t, err := time.Parse(time.RFC3339, startAt); err == nil {
@@ -600,7 +600,7 @@ func handleGetCollection(c *fiber.Ctx) error {
 
 	var items []database.UserCollection
 	query := db.Where("user_id = ?", userID).Order("collected_at DESC")
-	if mt := c.Query("type"); mt != "" {
+	if mt := mediaTypeFilter(c); mt != "" {
 		query = query.Where("media_type = ?", mt)
 	}
 
@@ -828,7 +828,7 @@ func handleGetWatchlist(c *fiber.Ctx) error {
 
 	var items []database.UserWatchlist
 	query := db.Where("user_id = ?", userID)
-	if mt := c.Query("type"); mt != "" {
+	if mt := mediaTypeFilter(c); mt != "" {
 		query = query.Where("media_type = ?", mt)
 	}
 
@@ -1110,7 +1110,7 @@ func handleGetRatings(c *fiber.Ctx) error {
 
 	page, limit := response.ParsePagination(c, 25)
 	query := db.Where("user_id = ?", userID)
-	if mt := c.Query("type"); mt != "" {
+	if mt := mediaTypeFilter(c); mt != "" {
 		query = query.Where("media_type = ?", mt)
 	}
 
@@ -1395,7 +1395,7 @@ func handleGetFavorites(c *fiber.Ctx) error {
 
 	page, limit := response.ParsePagination(c, 25)
 	query := db.Where("user_id = ?", userID)
-	if mt := c.Query("type"); mt != "" {
+	if mt := mediaTypeFilter(c); mt != "" {
 		query = query.Where("media_type = ?", mt)
 	}
 
