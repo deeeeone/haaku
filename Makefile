@@ -1,7 +1,7 @@
 .PHONY: help build bin frontend api-client embed-stub dev-backend dev-frontend fmt vet test test-go test-web lint lint-web \
 	tidy run compose-up compose-down pg-up pg-down pg-status test-db \
 	backup backup-list migrate-create migrate-validate migrate-status migrate-up \
-	api-spec api-check clean
+	api-spec api-check clean docker-base docker-omnibus docker-lint
 
 # pnpm is expected on PATH (the frontend is a pnpm workspace). Override for a
 # checkout that keeps its own toolchain, e.g. make frontend PNPM=/opt/node/bin/pnpm
@@ -161,8 +161,36 @@ clean: ## Remove build artifacts
 
 # --- Dev services (optional) ---
 
-compose-up: ## Start the dev stack (postgres, redis, minio, mailpit)
-	docker compose -f deploy/docker-compose.yml up -d
+compose-up: ## Start the dev infrastructure (dev/compose.yml: postgres, redis, minio, mailpit)
+	docker compose -f dev/compose.yml up -d
 
-compose-down: ## Stop the dev stack
-	docker compose -f deploy/docker-compose.yml down
+compose-down: ## Stop the dev infrastructure
+	docker compose -f dev/compose.yml down
+
+# --- Images (issue #13) ---
+#
+# CI builds both images (see .github/workflows/docker.yml); these targets are
+# the same commands, for a local checkout. The omnibus build takes the omnibus/
+# directory as its context, not the repo root.
+
+docker-base: ## Build the base image (tkiller-api:base)
+	docker build -t tkiller-api:base \
+		--build-arg IMAGE_VERSION="$(shell git rev-parse --short HEAD)" \
+		--build-arg BUILD_REVISION="$(shell git rev-parse HEAD)" \
+		--build-arg BUILD_DATE="$(shell date -u +%Y-%m-%dT%H:%M:%SZ)" .
+
+docker-omnibus: docker-base ## Build the omnibus image (tkiller-api:omnibus) from the base
+	docker build -f omnibus/Dockerfile \
+		--build-arg TKILLER_IMAGE=tkiller-api:base \
+		-t tkiller-api:omnibus omnibus/
+
+# The init and service scripts carry an s6 shebang (`#!/command/with-contenv
+# bash`), so their interpreter has to be named. SC1091 is the "not following a
+# sourced file" notice: lib.sh is a path that only exists inside the image.
+docker-lint: ## Lint the omnibus shell scripts
+	shellcheck -s bash -e SC1091 \
+		omnibus/rootfs/etc/s6-overlay/scripts/* \
+		omnibus/rootfs/etc/tkiller-omnibus/lib.sh \
+		omnibus/rootfs/etc/s6-overlay/s6-rc.d/*/run \
+		omnibus/rootfs/etc/s6-overlay/s6-rc.d/*/finish
+	shellcheck -s sh omnibus/rootfs/etc/s6-overlay/s6-rc.d/*/data/check

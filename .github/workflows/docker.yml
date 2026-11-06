@@ -236,6 +236,11 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
+      # The init and service scripts are bash with an s6 shebang, so their
+      # interpreter has to be named; shellcheck does not guess it.
+      - name: Lint the omnibus scripts
+        run: make docker-lint
+
       # The published image is not around on a pull request, and a build here
       # also covers the frontend and Go stages of the change being reviewed.
       - name: Build the omnibus image locally
