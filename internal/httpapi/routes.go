@@ -267,5 +267,16 @@ func RegisterRoutes(app *fiber.App) {
 	// API key management (T2.5)
 	auth.RegisterAPIKeyRoutes(api)
 
+	// Public-profile read surface (issue #4, Users section): /v1/users/{id}/{history,
+	// ratings, watchlist, collection, watching, comments, notes, likes} + the
+	// caller's /v1/users/me/likes/{comments,lists}.
+	//
+	// Registered LAST on purpose: these paths are /users/:id/<segment> and Fiber
+	// matches in registration order, so they must come after every static
+	// /users/me/<segment> route (notes, lists, social, stats, hidden, filters,
+	// api keys) or ":id" would swallow "me".
+	// TestNoStaticRouteIsShadowed guards the ordering.
+	users.RegisterProfileReadRoutes(api)
+
 	_ = api
 }

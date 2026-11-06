@@ -7,6 +7,16 @@ Account/profile management:
 - `GET /v1/users/me` — full profile (incl. admin/moderator flags, plan, status).
 - `PUT /v1/users/me` — partial profile update (name, bio, location, timezone, language, is_private).
 - `GET /v1/users/:id` — public profile wrapped in the shared `auth.PrivacyFilter("id")` middleware; stats/activity are not fabricated (followers/following are real; watched/lists/activity omitted until the stats engine lands).
+- **Public-profile read surface** (`profile_reads.go`, issue #4 Users section) — read-only views of another user's data, every `:id` route behind `auth.PrivacyFilter("id")` and the same deleted/pending-deletion gate `handleGetUser` uses (`profileTarget`):
+  - `GET /v1/users/:id/history`, `/history/{movies|shows|seasons|episodes|all}`, `/history/{type}/{id}` (`?id_type=` resolves an external id).
+  - `GET /v1/users/:id/ratings` and `/ratings/{type}`.
+  - `GET /v1/users/:id/watchlist` and `/watchlist/{type}` (`?sort_by=rank|listed|added|title`, `?sort_how=asc|desc`).
+  - `GET /v1/users/:id/collection` and `/collection/{type}`.
+  - `GET /v1/users/:id/watching` — real predicate (see "Watching" below).
+  - `GET /v1/users/:id/comments/{all|reviews|shouts}/{all|movies|shows|seasons|episodes|lists}`.
+  - `GET /v1/users/:id/notes/{type}`.
+  - `GET /v1/users/:id/likes/comments`, `/likes/lists`; plus the caller's own `GET /v1/users/me/likes/comments`, `/me/likes/lists`.
+  - Response shapes are the ones the caller's own `/v1/sync/...`, `/v1/comments/...` and `/v1/notes/...` routes return (exported aliases in those packages: `sync.BuildHistoryResponse`, `comments.ToCommentResponse`, `notes.ToNoteResponse`) — list endpoints use the `{items,page,limit,row_count}` envelope, comments/notes use their own `{data,page,limit,total_count}`. Empty collections are `[]`, never `null`.
 - `GET|PUT /v1/users/me/settings` — settings as JSON on the user row (privacy + notification prefs, defaulted/backfilled).
 - `GET /v1/users/me/export` — owner-scoped, **streamed** JSON archive of everything the caller owns (`export.go`, issue #10 §1). See "Data export" below.
 - ~~`POST /v1/users/me/avatar`~~ — **removed (2026-08)**. Avatars are Clerk-managed (mirrored via webhook/lazy sync); there is no upload route, so a placeholder `avatar_url` can never be persisted.
@@ -22,6 +32,7 @@ Uses shared `auth.PrivacyFilter` for the public route; shared `auth.AuthRequired
 | OpenAPI registration (10 routes) | Done |
 | Me profile get/update | Done |
 | Public profile + privacy filter | Done |
+| **Public-profile read surface** (history/ratings/watchlist/collection/watching/comments/notes/likes, issue #4) | Done (read-only; stats-engine-dependent pieces out of scope) |
 | Settings get/update | Done |
 | **Data export** (`GET /users/me/export`, streamed, versioned) | Done (issue #10 §1) |
 | Avatar upload | N/A — endpoint removed (Clerk-managed identity); no placeholder `avatar_url` ever persisted |
@@ -58,6 +69,52 @@ absent from the serialised bytes.
 
 Intended to round-trip with the importer in issue #7 (same format family). A
 Trakt-compatible export shape is a **follow-up**, not a second format today.
+
+## Public-profile read surface — privacy model and what it does NOT gate
+
+Every `/v1/users/:id/...` route added for issue #4 runs `auth.PrivacyFilter("id")`
+first, then `profileTarget`. The combined behaviour is:
+
+| Request | Result |
+|---|---|
+| unknown id | 404 (PrivacyFilter) |
+| block in either direction (caller ↔ target) | 404 — existence is not leaked |
+| `status = deleted` / `pending_deletion` | 404 (`profileTarget`; PrivacyFilter does not look at status) |
+| private profile, caller is a stranger | 403 |
+| private profile, caller is self / admin / a follower | 200 |
+| public profile | 200 for anyone, including anonymous |
+
+### What the filter does NOT gate (deliberate, must not be misread as covered)
+
+- **Per-section privacy settings.** `users.settings.privacy.{profile,history,ratings,activity}`
+  ("public"/"friends"/"private") are stored and returned by `/users/me/settings`, but
+  **nothing enforces them**. History/ratings/activity visibility is currently all-or-nothing
+  via the single `is_private` flag. A user who sets `privacy.history = private` while
+  `is_private = false` still gets a public `/users/:id/history`.
+- **User-authored content and authorship.** For a public profile, comment bodies
+  (`comment.body`), note bodies (`user_notes.note`) and the `user_id` on every comment are
+  returned. The comments route filters by author (`user_id = target`), so third-party replies
+  are not surfaced through it — but the target's own comment bodies and the fact that they
+  authored them are public, and list comments (`/comments/all/lists`) are visible regardless
+  of the list's own privacy. The filter never redacts comment text.
+- **Liked lists.** `/users/:id/likes/lists` omits a liked list the caller may not see
+  (private and not owned by the caller); `row_count` still counts the like rows, so an
+  omission shows up as `items < row_count`.
+- **Pre-existing routes that bypass PrivacyFilter.** `/v1/users/:id/lists` (lists package) and
+  `/v1/users/:id/stats` (stats package) are registered with `auth.AuthRequired()` only — an
+  authenticated stranger can read a private user's lists. That is a pre-existing gap, not
+  introduced here (flagged, not fixed, to keep this PR scoped to new routes).
+- **`user_playback` / `user_checkins`.** Not exposed at all; the only "activity" read is
+  `watching` below.
+
+### Watching (`GET /v1/users/:id/watching`)
+
+The predicate is real and comes from `scrobble_sessions`, not from `user_playback.paused_at`
+(a saved resume position is not evidence of current playback). The newest non-expired
+scrobble session for the user decides: `start`/`scrobble` → watching (returns media type/id,
+season/episode ids, progress, `started_at`, `expires_at`); `pause`/`stop`, no session, or an
+expired session → `{}` (empty object), matching Trakt. The 5-hour `scrobbleSessionTimeout`
+is the ceiling on how long a stale `start` can look live.
 
 ## Oversights
 

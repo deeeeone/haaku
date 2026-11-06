@@ -238,26 +238,16 @@ func handleUpdateMe(c *fiber.Ctx) error {
 func handleGetUser(c *fiber.Ctx) error {
 	userID := c.Params("id")
 
-	db, err := database.GetDB()
-	if err != nil {
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+	// Unknown user and deleted/pending-deletion accounts are 404 for everyone;
+	// the block/private gates already ran in auth.PrivacyFilter. profileTarget
+	// is the single implementation of that status gate — the rest of the
+	// public-profile read surface uses it too.
+	user, db, ok := profileTarget(c)
+	if !ok {
+		return nil
 	}
 
-	var user database.User
-	if err := db.First(&user, "id = ?", userID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return response.WriteError(c, fiber.StatusNotFound, "not_found", "user not found")
-		}
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
-	}
-
-	// Deleted/pending-deletion accounts are gone for everyone (rows from the
-	// pre-wipe soft-delete era; DeleteUserData hard-deletes now).
-	if user.Status == "deleted" || user.Status == "pending_deletion" {
-		return response.WriteError(c, fiber.StatusNotFound, "not_found", "user not found")
-	}
-
-	resp := buildPublicProfileResponse(&user)
+	resp := buildPublicProfileResponse(user)
 
 	// Followers/Following are real DB counts. Watched/Lists stay 0 (omitempty,
 	// so not serialized) and RecentActivity stays empty (omitempty) because they
