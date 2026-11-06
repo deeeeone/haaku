@@ -74,9 +74,9 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends "postgresql-client-${PG_MAJOR}" && \
     apt-get purge -y gnupg && apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/*
-LABEL org.opencontainers.image.title="trakt-killer" \
+LABEL org.opencontainers.image.title="haaku" \
       org.opencontainers.image.description="Open, self-hostable watch-tracking server (Trakt replacement)" \
-      org.opencontainers.image.source="https://github.com/haaku-tv/haaku-api" \
+      org.opencontainers.image.source="https://github.com/haaku-tv/haaku" \
       org.opencontainers.image.version="${IMAGE_VERSION}" \
       org.opencontainers.image.revision="${BUILD_REVISION}" \
       org.opencontainers.image.created="${BUILD_DATE}"

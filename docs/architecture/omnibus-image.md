@@ -3,7 +3,7 @@
 The image users are meant to run: the app, PostgreSQL and Redis in one
 container, supervised by [s6-overlay](https://github.com/just-containers/s6-overlay),
 so `docker compose up -d` is the whole install. It is published as
-`ghcr.io/haaku-tv/haaku-api`.
+`ghcr.io/haaku-tv/haaku`.
 
 It is not the only supported layout. Setting `DATABASE_URL` or `REDIS_URL`
 points the app at a service of its own and leaves the matching bundled one
@@ -36,9 +36,9 @@ packages instead of the current security updates.
 Build locally (the same commands CI runs):
 
 ```bash
-docker build -t tkiller-api:base .
-docker build -f omnibus/Dockerfile --build-arg TKILLER_IMAGE=tkiller-api:base \
-  -t tkiller-api:omnibus omnibus/     # context is omnibus/, not the repo root
+docker build -t haaku:base .
+docker build -f omnibus/Dockerfile --build-arg TKILLER_IMAGE=haaku:base \
+  -t haaku:omnibus omnibus/     # context is omnibus/, not the repo root
 ```
 
 ## The s6 service graph
@@ -172,7 +172,7 @@ at the binary and give it an external database:
 ```yaml
 services:
   tkiller:
-    image: ghcr.io/haaku-tv/haaku-api:latest
+    image: ghcr.io/haaku-tv/haaku:latest
     entrypoint: ["/app/api"]
     user: "911:911"
     environment:

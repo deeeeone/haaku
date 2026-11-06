@@ -18,7 +18,7 @@
 # The base image of one commit. CI passes the `<sha>-base` tag it pushed; a
 # local build names one the same way. No tag follows the newest base, so the
 # default is a placeholder on a reserved domain that never resolves.
-ARG TKILLER_IMAGE=set-tkiller-image.invalid/tkiller-api:base
+ARG TKILLER_IMAGE=set-haaku-image.invalid/haaku:base
 FROM ${TKILLER_IMAGE}
 
 ARG TARGETARCH

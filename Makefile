@@ -173,16 +173,16 @@ compose-down: ## Stop the dev infrastructure
 # the same commands, for a local checkout. The omnibus build takes the omnibus/
 # directory as its context, not the repo root.
 
-docker-base: ## Build the base image (tkiller-api:base)
-	docker build -t tkiller-api:base \
+docker-base: ## Build the base image (haaku:base)
+	docker build -t haaku:base \
 		--build-arg IMAGE_VERSION="$(shell git rev-parse --short HEAD)" \
 		--build-arg BUILD_REVISION="$(shell git rev-parse HEAD)" \
 		--build-arg BUILD_DATE="$(shell date -u +%Y-%m-%dT%H:%M:%SZ)" .
 
-docker-omnibus: docker-base ## Build the omnibus image (tkiller-api:omnibus) from the base
+docker-omnibus: docker-base ## Build the omnibus image (haaku:omnibus) from the base
 	docker build -f omnibus/Dockerfile \
-		--build-arg TKILLER_IMAGE=tkiller-api:base \
-		-t tkiller-api:omnibus omnibus/
+		--build-arg TKILLER_IMAGE=haaku:base \
+		-t haaku:omnibus omnibus/
 
 # The init and service scripts carry an s6 shebang (`#!/command/with-contenv
 # bash`), so their interpreter has to be named. SC1091 is the "not following a
