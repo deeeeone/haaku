@@ -111,7 +111,7 @@ func startOn(addr string, ctx context.Context) error {
 
 	go func() {
 		<-sigCtx.Done()
-		shutdown(context.Background())
+		_ = shutdown(context.Background())
 	}()
 	go func() {
 		if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {

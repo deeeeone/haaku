@@ -207,7 +207,7 @@ func streamModel[T any](db *gorm.DB, where string, args []any, emit func(*T) err
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	rt := reflect.TypeOf(zero)
 	for rows.Next() {

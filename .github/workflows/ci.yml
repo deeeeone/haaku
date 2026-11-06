@@ -30,14 +30,89 @@ jobs:
       - name: Test
         run: make test-go
 
-      # TODO(T0.3): govulncheck, gitleaks secret scan, golangci-lint.
+  # Static analysis with the committed config (.golangci.yml). The linter version
+  # is pinned so a new release cannot turn main red on its own; bump it
+  # deliberately. `make lint-go` runs the same two invocations locally.
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - name: Stub frontend
+        run: make embed-stub
+
+      - uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.15.0
+          args: --timeout=5m ./...
+
+      # _tests_/ is a standalone "command-line-arguments" package (a leading
+      # underscore hides it from ./...), so it is never linted by the line above.
+      # The action leaves golangci-lint on PATH for later steps.
+      - name: Lint the _tests_ harness
+        run: golangci-lint run ./_tests_/*.go
+
+  # What is in the repository, rather than what the code does: committed secrets
+  # (full history, so a removed secret still fails) and reachable vulnerabilities.
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      # gitleaks scans every commit, so the whole history has to be fetched.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - name: Stub frontend
+        run: make embed-stub
+
+      - name: govulncheck (reachable vulnerabilities)
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+
+      # Pinned binary rather than gitleaks-action: the action needs a licence key
+      # for organisation-owned repositories, the binary does not.
+      - name: gitleaks (committed secrets, full history)
+        run: |
+          curl -sSfL -o /tmp/gitleaks.tar.gz \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+          /tmp/gitleaks git --no-banner --redact --config .gitleaks.toml
+
+  # The workflow and script surface the pivot grew, plus the two cheap
+  # code-health ratchets. Cheap enough to run on every push.
+  hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: actionlint (workflow files)
+        run: |
+          curl -sSfL -o /tmp/actionlint.tar.gz \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint
+          /tmp/actionlint
+
+      # shellcheck is preinstalled on the runner image.
+      - name: shellcheck (scripts)
+        run: shellcheck scripts/*.sh
+
+      - name: Size ratchet
+        run: ./scripts/check-size.sh
+
+      - name: No bidi control characters in tracked text
+        run: ./scripts/check-bidi.sh
 
   # openapi.yaml is a generated artifact (see docs/architecture/api-versioning.md).
   # This job regenerates it and fails if the committed copy differs, then runs
   # the two-way route inventory check. Kept separate from the Go job so a spec
-  # drift produces an obvious, isolated failure. NOTE: the held frontend PR and
-  # upcoming CI-gate work also touch this file; a trivial conflict on this
-  # appended block is expected.
+  # drift produces an obvious, isolated failure.
   openapi:
     runs-on: ubuntu-latest
     steps:
@@ -93,3 +168,28 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+  # Both Go suites under a single coverage profile, with a floor (COVERAGE_FLOOR
+  # in the Makefile). Its own job so the plain test job stays fast; it also means
+  # a coverage regression is a distinct, obvious failure. `-coverpkg=./...` is
+  # what makes the merged number mean anything — see scripts/test-go.sh.
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - name: Stub frontend
+        run: make embed-stub
+
+      - name: Coverage (both suites, floor enforced)
+        run: make coverage
+
+      - name: Upload the profile
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.out

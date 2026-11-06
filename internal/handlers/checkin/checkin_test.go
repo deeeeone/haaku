@@ -52,11 +52,11 @@ func TestMapResolveErrorStatusCodes(t *testing.T) {
 		path string
 		want int
 	}{
-		{"/map/notashow", http.StatusBadRequest},  // wrong media type → 400
-		{"/map/nomedia", http.StatusBadRequest},   // no item specified → 400
-		{"/map/season", http.StatusNotFound},      // missing season → 404
-		{"/map/episode", http.StatusNotFound},     // missing episode → 404
-		{"/map/db", http.StatusServiceUnavailable}, // DB unavailable → 503
+		{"/map/notashow", http.StatusBadRequest},         // wrong media type → 400
+		{"/map/nomedia", http.StatusBadRequest},          // no item specified → 400
+		{"/map/season", http.StatusNotFound},             // missing season → 404
+		{"/map/episode", http.StatusNotFound},            // missing episode → 404
+		{"/map/db", http.StatusServiceUnavailable},       // DB unavailable → 503
 		{"/map/generic", http.StatusInternalServerError}, // anything else → 500
 	}
 	for _, tc := range cases {
@@ -64,7 +64,7 @@ func TestMapResolveErrorStatusCodes(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s failed: %v", tc.path, err)
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		if resp.StatusCode != tc.want {
 			t.Errorf("%s status = %d, want %d", tc.path, resp.StatusCode, tc.want)
 		}
@@ -94,7 +94,7 @@ func TestGetUserID(t *testing.T) {
 	}
 	buf := make([]byte, 16)
 	n, _ := resp.Body.Read(buf)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if string(buf[:n]) != "user-abc" {
 		t.Errorf("getUserID = %q, want user-abc", string(buf[:n]))
 	}
@@ -105,7 +105,7 @@ func TestGetUserID(t *testing.T) {
 		t.Fatalf("request failed: %v", err)
 	}
 	n2, _ := resp2.Body.Read(buf)
-	resp2.Body.Close()
+	_ = resp2.Body.Close()
 	if string(buf[:n2]) != "" {
 		t.Errorf("getUserID without locals = %q, want empty", string(buf[:n2]))
 	}

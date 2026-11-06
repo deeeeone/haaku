@@ -42,7 +42,7 @@ func main() {
 	}
 	sqlDB, _ := db.DB()
 	if sqlDB != nil {
-		defer sqlDB.Close()
+		defer func() { _ = sqlDB.Close() }()
 	}
 
 	// Initialize TMDB client.

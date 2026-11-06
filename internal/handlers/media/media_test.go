@@ -206,7 +206,7 @@ func TestGetExtended(t *testing.T) {
 		query string
 		want  string
 	}{
-		{"", "min"},       // default
+		{"", "min"}, // default
 		{"?extended=full", "full"},
 		{"?extended=metadata", "metadata"},
 		{"?extended=images", "images"},
@@ -223,7 +223,7 @@ func TestGetExtended(t *testing.T) {
 		}
 		buf := make([]byte, 16)
 		n, _ := resp.Body.Read(buf)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		got := string(buf[:n])
 		if got != tc.want {
 			t.Errorf("GetExtended(%q) = %q, want %q", tc.query, got, tc.want)

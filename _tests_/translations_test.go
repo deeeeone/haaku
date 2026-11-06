@@ -79,11 +79,15 @@ func TestTranslationWithMissingTagline(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 
-	// tagline should be absent or empty in the JSON.
-	if _, ok := raw["tagline"]; ok && raw["tagline"] != nil {
-		// It's fine either way — omitempty may exclude it.
+	// tagline is omitempty: it must be absent, or present and empty. Anything
+	// else means the field lost its json tag or gained a value it should not
+	// have on the min response.
+	if v, ok := raw["tagline"]; ok && v != nil && v != "" {
+		t.Errorf("tagline = %#v, want it absent or empty", v)
 	}
 }
 

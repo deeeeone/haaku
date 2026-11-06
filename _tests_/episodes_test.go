@@ -21,11 +21,11 @@ func TestEpisodeDetailResponseShape(t *testing.T) {
 
 	resp := map[string]interface{}{
 		"ids": map[string]interface{}{
-			"id":    ep.ID,
-			"slug":  "",
-			"tmdb":  nil,
-			"imdb":  nil,
-			"tvdb":  nil,
+			"id":   ep.ID,
+			"slug": "",
+			"tmdb": nil,
+			"imdb": nil,
+			"tvdb": nil,
 		},
 		"season_id":       ep.SeasonID,
 		"show_id":         ep.ShowID,
@@ -89,7 +89,9 @@ func TestEpisodeStatsResponseShape(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 
 	if raw["watchers"] == nil {
 		t.Error("watchers missing")
@@ -120,7 +122,9 @@ func TestEpisodeRatingsDistributionShape(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 
 	if raw["rating"] == nil {
 		t.Error("rating missing")
@@ -161,7 +165,9 @@ func TestEpisodeCommentsResponseShape(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 	if raw["data"] == nil {
 		t.Error("data missing")
 	}
@@ -199,7 +205,9 @@ func TestEpisodeListsResponseShape(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 	if raw["data"] == nil {
 		t.Error("data missing")
 	}
@@ -216,7 +224,7 @@ func TestEpisodeRoutesRegistered(t *testing.T) {
 	expectedPaths := map[string]bool{
 		"/v1/episodes/{id}":          true,
 		"/v1/episodes/{id}/stats":    true,
-		"/v1/episodes/{id}/ratings": true,
+		"/v1/episodes/{id}/ratings":  true,
 		"/v1/episodes/{id}/comments": true,
 		"/v1/episodes/{id}/lists":    true,
 	}
@@ -274,14 +282,14 @@ func createTestSeason() database.Season {
 
 func createTestShow() database.Show {
 	return database.Show{
-		ID:              7,
-		TmdbID:          1396,
-		Title:           "Test Show",
-		Overview:        "A test show.",
-		Status:          "ended",
-		EpisodeCount:    62,
-		SeasonCount:     5,
-		Images:          database.JSONMap{"poster": "url"},
+		ID:           7,
+		TmdbID:       1396,
+		Title:        "Test Show",
+		Overview:     "A test show.",
+		Status:       "ended",
+		EpisodeCount: 62,
+		SeasonCount:  5,
+		Images:       database.JSONMap{"poster": "url"},
 	}
 }
 

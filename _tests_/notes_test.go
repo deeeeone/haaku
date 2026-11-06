@@ -17,9 +17,9 @@ func TestNotesRoutesRegistered(t *testing.T) {
 	routes := openapi.AllRoutes()
 
 	expectedPaths := map[string]bool{
-		"/v1/notes":             true,
-		"/v1/notes/{id}":        true,
-		"/v1/users/me/notes":    true,
+		"/v1/notes":          true,
+		"/v1/notes/{id}":     true,
+		"/v1/users/me/notes": true,
 	}
 
 	found := make(map[string]bool)

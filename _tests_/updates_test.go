@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	_ "trakt-api/internal/handlers/updates"
 	"trakt-api/internal/handlers/media"
+	_ "trakt-api/internal/handlers/updates"
 	"trakt-api/internal/openapi"
 )
 
@@ -14,9 +14,9 @@ func TestUpdatesOpenAPIRoutesRegistered(t *testing.T) {
 	routes := openapi.AllRoutes()
 
 	expectedPaths := map[string]bool{
-		"/v1/movies/updates/{start_date}":  true,
-		"/v1/shows/updates/{start_date}":   true,
-		"/v1/people/updates/{start_date}":  true,
+		"/v1/movies/updates/{start_date}": true,
+		"/v1/shows/updates/{start_date}":  true,
+		"/v1/people/updates/{start_date}": true,
 	}
 
 	found := make(map[string]bool)
@@ -196,15 +196,17 @@ func TestUpdatesResponseFieldTypes(t *testing.T) {
 
 	data, _ := json.Marshal(movie)
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 
 	// Images should never be null
 	if raw["images"] == nil {
 		t.Error("images should not be null")
 	}
-	// With omitempty, empty fields like overview should be absent
-	if _, exists := raw["overview"]; exists {
-		// overview may be present with empty value or absent — both OK for min
+	// With omitempty, overview is absent; if it is present it must be empty.
+	if v, exists := raw["overview"]; exists && v != nil && v != "" {
+		t.Errorf("overview = %#v, want it absent or empty", v)
 	}
 }
 

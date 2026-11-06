@@ -243,18 +243,18 @@ func TestIngestShow_UpdateExisting(t *testing.T) {
 	db := setupTestDB(t)
 
 	show1 := &tmdb.Show{
-		ID:           201,
-		Name:         "Old Show",
-		Overview:     "Old overview.",
-		Status:       "Ended",
-		Popularity:   40.0,
-		VoteAverage:  6.0,
-		VoteCount:    400,
-		SeasonsCount: 1,
+		ID:            201,
+		Name:          "Old Show",
+		Overview:      "Old overview.",
+		Status:        "Ended",
+		Popularity:    40.0,
+		VoteAverage:   6.0,
+		VoteCount:     400,
+		SeasonsCount:  1,
 		EpisodesCount: 10,
-		Genres:   []tmdb.Genre{},
-		Language: "en",
-		Networks: []tmdb.Network{{Name: "NBC"}},
+		Genres:        []tmdb.Genre{},
+		Language:      "en",
+		Networks:      []tmdb.Network{{Name: "NBC"}},
 	}
 
 	result1, err := metadata.IngestShow(db, show1)
@@ -263,18 +263,18 @@ func TestIngestShow_UpdateExisting(t *testing.T) {
 	}
 
 	show2 := &tmdb.Show{
-		ID:           201,
-		Name:         "Updated Show",
-		Overview:     "Updated overview.",
-		Status:       "Returning Series",
-		Popularity:   85.0,
-		VoteAverage:  9.0,
-		VoteCount:    5000,
-		SeasonsCount: 2,
+		ID:            201,
+		Name:          "Updated Show",
+		Overview:      "Updated overview.",
+		Status:        "Returning Series",
+		Popularity:    85.0,
+		VoteAverage:   9.0,
+		VoteCount:     5000,
+		SeasonsCount:  2,
 		EpisodesCount: 20,
-		Genres:   []tmdb.Genre{{Name: "Sci-Fi"}},
-		Language: "en",
-		Networks: []tmdb.Network{{Name: "Netflix"}},
+		Genres:        []tmdb.Genre{{Name: "Sci-Fi"}},
+		Language:      "en",
+		Networks:      []tmdb.Network{{Name: "Netflix"}},
 	}
 
 	result2, err := metadata.IngestShow(db, show2)
@@ -303,18 +303,18 @@ func TestIngestShow_UnchangedNoOp(t *testing.T) {
 	db := setupTestDB(t)
 
 	show := &tmdb.Show{
-		ID:           202,
-		Name:         "Static Show",
-		Overview:     "Static overview.",
-		Status:       "Ended",
-		Popularity:   55.0,
-		VoteAverage:  7.5,
-		VoteCount:    600,
-		SeasonsCount: 1,
+		ID:            202,
+		Name:          "Static Show",
+		Overview:      "Static overview.",
+		Status:        "Ended",
+		Popularity:    55.0,
+		VoteAverage:   7.5,
+		VoteCount:     600,
+		SeasonsCount:  1,
 		EpisodesCount: 8,
-		Genres:   []tmdb.Genre{},
-		Language: "en",
-		Networks: []tmdb.Network{},
+		Genres:        []tmdb.Genre{},
+		Language:      "en",
+		Networks:      []tmdb.Network{},
 	}
 
 	result1, err := metadata.IngestShow(db, show)
@@ -345,16 +345,16 @@ func TestIngestSeason_InsertNew(t *testing.T) {
 
 	// First insert a show.
 	show := &tmdb.Show{
-		ID:           300,
-		Name:         "Seasoned Show",
-		Status:       "Returning Series",
-		SeasonsCount: 2,
+		ID:            300,
+		Name:          "Seasoned Show",
+		Status:        "Returning Series",
+		SeasonsCount:  2,
 		EpisodesCount: 20,
-		Popularity:   80.0,
-		VoteAverage:  8.0,
-		VoteCount:    1000,
-		Genres:   []tmdb.Genre{},
-		Language: "en",
+		Popularity:    80.0,
+		VoteAverage:   8.0,
+		VoteCount:     1000,
+		Genres:        []tmdb.Genre{},
+		Language:      "en",
 		Seasons: []tmdb.SeasonSummary{
 			{SeasonNumber: 1, EpisodeCount: 10, AirDate: "2026-01-01"},
 		},
@@ -397,16 +397,16 @@ func TestIngestSeason_UpdateExisting(t *testing.T) {
 	db := setupTestDB(t)
 
 	show := &tmdb.Show{
-		ID:           301,
-		Name:         "Season Update Show",
-		Status:       "Returning Series",
-		SeasonsCount: 1,
+		ID:            301,
+		Name:          "Season Update Show",
+		Status:        "Returning Series",
+		SeasonsCount:  1,
 		EpisodesCount: 5,
-		Popularity:   70.0,
-		VoteAverage:  7.0,
-		VoteCount:    500,
-		Genres:   []tmdb.Genre{},
-		Language: "en",
+		Popularity:    70.0,
+		VoteAverage:   7.0,
+		VoteCount:     500,
+		Genres:        []tmdb.Genre{},
+		Language:      "en",
 	}
 	dbShow, err := metadata.IngestShow(db, show)
 	if err != nil {
@@ -447,16 +447,16 @@ func TestIngestEpisode_InsertNew(t *testing.T) {
 	db := setupTestDB(t)
 
 	show := &tmdb.Show{
-		ID:           400,
-		Name:         "Episode Show",
-		Status:       "Returning Series",
-		SeasonsCount: 1,
+		ID:            400,
+		Name:          "Episode Show",
+		Status:        "Returning Series",
+		SeasonsCount:  1,
 		EpisodesCount: 1,
-		Popularity:   60.0,
-		VoteAverage:  7.0,
-		VoteCount:    300,
-		Genres:   []tmdb.Genre{},
-		Language: "en",
+		Popularity:    60.0,
+		VoteAverage:   7.0,
+		VoteCount:     300,
+		Genres:        []tmdb.Genre{},
+		Language:      "en",
 	}
 	dbShow, err := metadata.IngestShow(db, show)
 	if err != nil {
@@ -504,16 +504,16 @@ func TestIngestEpisode_UpdateExisting(t *testing.T) {
 	db := setupTestDB(t)
 
 	show := &tmdb.Show{
-		ID:           401,
-		Name:         "Episode Update Show",
-		Status:       "Returning Series",
-		SeasonsCount: 1,
+		ID:            401,
+		Name:          "Episode Update Show",
+		Status:        "Returning Series",
+		SeasonsCount:  1,
 		EpisodesCount: 1,
-		Popularity:   50.0,
-		VoteAverage:  6.0,
-		VoteCount:    200,
-		Genres:   []tmdb.Genre{},
-		Language: "en",
+		Popularity:    50.0,
+		VoteAverage:   6.0,
+		VoteCount:     200,
+		Genres:        []tmdb.Genre{},
+		Language:      "en",
 	}
 	dbShow, _ := metadata.IngestShow(db, show)
 	summary := tmdb.SeasonSummary{SeasonNumber: 1, EpisodeCount: 1}

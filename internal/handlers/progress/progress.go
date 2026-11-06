@@ -227,4 +227,3 @@ func handlePlaybackEpisodes(c *fiber.Ctx) error {
 
 	return c.JSON(resp)
 }
-

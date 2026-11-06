@@ -32,7 +32,7 @@ func unauthStatus(app *fiber.App, method, path string) (int, string) {
 	if err != nil {
 		return 0, ""
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(resp.Body)
 	return resp.StatusCode, string(body)
 }

@@ -139,7 +139,7 @@ func doGET(t *testing.T, app *fiber.App, path string) *http.Response {
 // decodeBody unmarshals the response body, failing the test on any read/parse error.
 func decodeBody(t *testing.T, resp *http.Response, out any) {
 	t.Helper()
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if err := json.NewDecoder(resp.Body).Decode(out); err != nil {
 		t.Fatalf("decode response body: %v", err)
 	}
@@ -156,10 +156,10 @@ func TestGetEpisodeHandler(t *testing.T) {
 			t.Fatalf("expected 200, got %d", resp.StatusCode)
 		}
 		var body struct {
-			SeasonID      int64   `json:"season_id"`
-			ShowID        int64   `json:"show_id"`
-			EpisodeNumber int     `json:"episode_number"`
-			Title         string  `json:"title"`
+			SeasonID      int64  `json:"season_id"`
+			ShowID        int64  `json:"show_id"`
+			EpisodeNumber int    `json:"episode_number"`
+			Title         string `json:"title"`
 			Season        *struct {
 				SeasonNumber int `json:"season_number"`
 			} `json:"season"`

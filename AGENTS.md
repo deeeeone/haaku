@@ -41,7 +41,10 @@ Domain packages arrive with the phases: `internal/media`, `internal/sync`, `inte
 make help           # list every target
 make build          # embed-stub + go build ./...
 make test           # Go suites (test-go) + frontend (test-web)
+make test-go        # both Go suites: ./... AND the _tests_ harness (one runner)
 make vet            # go vet ./...
+make check          # every gate CI runs (lint, vuln, secrets, hygiene, spec)
+make coverage       # both Go suites under one profile + the coverage floor
 make bin            # frontend + the real single binary (bin/api)
 make dev-backend    # go run ./cmd/api (needs .env)
 make dev-frontend   # Vite dev server
@@ -54,6 +57,7 @@ make docker-omnibus # build the single image (app + PostgreSQL + Redis, s6-overl
 
 1. **`web/dist` must exist for any Go build.** `web/embed.go` embeds it. `make build` and `make test` depend on `embed-stub`, which writes a placeholder; a bare `go build ./...` on a fresh checkout fails until you run it once.
 2. **Modes.** `TKILLER_MODE=api|worker|migrate` (or `--migrate-only`) selects the role. Only `api` and `migrate` may change the schema; a worker never does.
+3. **`_tests_/` is invisible to `./...`.** A leading underscore hides a directory from the pattern, so `go test ./...` and `golangci-lint run ./...` both skip it. `make test-go` and `make lint-go` run it as a second, explicit invocation — see `docs/architecture/ci-gates.md`.
 
 ## Conventions (non-negotiable)
 
@@ -69,6 +73,7 @@ make docker-omnibus # build the single image (app + PostgreSQL + Redis, s6-overl
 ## Definition of done
 
 - Tests green (`make test`) + `go vet` clean
+- Gates green (`make check`: golangci-lint, govulncheck, gitleaks, actionlint, shellcheck, size ratchet, bidi check, spec freshness)
 - Routes registered; generated OpenAPI fresh (when generator exists)
 - Schema doc updated in the planning DB if anything touched the DB
 - No secrets, no cross-package edits beyond the task's listed files, no new deps without an issue
