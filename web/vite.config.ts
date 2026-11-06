@@ -10,9 +10,10 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon-192.svg', 'icon-512.svg'],
       manifest: {
-        name: 'TKiller',
-        short_name: 'TKiller',
-        description: 'Track what you watch — movies, shows, and more',
+        name: 'haaku',
+        short_name: 'haaku',
+        description:
+          'Keep tabs on everything you watch — movies, shows, and more',
         theme_color: '#050711',
         background_color: '#050711',
         display: 'standalone',

@@ -42,7 +42,7 @@ api-client: ## Regenerate the typed API client from openapi.yaml
 # checkout that has never run pnpm — which is most of them.
 embed-stub: ## Create a placeholder web/dist so Go builds work without a frontend build
 	@mkdir -p $(WEB_DIST)
-	@[ -e $(WEB_DIST)/index.html ] || printf '%s\n' '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>trakt-killer</title></head><body><p>Frontend not built. Run: make frontend</p></body></html>' > $(WEB_DIST)/index.html
+	@[ -e $(WEB_DIST)/index.html ] || printf '%s\n' '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>haaku</title></head><body><p>Frontend not built. Run: make frontend</p></body></html>' > $(WEB_DIST)/index.html
 
 # --- Backend ---
 

@@ -1,7 +1,7 @@
 {
-  "name": "TKiller",
-  "short_name": "TKiller",
-  "description": "Track what you watch — movies, shows, and more",
+  "name": "haaku",
+  "short_name": "haaku",
+  "description": "Keep tabs on everything you watch — movies, shows, and more",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#050711",

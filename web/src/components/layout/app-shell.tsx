@@ -8,7 +8,7 @@ export function AppShell({ children }: PropsWithChildren) {
   return (
     <div className="flex h-screen flex-col overflow-hidden">
       <Topbar
-        brand="TKiller"
+        brand="haaku"
         userMenu={
           <UserButton
             appearance={{
