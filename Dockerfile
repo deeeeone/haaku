@@ -57,13 +57,17 @@ ARG PG_MAJOR=17
 ARG IMAGE_VERSION=dev
 ARG BUILD_REVISION=unknown
 ARG BUILD_DATE=unknown
+# The PGDG key and the s6 tarballs (omnibus/) are the two fetches the build
+# depends on; --retry-all-errors is there because a transient TLS reset failed a
+# whole CI job once.
 RUN apt-get update && \
     # Pick up security updates for whatever the debian tag was when it was
     # last pushed, not only for the packages named below.
     apt-get upgrade -y && \
     apt-get install -y --no-install-recommends ca-certificates curl gnupg tzdata && \
     install -d /etc/apt/keyrings && \
-    curl -fsSL -o /etc/apt/keyrings/pgdg.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc && \
+    curl -fsSL --retry 5 --retry-delay 2 --retry-all-errors \
+      -o /etc/apt/keyrings/pgdg.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc && \
     echo "deb [signed-by=/etc/apt/keyrings/pgdg.asc arch=${TARGETARCH}] https://apt.postgresql.org/pub/repos/apt trixie-pgdg main" \
       > /etc/apt/sources.list.d/pgdg.list && \
     apt-get update && \

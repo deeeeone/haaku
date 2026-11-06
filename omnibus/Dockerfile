@@ -56,7 +56,8 @@ RUN apt-get update && \
     sed -i 's/^# *\(en_US.UTF-8 UTF-8\)/\1/' /etc/locale.gen && \
     locale-gen && \
     install -d /etc/apt/keyrings && \
-    curl -fsSL -o /etc/apt/keyrings/pgdg.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc && \
+    curl -fsSL --retry 5 --retry-delay 2 --retry-all-errors \
+      -o /etc/apt/keyrings/pgdg.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc && \
     echo "deb [signed-by=/etc/apt/keyrings/pgdg.asc arch=${TARGETARCH}] https://apt.postgresql.org/pub/repos/apt trixie-pgdg main" \
       > /etc/apt/sources.list.d/pgdg.list && \
     apt-get update && \
@@ -74,8 +75,8 @@ RUN set -eu; \
       *) echo "unsupported TARGETARCH ${TARGETARCH}" >&2; exit 1 ;; \
     esac; \
     base="https://github.com/just-containers/s6-overlay/releases/download/v${S6_OVERLAY_VERSION}"; \
-    curl -fsSL -o /tmp/s6-noarch.tar.xz "${base}/s6-overlay-noarch.tar.xz"; \
-    curl -fsSL -o /tmp/s6-arch.tar.xz "${base}/s6-overlay-${s6_arch}.tar.xz"; \
+    curl -fsSL --retry 5 --retry-delay 2 --retry-all-errors -o /tmp/s6-noarch.tar.xz "${base}/s6-overlay-noarch.tar.xz"; \
+    curl -fsSL --retry 5 --retry-delay 2 --retry-all-errors -o /tmp/s6-arch.tar.xz "${base}/s6-overlay-${s6_arch}.tar.xz"; \
     echo "${S6_OVERLAY_NOARCH_SHA256}  /tmp/s6-noarch.tar.xz" | sha256sum -c -; \
     echo "${s6_sha}  /tmp/s6-arch.tar.xz" | sha256sum -c -; \
     tar -C / -Jxpf /tmp/s6-noarch.tar.xz; \
