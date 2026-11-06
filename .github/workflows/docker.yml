@@ -327,8 +327,25 @@ jobs:
             exit 1
           fi
 
-          docker logs smoke-adv-app 2>&1 | grep -q 'postgres: external'
-          docker logs smoke-adv-app 2>&1 | grep -q 'redis: external'
+          # Not `docker logs … | grep -q`: grep -q exits on the first match, the
+          # writer takes SIGPIPE, and `set -o pipefail` turns that into a 141.
+          app_logs="$(docker logs smoke-adv-app 2>&1 || true)"
+          case "$app_logs" in
+            *"postgres: external"*) echo "the app reported: postgres: external" ;;
+            *)
+              echo "::error::the app did not detect the external PostgreSQL"
+              printf '%s\n' "$app_logs"
+              exit 1
+              ;;
+          esac
+          case "$app_logs" in
+            *"redis: external"*) echo "the app reported: redis: external" ;;
+            *)
+              echo "::error::the app did not detect the external Redis"
+              printf '%s\n' "$app_logs"
+              exit 1
+              ;;
+          esac
           bundled="$(docker exec smoke-adv-app sh -c \
             'ps -eo comm | grep -cE "^(postgres|redis-server)$" || true' | tail -1)"
           echo "bundled service processes in the app container: $bundled"
@@ -340,8 +357,16 @@ jobs:
           set -euo pipefail
           docker stop -t 90 tkiller >/dev/null
           test "$(docker inspect -f '{{.State.ExitCode}}' tkiller)" = "0"
-          docker logs tkiller 2>&1 | grep -q 'database system is shut down'
-          echo "clean shutdown"
+          # Same SIGPIPE trap as above: capture, then match.
+          stop_logs="$(docker logs tkiller 2>&1 || true)"
+          case "$stop_logs" in
+            *"database system is shut down"*) echo "clean shutdown" ;;
+            *)
+              echo "::error::PostgreSQL did not shut down cleanly"
+              printf '%s\n' "$stop_logs" | tail -20
+              exit 1
+              ;;
+          esac
 
       - name: Logs on failure
         if: failure()
