@@ -1,10 +1,10 @@
-# trakt-api — Agent Guide
+# haaku — Agent Guide
 
 Read this before touching anything. This file is the contract for every agent (Hermes, OpenCode, Claude Code, Codex) working in this repo.
 
 ## What this is
 
-The API service for **trakt-killer** — an open, community-owned Trakt replacement (watch history, scrobbling, lists, ratings, social). We are building **feature parity with Trakt first**; importers and a Trakt-compat layer are post-MVP.
+The server for **haaku** — an open, self-hostable Trakt replacement (watch history, scrobbling, lists, ratings, social). We are building **feature parity with Trakt first**; importers and a Trakt-compat layer are post-MVP. The Go module is still named `trakt-api` and environment variables are still `TKILLER_*`; the product is haaku (`haaku.tv`).
 
 - **Planning DB (READ ONLY — never edit):** `../trakt-killer-plan/` — specs, schema, patterns, roadmap. The `docs/` paths referenced throughout this file point there.
 - **Status:** pre-release. The API surface is broad; the deployable pieces (schema migrations, the single image, backups) are still landing. The repository issues are the source of truth for status. See `docs/architecture/monorepo.md` for the layout.
