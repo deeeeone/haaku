@@ -294,6 +294,33 @@ func ParseRouteKey(s string) (openapi.RouteKey, error) {
 	return openapi.RouteKey{Method: method, Path: fields[1]}, nil
 }
 
+// coverageShape is the key that matches a registered route to the Trakt
+// endpoint it serves, ignoring the /v1 prefix we mount everything under and the
+// spelling of path parameters. Trakt spells the media-type segment {type}, we
+// spell it {media_type}; both collapse to {}, so an exact-shape route is
+// recognised as serving its inventory row whatever the placeholder is called.
+//
+// The method is part of the key: Trakt's GET and POST reset routes are distinct
+// endpoints and must be graded separately.
+func coverageShape(method, path string) openapi.RouteKey {
+	return openapi.RouteKey{
+		Method: strings.ToUpper(method),
+		Path:   normalizePath(strings.TrimPrefix(path, "/v1")),
+	}
+}
+
+// normalizePath collapses every "{param}" segment to "{}" so two paths that
+// differ only in parameter names compare equal.
+func normalizePath(p string) string {
+	parts := strings.Split(p, "/")
+	for i, s := range parts {
+		if len(s) >= 2 && strings.HasPrefix(s, "{") && strings.HasSuffix(s, "}") {
+			parts[i] = "{}"
+		}
+	}
+	return strings.Join(parts, "/")
+}
+
 // Problem is one disagreement between the manifest and reality.
 type Problem struct {
 	Line int
@@ -338,6 +365,10 @@ func Check(m *Manifest, rs RouteSet) []Problem {
 	seenSection := map[string]int{}
 	seenTrakt := map[openapi.RouteKey]int{}
 	recorded501 := map[openapi.RouteKey]bool{}
+	// traktByShape indexes every inventory row by the shape of the route that
+	// would serve it, so a registered route can be looked up to the row it
+	// belongs to. See the coverage rule at the end of this function.
+	traktByShape := map[openapi.RouteKey]Row{}
 
 	for _, s := range m.Sections {
 		if strings.TrimSpace(s.Name) == "" {
@@ -380,6 +411,7 @@ func Check(m *Manifest, rs RouteSet) []Problem {
 					add(r.Line, "duplicate Trakt endpoint %s (first at line %d)", k, prev)
 				} else {
 					seenTrakt[k] = r.Line
+					traktByShape[coverageShape(k.Method, k.Path)] = r
 				}
 			}
 
@@ -432,6 +464,43 @@ func Check(m *Manifest, rs RouteSet) []Problem {
 	sort.Slice(unrecorded, func(i, j int) bool { return unrecorded[i].String() < unrecorded[j].String() })
 	for _, k := range unrecorded {
 		add(0, "registered route %s answers 501 not_implemented but no row records it as blocked-engine", k)
+	}
+
+	// Coverage rule: a route we serve must be reflected by its inventory row.
+	//
+	// The staleness this manifest exists to stop is a route landing while the
+	// row that names its Trakt endpoint keeps a blocked/absent grade. Match a
+	// registered serving route to the inventory row it belongs to by the shape
+	// of its Trakt-side path (see coverageShape) and refuse to let that row
+	// say anything other than implemented/divergent.
+	//
+	// Two deliberate boundaries keep it false-positive free:
+	//
+	//   * a 501 route is not served — it is the recorded501 rule's business,
+	//     not this one, so it is skipped here;
+	//   * a route with no matching inventory row is our own surface (section C
+	//     rows have no Trakt path, native routes like /v1/movies/trending are
+	//     not inventoried as missing). It cannot be matched to a row without a
+	//     hand-maintained route->row map, so it is left alone rather than
+	//     flagged.
+	serving := make([]openapi.RouteKey, 0, len(rs.Registered))
+	for k := range rs.Registered {
+		if rs.NotImplemented[k] {
+			continue
+		}
+		serving = append(serving, k)
+	}
+	sort.Slice(serving, func(i, j int) bool { return serving[i].String() < serving[j].String() })
+	for _, k := range serving {
+		row, ok := traktByShape[coverageShape(k.Method, k.Path)]
+		if !ok {
+			continue
+		}
+		if row.Status != StatusImplemented && row.Status != StatusDivergent {
+			add(row.Line,
+				"registered route %s is served, but its inventory row %s is graded %s — a served route can only be implemented or divergent (the manifest may not under-report what we ship)",
+				k, row.Trakt, row.Status)
+		}
 	}
 
 	return problems

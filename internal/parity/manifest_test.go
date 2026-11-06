@@ -144,6 +144,59 @@ func TestCheckFailsWhenA501RouteIsUnrecorded(t *testing.T) {
 	}
 }
 
+// Coverage rule: /v1/movies/trending is served (defs), so the inventory row for
+// GET /movies/trending may not stay blocked. This is the staleness the rule
+// exists to stop — a route landing while its row keeps an old grade.
+func TestCheckFailsWhenAServedRouteIsUnderreported(t *testing.T) {
+	underreported := `      - trakt: "GET /movies/trending"
+        ours: ""
+        status: blocked-data
+        rationale: "wrong: /v1/movies/trending serves this today."
+`
+	problems := check(t, manifestYAML(underreported+rowDivergent+rowBlockedEngine+rowBlockedData+rowOutOfScope+rowCustom))
+	if !hasProblem(problems, "is served, but its inventory row") {
+		t.Fatalf("expected an under-reported-route problem, got: %v", problems)
+	}
+}
+
+// The coverage rule matches by Trakt-shaped path, so a route spelled with our
+// placeholder ({media_type}) still binds the inventory row Trakt spells {type}:
+// an exact-shape route may not be left blocked.
+func TestCheckCoverageRuleMatchesAcrossPlaceholderNames(t *testing.T) {
+	defsWithTypeRoute := append(defs(),
+		openapi.RouteDef{Method: "GET", Path: "/v1/users/{id}/history/{media_type}", StatusCodes: map[int]string{200: "History"}})
+	broken := `      - trakt: "GET /users/{id}/history/{type}"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: wrong, this is served now."
+`
+	yaml := manifestYAML(rowImplemented + rowDivergent + rowBlockedEngine + rowBlockedData + rowOutOfScope + rowCustom + broken)
+	m := mustParse(t, yaml)
+	problems := Check(m, NewRouteSet(defsWithTypeRoute))
+	if !hasProblem(problems, "is served, but its inventory row") {
+		t.Fatalf("expected the placeholder-normalised match to fire, got: %v", problems)
+	}
+}
+
+// The coverage rule must not fire for a 501 route: it is not served, and a
+// blocked-engine row naming it is honest, not under-reporting.
+func TestCheckCoverageRuleIgnores501Routes(t *testing.T) {
+	// defs already carry a 501 route (/v1/movies/{id}/stats) recorded by
+	// rowBlockedEngine, which names it in the ours column; the manifest passes.
+	if problems := check(t, manifestYAML(validRows)); len(problems) != 0 {
+		t.Fatalf("a 501 route recorded as blocked-engine should not trip the coverage rule, got: %v", problems)
+	}
+}
+
+// The coverage rule keys on a matching inventory row, so our own surface (a
+// serving route with no Trakt row) is out of its scope — section C must not be
+// flagged. /v1/webhooks is served and has no inventory row.
+func TestCheckCoverageRuleIgnoresNonTraktSurface(t *testing.T) {
+	if problems := check(t, manifestYAML(validRows)); len(problems) != 0 {
+		t.Fatalf("custom/native serving routes should not trip the coverage rule, got: %v", problems)
+	}
+}
+
 func TestCheckFailsWhenDivergentHasNoCompatNote(t *testing.T) {
 	broken := strings.Replace(rowDivergent, `        compat: "listener maps the segment to ?type="`+"\n", "", 1)
 	problems := check(t, manifestYAML(rowImplemented+broken+rowBlockedEngine+rowBlockedData+rowOutOfScope+rowCustom))
