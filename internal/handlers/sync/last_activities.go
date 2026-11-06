@@ -2,6 +2,7 @@ package sync
 
 import (
 	"database/sql"
+	"errors"
 	"time"
 
 	"trakt-api/internal/database"
@@ -40,9 +41,9 @@ func init() {
 //
 // Honesty rules this endpoint follows (issue #6, "the first honest slice"):
 //
-//   - Every leaf is a real aggregate over the rows we actually store
-//     (MAX(watched_at) / MAX(collected_at) / MAX(created_at) / MAX(updated_at)
-//     scoped to the caller). No fabricated constants, no placeholder "now".
+//   - Every leaf is a real aggregate over the rows we actually store (the
+//     newest watched_at / collected_at / created_at / updated_at row, scoped to
+//     the caller). No fabricated constants, no placeholder "now".
 //   - A section the caller has no rows for is null, not an object of nulls.
 //   - A Trakt field we do not store is an explicit null, never an invented
 //     value. Today that is `episodes.collected_at`, `episodes.watchlisted_at`
@@ -280,9 +281,16 @@ func notNull(column string) activityFilter {
 	return activityFilter{clause: column + " IS NOT NULL"}
 }
 
-// maxActivity returns MAX(tsColumn) over table for the caller, rendered in the
+// maxActivity returns the newest tsColumn value for the caller, rendered in the
 // API's wire format, or nil when the caller has no matching rows. filters add
 // equality predicates (media_type, section, list_id IS NOT NULL, ...).
+//
+// It reads the latest row (`ORDER BY ts DESC LIMIT 1`) rather than MAX(ts): an
+// aggregate loses the column's declared type, so sqlite hands back raw text that
+// cannot be decoded into a time, whereas selecting the bare column keeps the
+// driver's native time decoding on both sqlite and Postgres. The index on
+// (user_id, <ts>) makes it one index-ordered read; the value is the same as
+// MAX(ts).
 func maxActivity(db *gorm.DB, table, tsColumn, userColumn, userID string, filters ...activityFilter) (*string, error) {
 	q := db.Table(table).Where(userColumn+" = ?", userID)
 	for _, f := range filters {
@@ -290,7 +298,11 @@ func maxActivity(db *gorm.DB, table, tsColumn, userColumn, userID string, filter
 	}
 
 	var ts sql.NullTime
-	if err := q.Select("MAX(" + tsColumn + ")").Row().Scan(&ts); err != nil {
+	err := q.Select(tsColumn).Order(tsColumn + " DESC").Limit(1).Row().Scan(&ts)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
 		return nil, err
 	}
 	if !ts.Valid {

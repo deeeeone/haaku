@@ -35,10 +35,13 @@ object of Trakt's timestamp field names; a section the caller has no rows for is
 `null` (never an object of nulls or a placeholder `now`). `all` is the greatest
 activity across every section.
 
-Every leaf is a real `MAX(...)` aggregate over the owning table, scoped to the
-caller (`handlers/sync/last_activities.go`):
+Every leaf is the newest matching row's timestamp, scoped to the caller
+(`handlers/sync/last_activities.go`). It is read as `ORDER BY <ts> DESC LIMIT 1`
+— the same value as `MAX(<ts>)`, but selecting the bare column keeps the
+driver's native time decoding (an aggregate loses the column type, and sqlite
+then returns raw text):
 
-| Section | Field | Source (`MAX(col)` where `user_id = caller`) |
+| Section | Field | Source (newest `col` where `user_id = caller`) |
 |---|---|---|
 | `movies` | `watched_at` / `collected_at` / `rated_at` / `watchlisted_at` / `favorited_at` / `commented_at` / `paused_at` / `hidden_at` | `user_history.watched_at` / `user_collection.collected_at` / `user_ratings.rated_at` / `user_watchlist.listed_at` / `user_favorites.favorited_at` / `comments.created_at` / `user_playback.paused_at` / `user_hidden.hidden_at` (all `media_type='movie'`) |
 | `episodes` | `watched_at` / `rated_at` / `commented_at` / `paused_at` | same tables, `media_type='episode'` |
@@ -64,7 +67,7 @@ invented): `episodes.collected_at`, `episodes.watchlisted_at`,
 response at all (we store no per-user activity time for them).
 
 **Freshness / caching decision: per-request aggregates, no cache.** Each request
-runs a bounded set of indexed `MAX()` aggregates over that one user's rows
+runs a bounded set of index-ordered latest-row reads over that one user's rows
 (one round trip per leaf above; there is no N+1 over media). The endpoint is the
 delta *signal*: a stale timestamp makes a client skip a collection that actually
 changed, so it must reflect committed writes immediately. Our cache layer
@@ -95,7 +98,7 @@ transaction) is the natural next step — none exists today.
 - **No episode support in collection/watchlist/favorites** — Trakt allows episodes in watchlist; only movies/shows handled here. Note this is *symmetric* across add and remove (both accept only movies/shows), so it is a feature gap, not the ratings-style add/remove asymmetry. Tracked on haaku-tv/haaku#4.
 - **Error helpers (`authRequired`/`badRequest`/`internalError`) duplicated** — "match project conventions" per comment, but the shared package exists.
 - **Mixed timestamp formats (RESOLVED)** — all response timestamps now unified to `.000Z` via shared `response.FormatTime` (Batch 3); parse paths still accept RFC3339 input.
-- **`last_activities` runs many small aggregates, not one query** — ~24 `SELECT MAX(col) ... WHERE user_id = ?` round trips per call, one per leaf in the mapping table above. Each is index-backed (every source table has a `user_id` index) so they are cheap, but this is a chatty shape; folding it into per-table conditional aggregates (or one `UNION ALL`) is the obvious optimisation if it ever shows up hot. Deliberately not done yet — clarity first, and the issue's own framing is "cheap because the timestamps already exist".
+- **`last_activities` runs many small reads, not one query** — ~24 `SELECT col ... WHERE user_id = ? ORDER BY col DESC LIMIT 1` round trips per call, one per leaf in the mapping table above. Each is index-backed (every source table has a `user_id` index) so they are cheap, but this is a chatty shape; folding it into per-table conditional aggregates (or one `UNION ALL`) is the obvious optimisation if it ever shows up hot. Deliberately not done yet — clarity first, and the issue's own framing is "cheap because the timestamps already exist". (These are read as latest-row reads, not `MAX(col)`, because an aggregate strips the column type and sqlite then returns undecodable text — see the mapping note above.)
 - **`last_activities` is uncached by design** — see the freshness note above. It is the one endpoint where a stale cache is actively harmful.
 
 ## Todos
