@@ -76,7 +76,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 LABEL org.opencontainers.image.title="trakt-killer" \
       org.opencontainers.image.description="Open, self-hostable watch-tracking server (Trakt replacement)" \
-      org.opencontainers.image.source="https://github.com/trakt-killer/tkiller-api" \
+      org.opencontainers.image.source="https://github.com/haaku-tv/haaku-api" \
       org.opencontainers.image.version="${IMAGE_VERSION}" \
       org.opencontainers.image.revision="${BUILD_REVISION}" \
       org.opencontainers.image.created="${BUILD_DATE}"

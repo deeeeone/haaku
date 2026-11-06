@@ -3,7 +3,7 @@
 The image users are meant to run: the app, PostgreSQL and Redis in one
 container, supervised by [s6-overlay](https://github.com/just-containers/s6-overlay),
 so `docker compose up -d` is the whole install. It is published as
-`ghcr.io/trakt-killer/tkiller-api`.
+`ghcr.io/haaku-tv/haaku-api`.
 
 It is not the only supported layout. Setting `DATABASE_URL` or `REDIS_URL`
 points the app at a service of its own and leaves the matching bundled one
@@ -172,7 +172,7 @@ at the binary and give it an external database:
 ```yaml
 services:
   tkiller:
-    image: ghcr.io/trakt-killer/tkiller-api:latest
+    image: ghcr.io/haaku-tv/haaku-api:latest
     entrypoint: ["/app/api"]
     user: "911:911"
     environment:

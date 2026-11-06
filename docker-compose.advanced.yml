@@ -13,7 +13,7 @@
 
 services:
   api:
-    image: ${TKILLER_IMAGE:-ghcr.io/trakt-killer/tkiller-api:latest}
+    image: ${TKILLER_IMAGE:-ghcr.io/haaku-tv/haaku-api:latest}
     container_name: tkiller-api
     restart: unless-stopped
     env_file:
