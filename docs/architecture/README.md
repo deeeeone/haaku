@@ -8,7 +8,7 @@ the date, so a doc is updated in place as the design changes.
 |---|---|
 | [monorepo.md](monorepo.md) | Repository layout: one repo, one binary, one image |
 | [api-versioning.md](api-versioning.md) | API versioning, the generated spec, and its gates |
-| [omnibus-image.md](omnibus-image.md) | The single Docker image that bundles PostgreSQL (planned) |
+| [omnibus-image.md](omnibus-image.md) | The single Docker image that bundles PostgreSQL and Redis |
 | [backups.md](backups.md) | Backups, restore, rotation and the pre-migration safety copy |
 | [release-versioning.md](release-versioning.md) | Release, upgrade and rollback policy |
 

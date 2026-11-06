@@ -24,7 +24,11 @@ internal/webui/     serves the embedded frontend (web/dist)
 internal/mode/      run modes (api | worker | migrate)
 web/                React frontend, embedded into the binary (web/embed.go)
 migrations/         SQL migrations (append-only, numbered — T0.4 tooling)
-deploy/             docker-compose (postgres, redis, minio, clerk-emulator, mailpit), .env.example
+Dockerfile          the base image: frontend + binary + postgresql-client
+omnibus/            the single image: + PostgreSQL, Redis, s6-overlay (issue #13)
+docker-compose.yml  the omnibus install (one container, one command)
+dev/compose.yml     PostgreSQL, Redis, Minio, Clerk emulator, Mailpit for host dev
+deploy/.env.example the longer env list for running the API from source
 docs/architecture/  design docs for decisions that outgrow a comment
 scripts/            developer tooling (dev-pg.sh boots a throwaway PostgreSQL)
 ```
@@ -42,7 +46,8 @@ make bin            # frontend + the real single binary (bin/api)
 make dev-backend    # go run ./cmd/api (needs .env)
 make dev-frontend   # Vite dev server
 make pg-up          # throwaway PostgreSQL; prints DATABASE_URL
-make compose-up     # postgres, redis, minio, clerk-emulator, mailpit
+make compose-up     # dev infrastructure: postgres, redis, minio, clerk-emulator, mailpit
+make docker-omnibus # build the single image (app + PostgreSQL + Redis, s6-overlay)
 ```
 
 ### Two things that will bite you
