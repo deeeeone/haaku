@@ -1,6 +1,10 @@
-# trakt-api — local dev stack (Phase 0 infra)
-# Postgres, Redis, MinIO, clerk-emulator, Mailpit.
-# The api/web services get Dockerfiles in T0.x and join this file.
+# Local infrastructure for running the API and the Vite dev server on the host
+# (`make dev-backend` / `make dev-frontend`). Not a deployment: for that, use
+# the root docker-compose.yml (one container) or docker-compose.advanced.yml.
+#
+#   docker compose -f dev/compose.yml up -d
+#   make pg-up          # alternative: a throwaway cluster, no Docker needed
+#
 # Host ports are offset (+50000) so native macOS/brew services (5432, 6379)
 # don't shadow these containers; keep deploy/.env.example in sync.
 
@@ -45,7 +49,7 @@ services:
 
   # Clerk emulator (github.com/pjsny/clerk-emulator, Apache-2.0) — real JWTs,
   # no network. Used for local + self-hosted dev until Phase 2 (hosted Clerk).
-  # Secret: sk_test_emulate · API: http://localhost:4000
+  # Secret: *** · API: http://localhost:4000
   clerk-emulator:
     image: node:22-alpine
     command: ["npx", "--yes", "clerk-emulator", "--persist", "/data"]

@@ -21,8 +21,8 @@ vendor/
 *.log
 
 # Frontend dependencies and build output.
-# web/dist is rebuilt inside the frontend build stage; web/node_modules is
-# installed there too, so shipping the host's copy would only shadow it.
+# web/dist is built inside the image (the `frontend` stage of the Dockerfile),
+# so a host bundle or a host node_modules must never reach the build context.
 web/node_modules
 web/dist
 web/.pnpm-store

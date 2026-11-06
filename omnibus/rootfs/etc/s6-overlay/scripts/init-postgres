@@ -1,0 +1,87 @@
+#!/command/with-contenv bash
+# shellcheck shell=bash
+# Create the PostgreSQL cluster on first start and refuse to open a data
+# directory written by another major version.
+set -euo pipefail
+# shellcheck source=omnibus/rootfs/etc/tkiller-omnibus/lib.sh
+source /etc/tkiller-omnibus/lib.sh
+
+enabled postgres || exit 0
+export HOME=/config/postgres
+PGDATA=/config/postgres/data
+
+# /config/postgres belongs to the postgres account, so everything below it is
+# changed as that account: root following a symlink planted there would hand a
+# root-owned file to postgres. A data directory or version file that is itself
+# a link is not one this image wrote.
+if [[ -L "$PGDATA" || -L "$PGDATA/PG_VERSION" ]]; then
+  echo "$PGDATA or its PG_VERSION is a symbolic link; move the real data directory there" >&2
+  exit 1
+fi
+
+if [[ -e "$PGDATA/PG_VERSION" ]]; then
+  # Read as root, before any ownership changes: a cluster another image wrote
+  # can belong to another uid, and a refused one is left as it was. The read
+  # follows no link and never blocks, and only a version number is printed.
+  have="$(read_small "$PGDATA/PG_VERSION" | tr -d '\n')"
+  if [[ ! "$have" =~ ^[0-9]+$ ]]; then
+    echo "$PGDATA/PG_VERSION does not hold a PostgreSQL major version number" >&2
+    exit 1
+  fi
+  if [[ "$have" != "$PG_MAJOR" ]]; then
+    cat >&2 <<MSG
+/config/postgres/data was written by PostgreSQL $have but this image ships PostgreSQL $PG_MAJOR.
+PostgreSQL cannot open a data directory from another major version. Start the
+previous image, dump the trakt database with pg_dump, move the old data
+directory aside, then start this image and restore the dump. See "Upgrading
+PostgreSQL" in docs/architecture/omnibus-image.md.
+MSG
+    exit 1
+  fi
+  # Fail early, before changing anything, when another container's server holds
+  # the lock. svc-postgres takes it for good before touching the pid file.
+  # shellcheck disable=SC2016 # expanded by the inner shell
+  if ! s6-setuidgid postgres bash -c 'exec 9<>"$1" && flock -n 9' _ "$PG_LOCK"; then
+    echo "another PostgreSQL server is using $PGDATA; is a second container using this /config?" >&2
+    exit 1
+  fi
+  own_tree postgres postgres "$PGDATA"
+  s6-setuidgid postgres chmod 0700 "$PGDATA"
+else
+  log "initializing a PostgreSQL $PG_MAJOR cluster in $PGDATA"
+  # The directory can already exist, empty: a bind mount, or a directory
+  # created ahead of the first start.
+  s6-setuidgid postgres mkdir -p "$PGDATA"
+  own_tree postgres postgres "$PGDATA"
+  s6-setuidgid postgres chmod 0700 "$PGDATA"
+  # The tkiller role is the cluster superuser, so peer authentication on the
+  # socket is the only way in; no database password exists. en_US.UTF-8 keeps
+  # text sorting independent of whatever locale the host has.
+  s6-setuidgid postgres initdb -D "$PGDATA" -U tkiller \
+    --encoding=UTF8 --locale=en_US.UTF-8 \
+    --auth-local=peer --auth-host=scram-sha-256 >/dev/null
+fi
+
+# The image's settings live in conf.d. A data directory this image did not
+# create, such as one moved from another PostgreSQL container, lacks the line
+# that loads them.
+if ! s6-setuidgid postgres grep -q "^include_dir = 'conf.d'" "$PGDATA/postgresql.conf"; then
+  printf "\ninclude_dir = 'conf.d'\n" | append_as postgres "$PGDATA/postgresql.conf"
+fi
+
+s6-setuidgid postgres install -d -m 0755 "$PGDATA/conf.d"
+s6-setuidgid postgres install -m 0644 /etc/tkiller-omnibus/postgresql.omnibus.conf "$PGDATA/conf.d/00-omnibus.conf"
+
+# pg_hba.conf belongs to the image too. A data directory from the official
+# PostgreSQL image trusts every local connection, which here would let any
+# account in the container sign in as the superuser.
+(umask 077 && write_as postgres "$PGDATA/pg_hba.conf") <<'HBA'
+# Written by the tkiller omnibus image on every start; edits do not survive.
+local   all          all                 peer
+host    all          all   127.0.0.1/32  scram-sha-256
+host    all          all   ::1/128       scram-sha-256
+local   replication  all                 peer
+host    replication  all   127.0.0.1/32  scram-sha-256
+host    replication  all   ::1/128       scram-sha-256
+HBA
+s6-setuidgid postgres chmod 0600 "$PGDATA/pg_hba.conf"

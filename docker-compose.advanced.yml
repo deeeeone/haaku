@@ -1,0 +1,75 @@
+# The multi-container layout: the same image, with PostgreSQL and Redis as
+# services of their own instead of bundled ones. Setting DATABASE_URL and
+# REDIS_URL is what turns the bundled services off — the init script starts
+# neither, and no PostgreSQL or Redis process runs in the app container.
+#
+#   cp .env.example .env      # then set TKILLER_SECRET_KEY and TMDB_API_TOKEN
+#   docker compose -f docker-compose.advanced.yml up -d
+#
+# Use this when the database should outlive the app container, when it is
+# already managed somewhere else, or when the app should run as an unprivileged
+# user (then also add `user: "911:911"` and `entrypoint: ["/app/api"]` to the
+# api service, since /init needs root).
+
+services:
+  api:
+    image: ${TKILLER_IMAGE:-ghcr.io/trakt-killer/tkiller-api:latest}
+    container_name: tkiller-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://trakt:${POSTGRES_PASSWORD:-trakt}@postgres:5432/trakt?sslmode=disable
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "${TKILLER_PORT:-8080}:8080"
+    volumes:
+      # Still needed: the app's own directory holds the pre-migration backups
+      # and an optional .env. No database lives here.
+      - ${TKILLER_CONFIG:-./config}:/config
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    stop_grace_period: 2m
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5m
+
+  postgres:
+    image: postgres:17-alpine
+    container_name: tkiller-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: trakt
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-trakt}
+      POSTGRES_DB: trakt
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trakt -d trakt"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    container_name: tkiller-redis
+    restart: unless-stopped
+    # The append-only file bounds what a crash loses to about a second.
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  pgdata:
+  redisdata:

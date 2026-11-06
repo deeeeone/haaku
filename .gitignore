@@ -24,6 +24,8 @@ web/.pnpm-store/
 # Test artifacts
 coverage.out
 
-# Local development state (throwaway PostgreSQL, scratch data)
+# Local development state (throwaway PostgreSQL, scratch data, an omnibus
+# install's config directory)
 .local/
 tmp/
+config/
