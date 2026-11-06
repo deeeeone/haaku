@@ -11,6 +11,8 @@ Batch import **sessions** (the umbrella for large history/ratings syncs — dist
 
 Uses the shared `auth.AuthRequired()` middleware on all four routes (one of the few modules doing this correctly). `:id<int>` param constraint. OpenAPI registered.
 
+Related, in the sibling `sync` package: `GET /v1/sync/last_activities` (issue #6, first slice) shipped — the Trakt "what changed since" delta a client polls to decide *what* to sync. It is independent of this package's session/engine work; the async engine below is still unimplemented. See `internal/handlers/sync/sync.md`.
+
 ## Completion
 
 | Piece | Status |
@@ -20,6 +22,7 @@ Uses the shared `auth.AuthRequired()` middleware on all four routes (one of the 
 | Session create (DB row only) | Done |
 | Session progress read | Done |
 | Paused / skipped reads | Fail closed (501 `not_implemented` until the sync engine lands) |
+| `/v1/sync/last_activities` (delta endpoint, `sync` pkg) | Done (issue #6, first slice) — real per-collection aggregates; the sync *engine* it would feed is still a stub |
 
 ## Oversights
 
@@ -36,6 +39,7 @@ Uses the shared `auth.AuthRequired()` middleware on all four routes (one of the 
 ## Todos
 
 - [ ] Implement (or explicitly scope) the async sync engine and persist submitted items.
+- [x] `GET /v1/sync/last_activities` — landed as a standalone delta endpoint in `internal/handlers/sync` (issue #6, first slice). Does NOT process sessions; the engine below is still the residue.
 - [x] Decide what `/paused` and `/skipped` return. (Batch 13 — DECISION: fail closed with 501 `not_implemented` until the sync engine lands; the previous raw-`Errors`/hardcoded-empty responses were placeholders and no longer served.)
 - [ ] Once the engine exists, return real paused/skipped data from `/paused` and `/skipped` with pagination.
 - [x] Replace unchecked `user_id` assert with a safe helper (`requireUserID`, 401 on missing).

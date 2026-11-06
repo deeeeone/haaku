@@ -7008,6 +7008,56 @@ paths:
             summary: Remove history items
             tags:
                 - Sync
+    /v1/sync/last_activities:
+        get:
+            operationId: _v1_sync_last_activities_GET
+            responses:
+                "200":
+                    description: Per-collection activity timestamps
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    description: Unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Get the latest activity timestamps per collection (Trakt last_activities delta)
+            tags:
+                - Sync
     /v1/sync/playback:
         get:
             operationId: _v1_sync_playback_GET

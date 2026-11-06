@@ -23,6 +23,7 @@ func TestSyncRoutesRegistered(t *testing.T) {
 		"/v1/sync/watchlist":                       true,
 		"/v1/sync/ratings":                         true,
 		"/v1/sync/favorites":                       true,
+		"/v1/sync/last_activities":                 true,
 	}
 
 	found := make(map[string]bool)
