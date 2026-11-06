@@ -7,8 +7,10 @@ Public "what changed recently" endpoints (sync-scraper friendly), no auth:
 - `GET /v1/movies/updates/:start_date` — movies with `updated_at >= start_date`, ordered `updated_at DESC`.
 - `GET /v1/shows/updates/:start_date` — same for shows.
 - `GET /v1/people/updates/:start_date` — same for people.
+- `GET /v1/movies/updates/id/:start_date` — bare `int[]` of the IDs of movies with `updated_at >= start_date` (Trakt's cheap sync poll).
+- `GET /v1/shows/updates/id/:start_date` — same for shows.
 
-Each paginates (`page`/`limit`, default 25, max 100) and honors `extended` (min/full/metadata/images/all) for movie/show responses. Builds `media.MovieResponse`/`ShowResponse`/`PersonResponse` via **local** builder functions. OpenAPI registered.
+Each full feed paginates (`page`/`limit`, default 25, max 100) and honors `extended` (min/full/metadata/images/all) for movie/show responses. Builds `media.MovieResponse`/`ShowResponse`/`PersonResponse` via **local** builder functions. The `id` feeds return Trakt's plain `[id, ...]` array (never `null`), paginated and ordered `updated_at ASC, id ASC` for a stable crawl. OpenAPI registered.
 
 ## Completion
 
@@ -16,6 +18,8 @@ Each paginates (`page`/`limit`, default 25, max 100) and honors `extended` (min/
 |---|---|
 | OpenAPI registration (3 routes) | Done |
 | Movies / shows / people updated-since | Done |
+| Updated-ID feeds (`/updates/id/{start_date}`: movies, shows) — bare `int[]` | Done |
+| Handler tests (in-memory sqlite): recent-only, empty window, invalid date | Done |
 | Pagination + extended handling | Done |
 | Response builders | Done |
 

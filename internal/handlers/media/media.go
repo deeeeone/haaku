@@ -3,6 +3,7 @@ package media
 import (
 	"errors"
 	"strconv"
+	"time"
 
 	"trakt-api/internal/database"
 	"trakt-api/internal/openapi"
@@ -38,6 +39,8 @@ func registerOpenAPIRoutes() {
 		{Method: "GET", Path: "/v1/shows/{id}/stats", Summary: "Get stats for a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Stats", 501: "Not implemented (requires stats engine)"}},
 		{Method: "GET", Path: "/v1/shows/{id}/lists", Summary: "Get lists containing a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Lists", 501: "Not implemented (requires lists engine)"}},
 		{Method: "GET", Path: "/v1/shows/{id}/watching", Summary: "Users watching a show right now", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Watching", 501: "Not implemented (requires activity engine)"}},
+		{Method: "GET", Path: "/v1/shows/{id}/next_episode", Summary: "Get the next scheduled episode for a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Next episode", 204: "No next episode", 404: "Show not found"}},
+		{Method: "GET", Path: "/v1/shows/{id}/last_episode", Summary: "Get the most recently aired episode for a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Last episode", 204: "No aired episode", 404: "Show not found"}},
 
 		// People
 		{Method: "GET", Path: "/v1/people/{id}", Summary: "Get a person", Tags: []string{"People"}, Auth: "none", StatusCodes: map[int]string{200: "Person"}},
@@ -75,6 +78,8 @@ func RegisterRoutes(api fiber.Router) {
 	shows.Get("/:id/stats", handleGetShowStats)
 	shows.Get("/:id/lists", handleGetShowLists)
 	shows.Get("/:id/watching", handleGetShowWatching)
+	shows.Get("/:id/next_episode", handleGetShowNextEpisode)
+	shows.Get("/:id/last_episode", handleGetShowLastEpisode)
 
 	// --- People ---
 	people := api.Group("/people")
@@ -455,6 +460,54 @@ func handleGetShowWatching(c *fiber.Ctx) error {
 	// Users currently watching require scrobble/activity wiring (not landed).
 	// Fails closed with 501 rather than return a fabricated empty array.
 	return response.NotImplemented(c, "watching requires the activity engine, which is not implemented")
+}
+
+// handleGetShowNextEpisode returns the next scheduled episode for a show: the
+// earliest episode airing today (UTC) or later. Matches Trakt's
+// GET /shows/:id/next_episode, including the 204 when none is scheduled.
+func handleGetShowNextEpisode(c *fiber.Ctx) error {
+	return showBoundaryEpisode(c, "aired_at >= ?", "aired_at ASC, episode_number ASC")
+}
+
+// handleGetShowLastEpisode returns the most recently aired episode for a show:
+// the latest episode airing today (UTC) or earlier. Matches Trakt's
+// GET /shows/:id/last_episode, including the 204 when nothing has aired.
+func handleGetShowLastEpisode(c *fiber.Ctx) error {
+	return showBoundaryEpisode(c, "aired_at <= ?", "aired_at DESC, episode_number DESC")
+}
+
+// showBoundaryEpisode resolves the show in the route param and returns the one
+// episode matching the date predicate and ordering, or 204 when there is none.
+// The show must exist: an unknown id is a 404 from ResolveID.
+func showBoundaryEpisode(c *fiber.Ctx, datePredicate, order string) error {
+	mediaType, showID, err := ResolveID(c, c.Params("id"))
+	if err != nil {
+		return err
+	}
+	if mediaType != "show" {
+		return response.NotFound(c, "not a show")
+	}
+
+	db, dbErr := database.GetDB()
+	if dbErr != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "database unavailable")
+	}
+
+	today := time.Now().UTC().Format("2006-01-02")
+
+	var episode database.Episode
+	err = db.Where("show_id = ?", showID).
+		Where(datePredicate, today).
+		Order(order).
+		First(&episode).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return c.SendStatus(fiber.StatusNoContent)
+	}
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
+	}
+
+	return c.JSON(BuildEpisodeResponse(&episode))
 }
 
 // ---------------------------------------------------------------------------
