@@ -48,6 +48,9 @@ func NewServer(cfg *config.Config) *fiber.App {
 
 	// Initialize Clerk client (Phase 2: T2.1)
 	auth.InitClerk(cfg)
+	// Record the admin/mod env allowlists used by auth.RequireModerator
+	// (issue #10 §2).
+	auth.InitModerationAllowlists(cfg.AdminUserIDs, cfg.ModUserIDs)
 
 	// Register API routes.
 	RegisterRoutes(app)
