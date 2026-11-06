@@ -141,7 +141,7 @@ func TestSecurityHeadersPresent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	tests := []struct {
 		header string
@@ -181,7 +181,7 @@ func TestBodyLimit_AllowsNormalPayload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
@@ -205,7 +205,7 @@ func TestBodyLimit_WithinLimit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		bodyBytes, _ := io.ReadAll(resp.Body)
@@ -277,7 +277,7 @@ func TestTimeout_PassesWithinDeadline(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 OK, got %d", resp.StatusCode)
@@ -301,7 +301,7 @@ func TestMetricsEndpoint_ReturnsValidJSON(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200 OK, got %d", resp.StatusCode)
@@ -347,7 +347,7 @@ func TestMetricsEndpoint_JSONContentType(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	ct := resp.Header.Get("Content-Type")
 	if !strings.Contains(ct, "application/json") {
@@ -373,7 +373,7 @@ func TestCORS_NoOriginsConfigured(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.Header.Get("Access-Control-Allow-Origin") != "" {
 		t.Error("expected no Access-Control-Allow-Origin header with empty CORS origins")

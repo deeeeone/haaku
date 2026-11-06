@@ -82,7 +82,7 @@ func makeWatchApp(dbMeta *database.JSONMap, fetchCalls *int, mediaType string, t
 // metadata column after a TMDB fetch so that a subsequent request re-reads it
 // from the row and does NOT hit TMDB a second time.
 func TestWatchProvidersCachePersistedAcrossRequests(t *testing.T) {
-	var dbMeta database.JSONMap = database.JSONMap{}
+	dbMeta := database.JSONMap{}
 	fetchCalls := 0
 	app := makeWatchApp(&dbMeta, &fetchCalls, "movie", 1)
 
@@ -91,7 +91,7 @@ func TestWatchProvidersCachePersistedAcrossRequests(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request 1 failed: %v", err)
 	}
-	defer resp1.Body.Close()
+	defer func() { _ = resp1.Body.Close() }()
 	if resp1.StatusCode != http.StatusOK {
 		t.Fatalf("request 1 status = %d, want 200", resp1.StatusCode)
 	}
@@ -107,7 +107,7 @@ func TestWatchProvidersCachePersistedAcrossRequests(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request 2 failed: %v", err)
 	}
-	defer resp2.Body.Close()
+	defer func() { _ = resp2.Body.Close() }()
 	if resp2.StatusCode != http.StatusOK {
 		t.Fatalf("request 2 status = %d, want 200", resp2.StatusCode)
 	}
@@ -128,7 +128,7 @@ func TestWatchProvidersCachePersistedAcrossRequests(t *testing.T) {
 // TestWatchProvidersNegativeCaching confirms a country absent from cached results
 // does not trigger a TMDB refetch on repeated requests within the negative TTL.
 func TestWatchProvidersNegativeCaching(t *testing.T) {
-	var dbMeta database.JSONMap = database.JSONMap{}
+	dbMeta := database.JSONMap{}
 	fetchCalls := 0
 	app := makeWatchApp(&dbMeta, &fetchCalls, "movie", 1)
 
@@ -137,7 +137,7 @@ func TestWatchProvidersNegativeCaching(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request 1 failed: %v", err)
 	}
-	resp1.Body.Close()
+	_ = resp1.Body.Close()
 	if fetchCalls != 1 {
 		t.Fatalf("first absent-country request fetch calls = %d, want 1", fetchCalls)
 	}
@@ -150,7 +150,7 @@ func TestWatchProvidersNegativeCaching(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request 2 failed: %v", err)
 	}
-	resp2.Body.Close()
+	_ = resp2.Body.Close()
 	if fetchCalls != 1 {
 		t.Fatalf("repeated absent-country request refetched TMDB (calls=%d) — negative cache not honored", fetchCalls)
 	}
@@ -160,7 +160,7 @@ func TestWatchProvidersNegativeCaching(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request 3 failed: %v", err)
 	}
-	resp3.Body.Close()
+	_ = resp3.Body.Close()
 	if fetchCalls != 2 {
 		t.Fatalf("new absent-country request fetch calls = %d, want 2", fetchCalls)
 	}
@@ -169,7 +169,7 @@ func TestWatchProvidersNegativeCaching(t *testing.T) {
 // TestWatchProvidersAbsenceExpires confirms the negative cache is TTL-bound: once
 // the absence marker is older than countryAbsenceTTL, the country is re-checked.
 func TestWatchProvidersAbsenceExpires(t *testing.T) {
-	var dbMeta database.JSONMap = database.JSONMap{}
+	dbMeta := database.JSONMap{}
 	fetchCalls := 0
 	app := makeWatchApp(&dbMeta, &fetchCalls, "movie", 1)
 
@@ -190,7 +190,7 @@ func TestWatchProvidersAbsenceExpires(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if fetchCalls != 1 {
 		t.Fatalf("expired negative was not re-checked: fetch calls = %d, want 1", fetchCalls)
 	}
@@ -200,7 +200,7 @@ func TestWatchProvidersAbsenceExpires(t *testing.T) {
 // path builds a /tv/ TMDB watch link, not a /movie/ link. Regression for the
 // hardcoded "movie" passed to cpLink in the show country-miss path.
 func TestWatchShowCountryMissLinkIsTV(t *testing.T) {
-	var dbMeta database.JSONMap = database.JSONMap{}
+	dbMeta := database.JSONMap{}
 	fetchCalls := 0
 	// The makeWatchApp "show" fetch returns only US providers (id=1).
 	app := makeWatchApp(&dbMeta, &fetchCalls, "show", 1)
@@ -209,7 +209,7 @@ func TestWatchShowCountryMissLinkIsTV(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("status = %d, want 200", resp.StatusCode)
 	}

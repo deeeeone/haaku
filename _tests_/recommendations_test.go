@@ -44,10 +44,10 @@ func TestRecommendationsRoutesHaveCorrectTags(t *testing.T) {
 	routes := openapi.AllRoutes()
 
 	recommendationPaths := map[string]bool{
-		"/v1/recommendations/movies":          true,
-		"/v1/recommendations/shows":           true,
-		"/v1/social_recommendations/movies":   true,
-		"/v1/social_recommendations/shows":    true,
+		"/v1/recommendations/movies":        true,
+		"/v1/recommendations/shows":         true,
+		"/v1/social_recommendations/movies": true,
+		"/v1/social_recommendations/shows":  true,
 	}
 
 	anticipatedPath := "/v1/media/anticipated"

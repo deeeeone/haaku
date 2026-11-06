@@ -21,11 +21,11 @@ func TestWebhookRoutesRegistered(t *testing.T) {
 	routes := openapi.AllRoutes()
 
 	expectedPaths := map[string]bool{
-		"/v1/webhooks":                 true,
-		"/v1/webhooks/{id}":            true,
+		"/v1/webhooks":                    true,
+		"/v1/webhooks/{id}":               true,
 		"/v1/webhooks/{id}/rotate-secret": true,
-		"/v1/webhooks/{id}/test":       true,
-		"/v1/webhooks/{id}/deliveries": true,
+		"/v1/webhooks/{id}/test":          true,
+		"/v1/webhooks/{id}/deliveries":    true,
 	}
 
 	found := make(map[string]bool)
@@ -44,11 +44,11 @@ func TestWebhookRoutesHaveCorrectTags(t *testing.T) {
 	routes := openapi.AllRoutes()
 
 	webhookPaths := map[string]bool{
-		"/v1/webhooks":                 true,
-		"/v1/webhooks/{id}":            true,
+		"/v1/webhooks":                    true,
+		"/v1/webhooks/{id}":               true,
 		"/v1/webhooks/{id}/rotate-secret": true,
-		"/v1/webhooks/{id}/test":       true,
-		"/v1/webhooks/{id}/deliveries": true,
+		"/v1/webhooks/{id}/test":          true,
+		"/v1/webhooks/{id}/deliveries":    true,
 	}
 
 	for _, r := range routes {
@@ -65,9 +65,9 @@ func TestIntegrationRoutesRegistered(t *testing.T) {
 	routes := openapi.AllRoutes()
 
 	expectedPaths := map[string]bool{
-		"/v1/integrations":          true,
-		"/v1/integrations/{id}":     true,
-		"/v1/integrations/{token}":  true,
+		"/v1/integrations":         true,
+		"/v1/integrations/{id}":    true,
+		"/v1/integrations/{token}": true,
 	}
 
 	found := make(map[string]bool)
@@ -507,10 +507,10 @@ func TestIntegrationPackageImports(t *testing.T) {
 
 func TestDeliveryLogStatusValues(t *testing.T) {
 	validStatuses := map[string]bool{
-		"pending":   true,
-		"success":   true,
-		"failed":    true,
-		"retrying":  true,
+		"pending":  true,
+		"success":  true,
+		"failed":   true,
+		"retrying": true,
 	}
 
 	for _, status := range []string{"pending", "success", "failed", "retrying"} {

@@ -493,9 +493,10 @@ func handleGetPerson(c *fiber.Ctx) error {
 	showCredits := make([]CreditResponse, 0)
 	for _, cr := range credits {
 		crResp := creditToResponse(cr)
-		if cr.MediaType == "movie" {
+		switch cr.MediaType {
+		case "movie":
 			movieCredits = append(movieCredits, crResp)
-		} else if cr.MediaType == "show" {
+		case "show":
 			showCredits = append(showCredits, crResp)
 		}
 	}

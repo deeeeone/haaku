@@ -28,7 +28,7 @@ func AdvisoryLockKeysStr(s string) (uint32, uint32) {
 	k1 := h1.Sum32()
 
 	h2 := fnv.New32a()
-	h2.Write([]byte(fmt.Sprintf("%s:%d", s, k1)))
+	_, _ = fmt.Fprintf(h2, "%s:%d", s, k1)
 	k2 := h2.Sum32()
 
 	return k1, k2

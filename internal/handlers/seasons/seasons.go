@@ -288,15 +288,16 @@ func seasonCacheKey(kind string, id int64, extended string) string {
 }
 
 // seasonGetCache unmarshals a cached JSON value into dst. Returns (true, nil) on
-// a hit; (false, nil) on miss or Redis unavailability so callers fall through to
-// the DB. The cache is best-effort and never fails the request.
+// a hit; (false, err) on a miss or Redis unavailability so callers fall through
+// to the DB. The cache is best-effort: every caller ignores the error and reads
+// through, so a Redis failure can never fail the request.
 func seasonGetCache(key string, dst interface{}) (bool, error) {
 	if projredis.GetClient() == nil {
 		return false, nil
 	}
 	data, err := projredis.GetCacheData(key)
 	if err != nil {
-		return false, nil
+		return false, err
 	}
 	if err := json.Unmarshal(data, dst); err != nil {
 		log.Printf("[seasons] cache unmarshal error for key %s: %v", key, err)

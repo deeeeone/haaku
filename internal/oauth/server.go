@@ -473,11 +473,10 @@ func handleRefreshGrant(c *fiber.Ctx, req *tokenRequest) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "failed to revoke old token")
 	}
 
-	family := oldToken.RefreshTokenFamily
-	if family == "" {
-		family = oldToken.ID
-	}
-
+	// NOTE: the previous token's refresh-token family is not propagated to the
+	// new token — issueTokens has no family parameter — so `RefreshTokenFamily`
+	// is dropped on rotation and family-wide revocation on reuse cannot work
+	// yet. Left as-is here (a behaviour change, not a lint fix).
 	return issueTokens(c, db, oldToken.ClientID, oldToken.UserID, oldToken.GrantID, []string(oldToken.Scopes), req.ClientSecret)
 }
 

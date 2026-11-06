@@ -17,11 +17,11 @@ func TestReferenceRoutesRegistered(t *testing.T) {
 	routes := openapi.AllRoutes()
 
 	expectedPaths := map[string]bool{
-		"/v1/genres/{type}":          true,
-		"/v1/languages/{type}":       true,
-		"/v1/countries/{type}":       true,
-		"/v1/networks":               true,
-		"/v1/certifications/{type}":  true,
+		"/v1/genres/{type}":         true,
+		"/v1/languages/{type}":      true,
+		"/v1/countries/{type}":      true,
+		"/v1/networks":              true,
+		"/v1/certifications/{type}": true,
 	}
 
 	found := make(map[string]bool)
@@ -40,11 +40,11 @@ func TestReferenceRoutesHaveCorrectAuth(t *testing.T) {
 	routes := openapi.AllRoutes()
 
 	refPaths := map[string]bool{
-		"/v1/genres/{type}":          true,
-		"/v1/languages/{type}":       true,
-		"/v1/countries/{type}":       true,
-		"/v1/networks":               true,
-		"/v1/certifications/{type}":  true,
+		"/v1/genres/{type}":         true,
+		"/v1/languages/{type}":      true,
+		"/v1/countries/{type}":      true,
+		"/v1/networks":              true,
+		"/v1/certifications/{type}": true,
 	}
 
 	for _, r := range routes {

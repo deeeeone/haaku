@@ -132,7 +132,12 @@ func handleWebhookEvent(db *gorm.DB, msg goredis.XMessage) {
 
 	var payload map[string]interface{}
 	if payloadStr != "" {
-		json.Unmarshal([]byte(payloadStr), &payload)
+		if err := json.Unmarshal([]byte(payloadStr), &payload); err != nil {
+			// A malformed payload is dropped rather than half-applied; the
+			// delivery below falls back to an empty map.
+			log.Printf("[webhook-worker] discarding unparseable outbox payload: %v", err)
+			payload = nil
+		}
 	}
 	if payload == nil {
 		payload = make(map[string]interface{})
@@ -297,10 +302,11 @@ func doWebhookPost(ep *database.WebhookEndpoint, body string) (int, string, int,
 	if err != nil {
 		return 0, err.Error(), durMs, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	respBuf := new(bytes.Buffer)
-	respBuf.ReadFrom(resp.Body)
+	// A truncated read is still reported to the caller as the response body.
+	_, _ = respBuf.ReadFrom(resp.Body)
 	respStr := respBuf.String()
 	if len(respStr) > 1024 {
 		respStr = respStr[:1024]
@@ -355,7 +361,7 @@ func countConsecutiveFailures(db *gorm.DB, endpointID int64) int {
 // stringSliceContains checks if a StringSlice contains a value.
 func stringSliceContains(slice database.StringSlice, value string) bool {
 	for _, s := range slice {
-		if string(s) == value {
+		if s == value {
 			return true
 		}
 	}

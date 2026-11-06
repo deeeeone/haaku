@@ -14,14 +14,6 @@ import (
 // and upserts into user_stats.
 // ---------------------------------------------------------------------------
 
-// userWatchRow is a helper struct for scanning aggregation results from user_history.
-type userWatchRow struct {
-	MediaType string
-	MediaID   int64
-	Runtime   int
-	Count     int64
-}
-
 // ComputeUserStats aggregates watch history and ratings for a user and upserts
 // the result into the user_stats table.
 func ComputeUserStats(db *gorm.DB, userID string) error {

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	_ "trakt-api/internal/handlers/social"
 	"trakt-api/internal/database"
+	_ "trakt-api/internal/handlers/social"
 	"trakt-api/internal/openapi"
 )
 
@@ -18,13 +18,13 @@ func TestSocialRoutesRegistered(t *testing.T) {
 	routes := openapi.AllRoutes()
 
 	expectedPaths := map[string]bool{
-		"/v1/users/{id}/follow":       true,
-		"/v1/users/{id}/followers":    true,
-		"/v1/users/{id}/following":    true,
-		"/v1/users/{id}/friends":      true,
-		"/v1/users/me/follow_requests":                          true,
-		"/v1/users/me/follow_requests/{follower_id}":            true,
-		"/v1/users/me/follow_requests/{follower_id}/approve":    true,
+		"/v1/users/{id}/follow":                              true,
+		"/v1/users/{id}/followers":                           true,
+		"/v1/users/{id}/following":                           true,
+		"/v1/users/{id}/friends":                             true,
+		"/v1/users/me/follow_requests":                       true,
+		"/v1/users/me/follow_requests/{follower_id}":         true,
+		"/v1/users/me/follow_requests/{follower_id}/approve": true,
 	}
 
 	found := make(map[string]bool)
@@ -43,13 +43,13 @@ func TestSocialRoutesHaveCorrectTags(t *testing.T) {
 	routes := openapi.AllRoutes()
 
 	socialPaths := map[string]bool{
-		"/v1/users/{id}/follow":       true,
-		"/v1/users/{id}/followers":    true,
-		"/v1/users/{id}/following":    true,
-		"/v1/users/{id}/friends":      true,
-		"/v1/users/me/follow_requests":                          true,
-		"/v1/users/me/follow_requests/{follower_id}":            true,
-		"/v1/users/me/follow_requests/{follower_id}/approve":    true,
+		"/v1/users/{id}/follow":                              true,
+		"/v1/users/{id}/followers":                           true,
+		"/v1/users/{id}/following":                           true,
+		"/v1/users/{id}/friends":                             true,
+		"/v1/users/me/follow_requests":                       true,
+		"/v1/users/me/follow_requests/{follower_id}":         true,
+		"/v1/users/me/follow_requests/{follower_id}/approve": true,
 	}
 
 	for _, r := range routes {

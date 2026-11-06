@@ -292,8 +292,8 @@ func testService(t *testing.T, dest Destination, dumper Dumper, restorer Restore
 	if md, ok := dest.(*memDestination); ok && md.now == nil {
 		md.now = clock.now
 	}
-	if ed, ok := dest.(*endlessDestination); ok && ed.memDestination.now == nil {
-		ed.memDestination.now = clock.now
+	if ed, ok := dest.(*endlessDestination); ok && ed.now == nil {
+		ed.now = clock.now
 	}
 	o := baseOptions(dest, clock, dumper)
 	o.Restorer = restorer

@@ -26,7 +26,7 @@ func parseJSON(t *testing.T, app *fiber.App, query string) map[string]int {
 	if err != nil {
 		t.Fatalf("request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Fatalf("read body: %v", err)
@@ -104,7 +104,7 @@ func TestSetPaginationHeaders(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	h := func(k string) string { return resp.Header.Get(k) }
 	cases := map[string]string{
@@ -133,7 +133,7 @@ func TestSetPaginationHeadersNoNextOnLastPage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if got := resp.Header.Get("Link"); got != "" {
 		t.Errorf("Link = %q, want empty on last page", got)
@@ -154,7 +154,7 @@ func TestSetPaginationHeadersEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if got := resp.Header.Get("X-Pagination-Total-Pages"); got != "0" {
 		t.Errorf("Total-Pages = %q, want 0 for empty set", got)

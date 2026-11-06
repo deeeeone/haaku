@@ -17,12 +17,12 @@ func TestSyncRoutesRegistered(t *testing.T) {
 	routes := openapi.AllRoutes()
 
 	expectedPaths := map[string]bool{
-		"/v1/sync/history":                          true,
-		"/v1/sync/history/{media_type}/{media_id}":  true,
-		"/v1/sync/collection":                       true,
-		"/v1/sync/watchlist":                        true,
-		"/v1/sync/ratings":                          true,
-		"/v1/sync/favorites":                        true,
+		"/v1/sync/history":                         true,
+		"/v1/sync/history/{media_type}/{media_id}": true,
+		"/v1/sync/collection":                      true,
+		"/v1/sync/watchlist":                       true,
+		"/v1/sync/ratings":                         true,
+		"/v1/sync/favorites":                       true,
 	}
 
 	found := make(map[string]bool)
@@ -102,7 +102,9 @@ func TestUserHistoryMovieModel(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 
 	if raw["media_type"] != "movie" {
 		t.Errorf("media_type = %v", raw["media_type"])
@@ -134,7 +136,9 @@ func TestUserCollectionModel(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 
 	if raw["media_type"] != "movie" {
 		t.Errorf("media_type = %v", raw["media_type"])
@@ -168,7 +172,9 @@ func TestUserWatchlistModel(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 
 	if raw["rank"] != float64(3) {
 		t.Errorf("rank = %v, want 3", raw["rank"])
@@ -232,7 +238,9 @@ func TestUserRatingModelValidRange(t *testing.T) {
 		}
 
 		var raw map[string]interface{}
-		json.Unmarshal(data, &raw)
+		if err := json.Unmarshal(data, &raw); err != nil {
+			t.Fatalf("decode response body: %v", err)
+		}
 
 		if raw["rating"] != float64(r) {
 			t.Errorf("rating = %v, want %d", raw["rating"], r)
@@ -282,7 +290,9 @@ func TestUserFavoriteModel(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 
 	if raw["rank"] != float64(1) {
 		t.Errorf("rank = %v", raw["rank"])
@@ -339,9 +349,9 @@ func TestWatchedAtSentinelValues(t *testing.T) {
 	now := time.Now()
 
 	tests := []struct {
-		name     string
-		val      string
-		airedAt  *database.Date
+		name      string
+		val       string
+		airedAt   *database.Date
 		expectNow bool
 	}{
 		{"unknown", "unknown", nil, true},
@@ -423,7 +433,9 @@ func TestCollectionResponseShape(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 
 	itemsRaw, ok := raw["items"].([]interface{})
 	if !ok {
@@ -450,7 +462,9 @@ func TestWatchlistReorderResponseShape(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 
 	if raw["success"] != true {
 		t.Error("should be success: true")
@@ -499,7 +513,9 @@ func TestFavoritesRemoveResponseShape(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 
 	if raw["deleted"] != float64(3) {
 		t.Errorf("deleted = %v", raw["deleted"])
@@ -559,7 +575,9 @@ func TestHistoryPaginationShape(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 
 	if raw["page"] != float64(1) {
 		t.Errorf("page = %v", raw["page"])
@@ -619,7 +637,9 @@ func TestHistoryRemoveResponseShape(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 
 	if raw["deleted"] != float64(5) {
 		t.Errorf("deleted = %v", raw["deleted"])
@@ -650,7 +670,9 @@ func TestHistoryAddResponseShape(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 
 	added, ok := raw["added"].(map[string]interface{})
 	if !ok {
@@ -690,7 +712,9 @@ func TestRatingRemoveByEpisodeShape(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 
 	eps := raw["episodes"].([]interface{})
 	if len(eps) != 1 {

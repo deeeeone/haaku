@@ -71,12 +71,20 @@ func TestAdvisoryLockKeysStr_DifferentStrings(t *testing.T) {
 
 func TestAdvisoryLockKeysStr_Empty(t *testing.T) {
 	k1, k2 := database.AdvisoryLockKeysStr("")
-	if k1 == 0 || k2 == 0 {
-		// Empty string hashes should still be valid non-zero values.
-		// Actually FNV-1a of empty string is a specific value.
+
+	// The empty string is a legal lock key. FNV-1a("") is a fixed non-zero value,
+	// so the pair must be non-zero, deterministic, and distinct from another key.
+	if k1 == 0 && k2 == 0 {
+		t.Error("empty string produced an all-zero key pair")
 	}
-	_ = k1
-	_ = k2
+	again1, again2 := database.AdvisoryLockKeysStr("")
+	if k1 != again1 || k2 != again2 {
+		t.Errorf("keys for \"\" are not deterministic: (%d,%d) then (%d,%d)", k1, k2, again1, again2)
+	}
+	other1, other2 := database.AdvisoryLockKeysStr("x")
+	if k1 == other1 && k2 == other2 {
+		t.Error("keys for \"\" and \"x\" collide")
+	}
 }
 
 func TestAdvisoryLockKeysStr_SimilarStrings(t *testing.T) {

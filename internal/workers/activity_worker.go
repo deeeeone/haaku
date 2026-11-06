@@ -115,7 +115,12 @@ func processMessage(db *gorm.DB, msg goredis.XMessage) {
 	payloadStr, _ := msg.Values["payload"].(string)
 	var payload map[string]interface{}
 	if payloadStr != "" {
-		json.Unmarshal([]byte(payloadStr), &payload)
+		if err := json.Unmarshal([]byte(payloadStr), &payload); err != nil {
+			// A malformed payload is dropped rather than half-applied; the
+			// caller falls back to an empty map below.
+			log.Printf("[activity-worker] discarding unparseable outbox payload: %v", err)
+			payload = nil
+		}
 	}
 	if payload == nil {
 		payload = make(map[string]interface{})

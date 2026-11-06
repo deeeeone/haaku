@@ -252,10 +252,10 @@ func parseNotifSettings(rawSettings string) notifSettingsResponse {
 // The types mirror the spec's inbox categories (social-api.md: replies, follow
 // requests, list invites, import done, mentions).
 const (
-	NotifTypeFollow        = "follow"
-	NotifTypeReply         = "reply"
-	NotifTypeListInvite    = "list_invite"
-	NotifTypeImportDone    = "import_complete"
+	NotifTypeFollow     = "follow"
+	NotifTypeReply      = "reply"
+	NotifTypeListInvite = "list_invite"
+	NotifTypeImportDone = "import_complete"
 )
 
 // prefKeyForType maps a notification type to the recipient-settings toggle that
@@ -321,10 +321,8 @@ func CreateNotification(db *gorm.DB, cacheTx *cache.CacheTransaction, userID, no
 	}
 
 	payloadMap := database.JSONMap{}
-	if payload != nil {
-		for k, v := range payload {
-			payloadMap[k] = v
-		}
+	for k, v := range payload {
+		payloadMap[k] = v
 	}
 
 	notif := database.Notification{

@@ -143,7 +143,7 @@ func doPOST(t *testing.T, app *fiber.App, path, body string) (int, []byte) {
 		t.Fatalf("request %s failed: %v", path, err)
 	}
 	raw, err := io.ReadAll(resp.Body)
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if err != nil {
 		t.Fatalf("read body %s: %v", path, err)
 	}
