@@ -1,0 +1,636 @@
+# Trakt parity manifest - the machine-checkable answer to "how much of Trakt do we serve?".
+#
+# Source of truth for the Trakt side: haaku-tv/haaku issue #4, sections A and B
+# (the inventory the issue produced by diffing our spec against
+# trakt/trakt-api contracts). The "ours" side is checked against the live
+# code-first route registry - never against a hand-kept list.
+#
+# Graded by ./cmd/parity (make parity-check), which fails when:
+#   * a row marked implemented/divergent names a route that is not registered,
+#   * a row names a registered route but a status that contradicts it (a serving
+#     route must be implemented/divergent; a 501 route must be blocked-engine),
+#   * a registered route that answers 501 is not recorded here as blocked-engine,
+#   * a blocked-engine row does not name its engine, or a divergent row has no
+#     compat note.
+#
+# Statuses:
+#   implemented     a registered route serves this data at the Trakt path
+#   divergent       a registered route serves this data, different path/params
+#                   (the compat listener in issue #7 is the bridge)
+#   blocked-engine  no route serves it; a named engine must land first
+#   blocked-data    no route serves it; the data is not in our store/schema
+#   out-of-scope    deliberately not served; the rationale starts with
+#                   "decision:" (declined) or "deferred:" (buildable, not built).
+#                   Rows for our own surface also accept "custom:".
+#
+# Rows whose Trakt path is empty describe our own non-Trakt surface (issue #4
+# section C) so the map is complete; they are excluded from Trakt coverage.
+#
+# Hand-maintained, not generated: one row per Trakt endpoint, kept in the order
+# issue #4 lists them so a diff against the issue reads. The "ours" value must be
+# copied verbatim from the registry (internal/httpapi/routes.go or openapi.yaml);
+# the gate fails if it does not match.
+
+manifest: 1
+upstream: "trakt/trakt-api contracts (projects/api/src/contracts), as inventoried in issue #4 on 2026-11-05"
+notes:
+  - "GET /v1/movies/recommendations/{id} and GET /v1/shows/recommendations/{id} are registered but return a hard-coded empty array with 200 - a fabricated 200, which this repo forbids. They are not recorded as parity anywhere above; either implement them or make them 501 (follow-up, not this PR)."
+sections:
+  - name: "Calendars"
+    rows:
+      - trakt: "GET /calendars/all/movies/{start_date}/{days}"
+        ours: "GET /v1/calendars/all/movies/{start_date}/{days}"
+        status: implemented
+        rationale: "Serves real rows from movies.released inside the window (calendar.handleCalendarMovies), paginated; the Trakt-shaped path and params are identical."
+      - trakt: "GET /calendars/all/dvd/{start_date}/{days}"
+        ours: ""
+        status: blocked-data
+        rationale: "movies carries a single released DATE; there is no dvd/digital/physical date column, so a DVD calendar cannot be answered without inventing dates."
+      - trakt: "GET /calendars/all/streaming/{start_date}/{days}"
+        ours: ""
+        status: blocked-data
+        rationale: "No streaming-release date is stored; watch providers live in movies.metadata per title (TMDB), not as dated releases."
+      - trakt: "GET /calendars/releases/hot/{start_date}/{days}"
+        ours: ""
+        status: blocked-data
+        rationale: "No unified release feed: 'hot' mixes theatrical, streaming and episode releases in one ranked list; we store only movies.released and episodes.aired_at, with no cross-medium ranking."
+      - trakt: "GET /calendars/releases/hot/new/{start_date}/{days}"
+        ours: "GET /v1/calendars/all/shows/{start_date}/{days}"
+        status: divergent
+        rationale: "The same row set (series premieres in a window) is served by the episode calendar with the subtype as a query param."
+        compat: "ours is ?type=new on the shows calendar; the compat listener maps the /new/{date}/{days} segments onto ?type=new. Ordering differs (date-ordered here, 'hot'-ranked upstream)."
+      - trakt: "GET /calendars/releases/hot/premieres/{start_date}/{days}"
+        ours: "GET /v1/calendars/all/shows/{start_date}/{days}"
+        status: divergent
+        rationale: "Season premieres in a window are served by the episode calendar with ?type=premieres."
+        compat: "?type=premieres (season_number > 1, episode 1); the compat listener maps the path segments onto it."
+      - trakt: "GET /calendars/releases/hot/finales/{start_date}/{days}"
+        ours: "GET /v1/calendars/all/shows/{start_date}/{days}"
+        status: divergent
+        rationale: "Season finales in a window are served by the episode calendar with ?type=finale."
+        compat: "?type=finale (last episode of a season); Trakt spells the segment 'finales', the compat listener must map the name as well as the shape."
+  - name: "Media"
+    rows:
+      - trakt: "GET /media/trending"
+        ours: ""
+        status: blocked-engine
+        rationale: "Per-type feeds exist (/v1/movies/trending, /v1/shows/trending) but a single cross-type ranked feed needs the rankings engine."
+        engine: "rankings/stats engine (issue #5)"
+      - trakt: "GET /media/popular"
+        ours: ""
+        status: blocked-engine
+        rationale: "Our popularity is movies/shows.popularity; one feed ranked across both media types is the rankings engine's job."
+        engine: "rankings/stats engine (issue #5)"
+  - name: "Movies"
+    rows:
+      - trakt: "GET /movies/watched/{period}"
+        ours: ""
+        status: blocked-engine
+        rationale: "Distinct watchers per period is a period-activity aggregate we do not compute yet."
+        engine: "stats/rankings engine (issue #5)"
+      - trakt: "GET /movies/played/{period}"
+        ours: ""
+        status: blocked-engine
+        rationale: "Play counts per period need the same aggregate as watched/{period}."
+        engine: "stats/rankings engine (issue #5)"
+      - trakt: "GET /movies/collected/{period}"
+        ours: ""
+        status: blocked-engine
+        rationale: "Collector counts per period require the rankings engine's period rollups."
+        engine: "stats/rankings engine (issue #5)"
+      - trakt: "GET /movies/anticipated"
+        ours: "GET /v1/media/anticipated"
+        status: divergent
+        rationale: "The watchlist-weighted anticipation score is served by the media-wide anticipated feed, which already filters by type."
+        compat: "ours takes ?type=movie; the compat listener maps /movies/anticipated onto it. Auth is required here (Trakt allows optional auth)."
+      - trakt: "GET /movies/hot"
+        ours: ""
+        status: blocked-engine
+        rationale: "hot is watchers in the last 24 hours; we store no windowed watcher counts (movies/trending is popularity-ordered, not play-ordered)."
+        engine: "stats/rankings engine (issue #5)"
+      - trakt: "GET /movies/streaming/{period}"
+        ours: ""
+        status: blocked-data
+        rationale: "Trakt's streaming list is driven by streaming release dates, which we do not store (see /calendars/all/streaming)."
+      - trakt: "GET /movies/boxoffice"
+        ours: ""
+        status: blocked-data
+        rationale: "No revenue/box-office columns exist and the TMDB ingest does not fetch them."
+      - trakt: "GET /movies/updates/id/{start_date}"
+        ours: "GET /v1/movies/updates/id/{start_date}"
+        status: implemented
+        rationale: "Trakt-ID-keyed update feed, landed with the rest of issue #4's read work; same path and params."
+      - trakt: "GET /movies/{id}/related"
+        ours: ""
+        status: blocked-engine
+        rationale: "Needs the recommendation graph. Note the closest route, GET /v1/movies/recommendations/{id}, is registered but returns a hard-coded empty array, so it is not evidence of parity (see notes)."
+        engine: "recommendations engine (issue #5)"
+      - trakt: "GET /movies/{id}/releases/{country}"
+        ours: ""
+        status: blocked-data
+        rationale: "movies has one released DATE; per-country release types (theatrical/digital/physical) are not modelled."
+      - trakt: "GET /movies/{id}/videos"
+        ours: ""
+        status: blocked-data
+        rationale: "No videos table and no TMDB video ingest, so there is nothing to serve."
+      - trakt: "GET /movies/{id}/comments/{sort}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: buildable on comments(media_type, media_id); no per-item comment listing route exists yet and nothing blocks it."
+      - trakt: "GET /movies/{id}/sentiments"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: we store likes and reactions per comment but have no sentiment scorer, and no issue tracks building one."
+      - trakt: "GET /movies/{id}/studios"
+        ours: ""
+        status: blocked-data
+        rationale: "No production-company table; TMDB company ids are not ingested."
+      - trakt: "GET /movies/{id}/watchnow/{country}"
+        ours: "GET /v1/movies/{id}/watch"
+        status: divergent
+        rationale: "Same TMDB provider payload (flatrate/rent/buy, cached in movies.metadata) served under a different segment with the country as a query param."
+        compat: "compat listener rewrites /movies/{id}/watchnow/{country} -> /v1/movies/{id}/watch?country={country}; the envelope is ours, not Trakt's."
+      - trakt: "GET /movies/{id}/lists/{type}/{sort}"
+        ours: "GET /v1/movies/{id}/lists"
+        status: blocked-engine
+        rationale: "The closest route is registered but answers 501; the per-type/per-sort variant cannot land before the lists engine."
+        engine: "lists engine (issue #5)"
+      - trakt: "GET /movies/{id}/stats"
+        ours: "GET /v1/movies/{id}/stats"
+        status: blocked-engine
+        rationale: "Registered but responds 501 not_implemented by design - it must not be counted as parity."
+        engine: "stats engine (issue #5)"
+      - trakt: "GET /movies/{id}/watching"
+        ours: "GET /v1/movies/{id}/watching"
+        status: blocked-engine
+        rationale: "Registered but responds 501 not_implemented; users currently watching come from the activity/scrobble path."
+        engine: "activity engine"
+  - name: "Shows"
+    rows:
+      - trakt: "GET /shows/watched/{period}"
+        ours: ""
+        status: blocked-engine
+        rationale: "Period distinct watchers for shows need the period-activity aggregate."
+        engine: "stats/rankings engine (issue #5)"
+      - trakt: "GET /shows/played/{period}"
+        ours: ""
+        status: blocked-engine
+        rationale: "Period play counts for shows need the same aggregate."
+        engine: "stats/rankings engine (issue #5)"
+      - trakt: "GET /shows/collected/{period}"
+        ours: ""
+        status: blocked-engine
+        rationale: "Period collector counts need the rankings engine rollups."
+        engine: "stats/rankings engine (issue #5)"
+      - trakt: "GET /shows/anticipated"
+        ours: "GET /v1/media/anticipated"
+        status: divergent
+        rationale: "Watchlist-weighted anticipation, already filtered by type on the media-wide feed."
+        compat: "ours takes ?type=show; the compat listener maps /shows/anticipated onto it."
+      - trakt: "GET /shows/hot"
+        ours: ""
+        status: blocked-engine
+        rationale: "hot needs windowed watcher counts we do not compute (shows/trending is popularity-ordered)."
+        engine: "stats/rankings engine (issue #5)"
+      - trakt: "GET /shows/streaming/{period}"
+        ours: ""
+        status: blocked-data
+        rationale: "Driven by streaming release dates, which are not stored (see /calendars/all/streaming)."
+      - trakt: "GET /shows/updates/id/{start_date}"
+        ours: "GET /v1/shows/updates/id/{start_date}"
+        status: implemented
+        rationale: "Trakt-ID-keyed update feed; same path and params."
+      - trakt: "GET /shows/{id}/related"
+        ours: ""
+        status: blocked-engine
+        rationale: "Needs the recommendation graph; GET /v1/shows/recommendations/{id} exists but returns a hard-coded empty array (see notes)."
+        engine: "recommendations engine (issue #5)"
+      - trakt: "GET /shows/{id}/videos"
+        ours: ""
+        status: blocked-data
+        rationale: "No videos table and no TMDB video ingest."
+      - trakt: "GET /shows/{id}/comments/{sort}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: buildable on comments(media_type, media_id); no per-item comment listing route yet."
+      - trakt: "GET /shows/{id}/sentiments"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: no sentiment scorer exists and none is planned."
+      - trakt: "GET /shows/{id}/studios"
+        ours: ""
+        status: blocked-data
+        rationale: "No production-company table; shows.network is a network, not the studio list Trakt returns."
+      - trakt: "GET /shows/{id}/certifications"
+        ours: ""
+        status: blocked-data
+        rationale: "shows.certification is a single value; Trakt returns certifications keyed by country, which is not modelled."
+      - trakt: "GET /shows/{id}/next_episode"
+        ours: "GET /v1/shows/{id}/next_episode"
+        status: implemented
+        rationale: "Landed: earliest episode airing today or later, with the same 204-when-none contract."
+      - trakt: "GET /shows/{id}/last_episode"
+        ours: "GET /v1/shows/{id}/last_episode"
+        status: implemented
+        rationale: "Landed: most recently aired episode, 204 when there is none."
+      - trakt: "GET /shows/{id}/progress/watched"
+        ours: ""
+        status: blocked-engine
+        rationale: "Per-show watched progress is an aggregate over user_history that the stats engine owns."
+        engine: "stats/rankings engine (issue #5)"
+      - trakt: "GET /shows/{id}/progress/collection"
+        ours: ""
+        status: blocked-engine
+        rationale: "Per-show collected progress needs the same rollup over user_collection."
+        engine: "stats/rankings engine (issue #5)"
+      - trakt: "GET /shows/{id}/progress/watched/reset"
+        ours: ""
+        status: blocked-engine
+        rationale: "Resetting progress can only exist once progress is computed and stored."
+        engine: "stats/rankings engine (issue #5)"
+      - trakt: "POST /shows/{id}/progress/watched/reset"
+        ours: ""
+        status: blocked-engine
+        rationale: "Same as the GET reset: the write path needs a stored progress aggregate to reset."
+        engine: "stats/rankings engine (issue #5)"
+      - trakt: "GET /shows/{id}/lists/{type}/{sort}"
+        ours: "GET /v1/shows/{id}/lists"
+        status: blocked-engine
+        rationale: "The closest route answers 501; the type/sort variant needs the lists engine."
+        engine: "lists engine (issue #5)"
+      - trakt: "GET /shows/{id}/watchnow/{country}"
+        ours: "GET /v1/shows/{id}/watch"
+        status: divergent
+        rationale: "Same TMDB provider payload, different segment name and country-in-query shape."
+        compat: "compat listener rewrites /shows/{id}/watchnow/{country} -> /v1/shows/{id}/watch?country={country}."
+      - trakt: "GET /shows/{id}/stats"
+        ours: "GET /v1/shows/{id}/stats"
+        status: blocked-engine
+        rationale: "Registered but responds 501 not_implemented; not parity."
+        engine: "stats engine (issue #5)"
+      - trakt: "GET /shows/{id}/watching"
+        ours: "GET /v1/shows/{id}/watching"
+        status: blocked-engine
+        rationale: "Registered but responds 501 not_implemented; needs the activity engine."
+        engine: "activity engine"
+      - trakt: "GET /shows/{id}/seasons/{season}"
+        ours: "GET /v1/seasons/{id}"
+        status: divergent
+        rationale: "The same season record is served top-level (flat ids), not nested under the show."
+        compat: "ours resolves a season by our internal id; the compat listener must resolve show+season_number to that id and nest the payload."
+      - trakt: "GET /shows/{id}/seasons/{season}/episodes/{episode}"
+        ours: "GET /v1/episodes/{id}"
+        status: divergent
+        rationale: "The same episode record is served top-level (flat ids), not nested under show/season."
+        compat: "same as the season row: the listener resolves show+season+episode to our episode id and nests the payload."
+      - trakt: "GET /shows/{id}/seasons/{season}/translations/{lang}"
+        ours: "GET /v1/shows/{id}/seasons/{season}/translations/{lang}"
+        status: implemented
+        rationale: "Nested season translations already exist in Trakt shape."
+      - trakt: "GET /shows/{id}/seasons/{season}/ratings"
+        ours: "GET /v1/seasons/{id}/ratings"
+        status: divergent
+        rationale: "Season rating distribution is served flat, keyed by our season id."
+        compat: "listener resolves show+season_number to the flat route; the body shape (distribution) is already shared."
+      - trakt: "GET /shows/{id}/seasons/{season}/stats"
+        ours: "GET /v1/seasons/{id}/stats"
+        status: divergent
+        rationale: "Season stats (watchers/plays/rating) are served flat, keyed by our season id."
+        compat: "listener resolves show+season_number to the flat route."
+      - trakt: "GET /shows/{id}/seasons/{season}/comments"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: comments(media_type, media_id) can already hold a season comment, but no per-season listing route exists."
+      - trakt: "GET /shows/{id}/seasons/{season}/lists"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: list items can reference a season, but no per-season list route exists."
+      - trakt: "GET /shows/{id}/seasons/{season}/people"
+        ours: ""
+        status: blocked-data
+        rationale: "Season credits are not ingested: the credits table takes a media_type, but only movie/show credits are written today."
+      - trakt: "GET /shows/{id}/seasons/{season}/videos"
+        ours: ""
+        status: blocked-data
+        rationale: "No videos table and no TMDB video ingest."
+      - trakt: "GET /shows/{id}/seasons/{s}/episodes/{e}/comments"
+        ours: "GET /v1/episodes/{id}/comments"
+        status: divergent
+        rationale: "Episode comments exist, served flat by episode id rather than nested."
+        compat: "listener resolves the nested episode to our id and delegates to the flat route."
+      - trakt: "GET /shows/{id}/seasons/{s}/episodes/{e}/lists"
+        ours: "GET /v1/episodes/{id}/lists"
+        status: divergent
+        rationale: "Lists containing the episode exist, served flat by episode id."
+        compat: "listener resolves the nested episode to our id and delegates to the flat route."
+      - trakt: "GET /shows/{id}/seasons/{s}/episodes/{e}/people"
+        ours: ""
+        status: blocked-data
+        rationale: "Episode credits are not ingested (credits table is written for movie/show only)."
+      - trakt: "GET /shows/{id}/seasons/{s}/episodes/{e}/videos"
+        ours: ""
+        status: blocked-data
+        rationale: "No videos table and no TMDB video ingest."
+  - name: "People"
+    rows:
+      - trakt: "GET /people/{id}/lists/{type}/{sort}"
+        ours: ""
+        status: blocked-engine
+        rationale: "Lists containing a person need the lists engine; no per-person list route exists."
+        engine: "lists engine (issue #5)"
+  - name: "Recommendations"
+    rows:
+      - trakt: "DELETE /recommendations/movies/{id}"
+        ours: ""
+        status: blocked-engine
+        rationale: "Hiding a recommendation is a decision the recommendations engine does not model yet (the user_hidden table is not wired to it)."
+        engine: "recommendations engine (issue #5)"
+      - trakt: "DELETE /recommendations/shows/{id}"
+        ours: ""
+        status: blocked-engine
+        rationale: "Same as the movie dismissal: no per-item hide decision is modelled."
+        engine: "recommendations engine (issue #5)"
+  - name: "Sync"
+    rows:
+      - trakt: "GET /sync/last_activities"
+        ours: "GET /v1/sync/last_activities"
+        status: implemented
+        rationale: "Landed with issue #6: MAX() stamps per collection, same path and contract."
+      - trakt: "GET /sync/collection/movies"
+        ours: "GET /v1/sync/collection"
+        status: divergent
+        rationale: "The collection is served with the media type as a query param."
+        compat: "ours is /v1/sync/collection?type=movie; Trakt's segment is plural ('movies') and the compat listener maps the path to the query value."
+      - trakt: "GET /sync/collection/shows"
+        ours: "GET /v1/sync/collection"
+        status: divergent
+        rationale: "Same route with ?type=show."
+        compat: "listener maps /sync/collection/shows -> /v1/sync/collection?type=show."
+      - trakt: "GET /sync/collection/episodes"
+        ours: ""
+        status: blocked-data
+        rationale: "user_collection.media_type is 'movie' or 'show' only; an episode collection row cannot be stored."
+      - trakt: "GET /sync/watchlist/movies"
+        ours: "GET /v1/sync/watchlist"
+        status: divergent
+        rationale: "Watchlist is served with ?type= instead of a path segment."
+        compat: "listener maps /sync/watchlist/movies -> /v1/sync/watchlist?type=movie."
+      - trakt: "GET /sync/watchlist/shows"
+        ours: "GET /v1/sync/watchlist"
+        status: divergent
+        rationale: "Same route with ?type=show."
+        compat: "listener maps /sync/watchlist/shows -> /v1/sync/watchlist?type=show."
+      - trakt: "GET /sync/watchlist/seasons"
+        ours: ""
+        status: blocked-data
+        rationale: "user_watchlist.media_type is 'movie' or 'show' only."
+      - trakt: "GET /sync/watchlist/episodes"
+        ours: ""
+        status: blocked-data
+        rationale: "user_watchlist.media_type is 'movie' or 'show' only."
+      - trakt: "GET /sync/ratings/movies"
+        ours: "GET /v1/sync/ratings"
+        status: divergent
+        rationale: "Ratings are served with ?type=; ratings support all four media types."
+        compat: "listener maps /sync/ratings/movies -> /v1/sync/ratings?type=movie."
+      - trakt: "GET /sync/ratings/shows"
+        ours: "GET /v1/sync/ratings"
+        status: divergent
+        rationale: "Same route with ?type=show."
+        compat: "listener maps the segment to ?type=show."
+      - trakt: "GET /sync/ratings/seasons"
+        ours: "GET /v1/sync/ratings"
+        status: divergent
+        rationale: "Same route with ?type=season."
+        compat: "listener maps the segment to ?type=season."
+      - trakt: "GET /sync/ratings/episodes"
+        ours: "GET /v1/sync/ratings"
+        status: divergent
+        rationale: "Same route with ?type=episode."
+        compat: "listener maps the segment to ?type=episode."
+      - trakt: "GET /sync/favorites/movies"
+        ours: "GET /v1/sync/favorites"
+        status: divergent
+        rationale: "Favorites are served with ?type= (favorites store movie/show)."
+        compat: "listener maps /sync/favorites/movies -> /v1/sync/favorites?type=movie."
+      - trakt: "GET /sync/favorites/shows"
+        ours: "GET /v1/sync/favorites"
+        status: divergent
+        rationale: "Same route with ?type=show."
+        compat: "listener maps the segment to ?type=show."
+      - trakt: "GET /sync/history/movies"
+        ours: "GET /v1/sync/history"
+        status: divergent
+        rationale: "History is served with ?type=movie|episode."
+        compat: "listener maps /sync/history/movies -> /v1/sync/history?type=movie."
+      - trakt: "GET /sync/history/episodes"
+        ours: "GET /v1/sync/history"
+        status: divergent
+        rationale: "Same route with ?type=episode."
+        compat: "listener maps the segment to ?type=episode."
+      - trakt: "GET /sync/history/shows"
+        ours: "GET /v1/sync/history"
+        status: divergent
+        rationale: "Trakt groups episode plays by show; we serve the same plays flat by episode."
+        compat: "not a pure rewrite: the listener must request ?type=episode and regroup by show for the Trakt envelope."
+      - trakt: "GET /sync/history/seasons"
+        ours: "GET /v1/sync/history"
+        status: divergent
+        rationale: "Trakt groups episode plays by season; we serve the same plays flat by episode."
+        compat: "not a pure rewrite: the listener must request ?type=episode and regroup by season."
+      - trakt: "GET /sync/collection/{type}"
+        ours: "GET /v1/sync/collection"
+        status: divergent
+        rationale: "Media type is a query param; the ?extended=min / ?minimal response narrowing is not implemented - decision: narrowing is an optimisation, and a client that sends it still receives a valid (fuller) body, so no shim is planned."
+        compat: "listener maps /sync/collection/{type} -> /v1/sync/collection?type=...; the narrowing params are accepted and ignored."
+  - name: "Users"
+    rows:
+      - trakt: "GET /users/{id}/collection"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: haaku profiles are private by default; a public collection read surface is a product decision for the maintainers to ratify, not an engine gap. Covers the minimal/extended variants too."
+      - trakt: "GET /users/{id}/collection/{type}"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: same public-profile decision as /users/{id}/collection."
+      - trakt: "GET /users/{id}/history"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: same public-profile decision; the data exists but the surface is not shipped."
+      - trakt: "GET /users/{id}/history/{type}"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: same public-profile decision as /users/{id}/history."
+      - trakt: "GET /users/{id}/history/{type}/{id}"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: same public-profile decision; the per-item variant included."
+      - trakt: "GET /users/{id}/ratings"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: public rating surfaces are part of the same profile decision."
+      - trakt: "GET /users/{id}/ratings/{type}"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: same public-profile decision as /users/{id}/ratings."
+      - trakt: "GET /users/{id}/watchlist"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: a public watchlist read is part of the same profile decision."
+      - trakt: "GET /users/{id}/watching"
+        ours: ""
+        status: blocked-engine
+        rationale: "Users currently watching comes from live scrobble sessions and shares the activity engine's blocker."
+        engine: "activity engine"
+      - trakt: "GET /users/{id}/comments/{comment_type}/{type}"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: a per-user comment index is a public-profile surface, same decision as the collection read."
+      - trakt: "GET /users/{id}/notes/{type}"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: notes are private by design (user_notes is owner-scoped); exposing another user's notes contradicts that."
+      - trakt: "GET /users/{id}/likes/{type}"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: we expose likes per item (lists/{id}/likes, comments/{id}/likes); a per-user likes index is a profile surface, not shipped."
+      - trakt: "GET /users/me/likes/comments"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the caller's own liked comments are readable from comment_likes; no route exists yet and nothing blocks it."
+      - trakt: "GET /users/me/likes/lists"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: same as me/likes/comments, over list_likes."
+      - trakt: "PUT /users/me/avatar"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: avatars were removed in favour of Clerk identity; there is no platform-neutral replacement yet, and this row is the written record the issue asked for."
+      - trakt: "DELETE /users/me/avatar"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: same avatar decision as PUT /users/me/avatar."
+      - trakt: "PUT /users/me/set_cover"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: profile imagery is Clerk/image-host territory; no cover upload is planned."
+      - trakt: "GET /users/settings"
+        ours: "GET /v1/users/me/settings"
+        status: divergent
+        rationale: "Settings are served under an extra /me segment."
+        compat: "listener maps /users/settings -> /v1/users/me/settings for an authenticated caller."
+  - name: "Watch Now"
+    rows:
+      - trakt: "GET /watchnow/sources"
+        ours: ""
+        status: blocked-data
+        rationale: "There is no provider catalogue table: providers are TMDB per-title metadata (metadata JSONB), with no stable id list or country mapping to serve."
+      - trakt: "GET /watchnow/sources/{countryCode}"
+        ours: ""
+        status: blocked-data
+        rationale: "Same gap: no catalogue to filter by country."
+      - trakt: "GET /watchnow/justwatch_links/{country}"
+        ours: ""
+        status: blocked-data
+        rationale: "No JustWatch link/deeplink data is stored anywhere."
+  - name: "Team"
+    rows:
+      - trakt: "GET /team"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: /team lists Trakt's staff; a self-hosted instance has no equivalent and no client depends on it."
+  - name: "Search"
+    rows:
+      - trakt: "GET /search/{type}"
+        ours: "GET /v1/search"
+        status: divergent
+        rationale: "Search is served with the media type as a query param rather than a path segment."
+        compat: "listener maps /search/movie|show|episode|person|list -> /v1/search?type=...; the result envelope also differs (ours is a bare array)."
+      - trakt: "GET /search/{id_type}/{id}"
+        ours: "GET /v1/search/lookup"
+        status: divergent
+        rationale: "Lookup by external id is served with id_type/id as query params."
+        compat: "listener maps /search/tmdb/{id} -> /v1/search/lookup?id_type=tmdb&id={id}."
+      - trakt: "POST /search"
+        ours: ""
+        status: blocked-data
+        rationale: "Persisting a recent search needs a recent-searches table, which does not exist (search is stateless today)."
+      - trakt: "GET /search/recent"
+        ours: ""
+        status: blocked-data
+        rationale: "No recent-searches store exists to read back."
+      - trakt: "GET /search/recent_by_id/{type}"
+        ours: ""
+        status: blocked-data
+        rationale: "Same missing store; the Trakt id-keyed variant too."
+  - name: "Comments"
+    rows:
+      - trakt: "GET /comments/trending/{comment_type}/{type}"
+        ours: "GET /v1/comments/trending"
+        status: divergent
+        rationale: "Trending comments are served with comment_type and media_type as CSV query params."
+        compat: "listener maps the two segments onto ?comment_type=&media_type=; the window (7 days) is the same."
+  - name: "Lists"
+    rows:
+      - trakt: "GET /lists/trending/{type}"
+        ours: "GET /v1/lists/trending"
+        status: divergent
+        rationale: "Trending lists are served without the list-type segment."
+        compat: "the type segment is not honoured yet (our route ranks all list types); the listener can pass it through unchanged but cannot filter until we do."
+      - trakt: "GET /lists/popular/{type}"
+        ours: "GET /v1/lists/popular"
+        status: divergent
+        rationale: "Popular lists are served without the list-type segment."
+        compat: "same as /lists/trending/{type}: the segment is currently ignored."
+  - name: "Custom surface (non-Trakt)"
+    rows:
+      - trakt: ""
+        ours: "GET /v1/webhooks"
+        status: out-of-scope
+        rationale: "custom: our own webhook endpoint management + delivery log; no Trakt equivalent, no Trakt client will call it."
+      - trakt: ""
+        ours: "GET /v1/integrations"
+        status: out-of-scope
+        rationale: "custom: integration tokens for third-party pushes (Silo-style receiver); not a Trakt surface."
+      - trakt: ""
+        ours: "GET /v1/users/me/smart-lists"
+        status: out-of-scope
+        rationale: "custom: saved query-backed list definitions; a haaku addition."
+      - trakt: ""
+        ours: "GET /v1/users/me/saved_filters/{section}"
+        status: out-of-scope
+        rationale: "custom: per-section saved filters."
+      - trakt: ""
+        ours: "GET /v1/users/me/notes"
+        status: out-of-scope
+        rationale: "custom: owner-scoped personal notes (see also the /users/{id}/notes row)."
+      - trakt: ""
+        ours: "GET /v1/users/hidden/{section}"
+        status: out-of-scope
+        rationale: "custom: per-section hidden items, our analogue of Trakt's hidden sync without the Trakt path."
+      - trakt: ""
+        ours: "GET /v1/users/me/activity"
+        status: out-of-scope
+        rationale: "custom: the caller's activity feed; Trakt has no matching read path."
+      - trakt: ""
+        ours: "POST /v1/syncs"
+        status: out-of-scope
+        rationale: "custom: sync sessions (request/response batches) - a haaku concept, deliberately not a Trakt route."
+      - trakt: ""
+        ours: "GET /v1/reports"
+        status: out-of-scope
+        rationale: "custom: moderation queue for content reports."
+      - trakt: ""
+        ours: "POST /v1/dev/clerk-webhook-simulate"
+        status: out-of-scope
+        rationale: "custom: development-only Clerk webhook simulator, registered outside production only."
+      - trakt: ""
+        ours: "GET /v1/syncs/{id}/paused"
+        status: blocked-engine
+        rationale: "Custom 501: unmatched/paused items require the sync engine."
+        engine: "sync engine (issue #6)"
+      - trakt: ""
+        ours: "GET /v1/syncs/{id}/skipped"
+        status: blocked-engine
+        rationale: "Custom 501: skipped items require the sync engine."
+        engine: "sync engine (issue #6)"
