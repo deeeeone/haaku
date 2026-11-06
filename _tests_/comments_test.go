@@ -19,14 +19,14 @@ func TestCommentRoutesRegistered(t *testing.T) {
 	routes := openapi.AllRoutes()
 
 	expectedPaths := map[string]bool{
-		"/v1/comments/trending":             true,
-		"/v1/comments/recent":               true,
-		"/v1/comments/updates":              true,
-		"/v1/comments/{id}":                 true,
-		"/v1/comments/{id}/replies":         true,
-		"/v1/comments/{id}/reactions":       true,
-		"/v1/comments/{id}/likes":           true,
-		"/v1/comments/{id}/item":            true,
+		"/v1/comments/trending":       true,
+		"/v1/comments/recent":         true,
+		"/v1/comments/updates":        true,
+		"/v1/comments/{id}":           true,
+		"/v1/comments/{id}/replies":   true,
+		"/v1/comments/{id}/reactions": true,
+		"/v1/comments/{id}/likes":     true,
+		"/v1/comments/{id}/item":      true,
 	}
 
 	found := make(map[string]bool)
@@ -45,12 +45,12 @@ func TestCommentRoutesRequireAuth(t *testing.T) {
 	routes := openapi.AllRoutes()
 
 	authRequiredPaths := map[string]bool{
-		"/v1/comments":                 true,
-		"/v1/comments/{id}":            true,
-		"/v1/comments/{id}/replies":    true,
-		"/v1/comments/{id}/like":       true,
-		"/v1/comments/{id}/reactions":  true,
-		"/v1/comments/{id}/report":     true,
+		"/v1/comments":                true,
+		"/v1/comments/{id}":           true,
+		"/v1/comments/{id}/replies":   true,
+		"/v1/comments/{id}/like":      true,
+		"/v1/comments/{id}/reactions": true,
+		"/v1/comments/{id}/report":    true,
 	}
 
 	found := make(map[string]string)

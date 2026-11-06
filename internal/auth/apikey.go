@@ -329,7 +329,7 @@ func getAPIKeysFromClerk(userID string) ([]APIKeyEntry, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -433,7 +433,7 @@ func updateClerkAPIKeys(userID string, keys []APIKeyEntry) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
@@ -475,7 +475,7 @@ func lookupUserByKeyInClerk(prefix, keyHash string) (string, error) {
 		}
 
 		body, err := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		if err != nil {
 			return "", err
 		}

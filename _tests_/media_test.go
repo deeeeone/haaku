@@ -191,7 +191,9 @@ func TestShowResponseJSON(t *testing.T) {
 		t.Fatalf("failed to marshal ShowResponse: %v", err)
 	}
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 	if raw["seasons"] == nil {
 		t.Error("seasons field should not be null")
 	}
@@ -315,7 +317,9 @@ func TestStatsResponseShape(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 	if raw["watchers"] == nil {
 		t.Error("watchers missing")
 	}
@@ -354,7 +358,9 @@ func TestPeopleResponseShape(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 	if raw["cast"] == nil {
 		t.Error("cast missing")
 	}
@@ -384,7 +390,9 @@ func TestEpisodeResponseShape(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 	if raw["title"] != "Pilot" {
 		t.Errorf("title = %v", raw["title"])
 	}
@@ -407,7 +415,9 @@ func TestSeasonResponseShape(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 	if raw["season_number"] == nil {
 		t.Error("season_number missing")
 	}
@@ -422,25 +432,25 @@ func TestMediaRoutesRegistered(t *testing.T) {
 	routes := openapi.AllRoutes()
 
 	expectedPaths := map[string]bool{
-		"/v1/movies/{id}":                                     true,
-		"/v1/movies/{id}/people":                              true,
-		"/v1/movies/{id}/ratings":                             true,
-		"/v1/movies/{id}/stats":                               true,
-		"/v1/movies/{id}/lists":                               true,
-		"/v1/movies/{id}/watching":                            true,
-		"/v1/shows/{id}":                                      true,
-		"/v1/shows/{id}/seasons":                              true,
-		"/v1/shows/{id}/seasons/{season}":                     true,
-		"/v1/shows/{id}/seasons/{season}/episodes":            true,
-		"/v1/shows/{id}/seasons/{season}/episodes/{episode}":  true,
-		"/v1/shows/{id}/people":                               true,
-		"/v1/shows/{id}/ratings":                              true,
-		"/v1/shows/{id}/stats":                                true,
-		"/v1/shows/{id}/lists":                                true,
-		"/v1/shows/{id}/watching":                             true,
-		"/v1/people/{id}":                                     true,
-		"/v1/people/{id}/movies":                              true,
-		"/v1/people/{id}/shows":                               true,
+		"/v1/movies/{id}":                                    true,
+		"/v1/movies/{id}/people":                             true,
+		"/v1/movies/{id}/ratings":                            true,
+		"/v1/movies/{id}/stats":                              true,
+		"/v1/movies/{id}/lists":                              true,
+		"/v1/movies/{id}/watching":                           true,
+		"/v1/shows/{id}":                                     true,
+		"/v1/shows/{id}/seasons":                             true,
+		"/v1/shows/{id}/seasons/{season}":                    true,
+		"/v1/shows/{id}/seasons/{season}/episodes":           true,
+		"/v1/shows/{id}/seasons/{season}/episodes/{episode}": true,
+		"/v1/shows/{id}/people":                              true,
+		"/v1/shows/{id}/ratings":                             true,
+		"/v1/shows/{id}/stats":                               true,
+		"/v1/shows/{id}/lists":                               true,
+		"/v1/shows/{id}/watching":                            true,
+		"/v1/people/{id}":                                    true,
+		"/v1/people/{id}/movies":                             true,
+		"/v1/people/{id}/shows":                              true,
 	}
 
 	found := make(map[string]bool)

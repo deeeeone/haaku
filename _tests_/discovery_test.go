@@ -18,12 +18,12 @@ func TestDiscoveryRoutesRegistered(t *testing.T) {
 	routes := openapi.AllRoutes()
 
 	expectedPaths := map[string]bool{
-		"/v1/movies/trending":               true,
-		"/v1/movies/popular":                true,
-		"/v1/movies/recommendations/{id}":   true,
-		"/v1/shows/trending":                true,
-		"/v1/shows/popular":                 true,
-		"/v1/shows/recommendations/{id}":    true,
+		"/v1/movies/trending":             true,
+		"/v1/movies/popular":              true,
+		"/v1/movies/recommendations/{id}": true,
+		"/v1/shows/trending":              true,
+		"/v1/shows/popular":               true,
+		"/v1/shows/recommendations/{id}":  true,
 	}
 
 	found := make(map[string]bool)
@@ -43,12 +43,12 @@ func TestDiscoveryRoutesHaveCorrectTags(t *testing.T) {
 	routes := openapi.AllRoutes()
 
 	discoveryPaths := map[string]bool{
-		"/v1/movies/trending":               true,
-		"/v1/movies/popular":                true,
-		"/v1/movies/recommendations/{id}":   true,
-		"/v1/shows/trending":                true,
-		"/v1/shows/popular":                 true,
-		"/v1/shows/recommendations/{id}":    true,
+		"/v1/movies/trending":             true,
+		"/v1/movies/popular":              true,
+		"/v1/movies/recommendations/{id}": true,
+		"/v1/shows/trending":              true,
+		"/v1/shows/popular":               true,
+		"/v1/shows/recommendations/{id}":  true,
 	}
 
 	for _, r := range routes {

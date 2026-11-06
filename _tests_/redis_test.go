@@ -144,17 +144,17 @@ func TestBuildCachedAPIKeyKey(t *testing.T) {
 
 func TestPrefixesNonEmpty(t *testing.T) {
 	prefixes := map[string]string{
-		"APIKey":         redis.RedisAPIKeyPrefix,
-		"UserDetails":    redis.RedisUserDetailsPrefix,
-		"JWKS":           redis.RedisJWKSPrefix,
-		"MediaResponse":  redis.RedisMediaResponsePrefix,
-		"UserVersion":    redis.RedisUserVersionPrefix,
-		"MediaVersion":   redis.RedisMediaVersionPrefix,
-		"ListVersion":    redis.RedisListVersionPrefix,
-		"NotFound":       redis.RedisMediaNotFoundPrefix,
-		"Leaderboard":    redis.RedisLeaderboardPrefix,
-		"SearchResults":  redis.RedisSearchResultsPrefix,
-		"RateLimit":      redis.RedisRateLimitPrefix,
+		"APIKey":        redis.RedisAPIKeyPrefix,
+		"UserDetails":   redis.RedisUserDetailsPrefix,
+		"JWKS":          redis.RedisJWKSPrefix,
+		"MediaResponse": redis.RedisMediaResponsePrefix,
+		"UserVersion":   redis.RedisUserVersionPrefix,
+		"MediaVersion":  redis.RedisMediaVersionPrefix,
+		"ListVersion":   redis.RedisListVersionPrefix,
+		"NotFound":      redis.RedisMediaNotFoundPrefix,
+		"Leaderboard":   redis.RedisLeaderboardPrefix,
+		"SearchResults": redis.RedisSearchResultsPrefix,
+		"RateLimit":     redis.RedisRateLimitPrefix,
 	}
 	for name, pfx := range prefixes {
 		if pfx == "" {
@@ -219,9 +219,9 @@ func TestCircuitBreakerEnvConfig(t *testing.T) {
 	save := func(k string) string { return os.Getenv(k) }
 
 	t.Run("defaults", func(t *testing.T) {
-		os.Unsetenv("REDIS_CB_FAILURE_THRESHOLD")
-		os.Unsetenv("REDIS_CB_TIMEOUT_SEC")
-		os.Unsetenv("REDIS_CB_SUCCESS_THRESHOLD")
+		_ = os.Unsetenv("REDIS_CB_FAILURE_THRESHOLD")
+		_ = os.Unsetenv("REDIS_CB_TIMEOUT_SEC")
+		_ = os.Unsetenv("REDIS_CB_SUCCESS_THRESHOLD")
 
 		// We can only check that the exported functions exist
 		state := redis.GetCircuitBreakerState()
@@ -231,7 +231,7 @@ func TestCircuitBreakerEnvConfig(t *testing.T) {
 	})
 
 	t.Run("custom_threshold", func(t *testing.T) {
-		os.Setenv("REDIS_CB_FAILURE_THRESHOLD", "500")
+		_ = os.Setenv("REDIS_CB_FAILURE_THRESHOLD", "500")
 		// Circuit breaker is package-level singleton, can't easily reset.
 		// Just verify env is read correctly by checking it changes behavior.
 		// The actual test is that the function doesn't panic.
@@ -244,9 +244,9 @@ func TestCircuitBreakerEnvConfig(t *testing.T) {
 	// Restore
 	for _, k := range []string{"REDIS_CB_FAILURE_THRESHOLD", "REDIS_CB_TIMEOUT_SEC", "REDIS_CB_SUCCESS_THRESHOLD"} {
 		if v := save(k); v != "" {
-			os.Setenv(k, v)
+			_ = os.Setenv(k, v)
 		} else {
-			os.Unsetenv(k)
+			_ = os.Unsetenv(k)
 		}
 	}
 }

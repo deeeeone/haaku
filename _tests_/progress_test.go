@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	_ "trakt-api/internal/handlers/progress"
 	"trakt-api/internal/handlers/media"
+	_ "trakt-api/internal/handlers/progress"
 	"trakt-api/internal/openapi"
 )
 
@@ -38,8 +38,8 @@ func TestPlaybackOpenAPIRoutesRegistered(t *testing.T) {
 // TestMoviePlaybackResponseShape verifies the movie playback JSON shape.
 func TestMoviePlaybackResponseShape(t *testing.T) {
 	resp := struct {
-		Progress float64            `json:"progress"`
-		PausedAt string             `json:"paused_at"`
+		Progress float64             `json:"progress"`
+		PausedAt string              `json:"paused_at"`
 		Movie    media.MovieResponse `json:"movie"`
 	}{
 		Progress: 0.75,

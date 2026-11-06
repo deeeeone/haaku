@@ -56,7 +56,7 @@ func TestParseSyncID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("valid id status = %d, want 200", resp.StatusCode)
 	}
@@ -66,7 +66,7 @@ func TestParseSyncID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
-	resp2.Body.Close()
+	_ = resp2.Body.Close()
 	if resp2.StatusCode != http.StatusBadRequest {
 		t.Errorf("non-numeric id status = %d, want 400", resp2.StatusCode)
 	}
@@ -76,7 +76,7 @@ func TestParseSyncID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
-	resp3.Body.Close()
+	_ = resp3.Body.Close()
 	if resp3.StatusCode != http.StatusBadRequest {
 		t.Errorf("zero id status = %d, want 400", resp3.StatusCode)
 	}

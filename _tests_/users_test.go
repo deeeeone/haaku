@@ -61,7 +61,8 @@ func TestUsersRoutesHaveCorrectTags(t *testing.T) {
 }
 
 // TestUsersRoutesAuthAnnotations verifies auth annotations on users routes.
-func TestUsersRoutesAuthAnnotations(t *testing.T) {	routes := openapi.AllRoutes()
+func TestUsersRoutesAuthAnnotations(t *testing.T) {
+	routes := openapi.AllRoutes()
 
 	requiredAuth := map[string]bool{
 		"/v1/users/me":          true,
@@ -436,7 +437,9 @@ func TestUpdateProfileRequestOmitEmpty(t *testing.T) {
 
 	data, _ := json.Marshal(req)
 	var parsed map[string]interface{}
-	json.Unmarshal(data, &parsed)
+	if err := json.Unmarshal(data, &parsed); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 
 	if len(parsed) != 0 {
 		t.Log("empty body has keys — handler should reject with 'no fields to update'")
@@ -487,7 +490,7 @@ func TestUsersMeRoutePrecedence(t *testing.T) {
 			if err != nil {
 				t.Fatalf("request failed: %v", err)
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode != tc.want {
 				t.Errorf("%s %s: got %d, want %d (would mean /users/:id swallowed /users/me)",
 					tc.method, tc.path, resp.StatusCode, tc.want)
@@ -501,7 +504,7 @@ func TestUsersMeRoutePrecedence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode == http.StatusUnauthorized {
 		t.Error("GET /users/someuser returned 401 — public /users/:id route not reachable")
 	}

@@ -91,9 +91,6 @@ func requireClient() (*redis.Client, error) {
 	return rdb, nil
 }
 
-// isClientNil returns true if Redis is not initialized.
-func isClientNil() bool { return rdb == nil }
-
 // ---------------------------------------------------------------------------
 // Circuit-breaker-wrapped core operations
 // ---------------------------------------------------------------------------

@@ -127,7 +127,7 @@ func (c *ClerkClient) fetchJWKS() error {
 	if err != nil {
 		return fmt.Errorf("jwks fetch failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("jwks fetch returned status %d", resp.StatusCode)
@@ -336,7 +336,7 @@ func (c *ClerkClient) GetUser(userID string) (*ClerkUser, error) {
 	if err != nil {
 		return nil, fmt.Errorf("api call: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode == http.StatusNotFound {
 		return nil, fmt.Errorf("user not found: %s", userID)
@@ -377,7 +377,7 @@ func (c *ClerkClient) UpdateUserMetadata(userID string, metadata map[string]any)
 	if err != nil {
 		return fmt.Errorf("api call: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
@@ -403,7 +403,7 @@ func (c *ClerkClient) DeleteUser(userID string) error {
 	if err != nil {
 		return fmt.Errorf("api call: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)

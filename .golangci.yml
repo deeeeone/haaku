@@ -1,0 +1,56 @@
+# golangci-lint configuration — v2 schema.
+#
+# Committed so every machine and CI lint identically: `make lint-go`.
+# The gate is green on main. If a change trips it, fix the code; if a rule is
+# genuinely wrong for this repo, exclude it here with a reason, never by running
+# with a different config or a --no-config flag.
+#
+# Notes on the choices:
+#   * `default: standard` is errcheck, govet, ineffassign, staticcheck, unused —
+#     the checks that catch real defects. Everything else is opt-in below.
+#   * `_tests_/` is a standalone `command-line-arguments` package (a leading
+#     underscore hides it from `./...`), so it is linted by an explicit second
+#     invocation in `make lint-go`, exactly like it is tested.
+#   * gofmt runs as a formatter, so `golangci-lint run` also fails on an
+#     unformatted file.
+
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: standard
+  enable:
+    - copyloopvar # Go 1.22 loop-var semantics: catch leftover copies
+    - durationcheck # multiplying two durations is always a bug
+    - misspell # typos in comments and strings
+    - nilerr # returning nil when err != nil
+    - unconvert # redundant conversions
+    - whitespace # leading/trailing newlines in blocks
+  settings:
+    errcheck:
+      # A failed type assertion in this codebase is always followed by a
+      # fallback path; asserting every one of them would add noise, not safety.
+      check-type-assertions: false
+      check-blank: false
+    staticcheck:
+      checks:
+        # golangci-lint's stock staticcheck set, minus the tagged-switch advice
+        # (cosmetic; the biggest instance is a ~75 line raw-SQL if/else chain
+        # where the rewrite is pure re-indentation).
+        - all
+        - -ST1000
+        - -ST1003
+        - -ST1016
+        - -ST1020
+        - -ST1021
+        - -ST1022
+        - -QF1003
+  exclusions:
+    generated: lax
+
+formatters:
+  enable:
+    - gofmt

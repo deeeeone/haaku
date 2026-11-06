@@ -653,7 +653,7 @@ func ValidEventTypes() map[string]bool {
 
 func GenerateHMAC(secret string, timestamp int64, body string) string {
 	mac := hmac.New(sha256.New, []byte(secret))
-	mac.Write([]byte(fmt.Sprintf("%d.%s", timestamp, body)))
+	_, _ = fmt.Fprintf(mac, "%d.%s", timestamp, body)
 	return hex.EncodeToString(mac.Sum(nil))
 }
 

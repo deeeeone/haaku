@@ -16,8 +16,8 @@ func TestCollabRoutesRegistered(t *testing.T) {
 	routes := openapi.AllRoutes()
 
 	expectedMethods := map[string]map[string]bool{
-		"/v1/users/me/lists/collaborations":    {"GET": true},
-		"/v1/lists/{id}/collaborators":         {"POST": true, "GET": true},
+		"/v1/users/me/lists/collaborations":      {"GET": true},
+		"/v1/lists/{id}/collaborators":           {"POST": true, "GET": true},
 		"/v1/lists/{id}/collaborators/{user_id}": {"DELETE": true},
 	}
 

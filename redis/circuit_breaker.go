@@ -18,9 +18,14 @@ const (
 )
 
 // Default circuit breaker configuration.
+//
+// NOTE: there is no "stay open" timeout knob. The open -> half-open transition
+// is governed by defaultTestInterval below plus lastTestTime; REDIS_CB_TIMEOUT_SEC
+// and a defaultCircuitTimeout constant used to be declared here but nothing read
+// them, so they were removed with the CI gates. Adding a stay-open phase is a
+// behaviour change and needs its own test.
 const (
 	defaultFailureThreshold = 250              // Open after 250 consecutive failures
-	defaultCircuitTimeout   = 60 * time.Second // Stay open for 60s before testing
 	defaultSuccessThreshold = 10               // Need 10 successes to fully close
 	defaultTestInterval     = 10 * time.Second // Test interval in open state
 )
@@ -33,15 +38,6 @@ func getFailureThreshold() int32 {
 		}
 	}
 	return defaultFailureThreshold
-}
-
-func getCircuitTimeout() time.Duration {
-	if v := os.Getenv("REDIS_CB_TIMEOUT_SEC"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			return time.Duration(n) * time.Second
-		}
-	}
-	return defaultCircuitTimeout
 }
 
 func getSuccessThreshold() int32 {
@@ -113,7 +109,8 @@ func (cb *CircuitBreaker) Call(fn func() error) error {
 	}
 
 	// Success — potentially close the circuit.
-	if state == CircuitHalfOpen {
+	switch state {
+	case CircuitHalfOpen:
 		successes := atomic.AddInt32(&cb.successes, 1)
 		if successes >= getSuccessThreshold() {
 			cb.mu.Lock()
@@ -123,7 +120,7 @@ func (cb *CircuitBreaker) Call(fn func() error) error {
 			atomic.StoreInt32(&cb.successes, 0)
 			cb.mu.Unlock()
 		}
-	} else if state == CircuitClosed {
+	case CircuitClosed:
 		// Reset failure counter on success in closed state.
 		atomic.StoreInt32(&cb.failures, 0)
 	}

@@ -179,7 +179,9 @@ func TestWatchProvidersEmptyResponse(t *testing.T) {
 	}
 
 	var raw map[string]interface{}
-	json.Unmarshal(data, &raw)
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatalf("decode response body: %v", err)
+	}
 
 	if raw["flatrate"] != nil {
 		t.Error("flatrate should be null/absent when empty")
@@ -226,7 +228,7 @@ func TestCountryProvidersShape(t *testing.T) {
 	}
 
 	type TMDBWatchProviders struct {
-		ID      int                            `json:"id"`
+		ID      int                             `json:"id"`
 		Results map[string]TMDBCountryProviders `json:"results"`
 	}
 

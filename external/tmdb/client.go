@@ -58,12 +58,12 @@ func (c *Client) do(method, path string, params url.Values) (*http.Response, err
 		return nil, fmt.Errorf("tmdb request failed: %w", err)
 	}
 	if resp.StatusCode == http.StatusTooManyRequests {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		return nil, fmt.Errorf("tmdb rate limited (429) on %s", path)
 	}
 	if resp.StatusCode >= 400 {
 		body, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		return nil, fmt.Errorf("tmdb error %d on %s: %s", resp.StatusCode, path, string(body))
 	}
 	return resp, nil
@@ -71,7 +71,7 @@ func (c *Client) do(method, path string, params url.Values) (*http.Response, err
 
 func decode[T any](resp *http.Response) (*T, error) {
 	var v T
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if err := json.NewDecoder(resp.Body).Decode(&v); err != nil {
 		return nil, fmt.Errorf("failed to decode tmdb response: %w", err)
 	}
@@ -209,12 +209,12 @@ func (c *Client) doV3(method, path string, params url.Values) (*http.Response, e
 		return nil, fmt.Errorf("tmdb v3 request failed: %w", err)
 	}
 	if resp.StatusCode == http.StatusTooManyRequests {
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		return nil, fmt.Errorf("tmdb rate limited (429) on %s", path)
 	}
 	if resp.StatusCode >= 400 {
 		body, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
+		_ = resp.Body.Close()
 		return nil, fmt.Errorf("tmdb v3 error %d on %s: %s", resp.StatusCode, path, string(body))
 	}
 	return resp, nil
@@ -341,7 +341,7 @@ func (c *Client) GetV3(path string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	return io.ReadAll(resp.Body)
 }
 
