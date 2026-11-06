@@ -1,0 +1,4 @@
+#!/bin/sh
+# As the tkiller account: peer authentication maps the process user to the
+# database role, and a probe as root would leave failed logins in the log.
+exec s6-setuidgid tkiller pg_isready -q -h /run/postgresql -U tkiller -d postgres

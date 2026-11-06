@@ -1,0 +1,37 @@
+# The omnibus install: one container with its own PostgreSQL and Redis, and
+# `docker compose up -d` is the whole thing. See
+# docs/architecture/omnibus-image.md.
+#
+#   cp .env.example .env      # then set TKILLER_SECRET_KEY and TMDB_API_TOKEN
+#   docker compose up -d
+#
+# Everything lives in ./config: the database, the Redis append-only file, the
+# app's own directory, and the pre-migration backups. Back that directory up
+# together with TKILLER_SECRET_KEY — a database dump without the key is
+# unreadable, and the key without the dump is useless.
+#
+# For a database and cache of your own instead, use docker-compose.advanced.yml.
+
+services:
+  tkiller:
+    image: ${TKILLER_IMAGE:-ghcr.io/haaku-tv/haaku:latest}
+    container_name: tkiller
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      # Host port only. The container listens on 8080 and stays there.
+      - "${TKILLER_PORT:-8080}:8080"
+    volumes:
+      - ${TKILLER_CONFIG:-./config}:/config
+    # The API drains before PostgreSQL's fast shutdown (s6 stops services in
+    # reverse order), and a first start applies every migration.
+    stop_grace_period: 2m
+    healthcheck:
+      # Long start period on purpose: on a large database the first start runs
+      # migrations for minutes, and not being healthy until then is correct.
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5m

@@ -1,0 +1,119 @@
+#!/command/with-contenv bash
+# shellcheck shell=bash
+# Lay out /config, refuse a configuration the app cannot start with, decide
+# which bundled services run, and publish the connection settings the app reads
+# as environment for the later services.
+set -euo pipefail
+# shellcheck source=omnibus/rootfs/etc/tkiller-omnibus/lib.sh
+source /etc/tkiller-omnibus/lib.sh
+
+# Start from nothing: a restart of this container keeps /run, and a flag left
+# from the last start must not outlive its setting.
+rm -rf "$STATE_DIR"
+install -d -m 0755 "$STATE_DIR"
+
+# One directory per service, each owned by that service's account. /config
+# stays root's, so no service account can swap a service directory for a
+# symlink; inside one, files are written as its account, never as root.
+install -d -o root -g root -m 0755 /config
+install -d -o tkiller -g tkiller -m 0755 /config/tkiller
+install -d -o postgres -g postgres -m 0750 /config/postgres
+install -d -o redis -g redis -m 0750 /config/redis
+# Root-owned, so the postgres account opens it read-write (see lib.sh) but
+# never replaces it. A file from an earlier image is fixed in place: replacing
+# it would let a second container lock a different file.
+[[ -f "$PG_LOCK" ]] || install /dev/null "$PG_LOCK"
+chown root:postgres "$PG_LOCK"
+chmod 0660 "$PG_LOCK"
+
+# The app's own directory can hold backups and a .env. Walk it when the
+# account's ids differ from the last walk's, or when an entry in the top two
+# levels is owned wrong, as in a restored or copied-in directory. Delete the
+# marker to force a walk.
+owner_marker=/config/.tkiller-owner
+tkiller_ids="$(id -u tkiller):$(id -g tkiller)"
+if [[ "$(cat "$owner_marker" 2>/dev/null)" != "$tkiller_ids" ]] ||
+  [[ -n "$(find /config/tkiller -mindepth 1 -maxdepth 2 \( ! -user tkiller -o ! -group tkiller \) -print -quit)" ]]; then
+  own_tree tkiller tkiller /config/tkiller
+  printf '%s\n' "$tkiller_ids" >"$owner_marker"
+fi
+# The pre-migration safety backup lands here, so it has to exist and be the
+# app's before the first start.
+s6-setuidgid tkiller install -d -m 0755 /config/tkiller/backups
+install -d -o postgres -g postgres -m 2775 /run/postgresql
+
+# Settings the binary itself refuses to start without. Checking them here turns
+# a crash loop into one line that says what to do.
+if [[ -z "${TKILLER_SECRET_KEY:-}${WEBHOOK_SECRET_KEY:-}" ]]; then
+  cat >&2 <<'MSG'
+TKILLER_SECRET_KEY is not set, and the server refuses to start without it: it
+is the root key for everything stored encrypted at rest, so changing it later
+makes existing rows unreadable.
+
+Generate one and put it in .env (or point FILE__TKILLER_SECRET_KEY at a Docker
+secret):
+
+  openssl rand -base64 48
+MSG
+  exit 1
+fi
+if [[ -z "${TMDB_API_TOKEN:-}" ]]; then
+  cat >&2 <<'MSG'
+TMDB_API_TOKEN is not set, and the server refuses to start without it. It is a
+TMDB v4 API read access token, from https://www.themoviedb.org/settings/api —
+metadata fetching needs a real one; anything non-empty lets the server start.
+MSG
+  exit 1
+fi
+
+# Worker and migrate runs serve no UI and are meant to attach to a database
+# that already exists, so they start none of the bundled services. Same rule as
+# internal/mode: a worker never migrates, and both need the URLs.
+mode="${TKILLER_MODE:-api}"
+case "$mode" in
+  api) ;;
+  worker | migrate)
+    if [[ -z "${DATABASE_URL:-}" || -z "${REDIS_URL:-}" ]]; then
+      echo "TKILLER_MODE=$mode needs DATABASE_URL and REDIS_URL pointing at the instance's PostgreSQL and Redis" >&2
+      exit 1
+    fi
+    log "mode: $mode, on an external PostgreSQL and Redis; no bundled service started"
+    exit 0
+    ;;
+  *)
+    echo "TKILLER_MODE=$mode is not one of api, worker, migrate" >&2
+    exit 1
+    ;;
+esac
+
+# PostgreSQL: bundled unless the deployment points DATABASE_URL elsewhere.
+# The role connects over the socket by peer authentication, so no database
+# password exists anywhere.
+if [[ -z "${DATABASE_URL:-}" ]]; then
+  : >"$STATE_DIR/postgres.enabled"
+  export_env DATABASE_URL "postgres://tkiller@/trakt?host=/run/postgresql&sslmode=disable"
+  postgres_state="bundled"
+else
+  postgres_state="external"
+fi
+
+# Redis: bundled unless REDIS_URL names one. The app runs without Redis — the
+# cache and rate limiting become no-ops — so this decides which Redis it uses,
+# not whether it works at all.
+if [[ -z "${REDIS_URL:-}" ]]; then
+  : >"$STATE_DIR/redis.enabled"
+  export_env REDIS_URL "redis://127.0.0.1:6379"
+  redis_state="bundled"
+else
+  redis_state="external"
+fi
+
+# APP_ENV decides prod-vs-dev behaviour (log format, and Clerk is only relaxed
+# in development). A bundled install is a deployment, not a dev box.
+if [[ -z "${APP_ENV:-}" ]]; then
+  export_env APP_ENV production
+fi
+
+log "mode: api"
+log "postgres: $postgres_state"
+log "redis: $redis_state"

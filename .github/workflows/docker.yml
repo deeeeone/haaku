@@ -1,0 +1,375 @@
+name: Docker image
+
+# Two images, one binary: the base image (root Dockerfile) carries the app and
+# its embedded frontend, and the omnibus image (omnibus/Dockerfile) is built
+# FROM it and adds PostgreSQL, Redis and s6-overlay. Only the omnibus image gets
+# `latest`, `build-N` and the bare `<sha>`; the base is addressed as
+# `<sha>-base`, which is an internal build input rather than something to run.
+# See docs/architecture/omnibus-image.md.
+#
+# The smoke job is the interesting one: it starts the image the way a user does
+# and refuses to call it a release unless a fresh install migrates its own
+# database and answers. A container that only builds is not tested.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - Dockerfile
+      - omnibus/**
+      - .dockerignore
+      - docker-compose.yml
+      - .github/workflows/docker.yml
+  workflow_dispatch:
+
+concurrency:
+  group: docker-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # Build the base image for every architecture, pushed by digest so the merge
+  # job can assemble a manifest list without a second build.
+  base:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [linux/amd64, linux/arm64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+        if: matrix.platform != 'linux/amd64'
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build date
+        id: date
+        run: echo "value=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          push: true
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true
+          build-args: |
+            IMAGE_VERSION=${{ github.ref_name }}
+            BUILD_REVISION=${{ github.sha }}
+            BUILD_DATE=${{ steps.date.outputs.value }}
+          cache-from: type=gha,scope=base-${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=base-${{ matrix.platform }}
+
+      - name: Record the digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: base-digests-${{ strategy.job-index }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # A single `<sha>-base` manifest list, which is what the omnibus build starts
+  # from. This tag is deliberately not `latest`: nothing should run the base
+  # image by accident.
+  base-merge:
+    runs-on: ubuntu-latest
+    needs: [base]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: base-digests-*
+          merge-multiple: true
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create the manifest list
+        working-directory: /tmp/digests
+        run: |
+          # shellcheck disable=SC2046  # word splitting is the intent: one -t per digest file
+          docker buildx imagetools create -t "${REGISTRY}/${IMAGE_NAME}:${GITHUB_SHA}-base" \
+            $(printf "${REGISTRY}/${IMAGE_NAME}@sha256:%s " *)
+
+  omnibus:
+    runs-on: ubuntu-latest
+    needs: [base-merge]
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [linux/amd64, linux/arm64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-qemu-action@v3
+        if: matrix.platform != 'linux/amd64'
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # No cache: the runtime half of this build installs PostgreSQL and Redis
+      # from apt, and a cached layer would keep shipping the versions from the
+      # last build instead of the current security updates.
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: omnibus
+          file: omnibus/Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: true
+          no-cache: true
+          outputs: type=image,name=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }},push-by-digest=true,name-canonical=true
+          build-args: |
+            TKILLER_IMAGE=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}-base
+
+      - name: Record the digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: omnibus-digests-${{ strategy.job-index }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # The published image. `latest` and `build-N` only move on the default branch;
+  # a version tag adds the tag itself, and every build keeps its commit SHA.
+  publish:
+    runs-on: ubuntu-latest
+    needs: [omnibus]
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: omnibus-digests-*
+          merge-multiple: true
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Work out the tags
+        id: tags
+        run: |
+          tags="${REGISTRY}/${IMAGE_NAME}:${GITHUB_SHA}"
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            tags="${tags},${REGISTRY}/${IMAGE_NAME}:${GITHUB_REF_NAME}"
+          fi
+          if [[ "${GITHUB_REF}" == "refs/heads/${GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH}" ]]; then
+            tags="${tags},${REGISTRY}/${IMAGE_NAME}:latest,${REGISTRY}/${IMAGE_NAME}:build-${GITHUB_RUN_NUMBER}"
+          fi
+          echo "tags=${tags}" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_EVENT_REPOSITORY_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+
+      - name: Create the manifest list
+        working-directory: /tmp/digests
+        run: |
+          # shellcheck disable=SC2046,SC2086  # splitting TAGS into -t flags is the intent
+          docker buildx imagetools create \
+            $(printf -- '-t %s ' ${TAGS//,/ }) \
+            $(printf "${REGISTRY}/${IMAGE_NAME}@sha256:%s " *)
+        env:
+          TAGS: ${{ steps.tags.outputs.tags }}
+
+      - name: Inspect it
+        run: docker buildx imagetools inspect "${REGISTRY}/${IMAGE_NAME}:${GITHUB_SHA}"
+
+  # Start the image the way the install instructions do, on a clean host
+  # equivalent: no database, no config directory. Everything it needs it has to
+  # do itself, and the assertions are the acceptance criteria.
+  smoke:
+    runs-on: ubuntu-latest
+    needs: [omnibus]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # The init and service scripts are bash with an s6 shebang, so their
+      # interpreter has to be named; shellcheck does not guess it.
+      - name: Lint the omnibus scripts
+        run: make docker-lint
+
+      # The published image is not around on a pull request, and a build here
+      # also covers the frontend and Go stages of the change being reviewed.
+      - name: Build the omnibus image locally
+        run: |
+          docker build -t haaku:base .
+          docker build -f omnibus/Dockerfile --build-arg TKILLER_IMAGE=haaku:base -t haaku:smoke omnibus/
+
+      - name: Install from a clean host
+        run: |
+          set -euo pipefail
+          workdir="$(mktemp -d)"
+          cp docker-compose.yml "$workdir/"
+          cat > "$workdir/.env" <<ENV
+          TKILLER_SECRET_KEY=$(openssl rand -base64 48)
+          TMDB_API_TOKEN=ci-smoke-test
+          TKILLER_PORT=18080
+          TKILLER_CONFIG=$workdir/config
+          TKILLER_IMAGE=haaku:smoke
+          ENV
+          cd "$workdir"
+          docker compose up -d
+
+      - name: Wait for it to serve
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            if curl -fsS http://127.0.0.1:18080/readyz >/dev/null 2>&1; then
+              echo "ready after ${i} polls"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::the API never became ready"
+          docker logs tkiller
+          exit 1
+
+      - name: Assert it migrated its own database and serves
+        run: |
+          set -euo pipefail
+          test "$(curl -fsS http://127.0.0.1:18080/healthz)" = '{"status":"ok"}'
+          curl -fsS http://127.0.0.1:18080/ >/dev/null   # the embedded frontend
+          version=$(docker exec tkiller su -s /bin/bash tkiller -c \
+            "psql -h /run/postgresql -U tkiller -d trakt -tAc 'select max(version_id) from goose_db_version'")
+          echo "migration ledger: $version"
+          test "$version" = "32"
+          tables=$(docker exec tkiller su -s /bin/bash tkiller -c \
+            "psql -h /run/postgresql -U tkiller -d trakt -tAc \"select count(*) from information_schema.tables where table_schema='public'\"")
+          echo "tables: $tables"
+          test "$tables" = "46"
+
+      # The acceptance criterion is DATABASE_URL *and* REDIS_URL: with both set,
+      # neither bundled service may start. Setting only one leaves the other
+      # bundled, which is the point of the opt-out — and what this step asserts.
+      - name: With DATABASE_URL and REDIS_URL set, no bundled service starts
+        run: |
+          set -euo pipefail
+          docker network create smoke-adv
+          docker run -d --name smoke-pg --network smoke-adv \
+            -e POSTGRES_USER=trakt -e POSTGRES_PASSWORD=trakt -e POSTGRES_DB=trakt \
+            postgres:17-alpine
+          docker run -d --name smoke-redis --network smoke-adv redis:7-alpine
+          docker run -d --name smoke-adv-app --network smoke-adv \
+            -e TKILLER_SECRET_KEY="$(openssl rand -base64 48)" \
+            -e TMDB_API_TOKEN=ci-smoke-test \
+            -e DATABASE_URL='postgres://trakt:trakt@smoke-pg:5432/trakt?sslmode=disable' \
+            -e REDIS_URL='redis://smoke-redis:6379' \
+            haaku:smoke
+
+          # The migration ledger is the signal: it exists only once the app has
+          # migrated the database it was pointed at.
+          migrated=""
+          for _ in $(seq 1 60); do
+            ledger="$(docker exec smoke-pg psql -U trakt -d trakt -tAc \
+              'select max(version_id) from goose_db_version' 2>/dev/null || true)"
+            if [ "$ledger" = "32" ]; then
+              migrated=yes
+              break
+            fi
+            sleep 5
+          done
+          if [ -z "$migrated" ]; then
+            echo "::error::the external database was never migrated"
+            docker logs smoke-adv-app
+            exit 1
+          fi
+
+          # Not `docker logs … | grep -q`: grep -q exits on the first match, the
+          # writer takes SIGPIPE, and `set -o pipefail` turns that into a 141.
+          app_logs="$(docker logs smoke-adv-app 2>&1 || true)"
+          case "$app_logs" in
+            *"postgres: external"*) echo "the app reported: postgres: external" ;;
+            *)
+              echo "::error::the app did not detect the external PostgreSQL"
+              printf '%s\n' "$app_logs"
+              exit 1
+              ;;
+          esac
+          case "$app_logs" in
+            *"redis: external"*) echo "the app reported: redis: external" ;;
+            *)
+              echo "::error::the app did not detect the external Redis"
+              printf '%s\n' "$app_logs"
+              exit 1
+              ;;
+          esac
+          bundled="$(docker exec smoke-adv-app sh -c \
+            'ps -eo comm | grep -cE "^(postgres|redis-server)$" || true' | tail -1)"
+          echo "bundled service processes in the app container: $bundled"
+          test "$bundled" = "0"
+          echo "external database migrated, no bundled server started"
+
+      - name: SIGTERM drains the app before PostgreSQL stops
+        run: |
+          set -euo pipefail
+          docker stop -t 90 tkiller >/dev/null
+          test "$(docker inspect -f '{{.State.ExitCode}}' tkiller)" = "0"
+          # Same SIGPIPE trap as above: capture, then match.
+          stop_logs="$(docker logs tkiller 2>&1 || true)"
+          case "$stop_logs" in
+            *"database system is shut down"*) echo "clean shutdown" ;;
+            *)
+              echo "::error::PostgreSQL did not shut down cleanly"
+              printf '%s\n' "$stop_logs" | tail -20
+              exit 1
+              ;;
+          esac
+
+      - name: Logs on failure
+        if: failure()
+        run: |
+          docker logs tkiller || true
+          for c in smoke-adv-app smoke-pg smoke-redis; do docker logs "$c" || true; done
