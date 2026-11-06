@@ -100,10 +100,15 @@ first, then `profileTarget`. The combined behaviour is:
 - **Liked lists.** `/users/:id/likes/lists` omits a liked list the caller may not see
   (private and not owned by the caller); `row_count` still counts the like rows, so an
   omission shows up as `items < row_count`.
-- **Pre-existing routes that bypass PrivacyFilter.** `/v1/users/:id/lists` (lists package) and
-  `/v1/users/:id/stats` (stats package) are registered with `auth.AuthRequired()` only — an
-  authenticated stranger can read a private user's lists. That is a pre-existing gap, not
-  introduced here (flagged, not fixed, to keep this PR scoped to new routes).
+- ~~**Pre-existing routes that bypass PrivacyFilter.**~~ `/v1/users/:id/lists` (lists package) and
+  `/v1/users/:id/stats` (stats package) *were* registered without the profile gate. `/lists` ran
+  `auth.AuthRequired()` only and `/stats` had no middleware at all, so an authenticated stranger
+  could read a private user's lists and an **anonymous** caller could read a private user's
+  aggregate stats. **FIXED**: both now run `auth.PrivacyFilter("id")` — `/lists` keeps its
+  `auth.AuthRequired()` first (AuthRequired then PrivacyFilter, matching this package). A private
+  profile's lists/stats are 403 to a stranger, 200 to self/admin/follower, 404 on a block in either
+  direction or an unknown user. Regression tests (`stats_privacy_test.go`, `lists_privacy_test.go`)
+  assert the wired chain still carries the filter.
 - **`user_playback` / `user_checkins`.** Not exposed at all; the only "activity" read is
   `watching` below.
 

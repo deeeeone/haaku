@@ -19667,6 +19667,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description Private profile */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description not found */
             404: {
                 headers: {
@@ -20001,6 +20008,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
+            };
+            /** @description Private profile */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description User not found */
             404: {

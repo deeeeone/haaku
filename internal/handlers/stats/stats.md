@@ -2,7 +2,7 @@
 
 ## What it does
 
-Single endpoint: `GET /v1/users/:id/stats` — public user statistics (plays, minutes, unique movies/shows/episodes, ratings count). Delegates the actual computation to the `internal/stats` engine (`statsengine.ComputeUserStats` / `GetUserStats`), serves cached stats when fresh (<1h) and recomputes on demand when stale or missing, then bumps the user version counter for cache invalidation.
+Single endpoint: `GET /v1/users/:id/stats` — user statistics (plays, minutes, unique movies/shows/episodes, ratings count), privacy-gated with `auth.PrivacyFilter("id")` (a private profile's stats are 403 to a stranger, 200 to self/admin/follower; block in either direction and unknown user are 404). Delegates the actual computation to the `internal/stats` engine (`statsengine.ComputeUserStats` / `GetUserStats`), serves cached stats when fresh (<1h) and recomputes on demand when stale or missing, then bumps the user version counter for cache invalidation.
 
 ## Completion
 
@@ -22,7 +22,7 @@ Single endpoint: `GET /v1/users/:id/stats` — public user statistics (plays, mi
 - **Recompute failure is silently swallowed (RESOLVED)** — a failed `ComputeUserStats` (or re-fetch) now returns 503 `db_unavailable` instead of a 200 with zeroed stats.
 - **Stats staleness is 1h wall-clock, not version-driven** — user history writes should invalidate instantly (outbox/version counter); instead stale data lives up to an hour.
 - **`db.First` error mapping treats ALL errors as 404 (RESOLVED)** — a DB outage now returns 503 `db_unavailable`; only `gorm.ErrRecordNotFound` maps to 404 "user not found".
-- **Auth is "optional" in OpenAPI but unused** — the endpoint doesn't read `user_id`; stats are public (fine), but no "extended/self" behavior.
+- **Auth is "optional" in OpenAPI and read-only via the profile gate** — the endpoint doesn't read `user_id` itself; visibility is decided entirely by `auth.PrivacyFilter("id")` (public → 200 for anyone; private → 403 to a stranger, 200 to self/admin/follower). No "extended/self" breakdown behavior.
 - **Response only exposes aggregate counts** — no breakdown by type/period that the stats engine may compute; verify against spec.
 - **Local error helpers** (`writeError`/`badRequest`/`notFound`) duplicated from `internal/httpapi`.
 - **`isStale` uses server clock** — untestable without injecting time.

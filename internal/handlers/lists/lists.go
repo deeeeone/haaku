@@ -29,7 +29,7 @@ func init() {
 func registerOpenAPIRoutes() {
 	routes := []openapi.RouteDef{
 		// Lists
-		{Method: "GET", Path: "/v1/users/{id}/lists", Summary: "Get a user's lists", Tags: []string{"Lists"}, Auth: "required", StatusCodes: map[int]string{200: "Lists", 401: "Unauthorized"}},
+		{Method: "GET", Path: "/v1/users/{id}/lists", Summary: "Get a user's lists", Tags: []string{"Lists"}, Auth: "required", StatusCodes: map[int]string{200: "Lists", 401: "Unauthorized", 403: "Private profile"}},
 		{Method: "POST", Path: "/v1/users/me/lists", Summary: "Create a list", Tags: []string{"Lists"}, Auth: "required", StatusCodes: map[int]string{201: "Created list", 400: "Invalid request", 401: "Unauthorized"}},
 		{Method: "GET", Path: "/v1/lists/{id}", Summary: "Get a list", Tags: []string{"Lists"}, Auth: "optional", StatusCodes: map[int]string{200: "List", 403: "Private", 404: "Not found"}},
 		{Method: "PUT", Path: "/v1/lists/{id}", Summary: "Update a list", Tags: []string{"Lists"}, Auth: "required", StatusCodes: map[int]string{200: "Updated list", 400: "Invalid request", 401: "Unauthorized", 403: "Forbidden"}},
@@ -69,8 +69,8 @@ func registerOpenAPIRoutes() {
 // captured "popular" and "trending" as a slug and answered "list not found".
 // internal/httpapi's TestNoStaticRouteIsShadowed now guards this class of bug.
 func RegisterRoutes(api fiber.Router) {
-	// User lists
-	api.Get("/users/:id/lists", auth.AuthRequired(), handleGetUserLists)
+	// User lists — privacy-gated: AuthRequired then PrivacyFilter("id"); per-list
+	api.Get("/users/:id/lists", auth.AuthRequired(), auth.PrivacyFilter("id"), handleGetUserLists)
 	api.Post("/users/me/lists", auth.AuthRequired(), handleCreateList)
 
 	// Popular / Trending — must precede /lists/:id (see the note above).
