@@ -291,29 +291,48 @@ jobs:
           echo "tables: $tables"
           test "$tables" = "46"
 
-      - name: The same image against an external database starts no bundled service
+      # The acceptance criterion is DATABASE_URL *and* REDIS_URL: with both set,
+      # neither bundled service may start. Setting only one leaves the other
+      # bundled, which is the point of the opt-out — and what this step asserts.
+      - name: With DATABASE_URL and REDIS_URL set, no bundled service starts
         run: |
           set -euo pipefail
           docker network create smoke-adv
           docker run -d --name smoke-pg --network smoke-adv \
             -e POSTGRES_USER=trakt -e POSTGRES_PASSWORD=trakt -e POSTGRES_DB=trakt \
             postgres:17-alpine
-          sleep 10
+          docker run -d --name smoke-redis --network smoke-adv redis:7-alpine
           docker run -d --name smoke-adv-app --network smoke-adv \
             -e TKILLER_SECRET_KEY="$(openssl rand -base64 48)" \
             -e TMDB_API_TOKEN=ci-smoke-test \
             -e DATABASE_URL='postgres://trakt:trakt@smoke-pg:5432/trakt?sslmode=disable' \
+            -e REDIS_URL='redis://smoke-redis:6379' \
             tkiller-api:smoke
-          for _ in $(seq 1 40); do
-            if [ "$(docker exec smoke-adv-app sh -c 'ps -eo comm | grep -cE "^(postgres|redis-server)$" || true' | tail -1)" = "0" ] &&
-              [ -n "$(docker exec smoke-pg psql -U trakt -d trakt -tAc 'select max(version_id) from goose_db_version' 2>/dev/null)" ]; then
+
+          # The migration ledger is the signal: it exists only once the app has
+          # migrated the database it was pointed at.
+          migrated=""
+          for _ in $(seq 1 60); do
+            ledger="$(docker exec smoke-pg psql -U trakt -d trakt -tAc \
+              'select max(version_id) from goose_db_version' 2>/dev/null || true)"
+            if [ "$ledger" = "32" ]; then
+              migrated=yes
               break
             fi
             sleep 5
           done
+          if [ -z "$migrated" ]; then
+            echo "::error::the external database was never migrated"
+            docker logs smoke-adv-app
+            exit 1
+          fi
+
           docker logs smoke-adv-app 2>&1 | grep -q 'postgres: external'
-          test "$(docker exec smoke-adv-app sh -c 'ps -eo comm | grep -cE "^(postgres|redis-server)$" || true' | tail -1)" = "0"
-          test "$(docker exec smoke-pg psql -U trakt -d trakt -tAc 'select max(version_id) from goose_db_version')" = "32"
+          docker logs smoke-adv-app 2>&1 | grep -q 'redis: external'
+          bundled="$(docker exec smoke-adv-app sh -c \
+            'ps -eo comm | grep -cE "^(postgres|redis-server)$" || true' | tail -1)"
+          echo "bundled service processes in the app container: $bundled"
+          test "$bundled" = "0"
           echo "external database migrated, no bundled server started"
 
       - name: SIGTERM drains the app before PostgreSQL stops
@@ -328,4 +347,4 @@ jobs:
         if: failure()
         run: |
           docker logs tkiller || true
-          for c in smoke-adv-app smoke-pg; do docker logs "$c" || true; done
+          for c in smoke-adv-app smoke-pg smoke-redis; do docker logs "$c" || true; done
