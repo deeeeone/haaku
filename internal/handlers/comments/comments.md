@@ -33,7 +33,7 @@ Registers OpenAPI metadata for all endpoints. Uses `comment_type`/`media_type` C
 - **Like/reaction/reply counter increments are non-transactional** — `UpdateColumn("reply_count", +1)` after insert and full `COUNT` recalc on like are separate statements from the write; race-prone. Should use `WithCacheTransaction`.
 - **No cache invalidation / outbox events** — comment creates/likes/reactions don't invalidate media/user version keys nor publish events (feeds depend on these).
 - **`handleGetLikes` has no pagination** — returns every liker unbounded; violates the "no caps" spirit in the other direction (unbounded payload).
-- **Trending uses `like_count + reply_count` as raw column expression** — portable enough in PG but unindexed; `reply_count` maintained by app, drift risk.
+- **Trending uses `like_count + reply_count` as raw column expression** — indexed since migration 0032 (`idx_comments_trending_score`); `reply_count` maintained by app, drift risk.
 - **No spoiler/comment length validation** — no max-length cap on `comment` bodies (spec may define one).
 - **Delete semantics**: deleting a ≤14-day-old comment with replies succeeds but leaves replies pointing at a deleted parent (rows remain); expected behavior should be confirmed.
 - **`db.First(&user, "id = ?", userID)` error ignored** in the moderator check (comments.go:458) — a missing user row silently treats them as non-moderator (safe default but unchecked).
@@ -46,26 +46,24 @@ Registers OpenAPI metadata for all endpoints. Uses `comment_type`/`media_type` C
 - [x] Wrap write flows in `cache.WithCacheTransaction` + cache/version invalidation and outbox events. (Batch 7 — no comment/reaction/reply/report events exist in the webhook catalog, so invalidation only.)
 - [x] Paginate `GET /{id}/likes`. (Batch 8 — `?page&limit` default 25/max 100 with §7 `X-Pagination-*` headers + `Link: rel="next"`; stable `created_at DESC, user_id DESC` order.)
 - [x] Add comment length validation per spec. (Batch 11)
-- [x] Add DB index strategy for trending query (`like_count+reply_count`, `created_at`). (Batch 10 — documented in the Databases section below; no schema change landed here per project rules.)
+- [x] Add DB index strategy for trending query (`like_count+reply_count`, `created_at`). (Batch 10 — documented below; the index landed in migration 0032 — see the Databases section for why the requested partial predicate is impossible.)
 - [x] Check the user lookup error in the moderator delete path. (Batch 6)
 - [x] Verify module test coverage (`make test`). (Batch 14 — `internal/handlers/comments/comments_test.go` adds unit coverage for `validateCommentBody` (400 on empty / >5000-char), the reaction + report-reason allowlists, `parseCSV`, `maxCommentLength`, and `toCommentResponse` (incl. nil-EditedAt). Handler-level integration coverage for the DB-backed create/edit/delete paths awaits a DB-driver approval.)
 
-## Databases — trending index (migration needed, out of scope here)
+## Databases — trending index
 
 `GET /v1/comments/trending` filters to comments created in the last 7 days
 (`created_at >= now() - INTERVAL '7 days'`, `comment_type IN (...)`,
 `media_type IN (...)`) and orders by `like_count + reply_count DESC,
-created_at DESC`. That ordering expression is **not indexable** by the existing
-indexes — migration 0022 creates `idx_comments_trending ON comments
-(comment_type, media_type, created_at DESC) WHERE created_at >= now() -
-INTERVAL '7 days'`, which serves the WHERE clause but cannot accelerate an
-`ORDER BY (like_count + reply_count)` because it is a computed expression.
+created_at DESC`. That ordering expression is **not indexable** by the plain
+column indexes, so migration 0032 landed the expression index
+`idx_comments_trending_score ON comments ((like_count + reply_count) DESC,
+created_at DESC)`. Postgres scans it in order and applies the 7-day window as an
+`Index Cond` on `created_at`, so the query returns **without a Sort**.
 
-Per project rules no schema change (new migration / `ALTER TABLE`) was made in
-Batch 10. The query was left unchanged to preserve identical results. When a
-schema change is next permitted, add an expression-index matching the exact
-query shape — same partial predicate + the score expression + `created_at`
-tiebreak:
+### The partial predicate the issue asked for cannot exist
+
+Issue #2 asked for the index to be *partial*:
 
 ```sql
 CREATE INDEX idx_comments_trending_score ON comments
@@ -73,19 +71,30 @@ CREATE INDEX idx_comments_trending_score ON comments
     WHERE created_at >= now() - INTERVAL '7 days';
 ```
 
-Notes:
-- **When to create:** in a new append-only migration, coordinated with the
-  schema-doc update in `../trakt-killer-plan/02-architecture/data-model.md`
-  (rule: update the planning data-model BEFORE the migration). Not in this
-  batch — schema changes are disallowed here and no migration may be edited.
-- **Why this shape:** the partial predicate exactly mirrors the handler's 7-day
-  window so the index stays small; the score expression + `created_at` order
-  matches `ORDER BY` so Postgres can fetch in index order without a sort, then
-  the `comment_type`/`media_type` filter runs on the small post-window index.
-- **Alternative evergreen index** (covers both trending and a plain
-  like-count sort if the spec ever drops the 7-day window): create the same
-  expression index *without* the partial predicate and rely on the existing
-  `idx_comments_type_created` for the WHERE.
+That statement cannot run. Postgres requires every function in an index predicate
+to be `IMMUTABLE`, and `now()` is only `STABLE`:
 
-**Landed:** migration `0032_comments_trending_score_index.sql` creates the
-partial expression index (issue #2); the handler query is unchanged.
+```
+ERROR:  functions in index predicate must be marked IMMUTABLE
+```
+
+So no rolling "last 7 days" window can live in a partial index — the window has
+to stay in the query (and it does; the query is unchanged, so results are
+identical). Migration 0022 records the same finding for `idx_comments_trending`
+(which is why it too carries no predicate). Migration
+`20261106213010_comments_trending_score_index_predicate` rebuilds
+`idx_comments_trending_score` with its only achievable definition — the exact
+expression order, no predicate — and attaches a `COMMENT ON INDEX` recording
+this rationale. Migration 0032's file comment claiming "the same 7-day partial
+predicate keeps the index small" was wrong.
+
+### Trade-off (accepted)
+
+Without the partial predicate the index covers **all** comments. On a table where
+the highest-scoring comments are old, the ordered index scan reads past those
+before filling the 7-day window, whereas a partial index would skip them. That
+optimization is unachievable for the reason above; keeping the window in the
+query, evaluated as an index condition, is the correct and only option.
+`comment_type`/`media_type` stay a post-index `Filter` on purpose — the query
+needs one global order across the `IN` list, which only the score expression can
+provide.
