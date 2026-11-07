@@ -4,7 +4,6 @@ import (
 	"os"
 
 	"github.com/haaku-tv/haaku/internal/auth"
-	"github.com/haaku-tv/haaku/internal/database"
 	"github.com/haaku-tv/haaku/internal/handlers/activity"
 	"github.com/haaku-tv/haaku/internal/handlers/calendar"
 	"github.com/haaku-tv/haaku/internal/handlers/checkin"
@@ -35,7 +34,6 @@ import (
 	"github.com/haaku-tv/haaku/internal/handlers/webhooks"
 	"github.com/haaku-tv/haaku/internal/oauth"
 	"github.com/haaku-tv/haaku/internal/openapi"
-	"github.com/haaku-tv/haaku/redis"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -65,20 +63,10 @@ func RegisterRoutes(app *fiber.App) {
 		},
 	})
 
-	app.Get("/readyz", func(c *fiber.Ctx) error {
-		// Check DB + Redis connectivity
-		if db, err := database.GetDB(); err != nil || db == nil {
-			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
-				"status": "degraded", "reason": "database unavailable",
-			})
-		}
-		// Redis is soft — degradation, not failure
-		rdb := redis.GetClient()
-		if rdb == nil {
-			return c.JSON(fiber.Map{"status": "ready", "redis": "unavailable"})
-		}
-		return c.JSON(fiber.Map{"status": "ready"})
-	})
+	// Readiness reports migration state, not just process liveness (issue #14):
+	// handleReady answers 503 unless the Goose ledger matches the migrations this
+	// binary carries. See internal/httpapi/readyz.go.
+	app.Get("/readyz", handleReady)
 	openapi.Register(openapi.RouteDef{
 		Method:  "GET",
 		Path:    "/readyz",
