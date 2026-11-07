@@ -155,9 +155,15 @@ func acquire(tx *gorm.DB, key int64) error {
 
 // hasAdvisoryLocks reports whether the connection's driver implements
 // pg_advisory_xact_lock. Nil-safe so a caller with an oddly-constructed handle
-// gets the conservative answer (no locks claimed).
+// gets the conservative answer (no locks claimed). The dialector is bound to a
+// local rather than selected through the embedded field, which staticcheck
+// rightly rejects as a redundant selector (QF1008).
 func hasAdvisoryLocks(db *gorm.DB) bool {
-	return db != nil && db.Dialector != nil && db.Dialector.Name() == "postgres"
+	if db == nil || db.Dialector == nil {
+		return false
+	}
+	d := db.Dialector
+	return d.Name() == "postgres"
 }
 
 // dialectName is for log messages only.
@@ -165,5 +171,6 @@ func dialectName(db *gorm.DB) string {
 	if db == nil || db.Dialector == nil {
 		return "unknown driver"
 	}
-	return db.Dialector.Name()
+	d := db.Dialector
+	return d.Name()
 }
