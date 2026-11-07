@@ -2,7 +2,7 @@ import createClient from 'openapi-fetch'
 import { toast } from 'sonner'
 import type { paths } from '@/api/generated/schema'
 import { useAuth } from '@/auth/context'
-import { clearSession, readSession } from '@/auth/session-store'
+import { clearSessionOnUnauthorized } from '@/auth/session-store'
 
 // Create a typed fetch client from the generated OpenAPI schema.
 // Injected into TanStack Query hooks via context — never called directly.
@@ -43,9 +43,7 @@ export function createApiClient(getToken: () => Promise<string | null>) {
         // A 401 while holding a local token means the session was revoked
         // (banned, logged out elsewhere, expired). Drop it so the guard sends
         // the user back to /login instead of retrying a dead token forever.
-        if (response.status === 401 && readSession()) {
-          clearSession()
-        }
+        clearSessionOnUnauthorized(response)
 
         throw new ApiError(response.status, message, body)
       }
