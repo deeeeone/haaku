@@ -262,6 +262,9 @@ compose-up: ## Start the dev infrastructure (dev/compose.yml: postgres, redis, m
 compose-down: ## Stop the dev infrastructure
 	docker compose -f dev/compose.yml down
 
+dev-db: ## Start only PostgreSQL + Redis (Docker) for a source run
+	docker compose -f dev/compose.yml up -d postgres redis
+
 # --- Images (issue #13) ---
 #
 # CI builds both images (see .github/workflows/docker.yml); these targets are

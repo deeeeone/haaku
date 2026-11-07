@@ -37,7 +37,8 @@ This repository is the whole server. The Go API and the React UI compile into **
 
 ### Docker — one container, its own PostgreSQL
 
-> The omnibus image is in review in [#32](https://github.com/haaku-tv/haaku/pull/32). Until it merges, use the source install below.
+> Published as `ghcr.io/haaku-tv/haaku` (`latest`). The source install below is
+> the fastest path while iterating.
 
 ```bash
 git clone https://github.com/haaku-tv/haaku.git
@@ -52,17 +53,43 @@ Then open <http://localhost:8080>. Everything the server owns lives in `./config
 
 ### From source
 
-Go 1.26+, Node 20+ with pnpm, and a PostgreSQL 17. Redis is optional — the code degrades without it.
+Go 1.26+, Node 20+ with pnpm, and PostgreSQL 16 (Redis is optional — the code
+degrades without it and says so on `/readyz`).
 
 ```bash
-cp deploy/.env.example .env      # set TMDB_API_TOKEN and DATABASE_URL
-make pg-up                       # throwaway PostgreSQL (unix socket); prints DATABASE_URL
-make embed-stub                  # placeholder web/dist so Go builds without a frontend build
+cp deploy/.env.example .env      # set HAAKU_SECRET_KEY, TMDB_API_TOKEN, and
+                                 # HAAKU_ADMIN_EMAIL + HAAKU_ADMIN_PASSWORD
+make dev-db                      # Docker: PostgreSQL + Redis only, no app container
 make dev-backend                 # API on :8080; migrations run on start
 make dev-frontend                # second terminal: Vite on :5173, proxies /v1 to the API
 ```
 
-The server refuses to start without `HAAKU_SECRET_KEY` (32+ characters — `openssl rand -base64 48`), and a first start on an empty database migrates it for you. `make bin` builds the single binary with the real UI embedded; `make help` lists every target.
+`make dev-db` runs just the infrastructure from `dev/compose.yml`: PostgreSQL on
+**55432** and Redis on **56379**, matching the `DATABASE_URL` / `REDIS_URL` in
+`deploy/.env.example`. Prefer no Docker at all? `make pg-up` starts a throwaway
+PostgreSQL on a unix socket and prints the `DATABASE_URL` to paste into `.env`.
+`make compose-down` stops everything.
+
+**First run needs an owner.** With the default `HAAKU_AUTH_MODE=local` the server
+issues its own identity, and on an **empty** database it seeds the owner from
+`HAAKU_ADMIN_EMAIL` + `HAAKU_ADMIN_PASSWORD` (set both, or neither). If both are
+unset on an empty instance it refuses to start rather than inventing an account;
+if the instance already has users it does nothing. Every later signup follows
+`HAAKU_SIGNUP` (default `approval`: created `pending` until an admin approves).
+
+```bash
+HAAKU_SECRET_KEY=$(openssl rand -base64 48)   # 32+ characters, required
+HAAKU_ADMIN_EMAIL=you@example.com
+HAAKU_ADMIN_PASSWORD=<10+ characters, same rule as signup>
+```
+
+Vite inlines `VITE_*` variables at build time, and `VITE_CLERK_PUBLISHABLE_KEY`
+decides whether the UI runs in Clerk mode. **Leave it unset when using local
+auth** — setting it points the frontend at a Clerk provider the API never
+configured, and the account menu fails.
+
+`make bin` builds the single binary with the real UI embedded; `make help` lists
+every target.
 
 ## Background workers
 

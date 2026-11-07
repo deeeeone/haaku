@@ -48,7 +48,7 @@ in them. Copy `.env.example` to `.env.local` for local development.
 | Variable | Default | Notes |
 |---|---|---|
 | `VITE_API_URL` | `/` | API base URL. Leave as `/` for the same-origin single-binary deployment; the client falls back to a relative base when unset. |
-| `VITE_CLERK_PUBLISHABLE_KEY` | — | Public by design; only the API holds a secret. |
+| `VITE_CLERK_PUBLISHABLE_KEY` | — | Public by design; only the API holds a secret. **A build-time switch**: setting it puts the UI in Clerk mode, so leave it unset when the API runs local auth (`HAAKU_AUTH_MODE=local`, the default). Set it here and the account menu renders Clerk components with no `<ClerkProvider>` mounted. |
 | `VITE_CLERK_PROXY_URL` | unset | Optional Clerk frontend-API proxy. Only set it when a proxy exists (e.g. the dev `clerk-emulator` on `:4000`); with a real Clerk tenant, leave it unset. |
 
 The dev server proxies the API prefixes to `http://localhost:8080` by default;
