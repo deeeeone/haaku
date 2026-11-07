@@ -1,7 +1,7 @@
 .PHONY: help build bin frontend api-client embed-stub dev-backend dev-frontend fmt vet test test-go test-web lint lint-web \
-	tidy run compose-up compose-down pg-up pg-down pg-status test-db \
+	tidy run compose-up compose-down pg-up pg-down pg-status test-db test-db-pins \
 	backup backup-list migrate-create migrate-validate migrate-status migrate-up \
-	api-spec api-check clean docker-base docker-omnibus docker-lint lint-go vuln secrets workflow-lint check-size check-bidi coverage check parity-check contract-diff
+	api-spec api-check clean docker-base docker-omnibus docker-lint lint-go vuln secrets workflow-lint check-size check-bidi coverage check parity-check contract-diff check-migration-ledger
 
 # pnpm is expected on PATH (the frontend is a pnpm workspace). Override for a
 # checkout that keeps its own toolchain, e.g. make frontend PNPM=/opt/node/bin/pnpm
@@ -85,6 +85,9 @@ lint-go: embed-stub ## Lint Go with the committed golangci-lint config
 	# _tests_/ is a standalone "command-line-arguments" package (a leading
 	# underscore hides it from ./...), so it needs its own invocation.
 	golangci-lint run ./_tests_/*.go
+	# Files behind //go:build postgres are invisible to the default run; lint the
+	# tagged DB-backed suite too (the postgres CI job runs this same invocation).
+	golangci-lint run --build-tags postgres ./internal/database/
 
 vuln: embed-stub ## Fail on known vulnerabilities reachable from this code
 	govulncheck ./...
@@ -150,9 +153,23 @@ test-go: embed-stub ## Run both Go test suites (./... and the _tests_ harness)
 test-web: ## Run the frontend test suite
 	cd web && $(PNPM) run test
 
-test-db: embed-stub ## Run tests against a real PostgreSQL (see scripts/dev-pg.sh)
+test-db: embed-stub ## Run the postgres-tagged suite against a real PostgreSQL (see scripts/test-db.sh)
 	@test -n "$$DATABASE_URL" || { echo 'DATABASE_URL is not set — run: make pg-up' >&2; exit 1; }
-	go test ./...
+	./scripts/test-db.sh
+
+# The query budget pins (scripts/ci/db-pins.txt): the hot queries must still be
+# served by their dedicated index. Needs a real PostgreSQL because there is no
+# plan to inspect without one.
+test-db-pins: embed-stub ## Run the query budget pins against a real PostgreSQL
+	@test -n "$$DATABASE_URL" || { echo 'DATABASE_URL is not set — run: make pg-up' >&2; exit 1; }
+	go test -tags postgres ./internal/database/ -run TestQueryBudgetPins -count=1
+
+# The migration ledger must match the files on disk: no file without an applied
+# row, no row without a file. Expected version/count come from migrations/sql,
+# never a constant.
+check-migration-ledger: ## Assert the Goose ledger matches migrations/sql (needs DATABASE_URL)
+	@test -n "$$DATABASE_URL" || { echo 'DATABASE_URL is not set — run: make pg-up' >&2; exit 1; }
+	./scripts/check-migration-ledger.sh "$$DATABASE_URL"
 
 # --- Migrations (issue #14) ---
 #

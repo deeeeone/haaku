@@ -11,8 +11,8 @@
 //     as "not run" — an untagged suite that silently skips on an unset variable
 //     is exactly the failure mode issue #14 exists to close.
 //  3. It makes the DB-backed suite an explicit thing a reviewer can name:
-//     `make test-db` is `go test -tags postgres ./...`, and that is the same
-//     command CI runs against its postgres service container.
+//     `make test-db` runs scripts/test-db.sh (the tagged packages only), and
+//     that is the same command CI runs against its postgres service container.
 //
 // Run it locally with `make pg-up && export DATABASE_URL=... && make test-db`
 // (or `scripts/dev-pg.sh start -q`, which needs no Docker).
