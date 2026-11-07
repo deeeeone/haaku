@@ -1,0 +1,33 @@
+# db-pins.txt — hotspot query budget pins (issue #14 §4).
+#
+# Every pin below names a query that already has a dedicated PostgreSQL index
+# (see migrations/sql) and asserts the planner still serves it from that index.
+# The budget is a scan budget, not a wall-clock one: the plan must be an index
+# access and must NOT sequentially scan the base table. A rewrite that makes the
+# predicate non-indexable (jsonb_array_elements_text instead of ?|, a ::text
+# cast, an OR, a leading function) silently turns a hot endpoint into a full
+# table scan; that is a production incident, so it fails `make test-db-pins`
+# here instead.
+#
+# One section per pin:
+#   [name]     stable identifier (used in the test output)
+#   index  =   the index the plan must contain in some node's "Index Name"
+#   table  =   the base table the plan must not "Seq Scan"
+#   sql    =   the query, on a single line, as the planner sees it
+#
+# The two fixture facts the pins depend on are seeded by
+# internal/database/postgres_db_pins_test.go: the trending window's rows fall in
+# the last 7 days, and the pinned genre ("Arthouse") is selective (~1/2000),
+# because a non-selective containment legitimately prefers a sequential scan.
+# The pin exists so the predicate stays *index-usable*; it is not a claim that
+# every genre set is selective.
+
+[trending-comments]
+index = idx_comments_trending_score
+table = comments
+sql = SELECT id FROM comments WHERE comment_type IN ('shout','review') AND media_type IN ('movie','show') AND created_at >= now() - interval '7 days' ORDER BY like_count + reply_count DESC, created_at DESC LIMIT 20
+
+[recommendations-genre-movies]
+index = idx_movies_genres_gin
+table = movies
+sql = SELECT DISTINCT movies.* FROM movies WHERE movies.genres ?| array['Arthouse']::text[] AND NOT EXISTS (SELECT 1 FROM user_history WHERE user_id = 'u1' AND media_type = 'movie' AND media_id = movies.id) AND NOT EXISTS (SELECT 1 FROM user_hidden WHERE user_id = 'u1' AND media_type = 'movie' AND media_id = movies.id) ORDER BY movies.popularity DESC LIMIT 20

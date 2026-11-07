@@ -206,3 +206,70 @@ jobs:
         with:
           name: coverage
           path: coverage.out
+
+  # DB-backed suite against a real PostgreSQL (issue #14 section 4). The service
+  # is a real server, so the advisory lock, the jsonb operators, the partial
+  # indexes, ON CONFLICT and cache.WithCacheTransaction paths are exercised —
+  # none of which the in-memory sqlite unit tests can prove (see issue #3/#8).
+  # It is its own job so a DB-only failure is obvious and the sqlite suite in the
+  # `build` job stays fast. The two suites are the same commands `make test-db`
+  # and `make test-db-pins` run locally against scripts/dev-pg.sh.
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: trakt
+          POSTGRES_PASSWORD: trakt
+          POSTGRES_DB: trakt
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U trakt"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://trakt:trakt@localhost:5432/trakt?sslmode=disable
+      # config.Load requires both before it will run; neither is a real secret.
+      TMDB_API_TOKEN: ci-postgres
+      TKILLER_SECRET_KEY: ci-postgres-not-a-secret-value-32-chars-min
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - name: Stub frontend
+        run: make embed-stub
+
+      # psql for the ledger assertion; the service is a server, not a client.
+      - name: Install the PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      # Files behind //go:build postgres are invisible to the main lint job's
+      # default run, so the tagged suite is linted here.
+      - name: Lint the postgres-tagged package
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: v2.15.0
+          args: --timeout=5m --build-tags postgres ./internal/database/
+
+      # The real entry point the deployable image uses: apply the embedded
+      # migrations to an empty database, under the advisory lock, and exit.
+      - name: Migrate a fresh database (--migrate-only)
+        run: go run ./cmd/api --migrate-only
+
+      # The ledger must match the files on disk. Expected version/count are
+      # derived from migrations/sql, never hardcoded (same derivation as the
+      # Docker smoke job).
+      - name: Assert the migration ledger matches the files on disk
+        run: make check-migration-ledger
+
+      - name: Run the postgres-tagged suite
+        run: make test-db
+
+      - name: Query budget pins
+        run: make test-db-pins

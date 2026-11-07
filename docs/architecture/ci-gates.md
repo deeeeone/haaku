@@ -15,6 +15,7 @@ Every gate is a `make` target; the workflow only calls those targets, so
 | `security` | `govulncheck` (reachable vulns), `gitleaks` (secrets, full history) | `make vuln`, `make secrets` |
 | `hygiene` | `actionlint`, `shellcheck`, size ratchet, bidi-controls check | `make workflow-lint`, `make check-size`, `make check-bidi` |
 | `coverage` | both Go suites under one merged profile, with a floor | `make coverage` |
+| `postgres` | DB-backed suite + query budget pins + migration-ledger drift, against a real PostgreSQL service | `make test-db`, `make test-db-pins`, `make check-migration-ledger` |
 | `openapi` | `openapi.yaml` freshness + two-way route inventory | `make api-check` |
 | `openapi` | Trakt parity manifest graded against the route registry | `make parity-check` |
 | `openapi` | public-contract diff vs the frozen baseline; unacknowledged break fails | `make contract-diff` |
@@ -92,14 +93,36 @@ functions (`wantsMigrations`, `workerPlan`) and exercised for real by running th
 binary against a throwaway PostgreSQL, which is a manual step because there is
 no PostgreSQL- or Redis-backed CI job yet (see below).
 
+## The DB-backed suite
+
+The `postgres` job starts a `postgres:17` service container, applies the embedded
+migrations to an empty database with `go run ./cmd/api --migrate-only`, checks the
+Goose ledger against the files on disk (`scripts/check-migration-ledger.sh`, which
+derives the expected version and row count from `migrations/sql` — never a
+constant), then runs the `postgres`-tagged suite and the query budget pins.
+
+Those tests live behind `//go:build postgres` (`internal/database/postgres_*_test.go`)
+so `go test ./...` and `make test-go` stay fast and need no server. They `t.Fatal`,
+never `t.Skip`, when `DATABASE_URL` is unset: a skipped test reads as a pass, which
+is exactly the failure mode this job exists to close. `make test-db` runs
+`scripts/test-db.sh`, which scopes the tagged run to the packages that carry a
+tagged file — a plain `go test -tags postgres ./...` would drag every
+`DATABASE_URL`-sensitive helper test onto a real server, and their postgres paths
+are a separate piece of work.
+
+The query budget pins (`scripts/ci/db-pins.txt`, `make test-db-pins`) assert the
+hot queries with a dedicated index are still served by it and do not fall back to
+a sequential scan.
+
 ## Deliberately not gated yet
 
 - `bodyclose` and `errorlint` (golangci-lint): ~56 and ~27 sites respectively,
   almost all in test scaffolding and error type assertions. Each needs its own
   sweep; enabling them now would mean disabling them again to land anything else.
-- A Postgres-backed CI job: tracked in issue #14. The `_tests_` harness runs
-  against sqlite in CI and only exercises real PostgreSQL when `DATABASE_URL` is
-  set, which CI does not do yet.
+- The `_tests_` harness still runs against sqlite in CI; only the `postgres`-tagged
+  `internal/database` suite exercises real PostgreSQL (issue #14 §4). Moving the
+  handler/helper tests that flip backend on `DATABASE_URL` onto that job is the
+  remaining work.
 
 ## Tool versions
 

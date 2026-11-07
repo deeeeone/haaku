@@ -1,3 +1,10 @@
+//go:build postgres
+
+// Moved out of the untagged suite with the rest of the DB-backed tests (issue
+// #14 §4): TestInitDBDoesNotCreateSchema opens a real PostgreSQL and applies the
+// embedded migrations, so it cannot run — and must not silently skip — without a
+// server. See postgres_migrate_test.go for the suite's rationale.
+
 package database
 
 import (
@@ -16,7 +23,8 @@ import (
 // on a fresh database there must be nothing but the migration runner's own
 // bookkeeping, and Migrate is the only thing allowed to build the schema.
 //
-// Runs against a real PostgreSQL; skips when DATABASE_URL is unset.
+// Runs against a real PostgreSQL (the `postgres` build tag); it needs a server
+// and does not skip — see the suite note in postgres_migrate_test.go.
 func TestInitDBDoesNotCreateSchema(t *testing.T) {
 	dsn := newTestDatabase(t)
 	t.Setenv("DATABASE_URL", dsn)
