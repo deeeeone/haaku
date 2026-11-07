@@ -342,7 +342,7 @@ jobs:
           case "$token" in hs_*) ;; *) echo "::error::expected an hs_ session token, got '$token'"; exit 1;; esac
 
           # As that owner, the admin panel lists users.
-          users="$(curl -fsS "$api/admin/users" -H "authorization: Bearer ***")"
+          users="$(curl -fsS "$api/admin/users" -H "authorization: Bearer ${token}")"
           echo "admin users: $(echo "$users" | jq -c '{total:.total,first:.users[0].email}')"
           test "$(echo "$users" | jq -r .total)" -ge 1
           test "$(echo "$users" | jq -r '.users[0].email')" = "owner@smoke.test"
