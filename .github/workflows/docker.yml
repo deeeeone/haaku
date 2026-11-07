@@ -282,14 +282,28 @@ jobs:
           set -euo pipefail
           test "$(curl -fsS http://127.0.0.1:18080/healthz)" = '{"status":"ok"}'
           curl -fsS http://127.0.0.1:18080/ >/dev/null   # the embedded frontend
+          # Derived from the migrations on disk, never a hardcoded number: the
+          # ledger's newest version must be the newest migration file, and every
+          # file must have a row (version 0 is Goose's own marker). A stale
+          # constant here fails the build the first time a migration lands
+          # anywhere in the repo, which is exactly what happened to "= 32".
+          shopt -s nullglob
+          migration_files=(migrations/sql/*.sql)
+          expected_files="${#migration_files[@]}"
+          expected_version="$(printf '%s\n' "${migration_files[@]##*/}" | sed 's#_.*##' | sort -n | tail -1)"
           version=$(docker exec tkiller su -s /bin/bash tkiller -c \
             "psql -h /run/postgresql -U tkiller -d trakt -tAc 'select max(version_id) from goose_db_version'")
-          echo "migration ledger: $version"
-          test "$version" = "32"
+          applied=$(docker exec tkiller su -s /bin/bash tkiller -c \
+            "psql -h /run/postgresql -U tkiller -d trakt -tAc 'select count(*) from goose_db_version where version_id <> 0'")
+          echo "migration ledger: newest=$version expected=$expected_version applied=$applied files=$expected_files"
+          test "$version" = "$expected_version"
+          test "$applied" = "$expected_files"
           tables=$(docker exec tkiller su -s /bin/bash tkiller -c \
             "psql -h /run/postgresql -U tkiller -d trakt -tAc \"select count(*) from information_schema.tables where table_schema='public'\"")
           echo "tables: $tables"
-          test "$tables" = "46"
+          # A floor, not an exact count: a migration that adds a table is not a
+          # regression, a schema that silently lost tables is.
+          test "$tables" -ge 46
 
       # The acceptance criterion is DATABASE_URL *and* REDIS_URL: with both set,
       # neither bundled service may start. Setting only one leaves the other
@@ -312,10 +326,13 @@ jobs:
           # The migration ledger is the signal: it exists only once the app has
           # migrated the database it was pointed at.
           migrated=""
+          shopt -s nullglob
+          migration_files=(migrations/sql/*.sql)
+          expected_version="$(printf '%s\n' "${migration_files[@]##*/}" | sed 's#_.*##' | sort -n | tail -1)"
           for _ in $(seq 1 60); do
             ledger="$(docker exec smoke-pg psql -U trakt -d trakt -tAc \
               'select max(version_id) from goose_db_version' 2>/dev/null || true)"
-            if [ "$ledger" = "32" ]; then
+            if [ "$ledger" = "$expected_version" ]; then
               migrated=yes
               break
             fi
