@@ -15,7 +15,10 @@ Release tags follow [Semantic Versioning](https://semver.org/) with a leading
 - Build metadata: append `+IDENTIFIER`, for example `v1.2.0+build.7`
 
 For releases below `v1.0.0`, a minor release may include breaking changes. Every
-release note must call out upgrade, configuration and compatibility impact.
+release note must call out upgrade, configuration and compatibility impact. An
+API-breaking change is still reviewed rather than silent: `make contract-diff`
+requires each one to be written down in `contracts/api/v1/breaking-changes.yaml`
+before it can land (see [api-versioning.md](api-versioning.md)).
 
 The Git tag and its matching GitHub Release are the **authoritative product
 version**. Other version-like values in the repository describe dependencies,

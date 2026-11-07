@@ -17,11 +17,37 @@ Every gate is a `make` target; the workflow only calls those targets, so
 | `coverage` | both Go suites under one merged profile, with a floor | `make coverage` |
 | `openapi` | `openapi.yaml` freshness + two-way route inventory | `make api-check` |
 | `openapi` | Trakt parity manifest graded against the route registry | `make parity-check` |
+| `openapi` | public-contract diff vs the frozen baseline; unacknowledged break fails | `make contract-diff` |
 | `frontend` | frontend lint, build, tests (incl. typed-client drift) | `make lint-web`, `make test-web` |
 
 `make check` is `lint-go vuln secrets workflow-lint check-size check-bidi
-api-check parity-check`; the frontend job has its own toolchain and stays
-separate.
+api-check parity-check contract-diff`; the frontend job has its own toolchain and
+stays separate.
+
+## The contract diff
+
+`make api-check` proves the committed spec matches the code. It cannot prove the
+*contract* still holds for a client written against the previous release: a route
+can be removed and the spec regenerated cleanly, and the route inventory still
+matches.
+
+`make contract-diff` (`cmd/contract-diff`) compares the working tree's
+`openapi.yaml` against the frozen baseline
+`contracts/api/v1/openapi-baseline.yaml` and classifies each difference:
+
+- **breaking** — removed/renamed path, removed/renamed response field,
+  newly-required request field, narrowed enum, changed type, removed enum value,
+  removed status code. Any that is not listed in
+  `contracts/api/v1/breaking-changes.yaml` fails the build.
+- **additive** — new path, new optional field, new enum value, new status code.
+  Reported, never fatal.
+
+The acknowledgement is a committed file, not a flag: an entry carries the
+change's exact signature, a date and a one-line reason, so a reviewer sees the
+break in the diff. This is what keeps a silent break — the kind the Jellyfin
+plugin would hit — out of a release. The tool only reads `openapi.yaml`; it never
+regenerates it. See [api-versioning.md](api-versioning.md) for when the baseline
+itself is refreshed.
 
 ## Two things that surprise people
 

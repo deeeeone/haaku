@@ -50,6 +50,54 @@ the routes the running process actually serves. Unlike the committed file, this
 reflects the live registry, so in production the development-only routes are
 absent — which is correct.
 
+## The contract baseline and the break gate
+
+Freshness and the route inventory prove the spec matches the code. They say
+nothing about whether the contract a client was written against still holds: a
+route can be removed, the spec regenerated, and both checks still pass.
+
+That gap is closed by a frozen copy of the contract and a diff against it:
+
+- **`contracts/api/v1/openapi-baseline.yaml`** — the contract as it stood at the
+  last accepted release. A copy of `openapi.yaml`, nothing more.
+- **`contracts/api/v1/breaking-changes.yaml`** — every break against that
+  baseline, each with its exact signature, a date and a one-line reason.
+
+```bash
+make contract-diff    # fail on a breaking change that is not acknowledged
+```
+
+`cmd/contract-diff` classifies every difference between the baseline and the
+working tree's `openapi.yaml`:
+
+- **breaking** — removed or renamed path; removed or renamed response field;
+  newly-required request field; narrowed enum; changed type; removed enum value;
+  removed status code.
+- **additive** — new path, new optional field, new enum value, new status code.
+
+It fails when a breaking change is not written down in
+`breaking-changes.yaml`. The acknowledgement is a committed file, not a flag, so
+the break appears in the pull request for a reviewer to see. The tool only
+*reads* `openapi.yaml`; it never regenerates it.
+
+### When the baseline is refreshed
+
+Update `openapi-baseline.yaml` **when you accept a set of contract changes into a
+release** — when the release notes can say "this is what `/v1` is now":
+
+```bash
+cp openapi.yaml contracts/api/v1/openapi-baseline.yaml
+```
+
+It is a deliberate, reviewable act, never a step of the build. Additive changes
+may be folded in at any release boundary. A breaking change must be acknowledged
+first (so the gate is green) and is still against the versioning policy below —
+a break inside `/v1` means a new prefix, `/v2`. Once a break is part of the
+baseline it drops out of the diff, and its acknowledgement entry may be deleted;
+git history on the baseline is the record of accepted breaks. Do not refresh the
+baseline to make the gate pass: if it is red, the change is either a bug to
+revert or a break that belongs in `breaking-changes.yaml`.
+
 ## Versioning policy
 
 **Versioning is by URL prefix: `/v1`.** There is no content-negotiated version
@@ -97,9 +145,10 @@ through the repository, **not** through a response code — see below.
 
 ## Deferred
 
-The issue that motivated this doc (making the spec trustworthy and gated) also
-describes a larger refactor: moving endpoint definitions out of the Go route
-registry into a machine-readable `contracts/api/v1` directory as the single
-source of truth. That is **not** part of this change. This change makes the
-existing generator and its gates trustworthy; the contracts-directory refactor is
-the follow-up.
+The issue that motivated this doc also describes a larger refactor: moving
+endpoint definitions out of the Go route registry into a machine-readable
+`contracts/api/v1` directory as the single source of truth. That is **not** part
+of this change. The `contracts/api/v1` directory now exists, but it holds the
+baseline and the acknowledgement record used by the break gate above — not the
+route definitions. The generator and its gates remain trustworthy on their own;
+making `contracts/` the source of truth is still the follow-up.

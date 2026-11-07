@@ -140,6 +140,13 @@ jobs:
       - name: Grade the Trakt parity manifest (registry <-> docs/parity/parity.yaml)
         run: make parity-check
 
+      # The route inventory only says a route exists; it says nothing about
+      # whether the contract a client was written against still holds. This
+      # gates breaking changes to contracts/api/v1/openapi-baseline.yaml against
+      # contracts/api/v1/breaking-changes.yaml. It only reads openapi.yaml.
+      - name: Fail on an unacknowledged breaking change to the public contract
+        run: make contract-diff
+
 
   # Independent of the Go job: the frontend is built and tested on its own, and
   # must not gate (or be gated by) the backend. `pnpm test` also fails if the
