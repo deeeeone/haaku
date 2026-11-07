@@ -43,6 +43,7 @@ make build          # embed-stub + go build ./...
 make test           # Go suites (test-go) + frontend (test-web)
 make test-go        # both Go suites: ./... AND the _tests_ harness (one runner)
 make vet            # go vet ./...
+make lint-web       # frontend gate: biome format check + biome ci (warnings fatal)
 make check          # every gate CI runs (lint, vuln, secrets, hygiene, spec)
 make coverage       # both Go suites under one profile + the coverage floor
 make bin            # frontend + the real single binary (bin/api)
@@ -74,6 +75,7 @@ make docker-omnibus # build the single image (app + PostgreSQL + Redis, s6-overl
 
 - Tests green (`make test`) + `go vet` clean
 - Gates green (`make check`: golangci-lint, govulncheck, gitleaks, actionlint, shellcheck, size ratchet, bidi check, spec freshness)
+- Frontend gate green (`make lint-web` + `make test-web`): biome format check and strict lint (warnings fatal); `make check` stays frontend-free — it runs on a host with no node toolchain
 - Routes registered; generated OpenAPI fresh (when generator exists)
 - Schema doc updated in the planning DB if anything touched the DB
 - No secrets, no cross-package edits beyond the task's listed files, no new deps without an issue

@@ -151,7 +151,9 @@ jobs:
 
   # Independent of the Go job: the frontend is built and tested on its own, and
   # must not gate (or be gated by) the backend. `pnpm test` also fails if the
-  # committed typed client has drifted from openapi.yaml.
+  # committed typed client has drifted from openapi.yaml. The frontend gate is
+  # two commands — the formatter check and `biome ci --error-on-warnings`, where
+  # a warning is fatal — the same pair `make lint-web` runs.
   frontend:
     runs-on: ubuntu-latest
     defaults:
@@ -174,6 +176,10 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
+      - name: Format check
+        run: pnpm format:check
+
+      # `biome ci --error-on-warnings` — lint AND format failures are fatal.
       - name: Lint
         run: pnpm lint
 

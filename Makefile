@@ -1,7 +1,7 @@
 .PHONY: help build bin frontend api-client embed-stub dev-backend dev-frontend fmt vet test test-go test-web lint lint-web \
 	tidy run compose-up compose-down pg-up pg-down pg-status test-db test-db-pins \
 	backup backup-list migrate-create migrate-validate migrate-status migrate-up \
-	api-spec api-check clean docker-base docker-omnibus docker-lint lint-go vuln secrets workflow-lint check-size check-bidi coverage check parity-check contract-diff check-migration-ledger
+	api-spec api-check clean docker-base docker-omnibus docker-lint lint-go vuln secrets workflow-lint check-size check-bidi coverage check parity-check contract-diff check-migration-ledger format-web
 
 # pnpm is expected on PATH (the frontend is a pnpm workspace). Override for a
 # checkout that keeps its own toolchain, e.g. make frontend PNPM=/opt/node/bin/pnpm
@@ -71,8 +71,16 @@ vet: embed-stub ## Run go vet
 
 lint: vet lint-web ## Vet the backend and lint the frontend
 
-lint-web: ## Lint the frontend
+# The frontend gate is two commands: the formatter check (biome format, no
+# writes) and the lint (biome ci --error-on-warnings, so a warning is fatal).
+# The `frontend` job in .github/workflows/ci.yml runs both; `make lint-web`
+# runs both here. `check` deliberately does not include this — that target has
+# no node toolchain (see docs/architecture/ci-gates.md).
+lint-web: format-web ## Lint and format-check the frontend
 	cd web && $(PNPM) run lint
+
+format-web: ## Check the frontend is formatted (no writes)
+	cd web && $(PNPM) run format:check
 
 # --- Gates (issue #8) ---
 #

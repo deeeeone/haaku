@@ -3,7 +3,7 @@ import { Film, List, Tv, User } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { z } from 'zod'
 import { useSearch as useSearchQuery } from '@/api/hooks/useSearch'
-import type { SearchType } from '@/api/types'
+import type { SearchResult, SearchType } from '@/api/types'
 import { Page, PosterGrid, Section } from '@/components/layout'
 import {
   Button,
@@ -219,80 +219,72 @@ function SearchPage() {
   )
 }
 
-function SearchResultCard({ result }: { result: any }) {
+function SearchResultCard({ result }: { result: SearchResult }) {
   const navigate = useNavigate()
 
   switch (result.type) {
     case 'movie': {
-      const m = result.movie as Record<string, unknown> | undefined
+      const m = result.movie
       if (!m) return null
-      const ids = m.ids as Record<string, unknown> | undefined
-      const images = m.images as Record<string, string | undefined> | undefined
       return (
         <PosterCard
           title={String(m.title ?? '')}
           meta={String(m.year ?? '')}
-          image={images?.poster}
+          image={m.images?.poster}
           rating={m.rating ? (Number(m.rating) / 2).toFixed(1) : undefined}
           type="movie"
           aspect="2:3"
           onClick={() =>
             navigate({
               to: '/movies/$id',
-              params: { id: String(ids?.trakt ?? ids?.slug ?? '') },
+              params: { id: String(m.ids.trakt ?? m.ids.slug ?? '') },
             })
           }
         />
       )
     }
     case 'show': {
-      const s = result.show as Record<string, unknown> | undefined
+      const s = result.show
       if (!s) return null
-      const ids = s.ids as Record<string, unknown> | undefined
-      const images = s.images as Record<string, string | undefined> | undefined
       return (
         <PosterCard
           title={String(s.title ?? '')}
           meta={String(s.year ?? '')}
-          image={images?.poster}
+          image={s.images?.poster}
           rating={s.rating ? (Number(s.rating) / 2).toFixed(1) : undefined}
           type="series"
           aspect="2:3"
           onClick={() =>
             navigate({
               to: '/shows/$id',
-              params: { id: String(ids?.trakt ?? ids?.slug ?? '') },
+              params: { id: String(s.ids.trakt ?? s.ids.slug ?? '') },
             })
           }
         />
       )
     }
     case 'episode': {
-      const ep = result.episode as Record<string, unknown> | undefined
+      const ep = result.episode
       if (!ep) return null
-      const ids = ep.ids as Record<string, unknown> | undefined
-      const images = ep.images as Record<string, string | undefined> | undefined
       return (
         <PosterCard
           title={String(ep.title ?? '')}
           meta={`S${ep.season} E${ep.number}`}
-          image={images?.poster}
+          image={ep.images?.poster}
           type="episode"
           aspect="16:9"
           onClick={() =>
             navigate({
               to: '/episodes/$id',
-              params: { id: String(ids?.trakt ?? ids?.slug ?? '') },
+              params: { id: String(ep.ids.trakt ?? ep.ids.slug ?? '') },
             })
           }
         />
       )
     }
     case 'person': {
-      const p = result.person as Record<string, unknown> | undefined
+      const p = result.person
       if (!p) return null
-      const ids = p.ids as Record<string, unknown> | undefined
-      const images = p.images as Record<string, string | undefined> | undefined
       return (
         <div
           role="button"
@@ -301,29 +293,28 @@ function SearchResultCard({ result }: { result: any }) {
           onClick={() =>
             navigate({
               to: '/people/$id',
-              params: { id: String(ids?.trakt ?? ids?.slug ?? '') },
+              params: { id: String(p.ids.trakt ?? p.ids.slug ?? '') },
             })
           }
           onKeyDown={activateOnKey}
         >
           <PosterCard
             title={String(p.name ?? '')}
-            image={images?.headshot ?? images?.poster}
+            image={p.images?.headshot ?? p.images?.poster}
             aspect="2:3"
           />
         </div>
       )
     }
     case 'list': {
-      const l = result.list as Record<string, unknown> | undefined
+      const l = result.list
       if (!l) return null
-      const user = l.user as Record<string, unknown> | undefined
       return (
         <div className="glass flex cursor-pointer flex-col gap-2 rounded-sf p-4">
           <p className="font-semibold text-sf-ink">{String(l.name ?? '')}</p>
           <p className="text-xs text-sf-ink-muted">
             {String(l.item_count ?? 0)} items · by{' '}
-            {String(user?.username ?? '')}
+            {String(l.user?.username ?? '')}
           </p>
         </div>
       )

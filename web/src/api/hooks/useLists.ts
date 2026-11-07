@@ -21,8 +21,18 @@ import type {
   UpdateSmartListPayload,
 } from '@/api/types/lists'
 
-// The generated schema uses content?: never and params?: never for many endpoints.
-// We cast the method to any to bypass strict types; runtime behavior is correct.
+// The generated schema has `content?: never` / `params?: never` for many
+// endpoints, so the typed client does not accept the params/body objects these
+// hooks pass. The options are asserted `as never` (the shape the schema
+// declares) and the response is narrowed to the domain type at the call site —
+// the same idiom the social hooks use, rather than an untyped `as any`.
+//
+// The hooks take a nullable client (TanStack Query gives no non-null
+// guarantee), so it is narrowed here instead of with a `!`.
+function requireClient(client: ApiClient | null): ApiClient {
+  if (!client) throw new Error('Not authenticated')
+  return client
+}
 
 // ─── Keys ───────────────────────────────────────────────
 export const listKeys = {
@@ -52,12 +62,12 @@ export function useMyLists(client: ApiClient | null) {
   return useQuery({
     queryKey: listKeys.mine(),
     queryFn: async (): Promise<TraktList[]> => {
-      const { data, error } = await (client!.GET as any)(
-        '/v1/users/{id}/lists',
-        { params: { path: { id: ME } } }
-      )
+      const api = requireClient(client)
+      const { data, error } = await api.GET('/v1/users/{id}/lists', {
+        params: { path: { id: ME } },
+      } as never)
       if (error) throw error
-      return (data as TraktList[]) ?? []
+      return (data as unknown as TraktList[]) ?? []
     },
     enabled: !!client,
   })
@@ -68,11 +78,10 @@ export function useCollaborations(client: ApiClient | null) {
   return useQuery({
     queryKey: listKeys.collaborations(),
     queryFn: async (): Promise<TraktList[]> => {
-      const { data, error } = await (client!.GET as any)(
-        '/v1/users/me/lists/collaborations'
-      )
+      const api = requireClient(client)
+      const { data, error } = await api.GET('/v1/users/me/lists/collaborations')
       if (error) throw error
-      return (data as TraktList[]) ?? []
+      return (data as unknown as TraktList[]) ?? []
     },
     enabled: !!client,
   })
@@ -83,12 +92,12 @@ export function useCreateList(client: ApiClient | null) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (payload: CreateListPayload): Promise<TraktList> => {
-      const { data, error } = await (client!.POST as any)(
-        '/v1/users/me/lists',
-        { body: payload }
-      )
+      const api = requireClient(client)
+      const { data, error } = await api.POST('/v1/users/me/lists', {
+        body: payload,
+      } as never)
       if (error) throw error
-      return data as TraktList
+      return data as unknown as TraktList
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: listKeys.mine() })
@@ -112,12 +121,13 @@ export function useUpdateList(client: ApiClient | null) {
       id: number | string
       payload: UpdateListPayload
     }): Promise<TraktList> => {
-      const { data, error } = await (client!.PUT as any)('/v1/lists/{id}', {
+      const api = requireClient(client)
+      const { data, error } = await api.PUT('/v1/lists/{id}', {
         params: { path: { id: String(id) } },
         body: payload,
-      })
+      } as never)
       if (error) throw error
-      return data as TraktList
+      return data as unknown as TraktList
     },
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: listKeys.detail(id) })
@@ -135,9 +145,10 @@ export function useDeleteList(client: ApiClient | null) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: number | string) => {
-      const { error } = await (client!.DELETE as any)('/v1/lists/{id}', {
+      const api = requireClient(client)
+      const { error } = await api.DELETE('/v1/lists/{id}', {
         params: { path: { id: String(id) } },
-      })
+      } as never)
       if (error) throw error
     },
     onSuccess: () => {
@@ -156,11 +167,12 @@ export function useListDetail(client: ApiClient | null, id: number | string) {
   return useQuery({
     queryKey: listKeys.detail(id),
     queryFn: async (): Promise<TraktList> => {
-      const { data, error } = await (client!.GET as any)('/v1/lists/{id}', {
+      const api = requireClient(client)
+      const { data, error } = await api.GET('/v1/lists/{id}', {
         params: { path: { id: String(id) } },
-      })
+      } as never)
       if (error) throw error
-      return data as TraktList
+      return data as unknown as TraktList
     },
     enabled: !!client && !!id,
   })
@@ -176,12 +188,12 @@ export function useListItems(
   return useQuery({
     queryKey: listKeys.items(id, page),
     queryFn: async (): Promise<ListItem[]> => {
-      const { data, error } = await (client!.GET as any)(
-        '/v1/lists/{id}/items',
-        { params: { path: { id: String(id) }, query: { page, limit } } }
-      )
+      const api = requireClient(client)
+      const { data, error } = await api.GET('/v1/lists/{id}/items', {
+        params: { path: { id: String(id) }, query: { page, limit } },
+      } as never)
       if (error) throw error
-      return (data as ListItem[]) ?? []
+      return (data as unknown as ListItem[]) ?? []
     },
     enabled: !!client && !!id,
   })
@@ -198,10 +210,11 @@ export function useAddToList(client: ApiClient | null) {
       id: number | string
       payload: AddListItemPayload
     }) => {
-      const { data, error } = await (client!.POST as any)(
-        '/v1/lists/{id}/items',
-        { params: { path: { id: String(id) } }, body: payload }
-      )
+      const api = requireClient(client)
+      const { data, error } = await api.POST('/v1/lists/{id}/items', {
+        params: { path: { id: String(id) } },
+        body: payload,
+      } as never)
       if (error) throw error
       return data
     },
@@ -227,10 +240,11 @@ export function useRemoveFromList(client: ApiClient | null) {
       id: number | string
       payload: RemoveListItemPayload
     }) => {
-      const { error } = await (client!.POST as any)(
-        '/v1/lists/{id}/items/remove',
-        { params: { path: { id: String(id) } }, body: payload }
-      )
+      const api = requireClient(client)
+      const { error } = await api.POST('/v1/lists/{id}/items/remove', {
+        params: { path: { id: String(id) } },
+        body: payload,
+      } as never)
       if (error) throw error
     },
     onSuccess: (_, { id }) => {
@@ -255,10 +269,11 @@ export function useReorderList(client: ApiClient | null) {
       id: number | string
       payload: ReorderListItemPayload
     }) => {
-      const { error } = await (client!.PUT as any)(
-        '/v1/lists/{id}/items/reorder',
-        { params: { path: { id: String(id) } }, body: payload }
-      )
+      const api = requireClient(client)
+      const { error } = await api.PUT('/v1/lists/{id}/items/reorder', {
+        params: { path: { id: String(id) } },
+        body: payload,
+      } as never)
       if (error) throw error
     },
     onSuccess: (_, { id }) => {
@@ -275,9 +290,10 @@ export function useLikeList(client: ApiClient | null) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: number | string) => {
-      const { error } = await (client!.POST as any)('/v1/lists/{id}/like', {
+      const api = requireClient(client)
+      const { error } = await api.POST('/v1/lists/{id}/like', {
         params: { path: { id: String(id) } },
-      })
+      } as never)
       if (error) throw error
     },
     onSuccess: (_, id) => {
@@ -295,9 +311,10 @@ export function useUnlikeList(client: ApiClient | null) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: number | string) => {
-      const { error } = await (client!.DELETE as any)('/v1/lists/{id}/like', {
+      const api = requireClient(client)
+      const { error } = await api.DELETE('/v1/lists/{id}/like', {
         params: { path: { id: String(id) } },
-      })
+      } as never)
       if (error) throw error
     },
     onSuccess: (_, id) => {
@@ -316,12 +333,12 @@ export function useListLikes(client: ApiClient | null, id: number | string) {
   return useQuery({
     queryKey: listKeys.likes(id),
     queryFn: async (): Promise<ListLike[]> => {
-      const { data, error } = await (client!.GET as any)(
-        '/v1/lists/{id}/likes',
-        { params: { path: { id: String(id) } } }
-      )
+      const api = requireClient(client)
+      const { data, error } = await api.GET('/v1/lists/{id}/likes', {
+        params: { path: { id: String(id) } },
+      } as never)
       if (error) throw error
-      return (data as ListLike[]) ?? []
+      return (data as unknown as ListLike[]) ?? []
     },
     enabled: !!client && !!id,
   })
@@ -332,12 +349,12 @@ export function useListComments(client: ApiClient | null, id: number | string) {
   return useQuery({
     queryKey: listKeys.comments(id),
     queryFn: async (): Promise<ListComment[]> => {
-      const { data, error } = await (client!.GET as any)(
-        '/v1/lists/{id}/comments',
-        { params: { path: { id: String(id) } } }
-      )
+      const api = requireClient(client)
+      const { data, error } = await api.GET('/v1/lists/{id}/comments', {
+        params: { path: { id: String(id) } },
+      } as never)
       if (error) throw error
-      return (data as ListComment[]) ?? []
+      return (data as unknown as ListComment[]) ?? []
     },
     enabled: !!client && !!id,
   })
@@ -351,12 +368,12 @@ export function useListCollaborators(
   return useQuery({
     queryKey: listKeys.collaborators(id),
     queryFn: async (): Promise<Collaborator[]> => {
-      const { data, error } = await (client!.GET as any)(
-        '/v1/lists/{id}/collaborators',
-        { params: { path: { id: String(id) } } }
-      )
+      const api = requireClient(client)
+      const { data, error } = await api.GET('/v1/lists/{id}/collaborators', {
+        params: { path: { id: String(id) } },
+      } as never)
       if (error) throw error
-      return (data as Collaborator[]) ?? []
+      return (data as unknown as Collaborator[]) ?? []
     },
     enabled: !!client && !!id,
   })
@@ -372,10 +389,11 @@ export function useInviteCollaborator(client: ApiClient | null) {
       id: number | string
       payload: InviteCollaboratorPayload
     }) => {
-      const { error } = await (client!.POST as any)(
-        '/v1/lists/{id}/collaborators',
-        { params: { path: { id: String(id) } }, body: payload }
-      )
+      const api = requireClient(client)
+      const { error } = await api.POST('/v1/lists/{id}/collaborators', {
+        params: { path: { id: String(id) } },
+        body: payload,
+      } as never)
       if (error) throw error
     },
     onSuccess: (_, { id }) => {
@@ -398,9 +416,12 @@ export function useRemoveCollaborator(client: ApiClient | null) {
       id: number | string
       userId: number | string
     }) => {
-      const { error } = await (client!.DELETE as any)(
+      const api = requireClient(client)
+      const { error } = await api.DELETE(
         '/v1/lists/{id}/collaborators/{user_id}',
-        { params: { path: { id: String(id), user_id: String(userId) } } }
+        {
+          params: { path: { id: String(id), user_id: String(userId) } },
+        } as never
       )
       if (error) throw error
     },
@@ -419,11 +440,10 @@ export function useMySmartLists(client: ApiClient | null) {
   return useQuery({
     queryKey: listKeys.smartLists(),
     queryFn: async (): Promise<SmartList[]> => {
-      const { data, error } = await (client!.GET as any)(
-        '/v1/users/me/smart-lists'
-      )
+      const api = requireClient(client)
+      const { data, error } = await api.GET('/v1/users/me/smart-lists')
       if (error) throw error
-      return (data as SmartList[]) ?? []
+      return (data as unknown as SmartList[]) ?? []
     },
     enabled: !!client,
   })
@@ -433,12 +453,12 @@ export function useCreateSmartList(client: ApiClient | null) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (payload: CreateSmartListPayload): Promise<SmartList> => {
-      const { data, error } = await (client!.POST as any)(
-        '/v1/users/me/smart-lists',
-        { body: payload }
-      )
+      const api = requireClient(client)
+      const { data, error } = await api.POST('/v1/users/me/smart-lists', {
+        body: payload,
+      } as never)
       if (error) throw error
-      return data as SmartList
+      return data as unknown as SmartList
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: listKeys.smartLists() })
@@ -460,10 +480,11 @@ export function useUpdateSmartList(client: ApiClient | null) {
       id: number | string
       payload: UpdateSmartListPayload
     }) => {
-      const { error } = await (client!.PUT as any)('/v1/smart-lists/{id}', {
+      const api = requireClient(client)
+      const { error } = await api.PUT('/v1/smart-lists/{id}', {
         params: { path: { id: String(id) } },
         body: payload,
-      })
+      } as never)
       if (error) throw error
     },
     onSuccess: (_, { id }) => {
@@ -481,9 +502,10 @@ export function useDeleteSmartList(client: ApiClient | null) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (id: number | string) => {
-      const { error } = await (client!.DELETE as any)('/v1/smart-lists/{id}', {
+      const api = requireClient(client)
+      const { error } = await api.DELETE('/v1/smart-lists/{id}', {
         params: { path: { id: String(id) } },
-      })
+      } as never)
       if (error) throw error
     },
     onSuccess: () => {
@@ -503,12 +525,12 @@ export function useSmartListDetail(
   return useQuery({
     queryKey: listKeys.smartDetail(id),
     queryFn: async (): Promise<SmartList> => {
-      const { data, error } = await (client!.GET as any)(
-        '/v1/smart-lists/{id}',
-        { params: { path: { id: String(id) } } }
-      )
+      const api = requireClient(client)
+      const { data, error } = await api.GET('/v1/smart-lists/{id}', {
+        params: { path: { id: String(id) } },
+      } as never)
       if (error) throw error
-      return data as SmartList
+      return data as unknown as SmartList
     },
     enabled: !!client && !!id,
   })
@@ -523,12 +545,12 @@ export function useSmartListItems(
   return useQuery({
     queryKey: listKeys.smartItems(id, page),
     queryFn: async (): Promise<ListItem[]> => {
-      const { data, error } = await (client!.GET as any)(
-        '/v1/smart-lists/{id}/items',
-        { params: { path: { id: String(id) }, query: { page, limit } } }
-      )
+      const api = requireClient(client)
+      const { data, error } = await api.GET('/v1/smart-lists/{id}/items', {
+        params: { path: { id: String(id) }, query: { page, limit } },
+      } as never)
       if (error) throw error
-      return (data as ListItem[]) ?? []
+      return (data as unknown as ListItem[]) ?? []
     },
     enabled: !!client && !!id,
   })
@@ -539,9 +561,10 @@ export function useTrendingLists(client: ApiClient | null) {
   return useQuery({
     queryKey: listKeys.trending(),
     queryFn: async (): Promise<TrendingList[]> => {
-      const { data, error } = await (client!.GET as any)('/v1/lists/trending')
+      const api = requireClient(client)
+      const { data, error } = await api.GET('/v1/lists/trending')
       if (error) throw error
-      return (data as TrendingList[]) ?? []
+      return (data as unknown as TrendingList[]) ?? []
     },
     enabled: !!client,
   })
@@ -554,11 +577,12 @@ export function usePopularLists(
   return useQuery({
     queryKey: listKeys.popular(period),
     queryFn: async (): Promise<PopularList[]> => {
-      const { data, error } = await (client!.GET as any)('/v1/lists/popular', {
+      const api = requireClient(client)
+      const { data, error } = await api.GET('/v1/lists/popular', {
         params: { query: { period } },
-      })
+      } as never)
       if (error) throw error
-      return (data as PopularList[]) ?? []
+      return (data as unknown as PopularList[]) ?? []
     },
     enabled: !!client,
   })
@@ -573,14 +597,15 @@ export function useSearchForList(
   return useQuery({
     queryKey: ['search', 'listAdd', query],
     queryFn: async (): Promise<SearchResult[]> => {
-      const { data, error } = await (client!.GET as any)('/v1/search', {
+      const api = requireClient(client)
+      const { data, error } = await api.GET('/v1/search', {
         params: {
           query: { query, type: 'movie,show', limit: 20 },
         },
-      })
+      } as never)
       if (error) throw error
       const results: SearchResult[] = []
-      const raw = data as any
+      const raw = data as unknown as SearchResult[]
       if (Array.isArray(raw)) {
         for (const item of raw) {
           if (item.type === 'movie' && item.movie) {
