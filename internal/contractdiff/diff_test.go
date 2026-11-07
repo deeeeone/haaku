@@ -299,3 +299,58 @@ func TestGateOnCommittedContractIsClean(t *testing.T) {
 		t.Fatalf("the committed contract carries unacknowledged breaking changes:\n%s", r.UnacknowledgedMessage())
 	}
 }
+
+// TestUnacknowledgedMessageSnippetParses is the guard for the message the tool
+// prints when it refuses to pass: the entry it tells a maintainer to write must
+// itself be accepted by the loader. It was not — the message printed a bare
+// top-level sequence while ParseAcknowledgements requires `version: 1` and an
+// `acknowledged:` list, so following the instruction produced a parse error and
+// left the gate unsatisfiable.
+func TestUnacknowledgedMessageSnippetParses(t *testing.T) {
+	baseline := mustDoc(t, doc(baseOp+"  /v1/b:\n    get:\n      responses:\n        \"200\":\n          description: ok\n"))
+	current := mustDoc(t, doc(baseOp))
+
+	acks, err := ParseAcknowledgements([]byte("version: 1\nacknowledged: []\n"))
+	if err != nil {
+		t.Fatalf("ParseAcknowledgements: %v", err)
+	}
+
+	r := Evaluate(baseline, current, acks, "baseline.yaml", "openapi.yaml")
+	if !r.Failure() {
+		t.Fatal("expected the gate to fail on an unacknowledged breaking change")
+	}
+	msg := r.UnacknowledgedMessage()
+	if !strings.Contains(msg, "under `acknowledged:`") {
+		t.Errorf("the message must name the `acknowledged:` key, since the entry only parses under it:\n%s", msg)
+	}
+
+	// Take the snippet exactly as printed: the "- signature:" line and the two
+	// lines under it, dedented by the four spaces they carry in the message.
+	lines := strings.Split(msg, "\n")
+	start := -1
+	for i, l := range lines {
+		if strings.TrimSpace(l) == "- signature: \"removed-path GET /v1/b\"" {
+			start = i
+			break
+		}
+	}
+	if start < 0 {
+		t.Fatalf("message does not show the entry to write:\n%s", msg)
+	}
+	var snippet []string
+	for _, l := range lines[start : start+3] {
+		snippet = append(snippet, strings.TrimPrefix(l, "    "))
+	}
+	written := "version: 1\nacknowledged:\n" + strings.Join(snippet, "\n") + "\n"
+
+	got, err := ParseAcknowledgements([]byte(written))
+	if err != nil {
+		t.Fatalf("the entry the message tells the maintainer to write does not parse as an acknowledgement: %v\n--- what the message printed ---\n%s", err, written)
+	}
+	if len(got.Acknowledged) != 1 {
+		t.Fatalf("parsed %d acknowledgements, want 1", len(got.Acknowledged))
+	}
+	if sig := strings.TrimSpace(got.Acknowledged[0].Signature); sig != "removed-path GET /v1/b" {
+		t.Errorf("acknowledged signature = %q, want %q", sig, "removed-path GET /v1/b")
+	}
+}

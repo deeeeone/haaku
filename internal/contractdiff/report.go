@@ -130,10 +130,16 @@ func (r *Report) UnacknowledgedMessage() string {
 	for _, c := range r.Unacknowledged {
 		fmt.Fprintf(&b, "\n  %s\n", c.Signature())
 		fmt.Fprintf(&b, "    %s\n", c.Detail())
-		fmt.Fprintf(&b, "    If this break is deliberate, write it down in contracts/api/v1/breaking-changes.yaml:\n\n")
-		fmt.Fprintf(&b, "      - signature: %q\n", c.Signature())
-		fmt.Fprintf(&b, "        date: %s\n", today)
-		fmt.Fprintf(&b, "        reason: \"<one line: why this break is acceptable and what clients must do>\"\n")
+		// The entry is a list item under `acknowledged:`, and the loader
+		// requires `version: 1`. Print it in the shape the loader accepts —
+		// a bare top-level sequence parses as an error, which would leave a
+		// maintainer with a red gate they cannot clear by following the
+		// message. TestUnacknowledgedMessageSnippetParses guards this.
+		fmt.Fprintf(&b, "    If this break is deliberate, add this entry under `acknowledged:`\n")
+		fmt.Fprintf(&b, "    in contracts/api/v1/breaking-changes.yaml:\n\n")
+		fmt.Fprintf(&b, "        - signature: %q\n", c.Signature())
+		fmt.Fprintf(&b, "          date: %s\n", today)
+		fmt.Fprintf(&b, "          reason: \"<one line: why this break is acceptable and what clients must do>\"\n")
 	}
 	fmt.Fprintf(&b, "\nA breaking change is supposed to mean a new URL prefix (/v2). If you did not mean to\n"+
 		"break the contract, revert the change instead of acknowledging it.\n")
