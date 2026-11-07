@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"trakt-api/redis"
+	"github.com/haaku-tv/haaku/redis"
 
 	goredis "github.com/redis/go-redis/v9"
 

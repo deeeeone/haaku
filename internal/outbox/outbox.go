@@ -7,8 +7,8 @@ import (
 	"log"
 	"time"
 
-	"trakt-api/internal/database"
-	"trakt-api/internal/obs"
+	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/obs"
 
 	goredis "github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
@@ -16,7 +16,7 @@ import (
 
 // outboxWorkerMetrics instruments the outbox publisher for the metrics listener;
 // its heartbeat is what makes a stalled publisher detectable. The name matches
-// obs.WorkerOutbox, which is also the TKILLER_WORKER name.
+// obs.WorkerOutbox, which is also the HAAKU_WORKER name.
 var outboxWorkerMetrics = obs.NewWorker(obs.WorkerOutbox)
 
 // Event type constants — the canonical event names emitted to the outbox.

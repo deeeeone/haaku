@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	_ "trakt-api/internal/handlers/media" // trigger init() for route registration
-	"trakt-api/internal/openapi"
+	_ "github.com/haaku-tv/haaku/internal/handlers/media" // trigger init() for route registration
+	"github.com/haaku-tv/haaku/internal/openapi"
 )
 
 // ---------------------------------------------------------------------------

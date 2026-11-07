@@ -1,5 +1,5 @@
 // Package backup takes, lists, rotates, deletes and restores whole-database
-// backups for trakt-killer: a pg_dump of the database in custom format plus a
+// backups for haaku: a pg_dump of the database in custom format plus a
 // manifest that is written last.
 //
 // docs/architecture/backups.md is the durable description. This comment states

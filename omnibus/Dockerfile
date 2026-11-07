@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 #
-# The omnibus image: the base tkiller image plus PostgreSQL and Redis in one
+# The omnibus image: the base haaku image plus PostgreSQL and Redis in one
 # container, supervised by s6-overlay, so `docker compose up -d` is the whole
 # install. It is the image users are meant to run, and the only one that gets
 # `latest` / `build-N` / `<sha>` tags.
@@ -18,8 +18,8 @@
 # The base image of one commit. CI passes the `<sha>-base` tag it pushed; a
 # local build names one the same way. No tag follows the newest base, so the
 # default is a placeholder on a reserved domain that never resolves.
-ARG TKILLER_IMAGE=set-haaku-image.invalid/haaku:base
-FROM ${TKILLER_IMAGE}
+ARG HAAKU_IMAGE=set-haaku-image.invalid/haaku:base
+FROM ${HAAKU_IMAGE}
 
 ARG TARGETARCH
 # Pinned with per-architecture checksums: this is the process supervisor, so a
@@ -39,7 +39,7 @@ USER root
 
 # Service accounts with fixed ids, created before the packages so the packages
 # reuse them and /config/<service> keeps a valid owner across image updates
-# even if a later package takes the next free system id. The tkiller account
+# even if a later package takes the next free system id. The haaku account
 # already exists in the base image (uid 911) and is the only one remapped at
 # start, by PUID and PGID.
 RUN groupadd -r -g 999 postgres && \
@@ -89,14 +89,14 @@ COPY rootfs/ /
 RUN find /etc/s6-overlay/scripts -type f -exec chmod 0755 {} + && \
     find /etc/s6-overlay/s6-rc.d -type f \
       \( -name run -o -name up -o -name finish -o -name check \) -exec chmod 0755 {} + && \
-    chmod 0644 /etc/tkiller-omnibus/lib.sh /etc/tkiller-omnibus/postgresql.omnibus.conf
+    chmod 0644 /etc/haaku-omnibus/lib.sh /etc/haaku-omnibus/postgresql.omnibus.conf
 
 ENV PATH="/usr/lib/postgresql/${PG_MAJOR}/bin:${PATH}" \
     PG_MAJOR="${PG_MAJOR}" \
     PUID=911 \
     PGID=911 \
-    TKILLER_BACKUP_DIR=/config/tkiller/backups \
-    TKILLER_MIGRATION_BACKUP_DIR=/config/tkiller/pre-migrate-backups \
+    HAAKU_BACKUP_DIR=/config/haaku/backups \
+    HAAKU_MIGRATION_BACKUP_DIR=/config/haaku/pre-migrate-backups \
     S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0 \
     S6_BEHAVIOUR_IF_STAGE2_FAILS=2 \
     S6_VERBOSITY=1
@@ -106,12 +106,12 @@ VOLUME /config
 # The base image's health check probes 8080; here PORT may be overridden, and
 # the first start applies every migration, which can take minutes on a large
 # database. Not healthy before that is correct — the API is not serving yet.
-# A worker container (TKILLER_MODE=worker, no API port) answers on its health
+# A worker container (HAAKU_MODE=worker, no API port) answers on its health
 # listener instead, so the same check covers both roles.
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5m --retries=3 \
   CMD curl -fsS "http://127.0.0.1:$(printf '%s' "${PORT:-8080}")/healthz" >/dev/null || \
-      curl -fsS "http://${TKILLER_WORKER_HEALTH_LISTEN:-127.0.0.1:9090}/healthz" >/dev/null || exit 1
+      curl -fsS "http://${HAAKU_WORKER_HEALTH_LISTEN:-127.0.0.1:9090}/healthz" >/dev/null || exit 1
 
 # /init needs root to map accounts and hand directories to them. To run this
 # image without root, set the entrypoint to /app/api with an external

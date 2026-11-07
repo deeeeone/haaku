@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	_ "trakt-api/internal/handlers/checkin"
-	_ "trakt-api/internal/handlers/scrobble"
-	"trakt-api/internal/openapi"
+	_ "github.com/haaku-tv/haaku/internal/handlers/checkin"
+	_ "github.com/haaku-tv/haaku/internal/handlers/scrobble"
+	"github.com/haaku-tv/haaku/internal/openapi"
 )
 
 // ---------------------------------------------------------------------------

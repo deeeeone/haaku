@@ -1,10 +1,10 @@
 #!/command/with-contenv bash
 # shellcheck shell=bash
 set -euo pipefail
-# shellcheck source=omnibus/rootfs/etc/tkiller-omnibus/lib.sh
-source /etc/tkiller-omnibus/lib.sh
+# shellcheck source=omnibus/rootfs/etc/haaku-omnibus/lib.sh
+source /etc/haaku-omnibus/lib.sh
 
-# Off unless init-config enabled it (TKILLER_WORKER_SERVICE=true). A service
+# Off unless init-config enabled it (HAAKU_WORKER_SERVICE=true). A service
 # that is off still reports ready and sleeps, so the dependency graph keeps the
 # same shape whatever the configuration is.
 if ! enabled worker-service; then
@@ -12,20 +12,20 @@ if ! enabled worker-service; then
   exec sleep infinity
 fi
 
-export HOME=/config/tkiller
+export HOME=/config/haaku
 # The binary loads an optional .env from its working directory, so this matches
-# svc-tkiller and keeps the metadata cursor inside /config.
-cd /config/tkiller
+# svc-haaku and keeps the metadata cursor inside /config.
+cd /config/haaku
 
-# init-config exports the container-wide TKILLER_WORKER as "none" when this
-# service is on, so svc-tkiller (the API) runs API-only. This process's own
+# init-config exports the container-wide HAAKU_WORKER as "none" when this
+# service is on, so svc-haaku (the API) runs API-only. This process's own
 # selection comes from a separate variable, so the API and the worker can never
 # both claim the same worker.
-export TKILLER_MODE=worker
-export TKILLER_WORKER="${TKILLER_WORKER_SERVICE_SELECTION:-all}"
+export HAAKU_MODE=worker
+export HAAKU_WORKER="${HAAKU_WORKER_SERVICE_SELECTION:-all}"
 
 # s6-notifyoncheck waits for the worker's own readiness signal — /readyz on its
 # health listener — the same way svc-redis waits for a PONG, so a worker that
 # cannot start is never reported up. The app reports liveness through that
 # listener too (the container health check reads the API's /healthz).
-exec s6-notifyoncheck -d -n 0 -w 1000 s6-setuidgid tkiller /app/api
+exec s6-notifyoncheck -d -n 0 -w 1000 s6-setuidgid haaku /app/api

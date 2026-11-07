@@ -3,7 +3,7 @@ package tests
 import (
 	"testing"
 
-	"trakt-api/internal/database"
+	"github.com/haaku-tv/haaku/internal/database"
 )
 
 // ---------------------------------------------------------------------------

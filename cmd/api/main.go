@@ -12,16 +12,16 @@ import (
 	"syscall"
 	"time"
 
-	"trakt-api/external/tmdb"
-	"trakt-api/internal/backup"
-	"trakt-api/internal/config"
-	"trakt-api/internal/database"
-	"trakt-api/internal/httpapi"
-	"trakt-api/internal/logging"
-	"trakt-api/internal/mode"
-	"trakt-api/internal/obs"
-	"trakt-api/internal/workers"
-	"trakt-api/redis"
+	"github.com/haaku-tv/haaku/external/tmdb"
+	"github.com/haaku-tv/haaku/internal/backup"
+	"github.com/haaku-tv/haaku/internal/config"
+	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/httpapi"
+	"github.com/haaku-tv/haaku/internal/logging"
+	"github.com/haaku-tv/haaku/internal/mode"
+	"github.com/haaku-tv/haaku/internal/obs"
+	"github.com/haaku-tv/haaku/internal/workers"
+	"github.com/haaku-tv/haaku/redis"
 
 	"github.com/robfig/cron/v3"
 	"gorm.io/gorm"
@@ -40,7 +40,7 @@ func run() int {
 	backupNow := flag.Bool("backup", false, "take a manual database backup and exit")
 	backupList := flag.Bool("backup-list", false, "list database backups and exit")
 	backupRestore := flag.String("backup-restore", "", "restore the backup with this id and exit")
-	backupDir := flag.String("backup-dir", "", "backup destination directory (default $TKILLER_BACKUP_DIR or ./backups)")
+	backupDir := flag.String("backup-dir", "", "backup destination directory (default $HAAKU_BACKUP_DIR or ./backups)")
 	flag.Parse()
 
 	serverMode, err := mode.FromEnv()
@@ -61,7 +61,7 @@ func run() int {
 	logger := logging.New(cfg.Env)
 	slog.SetDefault(logger)
 
-	logger.Info("starting trakt-api", "env", cfg.Env, "port", cfg.Port, "mode", serverMode.String())
+	logger.Info("starting haaku", "env", cfg.Env, "port", cfg.Port, "mode", serverMode.String())
 
 	// Database (T0.4)
 	if cfg.DatabaseURL != "" {
@@ -103,7 +103,7 @@ func run() int {
 	// API mode owns the schema: apply every pending migration before any worker
 	// or listener starts, so the tables are the ones the SQL migrations define
 	// and never the ones GORM's AutoMigrate used to invent. The runner is the
-	// same one `--migrate-only`/`TKILLER_MODE=migrate` uses, so there is a
+	// same one `--migrate-only`/`HAAKU_MODE=migrate` uses, so there is a
 	// single, tested path; it is a fast no-op once the schema is current. A
 	// worker mode never gets here (wantsMigrations is false for it), which is
 	// the whole point of internal/mode.
@@ -123,7 +123,7 @@ func run() int {
 
 	// Worker selection (T0.9). One binary runs every role, so the same worker
 	// registry drives an API that hosts the workers in-process and a dedicated
-	// worker process. TKILLER_WORKER picks which run:
+	// worker process. HAAKU_WORKER picks which run:
 	//
 	//	unset / all  every worker (the classic single-container install)
 	//	<n>,<n>      only those workers
@@ -165,7 +165,7 @@ func run() int {
 			"mode", serverMode.String(), "workers", selection.Names())
 	}
 
-	// Observability listeners (issue #9). Off unless TKILLER_METRICS_LISTEN is set.
+	// Observability listeners (issue #9). Off unless HAAKU_METRICS_LISTEN is set.
 	if err := obs.Start(context.Background()); err != nil {
 		logger.Warn("observability listeners unavailable", "error", err)
 	}
@@ -203,7 +203,7 @@ func run() int {
 	setupCronJobs(logger)
 
 	go func() {
-		logger.Info("trakt-api listening", "port", cfg.Port)
+		logger.Info("haaku listening", "port", cfg.Port)
 		if err := app.Listen(":" + cfg.Port); err != nil {
 			logging.Fatal(logger, "server start failed", "error", err)
 		}
@@ -349,7 +349,7 @@ func runBackupCommand(logger *slog.Logger, cfg *config.Config, cmd backupCommand
 	}
 	dir := cmd.dir
 	if dir == "" {
-		dir = envDefault("TKILLER_BACKUP_DIR", "./backups")
+		dir = envDefault("HAAKU_BACKUP_DIR", "./backups")
 	}
 	destination, err := backup.NewLocalDestination(dir)
 	if err != nil {
@@ -361,7 +361,7 @@ func runBackupCommand(logger *slog.Logger, cfg *config.Config, cmd backupCommand
 		logger.Error("backup lock unavailable", "error", err)
 		return 1
 	}
-	requireTables := splitCSV(envDefault("TKILLER_BACKUP_REQUIRE_TABLES", "users"))
+	requireTables := splitCSV(envDefault("HAAKU_BACKUP_REQUIRE_TABLES", "users"))
 	dumper, err := backup.NewPostgresDumper(ctx, cfg.DatabaseURL, requireTables)
 	if err != nil {
 		logger.Error("backup needs pg_dump and pg_restore on this host", "error", err)
@@ -377,9 +377,9 @@ func runBackupCommand(logger *slog.Logger, cfg *config.Config, cmd backupCommand
 		Locker:        locker,
 		Dumper:        dumper,
 		Restorer:      restorer,
-		ServerID:      envDefault("TKILLER_SERVER_ID", backup.DefaultServerID),
-		AppVersion:    envDefault("TKILLER_VERSION", "dev"),
-		Keep:          envInt("TKILLER_BACKUP_KEEP", backup.DefaultKeep),
+		ServerID:      envDefault("HAAKU_SERVER_ID", backup.DefaultServerID),
+		AppVersion:    envDefault("HAAKU_VERSION", "dev"),
+		Keep:          envInt("HAAKU_BACKUP_KEEP", backup.DefaultKeep),
 		RequireTables: requireTables,
 		Logger:        logger,
 	})

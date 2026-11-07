@@ -7,11 +7,11 @@ import (
 	"strings"
 	"testing"
 
-	"trakt-api/internal/handlers/collab"
-	"trakt-api/internal/handlers/integrations"
-	"trakt-api/internal/handlers/recommendations"
-	"trakt-api/internal/handlers/social"
-	"trakt-api/internal/handlers/webhooks"
+	"github.com/haaku-tv/haaku/internal/handlers/collab"
+	"github.com/haaku-tv/haaku/internal/handlers/integrations"
+	"github.com/haaku-tv/haaku/internal/handlers/recommendations"
+	"github.com/haaku-tv/haaku/internal/handlers/social"
+	"github.com/haaku-tv/haaku/internal/handlers/webhooks"
 
 	"github.com/gofiber/fiber/v2"
 )

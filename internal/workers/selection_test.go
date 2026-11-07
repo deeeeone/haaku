@@ -6,7 +6,7 @@ import (
 )
 
 // TestParseSelectionDefaultsToAll pins the compatibility property: an unset (or
-// blank, or "all") TKILLER_WORKER runs every worker, so a single-container
+// blank, or "all") HAAKU_WORKER runs every worker, so a single-container
 // install behaves exactly as it did before the selector existed.
 func TestParseSelectionDefaultsToAll(t *testing.T) {
 	for _, raw := range []string{"", "   ", "all", "ALL", " All "} {

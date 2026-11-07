@@ -24,8 +24,8 @@ import (
 	"reflect"
 	"time"
 
-	"trakt-api/internal/database"
-	"trakt-api/internal/response"
+	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/response"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -71,7 +71,7 @@ func handleExport(c *fiber.Ctx) error {
 
 	now := time.Now().UTC()
 	c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSONCharsetUTF8)
-	c.Set(fiber.HeaderContentDisposition, `attachment; filename="tkiller-export.json"`)
+	c.Set(fiber.HeaderContentDisposition, `attachment; filename="haaku-export.json"`)
 
 	c.Context().SetBodyStreamWriter(func(w *bufio.Writer) {
 		if err := writeArchive(w, db, &user, now); err != nil {

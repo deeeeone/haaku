@@ -3,7 +3,7 @@
 #
 # shellcheck shell=bash
 
-STATE_DIR=/run/tkiller-omnibus
+STATE_DIR=/run/haaku-omnibus
 CONTAINER_ENV=/run/s6/container_environment
 
 log() { printf '[omnibus] %s\n' "$*"; }
@@ -43,8 +43,8 @@ notify_ready() { printf '\n' >&3; }
 
 # exec_clean PATTERN CMD...: exec CMD with only PATH, HOME, TZ and the variables
 # whose names match the extended regex PATTERN. The bundled services run this
-# way so they never see TKILLER_SECRET_KEY or the rest of the app's
-# environment: the tkiller database role is the cluster's superuser, and a
+# way so they never see HAAKU_SECRET_KEY or the rest of the app's
+# environment: the haaku database role is the cluster's superuser, and a
 # superuser can read files and run programs as other accounts, so a secret in
 # PostgreSQL's own environment would be readable through the database.
 #
@@ -78,6 +78,6 @@ PG_LOCK=/config/.postgres.lock
 # account controls.
 read_small() { dd if="$1" bs=16 count=1 iflag=nofollow,nonblock status=none 2>/dev/null; }
 
-# tkiller_port: the port the app listens on. PORT from the container wins, then
+# haaku_port: the port the app listens on. PORT from the container wins, then
 # the image default, which is also the binary's own default.
-tkiller_port() { printf '%s' "${PORT:-8080}"; }
+haaku_port() { printf '%s' "${PORT:-8080}"; }

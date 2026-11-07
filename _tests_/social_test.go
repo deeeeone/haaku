@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"trakt-api/internal/database"
-	_ "trakt-api/internal/handlers/social"
-	"trakt-api/internal/openapi"
+	"github.com/haaku-tv/haaku/internal/database"
+	_ "github.com/haaku-tv/haaku/internal/handlers/social"
+	"github.com/haaku-tv/haaku/internal/openapi"
 )
 
 // ---------------------------------------------------------------------------

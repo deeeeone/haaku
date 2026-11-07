@@ -8,7 +8,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"trakt-api/web"
+	"github.com/haaku-tv/haaku/web"
 )
 
 // newApp mounts the UI handler exactly as the server does: after the API routes,

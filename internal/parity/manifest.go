@@ -19,7 +19,7 @@ import (
 	"sort"
 	"strings"
 
-	"trakt-api/internal/openapi"
+	"github.com/haaku-tv/haaku/internal/openapi"
 
 	"gopkg.in/yaml.v3"
 )

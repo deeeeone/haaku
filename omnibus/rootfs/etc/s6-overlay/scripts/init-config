@@ -4,8 +4,8 @@
 # which bundled services run, and publish the connection settings the app reads
 # as environment for the later services.
 set -euo pipefail
-# shellcheck source=omnibus/rootfs/etc/tkiller-omnibus/lib.sh
-source /etc/tkiller-omnibus/lib.sh
+# shellcheck source=omnibus/rootfs/etc/haaku-omnibus/lib.sh
+source /etc/haaku-omnibus/lib.sh
 
 # Start from nothing: a restart of this container keeps /run, and a flag left
 # from the last start must not outlive its setting.
@@ -16,7 +16,7 @@ install -d -m 0755 "$STATE_DIR"
 # stays root's, so no service account can swap a service directory for a
 # symlink; inside one, files are written as its account, never as root.
 install -d -o root -g root -m 0755 /config
-install -d -o tkiller -g tkiller -m 0755 /config/tkiller
+install -d -o haaku -g haaku -m 0755 /config/haaku
 install -d -o postgres -g postgres -m 0750 /config/postgres
 install -d -o redis -g redis -m 0750 /config/redis
 # Root-owned, so the postgres account opens it read-write (see lib.sh) but
@@ -30,27 +30,27 @@ chmod 0660 "$PG_LOCK"
 # account's ids differ from the last walk's, or when an entry in the top two
 # levels is owned wrong, as in a restored or copied-in directory. Delete the
 # marker to force a walk.
-owner_marker=/config/.tkiller-owner
-tkiller_ids="$(id -u tkiller):$(id -g tkiller)"
-if [[ "$(cat "$owner_marker" 2>/dev/null)" != "$tkiller_ids" ]] ||
-  [[ -n "$(find /config/tkiller -mindepth 1 -maxdepth 2 \( ! -user tkiller -o ! -group tkiller \) -print -quit)" ]]; then
-  own_tree tkiller tkiller /config/tkiller
-  printf '%s\n' "$tkiller_ids" >"$owner_marker"
+owner_marker=/config/.haaku-owner
+haaku_ids="$(id -u haaku):$(id -g haaku)"
+if [[ "$(cat "$owner_marker" 2>/dev/null)" != "$haaku_ids" ]] ||
+  [[ -n "$(find /config/haaku -mindepth 1 -maxdepth 2 \( ! -user haaku -o ! -group haaku \) -print -quit)" ]]; then
+  own_tree haaku haaku /config/haaku
+  printf '%s\n' "$haaku_ids" >"$owner_marker"
 fi
 # The pre-migration safety backup lands here, so it has to exist and be the
 # app's before the first start.
-s6-setuidgid tkiller install -d -m 0755 /config/tkiller/backups
+s6-setuidgid haaku install -d -m 0755 /config/haaku/backups
 install -d -o postgres -g postgres -m 2775 /run/postgresql
 
 # Settings the binary itself refuses to start without. Checking them here turns
 # a crash loop into one line that says what to do.
-if [[ -z "${TKILLER_SECRET_KEY:-}" ]]; then
+if [[ -z "${HAAKU_SECRET_KEY:-}" ]]; then
   cat >&2 <<'MSG'
-TKILLER_SECRET_KEY is not set, and the server refuses to start without it: it
+HAAKU_SECRET_KEY is not set, and the server refuses to start without it: it
 is the root key for everything stored encrypted at rest, so changing it later
 makes existing rows unreadable.
 
-Generate one and put it in .env (or point FILE__TKILLER_SECRET_KEY at a Docker
+Generate one and put it in .env (or point FILE__HAAKU_SECRET_KEY at a Docker
 secret):
 
   openssl rand -base64 48
@@ -69,19 +69,19 @@ fi
 # Worker and migrate runs serve no UI and are meant to attach to a database
 # that already exists, so they start none of the bundled services. Same rule as
 # internal/mode: a worker never migrates, and both need the URLs.
-mode="${TKILLER_MODE:-api}"
+mode="${HAAKU_MODE:-api}"
 case "$mode" in
   api) ;;
   worker | migrate)
     if [[ -z "${DATABASE_URL:-}" || -z "${REDIS_URL:-}" ]]; then
-      echo "TKILLER_MODE=$mode needs DATABASE_URL and REDIS_URL pointing at the instance's PostgreSQL and Redis" >&2
+      echo "HAAKU_MODE=$mode needs DATABASE_URL and REDIS_URL pointing at the instance's PostgreSQL and Redis" >&2
       exit 1
     fi
     log "mode: $mode, on an external PostgreSQL and Redis; no bundled service started"
     exit 0
     ;;
   *)
-    echo "TKILLER_MODE=$mode is not one of api, worker, migrate" >&2
+    echo "HAAKU_MODE=$mode is not one of api, worker, migrate" >&2
     exit 1
     ;;
 esac
@@ -91,7 +91,7 @@ esac
 # password exists anywhere.
 if [[ -z "${DATABASE_URL:-}" ]]; then
   : >"$STATE_DIR/postgres.enabled"
-  export_env DATABASE_URL "postgres://tkiller@/trakt?host=/run/postgresql&sslmode=disable"
+  export_env DATABASE_URL "postgres://haaku@/haaku?host=/run/postgresql&sslmode=disable"
   postgres_state="bundled"
 else
   postgres_state="external"
@@ -109,15 +109,15 @@ else
 fi
 
 # The dedicated worker service is the opt-in for running the background workers
-# in their own process instead of inside the API: TKILLER_WORKER_SERVICE=true.
-# Enabling it hands the workers to svc-tkiller-worker by telling the API (and
+# in their own process instead of inside the API: HAAKU_WORKER_SERVICE=true.
+# Enabling it hands the workers to svc-haaku-worker by telling the API (and
 # every other service) to run none — a worker is started by exactly one process,
 # never two. Off by default, so `docker compose up -d` still runs everything in
 # the API, which is what a single-container install wants.
-if truthy "${TKILLER_WORKER_SERVICE:-}"; then
+if truthy "${HAAKU_WORKER_SERVICE:-}"; then
   : >"$STATE_DIR/worker-service.enabled"
-  export_env TKILLER_WORKER none
-  worker_state="on (selection: ${TKILLER_WORKER_SERVICE_SELECTION:-all})"
+  export_env HAAKU_WORKER none
+  worker_state="on (selection: ${HAAKU_WORKER_SERVICE_SELECTION:-all})"
 else
   worker_state="off (the API runs them in-process)"
 fi

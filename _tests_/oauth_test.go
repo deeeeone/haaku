@@ -5,9 +5,9 @@ import (
 	"encoding/hex"
 	"testing"
 
-	"trakt-api/internal/auth"
-	"trakt-api/internal/database"
-	"trakt-api/internal/oauth"
+	"github.com/haaku-tv/haaku/internal/auth"
+	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/oauth"
 )
 
 // ---------------------------------------------------------------------------

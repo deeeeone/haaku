@@ -221,20 +221,20 @@ jobs:
         image: postgres:17-alpine
         env:
           POSTGRES_USER: trakt
-          POSTGRES_PASSWORD: trakt
+          POSTGRES_PASSWORD: haaku
           POSTGRES_DB: trakt
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U trakt"
+          --health-cmd "pg_isready -U haaku"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgres://trakt:trakt@localhost:5432/trakt?sslmode=disable
+      DATABASE_URL: postgres://haaku:haaku@localhost:5432/haaku?sslmode=disable
       # config.Load requires both before it will run; neither is a real secret.
       TMDB_API_TOKEN: ci-postgres
-      TKILLER_SECRET_KEY: ci-postgres-not-a-secret-value-32-chars-min
+      HAAKU_SECRET_KEY: ci-postgres-not-a-secret-value-32-chars-min
     steps:
       - uses: actions/checkout@v4
 

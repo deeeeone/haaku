@@ -3,7 +3,7 @@
 > **API routes:** Health, OAuth, Users (auth endpoints)
 > **Components needed:** topbar, mobile-nav, rail, button, input, dialog, toast, shimmer-text
 > **Auth:** Clerk — login, register, verify email, password reset
-> **API client:** Generated from `../trakt-api/openapi.yaml`
+> **API client:** Generated from `../haaku/openapi.yaml`
 
 ---
 
@@ -11,7 +11,7 @@
 
 ### 1.1 Scaffold with Vite 8
 ```bash
-pnpm create vite tkiller-web --template react-ts
+pnpm create vite haaku-web --template react-ts
 ```
 
 ### 1.2 Install Dependencies
@@ -42,8 +42,8 @@ pnpm add -D \
 
 ### 1.4 Generate API Client
 ```bash
-# From trakt-api/openapi.yaml:
-npx openapi-typescript ../trakt-api/openapi.yaml -o src/api/generated/schema.ts
+# From haaku/openapi.yaml:
+npx openapi-typescript ../haaku/openapi.yaml -o src/api/generated/schema.ts
 ```
 Write `src/api/client.ts` — a typed wrapper around `openapi-fetch` with:
 - Base URL from env (`VITE_API_URL=http://localhost:8080`)

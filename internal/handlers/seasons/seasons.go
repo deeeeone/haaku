@@ -8,14 +8,14 @@ import (
 	"strconv"
 	"time"
 
-	"trakt-api/internal/database"
-	"trakt-api/internal/handlers/media"
-	"trakt-api/internal/openapi"
-	projredis "trakt-api/redis"
+	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/handlers/media"
+	"github.com/haaku-tv/haaku/internal/openapi"
+	projredis "github.com/haaku-tv/haaku/redis"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/haaku-tv/haaku/internal/response"
 	"gorm.io/gorm"
-	"trakt-api/internal/response"
 )
 
 func init() {

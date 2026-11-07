@@ -6,7 +6,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"trakt-api/internal/obs"
+	"github.com/haaku-tv/haaku/internal/obs"
 )
 
 // HTTP observability lives on the separate metrics listener (internal/obs),

@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"trakt-api/internal/database"
-	"trakt-api/internal/secret"
+	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/secret"
 
 	"gorm.io/gorm"
 )
@@ -41,7 +41,7 @@ import (
 // lookupInfo domain-separates the blind-index key from the data-encryption key
 // (and every other use of the root key). It is a versioned label: a future
 // rotation ships a new label, not a silent change of an existing one.
-const lookupInfo = "tkiller/integration-token-lookup/v1"
+const lookupInfo = "haaku/integration-token-lookup/v1"
 
 // tokenColumn is the integration_tokens column the ciphertext lives in. It is
 // part of the AAD, so the ciphertext is bound to (table, column, row id).

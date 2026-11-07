@@ -6,7 +6,7 @@
 //
 // The one primitive everything reuses is AES-256-GCM with a random 12-byte
 // nonce and a versioned envelope, enc:v1:<base64url(nonce‖sealed)>. The 32-byte
-// data key is HKDF-SHA256 derived from a root key (the TKILLER_SECRET_KEY env
+// data key is HKDF-SHA256 derived from a root key (the HAAKU_SECRET_KEY env
 // value) under a versioned domain label, so the key that protects the data
 // lives outside Postgres and encrypted secrets survive a full database dump.
 // The root key is never stored in the database and must be backed up separately
@@ -32,7 +32,7 @@
 // ciphertext alone is NOT sufficient there — the lookup would never match.
 // Integration tokens therefore carry a second, deterministic column: an
 // HMAC-SHA256 blind index under an HKDF-derived lookup key
-// ("tkiller/integration-token-lookup/v1"), matched under a partial unique index,
+// ("haaku/integration-token-lookup/v1"), matched under a partial unique index,
 // alongside the randomized, AAD-bound ciphertext the create/rotate path writes.
 // See internal/handlers/integrations/token_secret.go for the write/read path.
 // Any future equality-looked-up secret should follow the same two-column
@@ -60,8 +60,8 @@ const (
 
 	// dataEncryptionInfo domain-separates the derived data key from any other
 	// use of the root key. It is a versioned label: a future rotation ships
-	// enc:v2: together with "tkiller/data-encryption/v2".
-	dataEncryptionInfo = "tkiller/data-encryption/v1"
+	// enc:v2: together with "haaku/data-encryption/v2".
+	dataEncryptionInfo = "haaku/data-encryption/v1"
 
 	// MinMasterKeyLen is the minimum acceptable root-key length in bytes, and
 	// the minimum number of characters the environment variable must hold. The
@@ -74,7 +74,7 @@ const (
 
 // EnvVar is the root-key environment variable. It must hold at least
 // MinMasterKeyLen characters.
-const EnvVar = "TKILLER_SECRET_KEY"
+const EnvVar = "HAAKU_SECRET_KEY"
 
 // ErrUnknownVersion is returned by Decrypt when the envelope carries a version
 // this build does not understand. It is the forward-compatibility hook for a
@@ -122,7 +122,7 @@ func LoadFromEnv() (*Cipher, error) {
 // root key using HKDF-SHA256 (RFC 5869). Distinct purpose strings yield
 // independent keys, so one root key can serve data encryption, backup
 // encryption and session signing without cross-use. Purposes must be versioned
-// labels (e.g. "tkiller/data-encryption/v1") so a future rotation changes the
+// labels (e.g. "haaku/data-encryption/v1") so a future rotation changes the
 // label without silently changing the meaning of an existing call site.
 func DeriveKey(masterKey []byte, purpose string, length int) ([]byte, error) {
 	if len(masterKey) < MinMasterKeyLen {
@@ -138,7 +138,7 @@ func DeriveKey(masterKey []byte, purpose string, length int) ([]byte, error) {
 	return key, nil
 }
 
-// New derives a Cipher from the root key (the raw TKILLER_SECRET_KEY value).
+// New derives a Cipher from the root key (the raw HAAKU_SECRET_KEY value).
 // The key must be at least MinMasterKeyLen bytes; New errors otherwise so a
 // short or empty key can never silently produce a weak cipher.
 func New(masterKey []byte) (*Cipher, error) {

@@ -1,4 +1,4 @@
-module trakt-api
+module github.com/haaku-tv/haaku
 
 go 1.26.0
 

@@ -4,9 +4,9 @@ import (
 	"os"
 	"testing"
 
-	"trakt-api/internal/httpapi"
-	"trakt-api/internal/openapi"
-	"trakt-api/internal/parity"
+	"github.com/haaku-tv/haaku/internal/httpapi"
+	"github.com/haaku-tv/haaku/internal/openapi"
+	"github.com/haaku-tv/haaku/internal/parity"
 
 	"github.com/gofiber/fiber/v2"
 )

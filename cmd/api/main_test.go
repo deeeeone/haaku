@@ -3,8 +3,8 @@ package main
 import (
 	"testing"
 
-	"trakt-api/internal/mode"
-	"trakt-api/internal/workers"
+	"github.com/haaku-tv/haaku/internal/mode"
+	"github.com/haaku-tv/haaku/internal/workers"
 )
 
 // TestWorkerModeRefusesToMigrate pins the deployment safety property at the
@@ -31,7 +31,7 @@ func TestWorkerModeRefusesToMigrate(t *testing.T) {
 }
 
 // TestWorkerPlanRunsEachWorkerInOneProcess proves the anti-double-run rule: an
-// API-only process (TKILLER_WORKER=none) starts no worker, a worker process
+// API-only process (HAAKU_WORKER=none) starts no worker, a worker process
 // that selected nothing is refused instead of idling, and selecting a worker is
 // the only way it runs.
 func TestWorkerPlanRunsEachWorkerInOneProcess(t *testing.T) {

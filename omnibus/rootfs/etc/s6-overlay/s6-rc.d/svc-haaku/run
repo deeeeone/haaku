@@ -2,14 +2,14 @@
 # shellcheck shell=bash
 set -euo pipefail
 
-export HOME=/config/tkiller
+export HOME=/config/haaku
 # The binary loads an optional .env from its working directory (godotenv, which
-# ignores a missing file), so /config/tkiller/.env is a supported place for
+# ignores a missing file), so /config/haaku/.env is a supported place for
 # extras and the container environment always wins. It also keeps the relative
 # default for the pre-migration backups inside /config.
-cd /config/tkiller
+cd /config/haaku
 
 # No notification-fd: the app reports readiness through /healthz, which the
 # container health check and the Compose healthcheck both read. Running this as
-# the tkiller account is the whole privilege story — nothing here needs root.
-exec s6-setuidgid tkiller /app/api
+# the haaku account is the whole privilege story — nothing here needs root.
+exec s6-setuidgid haaku /app/api

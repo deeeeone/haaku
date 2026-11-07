@@ -99,7 +99,7 @@ func (s StringSlice) Values() []string {
 }
 
 // --- Media (cached from TMDB — our source of truth after ingest) ---
-// See ../trakt-killer-plan/02-architecture/data-model.md §2.
+// See ../haaku-plan/02-architecture/data-model.md §2.
 
 // Movie mirrors TMDB movie detail with our community fields.
 type Movie struct {

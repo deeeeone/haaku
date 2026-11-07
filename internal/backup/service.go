@@ -46,7 +46,7 @@ type KeyProvider interface {
 }
 
 // KeyPurposeEncryption is the derivation purpose backup objects will use.
-const KeyPurposeEncryption = "tkiller/backup-encryption/v1"
+const KeyPurposeEncryption = "haaku/backup-encryption/v1"
 
 // Options configure a Service.
 type Options struct {

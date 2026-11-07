@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"trakt-api/internal/database"
-	"trakt-api/internal/outbox"
+	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/outbox"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/driver/sqlite"

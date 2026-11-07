@@ -4,7 +4,7 @@ import (
 	"log"
 	"time"
 
-	"trakt-api/internal/database"
+	"github.com/haaku-tv/haaku/internal/database"
 
 	"gorm.io/gorm"
 )

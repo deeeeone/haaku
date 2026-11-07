@@ -69,7 +69,7 @@ func buildDocument(allRoutes []RouteDef) map[string]interface{} {
 	doc := map[string]interface{}{
 		"openapi": "3.1.0",
 		"info": map[string]interface{}{
-			"title":   "trakt-api",
+			"title":   "haaku",
 			"version": "0.1.0",
 		},
 		"servers": []map[string]interface{}{

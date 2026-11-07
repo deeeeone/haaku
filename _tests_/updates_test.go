@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	"trakt-api/internal/handlers/media"
-	_ "trakt-api/internal/handlers/updates"
-	"trakt-api/internal/openapi"
+	"github.com/haaku-tv/haaku/internal/handlers/media"
+	_ "github.com/haaku-tv/haaku/internal/handlers/updates"
+	"github.com/haaku-tv/haaku/internal/openapi"
 )
 
 // TestUpdatesOpenAPIRoutesRegistered verifies updates routes can be registered.

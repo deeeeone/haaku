@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"time"
 
-	"trakt-api/external/tmdb"
-	"trakt-api/internal/database"
+	"github.com/haaku-tv/haaku/external/tmdb"
+	"github.com/haaku-tv/haaku/internal/database"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"

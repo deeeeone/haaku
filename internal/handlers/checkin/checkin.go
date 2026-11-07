@@ -6,17 +6,17 @@ import (
 	"fmt"
 	"time"
 
-	"trakt-api/internal/auth"
-	"trakt-api/internal/cache"
-	"trakt-api/internal/database"
-	"trakt-api/internal/handlers/media"
-	"trakt-api/internal/openapi"
-	"trakt-api/internal/outbox"
-	"trakt-api/redis"
+	"github.com/haaku-tv/haaku/internal/auth"
+	"github.com/haaku-tv/haaku/internal/cache"
+	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/handlers/media"
+	"github.com/haaku-tv/haaku/internal/openapi"
+	"github.com/haaku-tv/haaku/internal/outbox"
+	"github.com/haaku-tv/haaku/redis"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/haaku-tv/haaku/internal/response"
 	"gorm.io/gorm"
-	"trakt-api/internal/response"
 )
 
 func init() {

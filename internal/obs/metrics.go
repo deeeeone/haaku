@@ -10,10 +10,10 @@ import (
 
 // metricsNamespace prefixes every metric this service publishes, so a scrape
 // that also collects runtime and process metrics stays readable.
-const metricsNamespace = "tkiller"
+const metricsNamespace = "haaku"
 
 // Canonical background-worker names. They are the label value of every
-// tkiller_worker_* series and the name TKILLER_WORKER selects, so a heartbeat,
+// haaku_worker_* series and the name HAAKU_WORKER selects, so a heartbeat,
 // a processed counter and a log line always name the same worker whichever
 // process hosts it (see internal/workers).
 const (

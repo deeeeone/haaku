@@ -3,7 +3,7 @@ package media
 import (
 	"encoding/json"
 
-	"trakt-api/internal/database"
+	"github.com/haaku-tv/haaku/internal/database"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"

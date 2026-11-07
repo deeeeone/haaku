@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"trakt-api/redis"
+	"github.com/haaku-tv/haaku/redis"
 
 	"gorm.io/gorm"
 )

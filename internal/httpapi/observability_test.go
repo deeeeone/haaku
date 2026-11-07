@@ -9,11 +9,11 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"trakt-api/internal/config"
-	"trakt-api/internal/obs"
+	"github.com/haaku-tv/haaku/internal/config"
+	"github.com/haaku-tv/haaku/internal/obs"
 )
 
-// httpSeries is one observation of tkiller_http_requests_total, keyed by the
+// httpSeries is one observation of haaku_http_requests_total, keyed by the
 // route and status labels.
 type httpSeries struct {
 	route  string
@@ -23,7 +23,7 @@ type httpSeries struct {
 }
 
 // gatherHTTPSeries reads the process registry and returns every
-// tkiller_http_requests_total series.
+// haaku_http_requests_total series.
 func gatherHTTPSeries(t *testing.T) []httpSeries {
 	t.Helper()
 	mfs, err := obs.Gatherer().Gather()
@@ -32,7 +32,7 @@ func gatherHTTPSeries(t *testing.T) []httpSeries {
 	}
 	var out []httpSeries
 	for _, mf := range mfs {
-		if mf.GetName() != "tkiller_http_requests_total" {
+		if mf.GetName() != "haaku_http_requests_total" {
 			continue
 		}
 		for _, m := range mf.Metric {

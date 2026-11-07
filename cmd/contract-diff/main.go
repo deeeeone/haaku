@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"os"
 
-	"trakt-api/internal/contractdiff"
+	"github.com/haaku-tv/haaku/internal/contractdiff"
 )
 
 func main() {

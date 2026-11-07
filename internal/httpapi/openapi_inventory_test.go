@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"trakt-api/internal/openapi"
+	"github.com/haaku-tv/haaku/internal/openapi"
 
 	"github.com/gofiber/fiber/v2"
 )

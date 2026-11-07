@@ -8,8 +8,8 @@ This is the security half of running the app on someone's own box: the operator 
 
 | Piece | What it is |
 |---|---|
-| Root key | `TKILLER_SECRET_KEY`, ≥ 32 chars, enforced at boot (missing or short ⇒ the process exits non-zero, per `internal/config`). |
-| Derivation | HKDF-SHA256, per **purpose**: `DeriveKey(root, info, n)` where `info` is a versioned label like `tkiller/integration-token-lookup/v1`. A new purpose gets a new label; a changed label is a rotation event, never a silent edit. |
+| Root key | `HAAKU_SECRET_KEY`, ≥ 32 chars, enforced at boot (missing or short ⇒ the process exits non-zero, per `internal/config`). |
+| Derivation | HKDF-SHA256, per **purpose**: `DeriveKey(root, info, n)` where `info` is a versioned label like `haaku/integration-token-lookup/v1`. A new purpose gets a new label; a changed label is a rotation event, never a silent edit. |
 | Cipher | AES-256-GCM with a random nonce per value, `enc:v1:` envelope, base64url payload. |
 | AAD binding | `RowAAD(table, column, rowID)` is passed as additional authenticated data, so a ciphertext cannot be moved between rows or columns and still decrypt. This is what makes a partial SQL dump useless rather than merely opaque. |
 | Read path | `Decrypt` requires an `enc:v1:` envelope and treats any failure to open it — wrong key, tamper, AAD swap, a value that is not an envelope — as an error. An absent value is an empty column the caller checks before decrypting. |
@@ -36,7 +36,7 @@ A credential that is only ever *checked* gets a hash; a credential that must be 
 A random-nonce ciphertext cannot be matched with `WHERE token = $1`, so a value that must be looked up needs two columns:
 
 ```
-token_hash = HMAC-SHA256(raw, HKDF(root, "tkiller/integration-token-lookup/v1"))  -- indexed, deterministic
+token_hash = HMAC-SHA256(raw, HKDF(root, "haaku/integration-token-lookup/v1"))  -- indexed, deterministic
 token      = AES-256-GCM(raw, AAD(table,column,rowID))                            -- enc:v1:…, recoverable
 ```
 
@@ -52,7 +52,7 @@ Known gap, tracked in #16. Today a new `info` label is the forward-compatible se
 
 **Protected against:** a leaked dump, a stolen backup, a readable replica, a curious host operator who copies the data directory — none of those yield a replayable credential without the root key, and AAD binding means they cannot be transplanted row-to-row either.
 
-**Not protected against:** an attacker who has the running process and its environment (the key is in memory to be used), a host operator with root while the app runs, or a root key committed to a repository. The system is designed so the key lives in the environment and never in the database — which is why `TKILLER_SECRET_KEY` is enforced at boot rather than defaulted.
+**Not protected against:** an attacker who has the running process and its environment (the key is in memory to be used), a host operator with root while the app runs, or a root key committed to a repository. The system is designed so the key lives in the environment and never in the database — which is why `HAAKU_SECRET_KEY` is enforced at boot rather than defaulted.
 
 ## Sweep: credential-shaped columns in the schema
 

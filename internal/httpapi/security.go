@@ -8,7 +8,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 
-	"trakt-api/internal/obs"
+	"github.com/haaku-tv/haaku/internal/obs"
 )
 
 // RequestLogger logs each request on completion using structured slog.

@@ -33,7 +33,7 @@ import (
 
 // EnvMetricsListen names the address the metrics listener binds to. Empty
 // disables it, which is the default outside a monitored deployment.
-const EnvMetricsListen = "TKILLER_METRICS_LISTEN"
+const EnvMetricsListen = "HAAKU_METRICS_LISTEN"
 
 // MetricsAddr returns the configured metrics address, or "" when disabled.
 func MetricsAddr() string {

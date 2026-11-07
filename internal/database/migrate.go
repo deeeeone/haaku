@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"trakt-api/migrations"
+	"github.com/haaku-tv/haaku/migrations"
 
 	"github.com/pressly/goose/v3"
 	"github.com/pressly/goose/v3/lock"
@@ -50,27 +50,27 @@ const gooseLockID int64 = 0x544B474F4F53
 
 const (
 	// migrateTimeoutEnv bounds how long applying migrations may take.
-	migrateTimeoutEnv = "TKILLER_MIGRATE_TIMEOUT"
+	migrateTimeoutEnv = "HAAKU_MIGRATE_TIMEOUT"
 	// migrateWaitEnv bounds how long a server waits for another server's
 	// migration sequence before giving up.
-	migrateWaitEnv = "TKILLER_MIGRATION_WAIT"
+	migrateWaitEnv = "HAAKU_MIGRATION_WAIT"
 	// skipBackupEnv is the documented escape hatch for a machine without a
 	// matching pg_dump (a dev box, a scratch database).
-	skipBackupEnv = "TKILLER_SKIP_BACKUP_BEFORE_MIGRATE"
+	skipBackupEnv = "HAAKU_SKIP_BACKUP_BEFORE_MIGRATE"
 	// backupDirEnv relocates the pre-migration dumps.
-	backupDirEnv = "TKILLER_MIGRATION_BACKUP_DIR"
+	backupDirEnv = "HAAKU_MIGRATION_BACKUP_DIR"
 
 	defaultMigrateTimeout = 20 * time.Minute
 	defaultMigrateWait    = 60 * time.Minute
 	// defaultBackupDir is relative to the process working directory. Override
-	// with TKILLER_MIGRATION_BACKUP_DIR to put dumps on durable storage — a
+	// with HAAKU_MIGRATION_BACKUP_DIR to put dumps on durable storage — a
 	// pre-migration copy is only useful if it outlives the container.
 	defaultBackupDir = "pre-migrate-backups"
 )
 
 // Migrate applies every pending schema migration to the configured database.
 //
-// It is the entry point `cmd/api` calls for `TKILLER_MODE=migrate` and
+// It is the entry point `cmd/api` calls for `HAAKU_MODE=migrate` and
 // `--migrate-only`, and the API serves only after it returns nil. A returned
 // error means the schema is not the one this binary expects, so the caller must
 // refuse to start rather than serve against an unknown database.
@@ -274,7 +274,7 @@ func latestPending(fsys fs.FS) int64 {
 // --- environment ---
 
 // migrationTimeout returns how long applying migrations may take, from
-// TKILLER_MIGRATE_TIMEOUT. Zero or negative disables the deadline. An
+// HAAKU_MIGRATE_TIMEOUT. Zero or negative disables the deadline. An
 // unparseable value falls back to the default so a typo cannot silently remove
 // the cap.
 func migrationTimeout() time.Duration {
@@ -282,7 +282,7 @@ func migrationTimeout() time.Duration {
 }
 
 // migrationWait returns how long a server waits for another server's migration
-// sequence, from TKILLER_MIGRATION_WAIT. Zero or negative waits indefinitely.
+// sequence, from HAAKU_MIGRATION_WAIT. Zero or negative waits indefinitely.
 func migrationWait() time.Duration {
 	return durationEnv(migrateWaitEnv, defaultMigrateWait, false)
 }

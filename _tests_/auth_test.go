@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"trakt-api/internal/auth"
-	"trakt-api/internal/config"
+	"github.com/haaku-tv/haaku/internal/auth"
+	"github.com/haaku-tv/haaku/internal/config"
 
 	"github.com/gofiber/fiber/v2"
 )

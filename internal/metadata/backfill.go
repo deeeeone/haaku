@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"trakt-api/external/tmdb"
+	"github.com/haaku-tv/haaku/external/tmdb"
 
 	"gorm.io/gorm"
 )
@@ -16,12 +16,12 @@ import (
 // This file holds the TMDB upkeep work that the retired cmd/workers/metadata
 // binary used to run: a bulk backfill of popular/trending titles, and the
 // change-feed sync in sync.go. Both are now driven by the one binary's worker
-// mode (TKILLER_WORKER=metadata), so the schedule lives in one place and there
+// mode (HAAKU_WORKER=metadata), so the schedule lives in one place and there
 // is no second main to keep in step.
 
 // SinceFile returns the change-feed cursor path: $METADATA_SINCE_FILE, or
 // .hermes/metadata_sync_since.txt relative to the working directory (which is
-// /config/tkiller in the omnibus image, so the cursor survives an update with
+// /config/haaku in the omnibus image, so the cursor survives an update with
 // the rest of the config directory).
 func SinceFile() string {
 	if v := strings.TrimSpace(os.Getenv("METADATA_SINCE_FILE")); v != "" {

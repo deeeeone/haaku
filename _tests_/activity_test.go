@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"trakt-api/internal/database"
-	"trakt-api/internal/openapi"
+	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/openapi"
 
-	_ "trakt-api/internal/handlers/activity"
+	_ "github.com/haaku-tv/haaku/internal/handlers/activity"
 )
 
 // ============================================================================

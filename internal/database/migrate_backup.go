@@ -20,7 +20,7 @@ import (
 // custom format before applying anything and refuses to migrate if it cannot.
 // A backup that silently does not happen is worse than no backup at all, so
 // every failure path here is fatal unless the operator opts out explicitly with
-// TKILLER_SKIP_BACKUP_BEFORE_MIGRATE=true.
+// HAAKU_SKIP_BACKUP_BEFORE_MIGRATE=true.
 //
 // Only the two newest copies are kept, so a long-lived server does not fill its
 // disk one upgrade at a time.
@@ -28,7 +28,7 @@ import (
 const (
 	// pgDumpEnv overrides the pg_dump binary (e.g. a wrapper or a versioned
 	// path). Tests use it to prove the "no pg_dump" path refuses.
-	pgDumpEnv = "TKILLER_PG_DUMP"
+	pgDumpEnv = "HAAKU_PG_DUMP"
 	// keepPreMigrationBackups is how many pre-migration dumps survive a run.
 	keepPreMigrationBackups = 2
 )

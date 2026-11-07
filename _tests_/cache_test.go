@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"trakt-api/internal/cache"
+	"github.com/haaku-tv/haaku/internal/cache"
 )
 
 // ---------------------------------------------------------------------------

@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
-	"trakt-api/internal/database"
-	"trakt-api/internal/handlers/webhooks"
-	"trakt-api/internal/obs"
+	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/handlers/webhooks"
+	"github.com/haaku-tv/haaku/internal/obs"
 
 	goredis "github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
@@ -36,7 +36,7 @@ const (
 // webhookWorkerMetrics instruments this worker for the metrics listener: a
 // heartbeat so a dead worker is detectable (the gauge stops advancing) plus
 // delivery outcomes. The name matches obs.WorkerWebhooks, which is also the
-// TKILLER_WORKER selection name.
+// HAAKU_WORKER selection name.
 var webhookWorkerMetrics = obs.NewWorker(obs.WorkerWebhooks)
 
 // DeliverWebhooks runs one delivery pass: it reads a batch of events from the

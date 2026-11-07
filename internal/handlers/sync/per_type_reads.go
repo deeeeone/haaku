@@ -26,7 +26,7 @@ package sync
 import (
 	"github.com/gofiber/fiber/v2"
 
-	"trakt-api/internal/openapi"
+	"github.com/haaku-tv/haaku/internal/openapi"
 )
 
 // forcedMediaTypeKey is the Locals key a per-type route uses to pin the

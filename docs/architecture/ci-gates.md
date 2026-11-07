@@ -87,7 +87,7 @@ shutdown and the worker health listener are unit tests built from fake workers,
 so they need no database and no Redis. The readiness/liveness signal and the
 heartbeat metric share this coverage (see [workers.md](workers.md)).
 
-The **modes** themselves — `TKILLER_MODE=worker` refusing to migrate, an
+The **modes** themselves — `HAAKU_MODE=worker` refusing to migrate, an
 API-only process starting no worker — are asserted on the pure decision
 functions (`wantsMigrations`, `workerPlan`) and exercised for real by running the
 binary against a throwaway PostgreSQL, which is a manual step because there is
