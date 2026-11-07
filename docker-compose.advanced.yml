@@ -3,8 +3,13 @@
 # REDIS_URL is what turns the bundled services off — the init script starts
 # neither, and no PostgreSQL or Redis process runs in the app container.
 #
-#   cp .env.example .env      # then set HAAKU_SECRET_KEY and TMDB_API_TOKEN
+#   cp .env.example .env      # then set HAAKU_SECRET_KEY, TMDB_API_TOKEN and
+#                             # HAAKU_ADMIN_EMAIL / HAAKU_ADMIN_PASSWORD
 #   docker compose -f docker-compose.advanced.yml up -d
+#
+# The two HAAKU_ADMIN_* values create the owner account on the first start of an
+# empty database (local mode); the API's first start refuses to serve without
+# them. They flow through env_file, so this file needs no per-service entry.
 #
 # Use this when the database should outlive the app container, when it is
 # already managed somewhere else, or when the app should run as an unprivileged

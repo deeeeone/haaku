@@ -53,36 +53,33 @@ func TestValidatePasswordBounds(t *testing.T) {
 
 // --- signup / login / logout ------------------------------------------------
 
-func TestSignupFirstAccountBecomesOwnerAndLogsIn(t *testing.T) {
+func TestFirstSignupDoesNotBecomeOwner(t *testing.T) {
 	db, app := setupLocalAuth(t)
 
-	r := signup(t, app, "owner@example.com", "correct-horse-battery")
+	// Issue #53 follow-up: first-run ownership is gone. Whoever signs up first
+	// is an ordinary account following the sign-up policy (here the default
+	// approval policy: pending, no session), and is never an admin. The owner
+	// comes from HAAKU_ADMIN_EMAIL / HAAKU_ADMIN_PASSWORD at startup.
+	r := signup(t, app, "first@example.com", "correct-horse-battery")
 	if r.status != 201 {
 		t.Fatalf("signup status = %d (%s)", r.status, r.raw)
 	}
-	if r.body["status"] != "active" {
-		t.Fatalf("first-run status = %v, want active", r.body["status"])
+	if r.body["status"] != database.UserStatusPending {
+		t.Fatalf("first signup status = %v, want pending (the owner is env-seeded, not whoever signs up first)", r.body["status"])
 	}
-	sess, _ := r.body["session"].(map[string]any)
-	token, _ := sess["token"].(string)
-	if token == "" {
-		t.Fatalf("first-run signup returned no session: %s", r.raw)
+	if r.body["session"] != nil {
+		t.Fatalf("a first signup that is not the owner was issued a session: %s", r.raw)
 	}
 
 	var user database.User
-	if err := db.First(&user, "email = ?", "owner@example.com").Error; err != nil {
-		t.Fatalf("owner row: %v", err)
+	if err := db.First(&user, "email = ?", "first@example.com").Error; err != nil {
+		t.Fatalf("signup row: %v", err)
 	}
-	if !user.IsAdmin {
-		t.Error("the first account on an empty instance is not an admin")
+	if user.IsAdmin {
+		t.Error("the first signup became an admin — first-run ownership is supposed to be removed")
 	}
 	if !strings.HasPrefix(user.ID, LocalIDPrefix) {
-		t.Errorf("owner id %q is not namespaced with %q", user.ID, LocalIDPrefix)
-	}
-
-	// The issued session is a real credential for AuthRequired.
-	if r := call(t, app, "POST", "/v1/auth/local/logout", token, ""); r.status != 204 {
-		t.Fatalf("logout with the signup session = %d (%s)", r.status, r.raw)
+		t.Errorf("account id %q is not namespaced with %q", user.ID, LocalIDPrefix)
 	}
 }
 
@@ -202,14 +199,14 @@ func TestSignupPolicies(t *testing.T) {
 		}
 	})
 
-	t.Run("closed still bootstraps the owner", func(t *testing.T) {
+	t.Run("closed refuses further signups", func(t *testing.T) {
 		_, app := setupLocalAuth(t)
 		if err := InitAuthMode("local", "closed"); err != nil {
 			t.Fatal(err)
 		}
-		if r := signup(t, app, "owner@example.com", "correct-horse-battery"); r.status != 201 {
-			t.Fatalf("bootstrap signup with closed policy = %d (%s)", r.status, r.raw)
-		}
+		// The owner is seeded, not signed up: under "closed" no signup is
+		// allowed at all, because the owner already exists.
+		seedOwner(t, "owner@example.com")
 		r := signup(t, app, "member@example.com", "correct-horse-battery")
 		if r.status != 403 || errorCode(t, r) != "signup_closed" {
 			t.Fatalf("closed-policy signup = %d %s, want 403 signup_closed", r.status, r.raw)

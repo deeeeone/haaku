@@ -118,17 +118,53 @@ func signup(t *testing.T, app *fiber.App, email, password string) httpResult {
 		fmt.Sprintf(`{"email":%q,"password":%q}`, email, password))
 }
 
-// signupToken signs an active account up and returns its session token.
+// signupToken ensures an owner with this email exists (via the production
+// bootstrap path, the way the server creates it at startup) and returns a live
+// session token for it. Issue #53 follow-up removed "whoever signs up first
+// becomes the owner", so a test that needs the owner now seeds it the same way
+// a real instance does, then logs in.
 func signupToken(t *testing.T, app *fiber.App, email string) string {
 	t.Helper()
-	r := signup(t, app, email, "correct-horse-battery")
-	if r.status != 201 {
-		t.Fatalf("signup %s: status %d (%s)", email, r.status, r.raw)
+	db, err := database.GetDB()
+	if err != nil {
+		t.Fatalf("get test db: %v", err)
+	}
+	if err := BootstrapOwner(db, email, "correct-horse-battery"); err != nil {
+		t.Fatalf("bootstrap owner %s: %v", email, err)
+	}
+	return loginToken(t, app, email)
+}
+
+// seedOwner creates the owner row the way the server does at startup (via
+// auth.BootstrapOwner), so a test instance looks like a real running one, which
+// always has an owner before it serves. It fails the test on error.
+func seedOwner(t *testing.T, email string) *database.User {
+	t.Helper()
+	db, err := database.GetDB()
+	if err != nil {
+		t.Fatalf("get test db: %v", err)
+	}
+	if err := BootstrapOwner(db, email, "correct-horse-battery"); err != nil {
+		t.Fatalf("bootstrap owner %s: %v", email, err)
+	}
+	var u database.User
+	if err := db.First(&u, "email = ?", email).Error; err != nil {
+		t.Fatalf("seeded owner %s: %v", email, err)
+	}
+	return &u
+}
+
+// loginToken logs an account in and returns its session token.
+func loginToken(t *testing.T, app *fiber.App, email string) string {
+	t.Helper()
+	r := login(t, app, email, "correct-horse-battery")
+	if r.status != 200 {
+		t.Fatalf("login %s: status %d (%s)", email, r.status, r.raw)
 	}
 	sess, _ := r.body["session"].(map[string]any)
 	token, _ := sess["token"].(string)
 	if token == "" {
-		t.Fatalf("signup %s returned no session token: %s", email, r.raw)
+		t.Fatalf("login %s returned no session token: %s", email, r.raw)
 	}
 	return token
 }

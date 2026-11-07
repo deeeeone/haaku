@@ -41,6 +41,14 @@ type Config struct {
 	AuthMode     string
 	SignupPolicy string
 
+	// AdminEmail / AdminPassword (HAAKU_ADMIN_EMAIL / HAAKU_ADMIN_PASSWORD)
+	// seed the owner account on an empty local-mode instance at startup. They
+	// are ignored in clerk mode, and an empty local-mode instance with neither
+	// set refuses to start (see auth.BootstrapOwner). The password is never
+	// logged.
+	AdminEmail    string
+	AdminPassword string
+
 	// Data layer (wired in T0.4/T0.8)
 	DatabaseURL string
 	RedisURL    string
@@ -94,6 +102,9 @@ func Load() (*Config, error) {
 
 		AuthMode:     getEnv("HAAKU_AUTH_MODE", AuthModeLocal),
 		SignupPolicy: getEnv("HAAKU_SIGNUP", SignupApproval),
+
+		AdminEmail:    os.Getenv("HAAKU_ADMIN_EMAIL"),
+		AdminPassword: os.Getenv("HAAKU_ADMIN_PASSWORD"),
 
 		// Rate limiting (Phase 9d) — ON by default (primary abuse control);
 		// set RATE_LIMIT_ENABLED=false for local dev without Redis.

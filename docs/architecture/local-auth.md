@@ -6,10 +6,51 @@ Clerk remains available for the hosted instance and is the option, not the
 requirement.
 
 ```bash
-HAAKU_AUTH_MODE=local    # default: this server issues identity
-HAAKU_AUTH_MODE=clerk    # delegate identity to Clerk; the local module is disabled
-HAAKU_SIGNUP=approval    # default; approval | open | closed (local mode only)
+HAAKU_AUTH_MODE=local          # default: this server issues identity
+HAAKU_AUTH_MODE=clerk          # delegate identity to Clerk; the local module is disabled
+HAAKU_SIGNUP=approval          # default; approval | open | closed (local mode only)
+HAAKU_ADMIN_EMAIL=you@home.lan # owner account, created on the first start of an empty instance
+HAAKU_ADMIN_PASSWORD=…         # at least 10 characters; required on first start (local mode)
 ```
+
+## First start — the owner comes from the environment
+
+**The owner account is created from `HAAKU_ADMIN_EMAIL` / `HAAKU_ADMIN_PASSWORD`
+at startup, on an empty instance, before the API answers anything.** It is
+`active`, `is_admin`, has a `local_` id, and its password is hashed with the same
+Argon2id path as any other account. It can log in immediately with those
+credentials.
+
+There is no longer a "whoever signs up first becomes the owner": a fresh,
+reachable instance used to hand ownership to the first stranger who found the
+sign-up page. Now the operator holds the owner credentials *before* the box is
+reachable.
+
+The rules, in one place:
+
+- **Empty instance, both variables set** → the owner is created. Safe on every
+  start afterwards: seeding is idempotent.
+- **Empty instance, variables unset** → the local-mode server **refuses to
+  start**, naming the variables and what to do. An instance nobody can
+  administer is worse than a loud exit. The message is:
+
+  > `this is a fresh local-mode instance with no accounts, and no owner is
+  > configured: set HAAKU_ADMIN_EMAIL and HAAKU_ADMIN_PASSWORD so the first
+  > start can create the owner account, or set HAAKU_AUTH_MODE=clerk to delegate
+  > identity to Clerk`
+
+- **Instance that already has accounts** → never touched, whatever the variables
+  say. A second start does not add, modify or re-hash anything.
+- **Clerk mode** → both variables are **ignored entirely**. Clerk owns identity,
+  and writing a local owner row would create the "local user shadows a Clerk
+  user" situation the mode switch exists to prevent.
+- **Migrate-only** (`HAAKU_MODE=migrate` / `--migrate-only`) never bootstraps and
+  never refuses — so CI's migrate-only jobs and the image's first migration run
+  are unaffected.
+
+The password is validated against the same minimum length as the sign-up route
+(10 characters) and a failure names `HAAKU_ADMIN_PASSWORD`; the value itself is
+never logged. `HAAKU_ADMIN_EMAIL` must be a valid address.
 
 ## What the mode switch actually does
 
@@ -40,16 +81,27 @@ client learns which authenticator to use:
 In clerk mode it reports `"mode": "clerk", "local_auth": false` and the session
 block is empty.
 
+`first_run` is `true` only while an instance has no accounts at all. Since a
+local-mode instance now refuses to serve without an owner (above), it is `false`
+on every running local instance — the field stays for the client contract, but
+the "create the owner account" framing it used to drive no longer applies: the
+owner already exists.
+
 ## Sign-up policy — stated plainly
 
-**The first account created on an empty instance becomes the owner/admin and is
-active immediately. After that, `HAAKU_SIGNUP=approval` (the default) creates
-every new account as `pending`: it cannot log in, and its signup response
-contains no session, until an admin approves it.** This means a box that
-happens to be reachable does not have an open door, and adding a household
-member is one click in the admin panel rather than a config change. `open`
-activates new accounts immediately; `closed` allows only the first-run owner to
-sign up. If the default is wrong for a household, it is one variable.
+**The owner is created from the environment at startup (above). Every sign-up
+after that is an ordinary account and follows `HAAKU_SIGNUP` directly —
+`approval` (the default) creates the account `pending`: it cannot log in, and its
+signup response contains no session, until an admin approves it in the panel.**
+This means a box that happens to be reachable does not have an open door, and
+adding a household member is one click in the admin panel rather than a config
+change. `open` activates new accounts immediately; `closed` refuses every
+sign-up, because the owner already exists. If the default is wrong for a
+household, it is one variable.
+
+(First-run ownership — "the first account on an empty instance becomes the
+owner" — is **removed**. It is now the environment that decides who owns the
+instance, not arrival order.)
 
 ## Identity and id namespacing
 

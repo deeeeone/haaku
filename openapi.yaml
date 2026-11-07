@@ -930,7 +930,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
             security: []
-            summary: Create a local account (first account on an empty instance becomes the owner)
+            summary: Create a local account (subject to the HAAKU_SIGNUP policy; the owner comes from HAAKU_ADMIN_*)
             tags:
                 - Local Auth
     /v1/calendars/all/movies/{start_date}/{days}:
