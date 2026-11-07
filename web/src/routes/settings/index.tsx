@@ -1,4 +1,3 @@
-import { useClerk } from '@clerk/react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import {
@@ -13,6 +12,8 @@ import {
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useApi } from '@/api/client'
+import { useAuth } from '@/auth/context'
+import { ClerkAccountButton } from '@/components/auth/clerk-account-button'
 import {
   Banner,
   Button,
@@ -41,9 +42,10 @@ export const Route = createFileRoute('/settings/')({
 function SettingsIndexPage() {
   const api = useApi()
   const queryClient = useQueryClient()
-  // Identity (name, username, avatar) lives in the Clerk account — the
-  // profile API serves a synced mirror. Editing happens in Clerk.
-  const { user, openUserProfile } = useClerk()
+  // Identity comes from the shared context: the Clerk account in clerk mode,
+  // the local session user otherwise. In local mode there is no Clerk profile
+  // to edit, so the "Edit in Clerk" affordances are hidden.
+  const { mode, user } = useAuth()
 
   const { data: profile } = useQuery({
     queryKey: ['settings', 'profile'],
@@ -134,7 +136,8 @@ function SettingsIndexPage() {
     },
   })
 
-  const displayName = user?.fullName || (profile?.name as string) || ''
+  const displayName =
+    user?.displayName || user?.username || (profile?.name as string) || ''
 
   return (
     <div className="space-y-8">
@@ -160,13 +163,7 @@ function SettingsIndexPage() {
                   <User className="size-10 text-sf-ink-muted" />
                 )}
               </div>
-              <Button
-                variant="glass"
-                size="sm"
-                onClick={() => openUserProfile()}
-              >
-                Edit in Clerk
-              </Button>
+              {mode === 'clerk' && <ClerkAccountButton label="Edit in Clerk" />}
             </div>
           </CardContent>
         </Card>
@@ -175,20 +172,15 @@ function SettingsIndexPage() {
           <CardHeader>
             <CardTitle>Display Name</CardTitle>
             <CardDescription>
-              Managed in your Clerk account — changes appear here and on your
-              public profile automatically
+              {mode === 'clerk'
+                ? 'Managed in your Clerk account — changes appear here and on your public profile automatically'
+                : 'Your account name — shown on your profile and comments'}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between gap-4">
               <p className="text-sf-ink">{displayName || 'No name set'}</p>
-              <Button
-                variant="glass"
-                size="sm"
-                onClick={() => openUserProfile()}
-              >
-                Edit in Clerk
-              </Button>
+              {mode === 'clerk' && <ClerkAccountButton label="Edit in Clerk" />}
             </div>
           </CardContent>
         </Card>
@@ -222,7 +214,7 @@ function SettingsIndexPage() {
             <div>
               <Label>Email</Label>
               <p className="mt-1 text-sm text-sf-ink-muted">
-                {user?.primaryEmailAddress?.emailAddress ?? 'No email'}
+                {user?.email ?? (profile?.email as string) ?? 'No email'}
               </p>
             </div>
           </CardContent>

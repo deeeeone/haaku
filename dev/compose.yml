@@ -50,6 +50,10 @@ services:
   # Clerk emulator (github.com/pjsny/clerk-emulator, Apache-2.0) — real JWTs,
   # no network. Used for local + self-hosted dev until Phase 2 (hosted Clerk).
   # Secret: *** · API: http://localhost:4000
+  #
+  # Only needed when the API runs in clerk mode (HAAKU_AUTH_MODE=clerk). The
+  # default mode is now `local`, which identifies users itself and calls nothing
+  # here, so a plain `local` dev run does not need this container.
   clerk-emulator:
     image: node:22-alpine
     command: ["npx", "--yes", "clerk-emulator", "--persist", "/data"]

@@ -1,4 +1,3 @@
-import { useAuth } from '@clerk/react'
 import {
   ChevronDown,
   Edit3,
@@ -24,6 +23,7 @@ import {
   useUnlikeComment,
 } from '@/api/hooks/useSocial'
 import type { Comment } from '@/api/types'
+import { useAuth } from '@/auth/context'
 import { ReactionPicker } from '@/components/social/ReactionPicker'
 import { SpoilerOverlay } from '@/components/social/SpoilerOverlay'
 import { Button, PaginationControls } from '@/components/ui'

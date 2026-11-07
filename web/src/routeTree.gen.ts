@@ -10,18 +10,22 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as CollectionRouteImport } from './routes/collection'
 import { Route as FavoritesRouteImport } from './routes/favorites'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as ListsRouteImport } from './routes/lists'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as OfflineRouteImport } from './routes/offline'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ProgressRouteImport } from './routes/progress'
 import { Route as RatingsRouteImport } from './routes/ratings'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SocialRouteImport } from './routes/social'
 import { Route as WatchlistRouteImport } from './routes/watchlist'
 import { Route as EpisodesIdRouteImport } from './routes/episodes.$id'
@@ -43,6 +47,11 @@ import { Route as ListsSmartNewRouteImport } from './routes/lists.smart.new'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CalendarRoute = CalendarRouteImport.update({
@@ -70,6 +79,11 @@ const ListsRoute = ListsRouteImport.update({
   path: '/lists',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NotificationsRoute = NotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
@@ -95,6 +109,11 @@ const RatingsRoute = RatingsRouteImport.update({
   path: '/ratings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
@@ -103,6 +122,11 @@ const SearchRoute = SearchRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SocialRoute = SocialRouteImport.update({
@@ -193,18 +217,22 @@ const ListsSmartNewRoute = ListsSmartNewRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/calendar': typeof CalendarRoute
   '/collection': typeof CollectionRoute
   '/favorites': typeof FavoritesRoute
   '/history': typeof HistoryRoute
   '/lists': typeof ListsRouteWithChildren
+  '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/offline': typeof OfflineRoute
   '/profile': typeof ProfileRoute
   '/progress': typeof ProgressRoute
   '/ratings': typeof RatingsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/settings': typeof SettingsRouteWithChildren
+  '/signup': typeof SignupRoute
   '/social': typeof SocialRoute
   '/watchlist': typeof WatchlistRoute
   '/episodes/$id': typeof EpisodesIdRoute
@@ -225,16 +253,20 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/calendar': typeof CalendarRoute
   '/collection': typeof CollectionRoute
   '/favorites': typeof FavoritesRoute
   '/history': typeof HistoryRoute
+  '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/offline': typeof OfflineRoute
   '/profile': typeof ProfileRoute
   '/progress': typeof ProgressRoute
   '/ratings': typeof RatingsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
+  '/signup': typeof SignupRoute
   '/social': typeof SocialRoute
   '/watchlist': typeof WatchlistRoute
   '/episodes/$id': typeof EpisodesIdRoute
@@ -256,18 +288,22 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/calendar': typeof CalendarRoute
   '/collection': typeof CollectionRoute
   '/favorites': typeof FavoritesRoute
   '/history': typeof HistoryRoute
   '/lists': typeof ListsRouteWithChildren
+  '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/offline': typeof OfflineRoute
   '/profile': typeof ProfileRoute
   '/progress': typeof ProgressRoute
   '/ratings': typeof RatingsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/settings': typeof SettingsRouteWithChildren
+  '/signup': typeof SignupRoute
   '/social': typeof SocialRoute
   '/watchlist': typeof WatchlistRoute
   '/episodes/$id': typeof EpisodesIdRoute
@@ -290,18 +326,22 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/calendar'
     | '/collection'
     | '/favorites'
     | '/history'
     | '/lists'
+    | '/login'
     | '/notifications'
     | '/offline'
     | '/profile'
     | '/progress'
     | '/ratings'
+    | '/reset-password'
     | '/search'
     | '/settings'
+    | '/signup'
     | '/social'
     | '/watchlist'
     | '/episodes/$id'
@@ -322,16 +362,20 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
     | '/calendar'
     | '/collection'
     | '/favorites'
     | '/history'
+    | '/login'
     | '/notifications'
     | '/offline'
     | '/profile'
     | '/progress'
     | '/ratings'
+    | '/reset-password'
     | '/search'
+    | '/signup'
     | '/social'
     | '/watchlist'
     | '/episodes/$id'
@@ -352,18 +396,22 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/calendar'
     | '/collection'
     | '/favorites'
     | '/history'
     | '/lists'
+    | '/login'
     | '/notifications'
     | '/offline'
     | '/profile'
     | '/progress'
     | '/ratings'
+    | '/reset-password'
     | '/search'
     | '/settings'
+    | '/signup'
     | '/social'
     | '/watchlist'
     | '/episodes/$id'
@@ -385,18 +433,22 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   CalendarRoute: typeof CalendarRoute
   CollectionRoute: typeof CollectionRoute
   FavoritesRoute: typeof FavoritesRoute
   HistoryRoute: typeof HistoryRoute
   ListsRoute: typeof ListsRouteWithChildren
+  LoginRoute: typeof LoginRoute
   NotificationsRoute: typeof NotificationsRoute
   OfflineRoute: typeof OfflineRoute
   ProfileRoute: typeof ProfileRoute
   ProgressRoute: typeof ProgressRoute
   RatingsRoute: typeof RatingsRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SearchRoute: typeof SearchRoute
   SettingsRoute: typeof SettingsRouteWithChildren
+  SignupRoute: typeof SignupRoute
   SocialRoute: typeof SocialRoute
   WatchlistRoute: typeof WatchlistRoute
   EpisodesIdRoute: typeof EpisodesIdRoute
@@ -413,6 +465,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/calendar': {
@@ -450,6 +509,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ListsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/notifications': {
       id: '/notifications'
       path: '/notifications'
@@ -485,6 +551,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RatingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/search': {
       id: '/search'
       path: '/search'
@@ -497,6 +570,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/social': {
@@ -661,18 +741,22 @@ const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   CalendarRoute: CalendarRoute,
   CollectionRoute: CollectionRoute,
   FavoritesRoute: FavoritesRoute,
   HistoryRoute: HistoryRoute,
   ListsRoute: ListsRouteWithChildren,
+  LoginRoute: LoginRoute,
   NotificationsRoute: NotificationsRoute,
   OfflineRoute: OfflineRoute,
   ProfileRoute: ProfileRoute,
   ProgressRoute: ProgressRoute,
   RatingsRoute: RatingsRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SearchRoute: SearchRoute,
   SettingsRoute: SettingsRouteWithChildren,
+  SignupRoute: SignupRoute,
   SocialRoute: SocialRoute,
   WatchlistRoute: WatchlistRoute,
   EpisodesIdRoute: EpisodesIdRoute,
