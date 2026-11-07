@@ -7,6 +7,13 @@
 # checkout that keeps its own toolchain, e.g. make frontend PNPM=/opt/node/bin/pnpm
 PNPM ?= pnpm
 
+# Frontend dependencies are gitignored, so every fresh checkout starts without
+# node_modules. Targets that run pnpm depend on this stamp: the first one
+# installs, later ones are a no-op, and a changed manifest or lockfile installs
+# again. The stamp lives inside node_modules, so deleting that directory
+# forces a re-install too.
+INSTALL_STAMP := web/node_modules/.install-stamp
+
 # Minimum total statement coverage for `make coverage` (merged profile from both
 # Go suites). Measured on main at ~24.6%; the floor sits below that so ordinary
 # untested additions do not turn main red, but a whole suite going missing does.
@@ -27,13 +34,17 @@ help: ## Show this help
 
 # --- Frontend ---
 
-frontend: ## Install frontend dependencies and build the UI into web/dist
-	cd web && $(PNPM) install --frozen-lockfile && $(PNPM) run build
+$(INSTALL_STAMP): web/package.json web/pnpm-lock.yaml
+	cd web && $(PNPM) install --frozen-lockfile
+	@touch $@
+
+frontend: $(INSTALL_STAMP) ## Build the UI into web/dist (installs deps if needed)
+	cd web && $(PNPM) run build
 
 # The typed client (web/src/api/generated/schema.ts) is generated from the
 # contract and committed, so a normal build does not need this. Re-run it after
 # changing openapi.yaml; CI checks it stays in step (see the frontend job).
-api-client: ## Regenerate the typed API client from openapi.yaml
+api-client: $(INSTALL_STAMP) ## Regenerate the typed API client from openapi.yaml
 	cd web && $(PNPM) run api:generate
 
 # The Go binary embeds web/dist, so every Go build and test needs the directory
@@ -55,7 +66,7 @@ bin: frontend ## Build the real single binary with the frontend embedded
 dev-backend: embed-stub ## Run the API from source (needs .env and a database)
 	set -a; . ./.env; set +a; go run ./cmd/api
 
-dev-frontend: ## Run the Vite dev server (proxies /v1 to the backend)
+dev-frontend: $(INSTALL_STAMP) ## Run the Vite dev server (installs deps if needed)
 	cd web && $(PNPM) run dev
 
 run: dev-backend ## Alias for dev-backend
@@ -79,7 +90,7 @@ lint: vet lint-web ## Vet the backend and lint the frontend
 lint-web: format-web ## Lint and format-check the frontend
 	cd web && $(PNPM) run lint
 
-format-web: ## Check the frontend is formatted (no writes)
+format-web: $(INSTALL_STAMP) ## Check the frontend is formatted (no writes)
 	cd web && $(PNPM) run format:check
 
 # --- Gates (issue #8) ---
@@ -159,7 +170,7 @@ test: test-go test-web ## Run backend and frontend tests
 test-go: embed-stub ## Run both Go test suites (./... and the _tests_ harness)
 	./scripts/test-go.sh
 
-test-web: ## Run the frontend test suite
+test-web: $(INSTALL_STAMP) ## Run the frontend test suite
 	cd web && $(PNPM) run test
 
 test-db: embed-stub ## Run the postgres-tagged suite against a real PostgreSQL (see scripts/test-db.sh)
