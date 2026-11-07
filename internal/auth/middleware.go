@@ -17,8 +17,16 @@ const (
 
 // AuthRequired is a Fiber middleware that requires a valid auth token.
 // Sets c.Locals("user_id", string) and c.Locals("auth_method", "jwt" | "apikey" | "session").
+//
+// An identity AttemptAuth already resolved (the rate limiter runs first and
+// records it) is trusted, so a request is verified exactly once no matter how
+// many middlewares care about who is calling. The verification is the same one
+// extractAuth would perform — this is a saved round trip, not a weaker check.
 func AuthRequired() fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		if userID, ok := c.Locals(ctxUserID).(string); ok && userID != "" {
+			return c.Next()
+		}
 		userID, authMethod, err := extractAuth(c)
 		if err != nil {
 			slog.Debug("auth required: rejected", "path", c.Path(), "error", err)
@@ -28,6 +36,27 @@ func AuthRequired() fiber.Handler {
 		c.Locals(ctxAuthMethod, authMethod)
 		return c.Next()
 	}
+}
+
+// AttemptAuth resolves the caller's identity if the request carries a usable
+// credential, and reports whether it found one. Unlike AuthRequired it never
+// rejects: an anonymous or invalid-token request continues as anonymous.
+//
+// On success it records the identity in c.Locals exactly as AuthRequired does,
+// so a later AuthRequired (and every privacy filter) sees the same viewer
+// without verifying a second time (TheIntroDB's AttemptAuth, which its rate
+// limiter tiers on).
+func AttemptAuth(c *fiber.Ctx) (string, bool) {
+	if userID, ok := c.Locals(ctxUserID).(string); ok && userID != "" {
+		return userID, true
+	}
+	userID, authMethod, err := extractAuth(c)
+	if err != nil || userID == "" {
+		return "", false
+	}
+	c.Locals(ctxUserID, userID)
+	c.Locals(ctxAuthMethod, authMethod)
+	return userID, true
 }
 
 // OptionalAuth is a Fiber middleware that attempts auth but continues regardless.

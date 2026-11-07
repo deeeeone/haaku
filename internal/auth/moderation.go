@@ -66,8 +66,14 @@ func InitModerationAllowlists(adminIDs, modIDs []string) {
 	moderationAllowMu.Unlock()
 }
 
-// isModerationAllowlisted reports whether userID is in the env allowlist.
-func isModerationAllowlisted(userID string) bool {
+// IsModerationAllowlisted reports whether userID is in the ADMIN_USER_IDS /
+// MOD_USER_IDS env allowlists. It is in-memory, so it is cheap enough to call
+// per request — which is what the rate limiter does to exempt the operator
+// (internal/ratelimit).
+func IsModerationAllowlisted(userID string) bool {
+	if userID == "" {
+		return false
+	}
 	moderationAllowMu.RLock()
 	defer moderationAllowMu.RUnlock()
 	return moderationAllowlist[userID]
@@ -87,7 +93,7 @@ func RequireModerator() fiber.Handler {
 			return writeUnauthorized(c)
 		}
 
-		if isModerationAllowlisted(userID) {
+		if IsModerationAllowlisted(userID) {
 			return c.Next()
 		}
 

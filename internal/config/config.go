@@ -2,9 +2,11 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 
@@ -66,19 +68,34 @@ type Config struct {
 	AdminUserIDs []string
 	ModUserIDs   []string
 
-	// Rate limiting (Phase 9d)
-	RateLimitEnabled bool
-	RateLimitAuth    RateLimitConfig
-	RateLimitPublic  RateLimitConfig
+	// Anti-abuse limiter (internal/ratelimit, issue #10 §5). The per-group
+	// ceilings are a table in Go (internal/ratelimit/groups.go) because sixteen
+	// independent numbers are sixteen ways to misconfigure an instance; these are
+	// the knobs that belong to the deployment rather than to the design.
+	RateLimit RateLimitConfig
 
 	// CORS
 	CORSOrigins []string
 }
 
-// RateLimitConfig holds window + max for a rate limit tier.
+// RateLimitConfig holds the operator-facing knobs of the anti-abuse limiter.
 type RateLimitConfig struct {
-	WindowSeconds int
-	Max           int
+	// Enabled is the master switch. Default ON — it is the primary abuse
+	// control, and both limiter layers fail open when Redis is unavailable, so
+	// an instance with no Redis still serves.
+	Enabled bool
+	// Window is the burst window every group's Burst* ceiling is measured over.
+	Window time.Duration
+	// ExemptLocal skips the limiter for requests that came straight from this
+	// machine (loopback peer and no forwarded header): the operator's own shell,
+	// a supervisor's health probe, a dev server that forwards without headers.
+	// TheIntroDB exempts loopback the same way.
+	ExemptLocal bool
+	// TrustedProxyNets are the networks whose X-Forwarded-For / X-Real-IP may be
+	// believed. Loopback is always trusted (every single-container install
+	// proxies over it); anything else must be declared, because a forwarded
+	// header is otherwise just a header the client sent.
+	TrustedProxyNets []*net.IPNet
 }
 
 // Load reads configuration from the environment.
@@ -106,16 +123,12 @@ func Load() (*Config, error) {
 		AdminEmail:    os.Getenv("HAAKU_ADMIN_EMAIL"),
 		AdminPassword: os.Getenv("HAAKU_ADMIN_PASSWORD"),
 
-		// Rate limiting (Phase 9d) — ON by default (primary abuse control);
-		// set RATE_LIMIT_ENABLED=false for local dev without Redis.
-		RateLimitEnabled: getEnvBool("RATE_LIMIT_ENABLED", true),
-		RateLimitAuth: RateLimitConfig{
-			WindowSeconds: getEnvInt("RATE_LIMIT_AUTH_WINDOW", 60),
-			Max:           getEnvInt("RATE_LIMIT_AUTH_MAX", 100),
-		},
-		RateLimitPublic: RateLimitConfig{
-			WindowSeconds: getEnvInt("RATE_LIMIT_PUBLIC_WINDOW", 60),
-			Max:           getEnvInt("RATE_LIMIT_PUBLIC_MAX", 30),
+		// Anti-abuse limiter (issue #10 §5) — ON by default (primary abuse
+		// control); set RATE_LIMIT_ENABLED=false for local dev without Redis.
+		RateLimit: RateLimitConfig{
+			Enabled:     getEnvBool("RATE_LIMIT_ENABLED", true),
+			Window:      time.Duration(getEnvInt("RATE_LIMIT_WINDOW_SECONDS", 60)) * time.Second,
+			ExemptLocal: getEnvBool("RATE_LIMIT_EXEMPT_LOCAL", true),
 		},
 
 		CORSOrigins: splitCSV(os.Getenv("CORS_ORIGINS")),
@@ -149,7 +162,44 @@ func Load() (*Config, error) {
 			SignupApproval, SignupOpen, SignupClosed, cfg.SignupPolicy)
 	}
 
+	// A malformed trusted-proxy entry is refused at boot, like every other
+	// unparseable setting: silently dropping it would leave the limiter keying
+	// every client behind that proxy to the proxy's own address, which is the
+	// bug this knob exists to fix, and it would be invisible until someone read
+	// the counter keys.
+	trustedProxies, err := parseTrustedProxies(os.Getenv("TRUSTED_PROXY_CIDRS"))
+	if err != nil {
+		return nil, err
+	}
+	cfg.RateLimit.TrustedProxyNets = trustedProxies
+
 	return cfg, nil
+}
+
+// parseTrustedProxies parses a comma-separated list of CIDRs (or bare IPs, which
+// are taken as a single host) whose forwarded headers may be believed.
+func parseTrustedProxies(raw string) ([]*net.IPNet, error) {
+	var nets []*net.IPNet
+	for _, entry := range splitCSV(raw) {
+		entry = strings.TrimSpace(entry)
+		if entry == "" {
+			continue
+		}
+		if _, network, err := net.ParseCIDR(entry); err == nil {
+			nets = append(nets, network)
+			continue
+		}
+		ip := net.ParseIP(entry)
+		if ip == nil {
+			return nil, fmt.Errorf("TRUSTED_PROXY_CIDRS entry %q is neither an IP nor a CIDR", entry)
+		}
+		bits := 32
+		if ip.To4() == nil {
+			bits = 128
+		}
+		nets = append(nets, &net.IPNet{IP: ip, Mask: net.CIDRMask(bits, bits)})
+	}
+	return nets, nil
 }
 
 func getEnv(key, fallback string) string {
