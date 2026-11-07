@@ -175,8 +175,15 @@ func TestIntegrationTokenModelShape(t *testing.T) {
 		t.Fatalf("failed to unmarshal: %v", err)
 	}
 
-	if raw["token"] != "tk_abc123" {
-		t.Errorf("token = %v, want tk_abc123", raw["token"])
+	// The credential columns must never reach a client: Token holds the
+	// AES-256-GCM ciphertext and TokenHash the blind index, both json:"-" on the
+	// model. Asserting their absence is stronger than the old "token == tk_abc123"
+	// check, which only passed because the column used to be plaintext.
+	if v, leaked := raw["token"]; leaked {
+		t.Errorf("token must not be serialised, got %v", v)
+	}
+	if v, leaked := raw["token_hash"]; leaked {
+		t.Errorf("token_hash must not be serialised, got %v", v)
 	}
 	if raw["name"] != "my-integration" {
 		t.Errorf("name = %v, want my-integration", raw["name"])
