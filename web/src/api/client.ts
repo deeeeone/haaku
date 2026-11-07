@@ -1,7 +1,8 @@
-import { useAuth } from '@clerk/react'
 import createClient from 'openapi-fetch'
 import { toast } from 'sonner'
 import type { paths } from '@/api/generated/schema'
+import { useAuth } from '@/auth/context'
+import { clearSession, readSession } from '@/auth/session-store'
 
 // Create a typed fetch client from the generated OpenAPI schema.
 // Injected into TanStack Query hooks via context — never called directly.
@@ -13,7 +14,9 @@ export function createApiClient(getToken: () => Promise<string | null>) {
     baseUrl: import.meta.env.VITE_API_URL || '/',
   })
 
-  // Inject Clerk auth token on every request
+  // Supply the bearer token on every request. The token source is abstracted:
+  // in clerk mode it is Clerk's getToken, in local mode the stored `hs_` token.
+  // Nothing is sent ambiently — no cookie, no implicit credential.
   client.use({
     async onRequest({ request }) {
       const token = await getToken()
@@ -35,6 +38,13 @@ export function createApiClient(getToken: () => Promise<string | null>) {
         // Don't toast 401 — let the auth guard handle redirects
         if (response.status !== 401) {
           toast.error(message)
+        }
+
+        // A 401 while holding a local token means the session was revoked
+        // (banned, logged out elsewhere, expired). Drop it so the guard sends
+        // the user back to /login instead of retrying a dead token forever.
+        if (response.status === 401 && readSession()) {
+          clearSession()
         }
 
         throw new ApiError(response.status, message, body)
@@ -59,9 +69,10 @@ export class ApiError extends Error {
   }
 }
 
-// React hook to get a typed client (re-creates when token changes)
+// React hook to get a typed client. The token source comes from the shared auth
+// context, so the same hook serves both clerk and local modes.
 export function useApi(): ApiClient | null {
   const { getToken, isSignedIn } = useAuth()
   if (!isSignedIn) return null
-  return createApiClient(() => getToken())
+  return createApiClient(getToken)
 }

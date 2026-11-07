@@ -1,4 +1,3 @@
-import { useClerk } from '@clerk/react'
 import { Link } from '@tanstack/react-router'
 import {
   Bookmark,
@@ -8,9 +7,11 @@ import {
   List,
   Search,
   Settings,
+  Shield,
   User,
   Users,
 } from 'lucide-react'
+import { useAuth } from '@/auth/context'
 import { cn } from '@/lib/utils'
 
 const navItems = [
@@ -27,11 +28,14 @@ const bottomItems = [
   { to: '/profile', icon: User, label: 'Profile' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ]
+const adminItem = { to: '/admin', icon: Shield, label: 'Admin' } as const
 
 export function Sidebar() {
-  // Identity comes from the Clerk account (name/username/avatar).
-  const { user } = useClerk()
-  const displayName = user?.fullName || user?.username || 'Account'
+  // Identity comes from the shared auth context — a Clerk account in clerk
+  // mode, the local session user otherwise.
+  const { user, isAdmin } = useAuth()
+  const displayName =
+    user?.displayName || user?.username || user?.email || 'Account'
 
   return (
     <aside className="sticky top-[--sf-nav-h] self-start hidden h-[calc(100vh-var(--sf-nav-h))] w-[220px] flex-shrink-0 flex-col border-r border-sf-line lg:flex">
@@ -73,6 +77,7 @@ export function Sidebar() {
           {bottomItems.map((item) => (
             <SidebarLink key={item.to} {...item} />
           ))}
+          {isAdmin && <SidebarLink {...adminItem} />}
         </div>
       </div>
     </aside>

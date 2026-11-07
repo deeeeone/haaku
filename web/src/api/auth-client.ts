@@ -3,8 +3,8 @@
  * Uses Clerk for auth token injection. Fails gracefully when not signed in.
  */
 
-import { useAuth } from '@clerk/react'
 import { ApiError, api } from '@/api/fetch'
+import { useAuth } from '@/auth/context'
 
 export { ApiError }
 

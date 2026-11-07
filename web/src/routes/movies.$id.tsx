@@ -1,4 +1,3 @@
-import { useAuth } from '@clerk/react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Bookmark, BookmarkCheck, Heart, Play, Star, Users } from 'lucide-react'
 import { useState } from 'react'
@@ -16,6 +15,7 @@ import {
   useRemoveFromWatchlist,
 } from '@/api/hooks/useSync'
 import type { Ids } from '@/api/types'
+import { useAuth } from '@/auth/context'
 import { Page, ScrollRow, Section } from '@/components/layout'
 import {
   Button,
