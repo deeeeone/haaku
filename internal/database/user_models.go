@@ -18,16 +18,18 @@ type UserStats struct {
 func (UserStats) TableName() string { return "user_stats" }
 
 // SyncSession tracks batch sync progress (T3.9).
+// Errors carries the engine's typed per-item report (issue #6) — see SyncErrors;
+// it is written by the sync engine (a worker), never by the API request path.
 type SyncSession struct {
-	ID             int64     `gorm:"primaryKey;autoIncrement" json:"id"`
-	UserID         string    `gorm:"type:text;not null" json:"user_id"`
-	Kind           string    `gorm:"type:text;not null" json:"kind"`          // history | ratings
-	Status         string    `gorm:"type:text;default:pending" json:"status"` // pending | processing | completed | failed
-	TotalItems     int       `gorm:"default:0" json:"total_items"`
-	ProcessedItems int       `gorm:"default:0" json:"processed_items"`
-	Errors         JSONMap   `gorm:"type:jsonb;default:'[]'" json:"errors"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	ID             int64      `gorm:"primaryKey;autoIncrement" json:"id"`
+	UserID         string     `gorm:"type:text;not null" json:"user_id"`
+	Kind           string     `gorm:"type:text;not null" json:"kind"`          // history | ratings
+	Status         string     `gorm:"type:text;default:pending" json:"status"` // pending | processing | completed | failed
+	TotalItems     int        `gorm:"default:0" json:"total_items"`
+	ProcessedItems int        `gorm:"default:0" json:"processed_items"`
+	Errors         SyncErrors `gorm:"type:jsonb;serializer:json;default:'{}'" json:"errors"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
 }
 
 func (SyncSession) TableName() string { return "sync_sessions" }

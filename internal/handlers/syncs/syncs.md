@@ -4,14 +4,30 @@
 
 Batch import **sessions** (the umbrella for large history/ratings syncs — distinct from `sync`'s per-item endpoints):
 
-- `POST /v1/syncs` — create a `SyncSession` (`kind` = history|ratings, `status: pending`, `total_items` from body). **Async processing is a stub** ("TODO: enqueue async processing").
+- `POST /v1/syncs` — create a `SyncSession` (`kind` = history|ratings, `status: pending`, `total_items` from body) **and persist the submitted items** as `sync_session_items` rows, in one transaction with the session. Each item must be a JSON object; a non-object entry is rejected `400 invalid_request` rather than stored as an item the engine could never resolve.
 - `GET /v1/syncs/:id` — session progress (owner-scoped `WHERE id = ? AND user_id = ?`).
-- `GET /v1/syncs/:id/paused` — **fails closed with 501** `not_implemented` (unmatched/paused items require the sync engine, which isn't landed).
-- `GET /v1/syncs/:id/skipped` — **fails closed with 501** `not_implemented` (skipped items require the sync engine, which isn't landed).
+- `GET /v1/syncs/:id/paused` — the items the engine could not add: `not_found` (id did not resolve) and `error` (a poisoned item). Paginated.
+- `GET /v1/syncs/:id/skipped` — the items the engine deliberately did not write because the collection already had them (`duplicate`). Paginated.
 
 Uses the shared `auth.AuthRequired()` middleware on all four routes (one of the few modules doing this correctly). `:id<int>` param constraint. OpenAPI registered.
 
-Related, in the sibling `sync` package: `GET /v1/sync/last_activities` (issue #6, first slice) shipped — the Trakt "what changed since" delta a client polls to decide *what* to sync. It is independent of this package's session/engine work; the async engine below is still unimplemented. See `internal/handlers/sync/sync.md`.
+The request path never resolves or writes a single item: resolution and collection writes are the async engine's job. See `internal/syncengine/processor.go` — the consumer `POST /v1/syncs` has always pointed at.
+
+Related, in the sibling `sync` package: `GET /v1/sync/last_activities` (issue #6, first slice) shipped — the Trakt "what changed since" delta a client polls to decide *what* to sync. See `internal/handlers/sync/sync.md`.
+
+## The engine
+
+`internal/syncengine` (issue #6) claims a `pending` session, walks its persisted items, resolves each against our media data, writes the target collection, records a per-item outcome, and drives the session to a terminal state. It is its own package with **no HTTP and no scheduling**: a worker (owned by the worker-topology lane) calls `syncengine.ProcessPendingSessions(db, limit)`. Nothing starts a goroutine or a ticker, so the API request path can never run a session.
+
+Guarantees, and where each lives:
+
+- **idempotent** — only `state='pending'` items are worked, and a session is claimed by a compare-and-swap `pending -> processing`; a re-run claims nothing. Collection writes are additionally `ON CONFLICT DO NOTHING` / upsert.
+- **concurrency-safe** — the claim runs under a PostgreSQL advisory lock (`database.WithAdvisoryLockStr`).
+- **poison-tolerant** — a bad item is recorded as `outcome='error'` and the session continues; a panic in one item is recovered and recorded.
+
+Terminal per-item outcomes (a closed set): `added`, `not_found`, `duplicate`, `error`. `/paused` serves `not_found` + `error`; `/skipped` serves `duplicate`.
+
+`sync_sessions.errors` is now the typed `database.SyncErrors` object (issue #6) the engine writes when a session finishes: `counts` (one tally per outcome) and `items` (each item that did not land — `not_found` + `error` — with a machine-readable `code`, a message, and the item's ids). It replaced an untyped map that nothing ever wrote.
 
 ## Completion
 
@@ -19,30 +35,27 @@ Related, in the sibling `sync` package: `GET /v1/sync/last_activities` (issue #6
 |---|---|
 | OpenAPI registration (4 routes) | Done |
 | Shared `auth.AuthRequired` on all routes | Done |
-| Session create (DB row only) | Done |
+| Session create + item persistence | Done (session + items in one transaction) |
 | Session progress read | Done |
-| Paused / skipped reads | Fail closed (501 `not_implemented` until the sync engine lands) |
-| `/v1/sync/last_activities` (delta endpoint, `sync` pkg) | Done (issue #6, first slice) — real per-collection aggregates; the sync *engine* it would feed is still a stub |
+| Paused / skipped reads | Done — real paginated engine output |
+| Async engine (`internal/syncengine`) | Done — worker-callable; invoked by the worker lane |
+| `/v1/sync/last_activities` (delta endpoint, `sync` pkg) | Done (issue #6, first slice) |
 
 ## Oversights
 
-- **Async engine is a stub (Batch 13)** — sessions are created `pending` and never processed; `/paused` and `/skipped` now **fail closed with 501 `not_implemented`** because they are produced by the sync engine (Phase 3+). Session create and progress reads remain real.
-- **`Items []any` is stored nowhere** — the request body is only counted (`len(req.Items)`); the actual items are discarded and not persisted to the session (no items table). A resumed sync can never recover what was submitted.
-- **`c.Locals("user_id").(string)` unchecked** in all three handlers — safe today because `auth.AuthRequired` runs first, but the pattern is fragile (see `collab`/`social`).
-- **`c.ParamsInt("id")` errors ignored** — `syncID, _ := c.ParamsInt("id")`; the `:id<int>` route constraint should prevent non-numeric, but a 0/absent id yields a generic 404 instead of a 400.
-- **Session not-found maps all DB errors to 404** — a DB outage reads as "sync session not found".
-- **`/paused` no longer conflates "errors" with "unmatched items" (Batch 13)** — it previously dumped `session.Errors` (which may contain real processing errors, not paused/unmatched content); it now fails closed with 501 so no ambiguous/fabricated data is served until the engine distinguishes them.
+- **Nothing calls the engine in-process** — `ProcessPendingSessions` has no caller in this repo yet. The worker-topology lane owns `cmd/` and the worker loop; this PR supplies the seam (`ProcessPendingSessions(db, limit)`) and does not fight it for those files.
+- **`Errors` is owner-visible and only error/not_found detail** — the per-item list is capped at 100 in `sync_sessions.errors`; the full per-item record always stays in `sync_session_items`.
+- **`c.Locals("user_id").(string)` unchecked** — safe today because `auth.AuthRequired` runs first, but the pattern is fragile (see `collab`/`social`).
+- **Session not-found maps all DB errors to 404** in `handleGetSync` — a DB outage reads as "sync session not found". (`serveSessionItems` distinguishes them: non-`ErrRecordNotFound` returns 500.)
 - **No cache/outbox** — session reads are direct DB; no version-keyed caching. (Likely fine for now given low traffic, but inconsistent with the sync module.)
-- **`buildSyncResponse` exposes `user_id` in the response** (its `.000Z` literals were unified to the shared `response.FormatTime` helper in Batch 3).
-- **`Errors any` in the JSON response** — untyped; `buildSyncResponse` still forwards `session.Errors` (which stays empty until the engine writes it).
+- **`buildSyncResponse` exposes `user_id` in the response.**
+- **Episode resolution walks show -> season -> episode** per item (`resolveEpisode`), like the synchronous `/v1/sync` endpoints. A batch-level season/episode prefetch would cut queries if episode-heavy imports prove hot.
 
 ## Todos
 
-- [ ] Implement (or explicitly scope) the async sync engine and persist submitted items.
-- [x] `GET /v1/sync/last_activities` — landed as a standalone delta endpoint in `internal/handlers/sync` (issue #6, first slice). Does NOT process sessions; the engine below is still the residue.
-- [x] Decide what `/paused` and `/skipped` return. (Batch 13 — DECISION: fail closed with 501 `not_implemented` until the sync engine lands; the previous raw-`Errors`/hardcoded-empty responses were placeholders and no longer served.)
-- [ ] Once the engine exists, return real paused/skipped data from `/paused` and `/skipped` with pagination.
-- [x] Replace unchecked `user_id` assert with a safe helper (`requireUserID`, 401 on missing).
-- [x] Validate `:id<int>` parse and return 400 on failure (`parseSyncID`).
-- [x] Separate "not found" from other DB errors — `First` failures that aren't `gorm.ErrRecordNotFound` now return 500 `internal` instead of 404.
-- [x] Verify module test coverage (`make test`). (Batch 14 — `internal/handlers/syncs/syncs_test.go` covers `buildSyncResponse` and `parseSyncID` (valid / non-numeric / zero). Handler-level integration for the DB-backed sync-session CRUD awaits a DB-driver approval.)
+- [x] Implement the async sync engine and persist submitted items. (Engine in `internal/syncengine`; items in `sync_session_items`.)
+- [x] `GET /v1/sync/last_activities` — landed as a standalone delta endpoint in `internal/handlers/sync` (issue #6, first slice).
+- [x] Decide what `/paused` and `/skipped` return — real engine output, paginated (no more 501).
+- [x] Persist `session.Errors` with a typed shape.
+- [x] Verify module test coverage — `syncs_test.go` covers create -> persist, item validation, paused/skipped reads and owner scoping; `syncengine/processor_test.go` covers create -> process -> read-back including `not_found`.
+- [ ] Wire `ProcessPendingSessions` into the worker loop (worker-topology lane).

@@ -2737,7 +2737,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get items that couldn't be matched during sync */
+        /** Get paused items (unmatched or errored) from a sync session */
         get: operations["_v1_syncs_id_paused_GET"];
         put?: never;
         post?: never;
@@ -2754,7 +2754,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get skipped items from sync session */
+        /** Get skipped (duplicate) items from a sync session */
         get: operations["_v1_syncs_id_skipped_GET"];
         put?: never;
         post?: never;
@@ -18165,7 +18165,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Paused/unmatched items */
+            /** @description Paused items */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -18188,14 +18188,12 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description not found */
+            /** @description Sync session not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
+                content?: never;
             };
             /** @description conflict */
             409: {
@@ -18232,13 +18230,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
-            };
-            /** @description Not implemented (requires sync engine) */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -18274,14 +18265,12 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description not found */
+            /** @description Sync session not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
+                content?: never;
             };
             /** @description conflict */
             409: {
@@ -18318,13 +18307,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
-            };
-            /** @description Not implemented (requires sync engine) */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
