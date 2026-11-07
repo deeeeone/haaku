@@ -1,0 +1,22 @@
+# Acknowledged breaking changes to the public API contract.
+#
+# `make contract-diff` compares contracts/api/v1/openapi-baseline.yaml against
+# the working tree's openapi.yaml and fails when it finds a breaking change that
+# is not listed here. An entry is the written record that a break was made on
+# purpose: it is reviewable in the pull request, unlike a command-line flag.
+#
+# Every entry has three required fields:
+#
+#   signature  the exact change signature the tool prints for the break, e.g.
+#              "removed-path GET /v1/shows" or
+#              "removed-response-field GET /v1/shows 200 application/json items.title"
+#   date       the day the break landed, as YYYY-MM-DD
+#   reason     one line saying why the break is acceptable and what clients
+#              (the Jellyfin plugin among them) must do about it
+#
+# See docs/architecture/api-versioning.md for when a break is allowed at all
+# (a breaking change is supposed to mean a new URL prefix, /v2) and when this
+# baseline is expected to be refreshed.
+
+version: 1
+acknowledged: []

@@ -1,7 +1,7 @@
 .PHONY: help build bin frontend api-client embed-stub dev-backend dev-frontend fmt vet test test-go test-web lint lint-web \
 	tidy run compose-up compose-down pg-up pg-down pg-status test-db \
 	backup backup-list migrate-create migrate-validate migrate-status migrate-up \
-	api-spec api-check clean docker-base docker-omnibus docker-lint lint-go vuln secrets workflow-lint check-size check-bidi coverage check parity-check
+	api-spec api-check clean docker-base docker-omnibus docker-lint lint-go vuln secrets workflow-lint check-size check-bidi coverage check parity-check contract-diff
 
 # pnpm is expected on PATH (the frontend is a pnpm workspace). Override for a
 # checkout that keeps its own toolchain, e.g. make frontend PNPM=/opt/node/bin/pnpm
@@ -105,7 +105,7 @@ check-bidi: ## Fail on bidi control characters in tracked text (CVE-2021-42574)
 coverage: embed-stub ## Run both Go suites under coverage and enforce COVERAGE_FLOOR
 	COVERAGE_OUT=coverage.out COVERAGE_FLOOR=$(COVERAGE_FLOOR) ./scripts/test-go.sh
 
-check: lint-go vuln secrets workflow-lint check-size check-bidi api-check parity-check ## Run every gate CI runs
+check: lint-go vuln secrets workflow-lint check-size check-bidi api-check parity-check contract-diff ## Run every gate CI runs
 
 # --- Trakt parity manifest (issue #4) ---
 #
@@ -119,6 +119,23 @@ check: lint-go vuln secrets workflow-lint check-size check-bidi api-check parity
 parity-check: embed-stub ## Grade docs/parity/parity.yaml against the route registry
 	go run ./cmd/parity -check
 	go test ./internal/parity/ -run 'TestCommittedManifestMatchesTheRegistry|TestManifestFileIsWhereTheDocsSay' -count=1
+
+# --- Public contract diff (issue #15) ---
+#
+# api-check proves openapi.yaml matches the code; it says nothing about whether
+# the contract a client was written against still holds. This gate compares the
+# working tree's openapi.yaml against the frozen baseline in contracts/api/v1/
+# and fails when a breaking change (removed/renamed path, removed/renamed
+# response field, newly-required request field, narrowed enum, changed type,
+# removed enum value, removed status code) is not acknowledged in
+# contracts/api/v1/breaking-changes.yaml. It only reads openapi.yaml — it never
+# regenerates it. See docs/architecture/api-versioning.md.
+
+contract-diff: embed-stub ## Fail on an unacknowledged breaking change to the public contract
+	go run ./cmd/contract-diff -check
+	# The tool is a no-op if the classifier is; run the classifier tests too, so
+	# a green gate cannot hide a broken diff.
+	go test ./internal/contractdiff/ -run 'TestGateOnCommittedContractIsClean|TestDiff_ClassifiesEveryChangeClass' -count=1
 
 # --- Test ---
 

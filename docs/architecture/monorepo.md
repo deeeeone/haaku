@@ -9,7 +9,7 @@ cmd/api/                 the one entrypoint: one binary, several modes
 internal/                domain packages
 web/                     the React frontend, embedded into the binary
 migrations/              SQL migrations (embedded; see issue #14)
-api-contracts/           machine-readable API contract (planned; issue #15)
+contracts/               frozen API-contract baseline + acknowledged breaks (#15)
 deploy/                  compose files for local services
 docs/architecture/       design docs (this directory)
 scripts/                 developer tooling
