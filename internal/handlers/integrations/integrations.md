@@ -8,7 +8,7 @@ Implements integration tokens and the inbound event receiver (two files).
 - `POST /v1/integrations` — create an integration token (`tk_` + 24 random bytes, hex); token value returned **once** on creation; default scope `*`; 201.
 - `GET /v1/integrations` — list own tokens with **token values redacted** (only metadata).
 - `DELETE /v1/integrations/{id}` — revoke own token (scoped to `user_id`), 204; 404 if not found.
-- `LookupToken` — exported helper for the receiver: matches the **blind index** `token_hash` + `active = true`, falls back to a plaintext equality match only for a row the backfill has not converted yet, then decrypts the stored ciphertext (an AAD-swapped or tampered row fails here rather than being used).
+- `LookupToken` — exported helper for the receiver: matches the **blind index** `token_hash` + `active = true`, then decrypts the stored ciphertext (an AAD-swapped or tampered row fails here rather than being used).
 
 **`receiver.go` — inbound event receiver:**
 - `POST /v1/integrations/{token}` — authenticates via the token in the path, validates the payload has `event` or `type`, and enqueues an outbox event (`integration.received`) attributed to the token owner; returns 202.
@@ -21,12 +21,11 @@ An integration token is a bearer credential the receiver looks up on every reque
 
 | Column | Holds | Purpose |
 |---|---|---|
-| `token_hash` | `HMAC-SHA256(raw, HKDF(root, "tkiller/integration-token-lookup/v1"))`, lowercase hex | The deterministic blind index the lookup matches on. Unique (partial, `WHERE token_hash <> ''` so unconverted rows coexist). |
+| `token_hash` | `HMAC-SHA256(raw, HKDF(root, "tkiller/integration-token-lookup/v1"))`, lowercase hex | The deterministic blind index the lookup matches on. Unique (partial, `WHERE token_hash <> ''`). |
 | `token` | `enc:v1:<base64url(nonce‖sealed)>`, AES-256-GCM with `RowAAD("integration_tokens","token",id)` | The recoverable credential, used for display/rotation and decrypted on a successful lookup. |
 
-- **Lookup** matches the blind index, so the raw token never participates in a `WHERE` against storage that could be dumped. A legacy row (plaintext, empty hash) is still found by an equality fallback during the migrate→backfill window; a ciphertext never equals a raw token, so that fallback can only ever match an unconverted row.
+- **Lookup** matches the blind index, so the raw token never participates in a `WHERE` against storage that could be dumped. A ciphertext never equals a raw token, so there is no plaintext path into the lookup.
 - **Rotation** replaces both columns in one update, so the previous token stops matching the moment its blind index is gone.
-- **Backfill** (`BackfillPlaintextTokens`, wired into the migrate/api startup path, never worker mode) converts rows still holding plaintext: bounded batches, idempotent, resumable, serialised under a PostgreSQL advisory lock, optimistic per-row update, and it refuses to run without a usable root key. See `docs/architecture/secret-encryption.md` for the pattern and the threat model.
 - **Decision recorded:** the design keeps a recoverable ciphertext (rather than storing only a keyed hash and showing the token once at creation) because the existing contract — returned once, listable, revocable, rotating in place — depends on it. The hash-only variant is strictly more secure and is a product decision for the owner, not a silent change.
 
 ## Completion

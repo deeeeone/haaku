@@ -228,7 +228,7 @@ func (d *fakeDumper) Dump(ctx context.Context, w io.Writer) (DumpInfo, error) {
 	if _, err := w.Write(d.data); err != nil {
 		return DumpInfo{}, err
 	}
-	return DumpInfo{PgDumpVersion: "pg_dump (PostgreSQL) 17.11", DatabaseName: "trakt"}, nil
+	return DumpInfo{PgDumpVersion: "pg_dump (PostgreSQL) 17.11", DatabaseName: "haaku"}, nil
 }
 
 func (d *fakeDumper) Inventory(context.Context) ([]TableCount, error) {

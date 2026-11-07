@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -17,7 +16,6 @@ import (
 	"trakt-api/internal/backup"
 	"trakt-api/internal/config"
 	"trakt-api/internal/database"
-	"trakt-api/internal/handlers/integrations"
 	"trakt-api/internal/httpapi"
 	"trakt-api/internal/logging"
 	"trakt-api/internal/mode"
@@ -304,29 +302,10 @@ func shutdownWorkers(logger *slog.Logger, rt *workers.Runtime) {
 func migrate(logger *slog.Logger) int {
 	ctx := context.Background()
 	if err := database.Migrate(ctx); err != nil {
-		if errors.Is(err, database.ErrMigrationsNotImplemented) {
-			logger.Error("migrations are not available yet", "error", err)
-		} else {
-			logger.Error("migration failed", "error", err)
-		}
+		logger.Error("migration failed", "error", err)
 		return 1
 	}
 	logger.Info("migrations applied")
-
-	// The schema is current; sweep any credential columns still holding plaintext
-	// (issue #16 §2 — EncryptIfPlaintext was tested but never wired). This runs
-	// in the migrate and api startup paths only (a worker never calls migrate)
-	// and refuses to run without a usable root key, so it can never write
-	// unreadable values into the schema.
-	db, err := database.GetDB()
-	if err != nil {
-		logger.Error("integration token backfill: database unavailable", "error", err)
-		return 1
-	}
-	if _, err := integrations.BackfillPlaintextTokens(ctx, db, logger); err != nil {
-		logger.Error("integration token backfill failed", "error", err)
-		return 1
-	}
 	return 0
 }
 

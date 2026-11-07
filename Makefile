@@ -142,9 +142,9 @@ test-db: embed-stub ## Run tests against a real PostgreSQL (see scripts/dev-pg.s
 # The server applies the embedded migrations at startup (internal/database.Migrate),
 # so these targets are for humans: authoring, validating offline, and inspecting
 # or applying a pending set from a shell. `migrate-up` deliberately runs the
-# binary, not the Goose CLI, so it also takes the advisory lock, seeds a legacy
-# `schema_versions` ledger and writes the pre-migration backup — the Goose CLI
-# does none of those.
+# binary, not the Goose CLI, so it also takes the advisory lock, ensures the
+# Goose ledger and writes the pre-migration backup — the Goose CLI does none of
+# those.
 
 migrate-create: ## Author a timestamped Goose migration: make migrate-create NAME=add_thing
 	@if [ -z "$(NAME)" ]; then echo "usage: make migrate-create NAME=add_thing"; exit 1; fi

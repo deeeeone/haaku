@@ -10,7 +10,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	"trakt-api/internal/database"
 
@@ -44,24 +43,6 @@ func newTokenDB(t *testing.T) *gorm.DB {
 func useRootKey(t *testing.T, key string) {
 	t.Helper()
 	t.Setenv("TKILLER_SECRET_KEY", key)
-	t.Setenv("WEBHOOK_SECRET_KEY", "")
-}
-
-// legacyRow inserts a row the way the pre-encryption code did: the raw token in
-// the token column and no blind index.
-func legacyRow(t *testing.T, db *gorm.DB, token string) database.IntegrationToken {
-	t.Helper()
-	row := database.IntegrationToken{
-		UserID:    "user_legacy",
-		Token:     token,
-		Name:      "legacy",
-		Active:    true,
-		CreatedAt: time.Now().UTC(),
-	}
-	if err := db.Create(&row).Error; err != nil {
-		t.Fatalf("insert legacy row: %v", err)
-	}
-	return row
 }
 
 // TestTokenLookupHashIsDeterministicAndKeyed pins the blind index: same token →
@@ -128,7 +109,7 @@ func TestIntegrationTokenCreateLookupRotate(t *testing.T) {
 	if tok.Token == raw {
 		t.Fatal("stored token equals the raw token — not encrypted")
 	}
-	if !isCiphertext(tok.Token) {
+	if !strings.HasPrefix(tok.Token, "enc:v1:") {
 		t.Fatalf("stored token is not an enc:v1: envelope: %q", tok.Token)
 	}
 	if tok.TokenHash == raw || len(tok.TokenHash) != 64 {
@@ -293,7 +274,6 @@ func TestIntegrationTokenMissingRootKeyRefuses(t *testing.T) {
 	db := newTokenDB(t)
 
 	t.Setenv("TKILLER_SECRET_KEY", "")
-	t.Setenv("WEBHOOK_SECRET_KEY", "")
 	if _, _, err := createToken(db, "u", "x", nil); err == nil {
 		t.Fatal("createToken with no root key succeeded, want an error")
 	}
@@ -302,9 +282,6 @@ func TestIntegrationTokenMissingRootKeyRefuses(t *testing.T) {
 	}
 	if _, err := TokenLookupHash("tk_x"); err == nil {
 		t.Fatal("TokenLookupHash with no root key succeeded, want an error")
-	}
-	if _, err := BackfillPlaintextTokens(t.Context(), db, nil); err == nil {
-		t.Fatal("BackfillPlaintextTokens with no root key succeeded, want an error")
 	}
 	// Nothing was written.
 	var n int64
@@ -318,69 +295,6 @@ func TestIntegrationTokenMissingRootKeyRefuses(t *testing.T) {
 	t.Setenv("TKILLER_SECRET_KEY", strings.Repeat("a", 31)) // one short of the floor
 	if _, _, err := createToken(db, "u", "x", nil); err == nil {
 		t.Fatal("createToken with a 31-char key succeeded, want an error")
-	}
-}
-
-// TestLookupLegacyPlaintextFallback proves a not-yet-backfilled row (plaintext
-// token, empty hash) still authenticates, so the migrate→backfill window does
-// not lock out a working integration.
-func TestLookupLegacyPlaintextFallback(t *testing.T) {
-	useRootKey(t, testRootKey)
-	db := newTokenDB(t)
-	legacyRow(t, db, "tk_legacy_value")
-
-	got, err := LookupToken(db, "tk_legacy_value")
-	if err != nil {
-		t.Fatalf("legacy lookup: %v", err)
-	}
-	if got.Token != "tk_legacy_value" {
-		t.Fatalf("legacy lookup returned %q", got.Token)
-	}
-}
-
-// TestBackfillConvertsLegacyRowsOnce is the idempotency contract: legacy rows
-// convert exactly once, a repeat run is a no-op, and the converted rows still
-// authenticate by the raw token.
-func TestBackfillConvertsLegacyRowsOnce(t *testing.T) {
-	useRootKey(t, testRootKey)
-	db := newTokenDB(t)
-
-	for _, tok := range []string{"tk_legacy_a", "tk_legacy_b", "tk_legacy_c"} {
-		legacyRow(t, db, tok)
-	}
-
-	n, err := BackfillPlaintextTokens(t.Context(), db, nil)
-	if err != nil {
-		t.Fatalf("backfill: %v", err)
-	}
-	if n != 3 {
-		t.Fatalf("backfill converted %d rows, want 3", n)
-	}
-
-	// Every row is now an envelope with a populated hash; none holds plaintext.
-	var rows []database.IntegrationToken
-	if err := db.Find(&rows).Error; err != nil {
-		t.Fatalf("load rows: %v", err)
-	}
-	for _, r := range rows {
-		if !isCiphertext(r.Token) || r.TokenHash == "" {
-			t.Fatalf("row %d not converted: token=%q hash=%q", r.ID, r.Token, r.TokenHash)
-		}
-	}
-	// And each still authenticates by its raw token.
-	for _, tok := range []string{"tk_legacy_a", "tk_legacy_b", "tk_legacy_c"} {
-		if _, err := LookupToken(db, tok); err != nil {
-			t.Fatalf("converted token %q no longer authenticates: %v", tok, err)
-		}
-	}
-
-	// Idempotent: a second run converts nothing.
-	again, err := BackfillPlaintextTokens(t.Context(), db, nil)
-	if err != nil {
-		t.Fatalf("second backfill: %v", err)
-	}
-	if again != 0 {
-		t.Fatalf("second backfill converted %d rows, want 0", again)
 	}
 }
 
@@ -424,7 +338,7 @@ func TestHandleCreateTokenStoresCiphertext(t *testing.T) {
 	if stored.Token == body.Token {
 		t.Fatal("the stored token equals the token returned to the client")
 	}
-	if !isCiphertext(stored.Token) || stored.TokenHash == "" {
+	if !strings.HasPrefix(stored.Token, "enc:v1:") || stored.TokenHash == "" {
 		t.Fatalf("stored row is not encrypted+indexed: token=%q hash=%q", stored.Token, stored.TokenHash)
 	}
 }
