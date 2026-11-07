@@ -37,6 +37,10 @@ var (
 	// moderationAllowlist holds user ids granted moderation from the env
 	// allowlists. Empty until InitModerationAllowlists runs at startup.
 	moderationAllowlist = map[string]bool{}
+	// adminAllowlist holds the ADMIN_USER_IDS env allowlist on its own, for the
+	// stricter RequireAdmin gate (issue #53's admin panel). A moderator is not
+	// an admin.
+	adminAllowlist = map[string]bool{}
 )
 
 // InitModerationAllowlists records the admin/mod user ids from configuration.
@@ -44,9 +48,11 @@ var (
 // which is what tests rely on to reset the set.
 func InitModerationAllowlists(adminIDs, modIDs []string) {
 	set := make(map[string]bool, len(adminIDs)+len(modIDs))
+	admins := make(map[string]bool, len(adminIDs))
 	for _, id := range adminIDs {
 		if id != "" {
 			set[id] = true
+			admins[id] = true
 		}
 	}
 	for _, id := range modIDs {
@@ -56,6 +62,7 @@ func InitModerationAllowlists(adminIDs, modIDs []string) {
 	}
 	moderationAllowMu.Lock()
 	moderationAllowlist = set
+	adminAllowlist = admins
 	moderationAllowMu.Unlock()
 }
 
@@ -103,5 +110,47 @@ func RequireModerator() fiber.Handler {
 		}
 
 		return writeEnvelope(c, fiber.StatusForbidden, "forbidden", "moderator access required")
+	}
+}
+
+// RequireAdmin is a Fiber middleware that requires the authenticated caller to
+// be an admin (issue #53's account panel). It is the stricter sibling of
+// RequireModerator: authorization is the ADMIN_USER_IDS env allowlist OR
+// users.is_admin, and a moderator who is not an admin gets 403.
+//
+// It must run after AuthRequired. An unauthenticated caller gets 401, matching
+// AuthRequired, rather than a 403 that would confirm the route exists.
+func RequireAdmin() fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		userID, _ := c.Locals(ctxUserID).(string)
+		if userID == "" {
+			return writeUnauthorized(c)
+		}
+
+		moderationAllowMu.RLock()
+		allowed := adminAllowlist[userID]
+		moderationAllowMu.RUnlock()
+		if allowed {
+			return c.Next()
+		}
+
+		db, err := database.GetDB()
+		if err != nil {
+			return writeEnvelope(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+		}
+
+		var user database.User
+		err = db.Select("is_admin").First(&user, "id = ?", userID).Error
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return writeEnvelope(c, fiber.StatusForbidden, "forbidden", "admin access required")
+			}
+			return writeEnvelope(c, fiber.StatusInternalServerError, "internal", "database query error")
+		}
+		if user.IsAdmin {
+			return c.Next()
+		}
+
+		return writeEnvelope(c, fiber.StatusForbidden, "forbidden", "admin access required")
 	}
 }

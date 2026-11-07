@@ -11,11 +11,35 @@ import (
 	"github.com/haaku-tv/haaku/internal/secret"
 )
 
+// Identity modes (issue #53). AuthModeLocal is the self-hosted default: this
+// server issues identity (signup/login/sessions). AuthModeClerk delegates
+// identity to Clerk and disables the local module outright — no local routes,
+// no local session issuance. The two never both authenticate an instance.
+const (
+	AuthModeLocal = "local"
+	AuthModeClerk = "clerk"
+
+	// SignupApproval is the local sign-up policy default: the first account on
+	// an empty instance becomes the owner, and every later sign-up lands
+	// "pending" until an admin approves it. No open door on a box that happens
+	// to be reachable; adding a household member is one click, not a config
+	// change. See docs/architecture/local-auth.md.
+	SignupApproval = "approval"
+	SignupOpen     = "open"   // new accounts are active immediately
+	SignupClosed   = "closed" // only the first-run bootstrap account may be created
+)
+
 // Config holds all runtime configuration, loaded once from env vars.
 // Secrets live in .env (gitignored); never commit real values.
 type Config struct {
 	Env  string
 	Port string
+
+	// Identity (issue #53): which authenticator this instance runs, and the
+	// local sign-up policy. AuthMode is HAAKU_AUTH_MODE (default local);
+	// SignupPolicy is only consulted in local mode.
+	AuthMode     string
+	SignupPolicy string
 
 	// Data layer (wired in T0.4/T0.8)
 	DatabaseURL string
@@ -68,6 +92,9 @@ func Load() (*Config, error) {
 		AdminUserIDs:       splitCSV(os.Getenv("ADMIN_USER_IDS")),
 		ModUserIDs:         splitCSV(os.Getenv("MOD_USER_IDS")),
 
+		AuthMode:     getEnv("HAAKU_AUTH_MODE", AuthModeLocal),
+		SignupPolicy: getEnv("HAAKU_SIGNUP", SignupApproval),
+
 		// Rate limiting (Phase 9d) — ON by default (primary abuse control);
 		// set RATE_LIMIT_ENABLED=false for local dev without Redis.
 		RateLimitEnabled: getEnvBool("RATE_LIMIT_ENABLED", true),
@@ -93,6 +120,22 @@ func Load() (*Config, error) {
 	// fast at startup instead of at the first credential write.
 	if _, err := secret.RootKeyFromEnv(); err != nil {
 		return nil, err
+	}
+
+	// Identity (issue #53). An unknown mode would leave the instance with no
+	// authenticator at all; an unknown signup policy would silently pick one.
+	// Both are refused at boot, like the root key, rather than guessed at.
+	switch cfg.AuthMode {
+	case AuthModeLocal, AuthModeClerk:
+	default:
+		return nil, fmt.Errorf("HAAKU_AUTH_MODE must be %q or %q, got %q",
+			AuthModeLocal, AuthModeClerk, cfg.AuthMode)
+	}
+	switch cfg.SignupPolicy {
+	case SignupApproval, SignupOpen, SignupClosed:
+	default:
+		return nil, fmt.Errorf("HAAKU_SIGNUP must be %q, %q or %q, got %q",
+			SignupApproval, SignupOpen, SignupClosed, cfg.SignupPolicy)
 	}
 
 	return cfg, nil

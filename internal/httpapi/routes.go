@@ -267,6 +267,16 @@ func RegisterRoutes(app *fiber.App) {
 	// API key management (T2.5)
 	auth.RegisterAPIKeyRoutes(api)
 
+	// Local account management (issue #53). RegisterLocalAuthConfig is always
+	// registered — it is the one public way a client learns which mode this
+	// instance runs, and in clerk mode it is the only one of these routes that
+	// exists. RegisterLocalAuthRoutes registers the signup/login/logout/reset
+	// handlers AND their OpenAPI definitions only in local mode, so the
+	// registry and the generated spec both prove the module is absent in clerk
+	// mode rather than merely switched off at runtime.
+	auth.RegisterLocalAuthConfig(api)
+	auth.RegisterLocalAuthRoutes(api)
+
 	// Public-profile read surface (issue #4, Users section): /v1/users/{id}/{history,
 	// ratings, watchlist, collection, watching, comments, notes, likes} + the
 	// caller's /v1/users/me/likes/{comments,lists}.

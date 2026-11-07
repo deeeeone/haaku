@@ -4,6 +4,8 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/haaku-tv/haaku/internal/database"
+
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -14,7 +16,7 @@ const (
 )
 
 // AuthRequired is a Fiber middleware that requires a valid auth token.
-// Sets c.Locals("user_id", string) and c.Locals("auth_method", "jwt" | "apikey").
+// Sets c.Locals("user_id", string) and c.Locals("auth_method", "jwt" | "apikey" | "session").
 func AuthRequired() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		userID, authMethod, err := extractAuth(c)
@@ -79,9 +81,34 @@ func extractAuth(c *fiber.Ctx) (string, string, error) {
 			return "", "", errInvalidToken
 		}
 		return userID, "apikey", nil
+	case strings.HasPrefix(token, SessionTokenPrefix):
+		// Local session path — an opaque server-side session row (issue #53).
+		// Gated on the mode: in clerk mode a local session token is not a
+		// credential at all, so the two systems can never both authenticate an
+		// instance.
+		if !LocalAuthEnabled() {
+			return "", "", errUnsupportedPrefix
+		}
+		return verifyLocalSession(token)
 	default:
 		return "", "", errUnsupportedPrefix
 	}
+}
+
+// verifyLocalSession resolves an opaque local session token to its user id.
+// Every failure (unknown, revoked, expired, non-active account) collapses to
+// one error, so the response never says why.
+func verifyLocalSession(token string) (string, string, error) {
+	db, err := database.GetDB()
+	if err != nil {
+		return "", "", errInvalidToken
+	}
+	userID, err := ResolveSessionToken(db, token)
+	if err != nil {
+		slog.Debug("local session verification failed", "error", err)
+		return "", "", errInvalidToken
+	}
+	return userID, "session", nil
 }
 
 // verifyJWT verifies a Clerk session JWT and returns the user ID.

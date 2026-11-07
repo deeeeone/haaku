@@ -48,6 +48,15 @@ func NewServer(cfg *config.Config) *fiber.App {
 
 	// Initialize Clerk client (Phase 2: T2.1)
 	auth.InitClerk(cfg)
+	// Select the identity mode before any route is registered: the local
+	// account module (issue #53) registers itself, and its OpenAPI
+	// definitions, only when the mode is local. An unparseable value is
+	// impossible here — config.Load refuses to start on one — so a failure
+	// means a caller built a Config by hand.
+	if err := auth.InitAuthMode(cfg.AuthMode, cfg.SignupPolicy); err != nil {
+		slog.Error("invalid auth mode — falling back to the self-hosted default", "error", err)
+		_ = auth.InitAuthMode("", "")
+	}
 	// Record the admin/mod env allowlists used by auth.RequireModerator
 	// (issue #10 §2).
 	auth.InitModerationAllowlists(cfg.AdminUserIDs, cfg.ModUserIDs)
