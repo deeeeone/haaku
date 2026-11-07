@@ -67,6 +67,12 @@ make dev-backend                 # API on :8080; migrations run on start
 make dev-frontend                # second terminal: Vite on :5173, proxies /v1 to the API
 ```
 
+Host-only settings for a source run — the `DATABASE_URL` / `REDIS_URL` that
+`make dev-db` provides — belong in a gitignored `.env.local`. `make
+dev-backend` sources it after `.env`, so it wins, while `.env` stays safe to
+hand to the container install (a non-empty value there makes the omnibus image
+skip its bundled PostgreSQL/Redis).
+
 `make dev-db` runs just the infrastructure from `dev/compose.yml`: PostgreSQL on
 **55432** and Redis on **56379**, matching the commented `DATABASE_URL` /
 `REDIS_URL` examples in `.env.example`. Prefer no Docker at all? `make pg-up` starts a throwaway

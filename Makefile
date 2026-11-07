@@ -14,6 +14,13 @@ PNPM ?= pnpm
 # forces a re-install too.
 INSTALL_STAMP := web/node_modules/.install-stamp
 
+# Environment for a source run. `.env` is also read by the omnibus container
+# (docker-compose.yml passes it as env_file), so host-specific overrides belong
+# in the gitignored `.env.local`, sourced second so it wins. In particular the
+# DATABASE_URL/REDIS_URL that `make dev-db` provides must stay out of `.env`:
+# a non-empty value there makes the image skip its bundled PostgreSQL/Redis.
+ENV_SOURCE = set -a; . ./.env; [ ! -f .env.local ] || . ./.env.local; set +a
+
 # Minimum total statement coverage for `make coverage` (merged profile from both
 # Go suites). Measured on main at ~24.6%; the floor sits below that so ordinary
 # untested additions do not turn main red, but a whole suite going missing does.
@@ -63,8 +70,8 @@ build: embed-stub ## Build all Go packages
 bin: frontend ## Build the real single binary with the frontend embedded
 	go build -o bin/api ./cmd/api
 
-dev-backend: embed-stub ## Run the API from source (needs .env and a database)
-	set -a; . ./.env; set +a; go run ./cmd/api
+dev-backend: embed-stub ## Run the API from source (needs .env; .env.local for a DB)
+	$(ENV_SOURCE); go run ./cmd/api
 
 dev-frontend: $(INSTALL_STAMP) ## Run the Vite dev server (installs deps if needed)
 	cd web && $(PNPM) run dev
@@ -72,7 +79,7 @@ dev-frontend: $(INSTALL_STAMP) ## Run the Vite dev server (installs deps if need
 run: dev-backend ## Alias for dev-backend
 
 build-run: embed-stub ## Build and run the binary from source
-	set -a; . ./.env; set +a; go build -o bin/api ./cmd/api && ./bin/api
+	$(ENV_SOURCE); go build -o bin/api ./cmd/api && ./bin/api
 
 fmt: ## Format Go sources
 	gofmt -l -w .
