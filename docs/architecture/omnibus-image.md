@@ -60,7 +60,7 @@ is off still reports ready and sleeps, so the graph never changes shape.
 | `init-config` | oneshot | `init-adduser` | lays out `/config`, checks the settings the binary refuses to start without, decides which bundled services run, exports `DATABASE_URL`/`REDIS_URL` |
 | `init-postgres` | oneshot | `init-config` | creates the cluster on first start, refuses a data directory from another major version, writes the image's settings and `pg_hba.conf` |
 | `svc-postgres` | longrun | `init-postgres` | runs PostgreSQL on the socket only, holding the `flock` |
-| `init-postgres-db` | oneshot | `svc-postgres` | creates the `trakt` database |
+| `init-postgres-db` | oneshot | `svc-postgres` | creates the `haaku` database |
 | `svc-redis` | longrun | `init-config` | runs Redis with an append-only file |
 | `svc-haaku` | longrun | `init-postgres-db`, `svc-redis` | runs the app as the `haaku` account |
 | `svc-haaku-worker` | longrun | `init-postgres-db`, `svc-redis` | runs the app as a background worker (`HAAKU_MODE=worker`). Off unless `HAAKU_WORKER_SERVICE=true`, when it reports ready and sleeps |

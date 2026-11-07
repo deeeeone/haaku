@@ -91,9 +91,9 @@ services:
     container_name: haaku-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: trakt
+      POSTGRES_USER: haaku
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-haaku}
-      POSTGRES_DB: trakt
+      POSTGRES_DB: haaku
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

@@ -32,7 +32,7 @@ if [[ -e "$PGDATA/PG_VERSION" ]]; then
     cat >&2 <<MSG
 /config/postgres/data was written by PostgreSQL $have but this image ships PostgreSQL $PG_MAJOR.
 PostgreSQL cannot open a data directory from another major version. Start the
-previous image, dump the trakt database with pg_dump, move the old data
+previous image, dump the haaku database with pg_dump, move the old data
 directory aside, then start this image and restore the dump. See "Upgrading
 PostgreSQL" in docs/architecture/omnibus-image.md.
 MSG

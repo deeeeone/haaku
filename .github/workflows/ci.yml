@@ -220,9 +220,9 @@ jobs:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_USER: trakt
+          POSTGRES_USER: haaku
           POSTGRES_PASSWORD: haaku
-          POSTGRES_DB: trakt
+          POSTGRES_DB: haaku
         ports:
           - 5432:5432
         options: >-
