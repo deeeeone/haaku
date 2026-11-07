@@ -1,0 +1,12 @@
+#!/bin/sh
+# The worker service's readiness probe, run by s6-notifyoncheck until it
+# succeeds. The binary serves /readyz on its own listener (no API port), and by
+# default that is 127.0.0.1:9090 — a port away from the API's 8080, because both
+# processes share this container's network namespace.
+addr="${TKILLER_WORKER_HEALTH_LISTEN:-127.0.0.1:9090}"
+# curl cannot dial a bare ":9090" or a 0.0.0.0 bind, so normalise the host.
+case "$addr" in
+  :*) addr="127.0.0.1${addr}" ;;
+  0.0.0.0:*) addr="127.0.0.1:${addr#0.0.0.0:}" ;;
+esac
+curl -fsS "http://${addr}/readyz" >/dev/null 2>&1

@@ -5,7 +5,7 @@
 `haaku-tv/haaku` is the **monorepo** for the server:
 
 ```
-cmd/                     entrypoints: one binary, several modes
+cmd/api/                 the one entrypoint: one binary, several modes
 internal/                domain packages
 web/                     the React frontend, embedded into the binary
 migrations/              SQL migrations (embedded; see issue #14)
@@ -64,6 +64,13 @@ One binary runs several roles (`internal/mode`), selected with
 A worker must never change the schema — several run against one database, and a
 migration under a running API is a deployment accident rather than a feature.
 Encoding that in the mode table means it holds by construction.
+
+**Which** workers a process runs is a second axis: `TKILLER_WORKER` is a
+comma-separated list of worker names, or `all` (the default) / `none`. The
+default keeps an existing install running the workers in-process; a dedicated
+worker deployment sets `TKILLER_WORKER=none` on the API so the same worker is
+never started twice. The names, their schedule and the deployment recipes are in
+[workers.md](workers.md); the topology itself is `internal/workers`.
 
 ## Costs and consequences
 

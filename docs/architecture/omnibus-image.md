@@ -11,6 +11,12 @@ off — the same image then runs as one container or as one of several
 (`docker-compose.advanced.yml`). A `TKILLER_MODE` of `worker` or `migrate`
 starts no bundled service and requires both URLs.
 
+By default the bundled install runs the background workers inside the API
+process, so one container really is the whole install. Setting
+`TKILLER_WORKER_SERVICE=true` moves them to a second service of their own in the
+same container (see "Running a worker" below and
+[workers.md](workers.md)).
+
 ## Two images, one binary
 
 | Image | Source | Contents | Tag |
@@ -57,11 +63,14 @@ is off still reports ready and sleeps, so the graph never changes shape.
 | `init-postgres-db` | oneshot | `svc-postgres` | creates the `trakt` database |
 | `svc-redis` | longrun | `init-config` | runs Redis with an append-only file |
 | `svc-tkiller` | longrun | `init-postgres-db`, `svc-redis` | runs the app as the `tkiller` account |
+| `svc-tkiller-worker` | longrun | `init-postgres-db`, `svc-redis` | runs the app as a background worker (`TKILLER_MODE=worker`). Off unless `TKILLER_WORKER_SERVICE=true`, when it reports ready and sleeps |
 
 s6 stops services in reverse order, so the API drains before PostgreSQL's fast
-shutdown. Neither `svc-tkiller` nor `svc-postgres` has a stop timeout of its
-own — the container's `stop_grace_period` bounds them, which is why the Compose
-files set it to two minutes.
+shutdown, and neither `svc-tkiller` nor `svc-tkiller-worker` has a stop timeout
+of its own — the container's `stop_grace_period` bounds them, which is why the
+Compose files set it to two minutes. `svc-tkiller-worker` is a
+notification-based service (`notification-fd` 3): `s6-notifyoncheck` polls its
+`/readyz` before it is reported up, the same way `svc-redis` waits for a `PONG`.
 
 The app applies its own migrations at startup (`internal/database.Migrate`), so
 there is no schema step here. That is also what keeps the same binary able to
@@ -119,7 +128,9 @@ misconfiguration is one line instead of a crash loop:
 Useful, and optional: `TKILLER_PORT` (host port; the container always listens on
 8080), `TKILLER_CONFIG` (host directory for `/config`), `PUID`/`PGID`, `TZ`,
 `DATABASE_URL`, `REDIS_URL`, `APP_ENV` (defaults to `production` here, which also
-keeps the dev-only Clerk simulate route from being registered).
+keeps the dev-only Clerk simulate route from being registered). The background
+workers add `TKILLER_WORKER` (which workers a process runs), and the metadata
+worker adds `METADATA_SINCE_FILE` and `METADATA_BACKFILL_PAGES`.
 
 `FILE__NAME=/path` sets `NAME` from a file — Docker, Compose and Kubernetes
 secrets all work. The path has to resolve, outside `/config`, to a regular file
@@ -127,6 +138,36 @@ that no service account owns and that group and others cannot write, in
 directories only root can change; anything else is refused with a warning,
 because a service account that could rewrite the file could have root export
 `TKILLER_SECRET_KEY` under another name.
+
+### Running a worker
+
+The bundled install runs the background workers **inside the API process**, so
+`docker compose up -d` is unchanged and one container is still the whole install.
+To run them in a process of their own — a crash in a worker then cannot take the
+API down, and each has its own memory — set `TKILLER_WORKER_SERVICE=true`:
+
+```bash
+# .env
+TKILLER_WORKER_SERVICE=true
+# optional: only some workers in this service
+# TKILLER_WORKER_SERVICE_SELECTION=webhooks,activity,outbox,metadata
+```
+
+`init-config` then enables the `svc-tkiller-worker` service and exports
+`TKILLER_WORKER=none` for the API, so the API runs API-only and the worker
+service owns the workers — each one in exactly one process, never two. The
+worker answers `/readyz` on `TKILLER_WORKER_HEALTH_LISTEN` (default
+`127.0.0.1:9090`; it cannot be 8080 because the API is already there in this
+container), and `s6-notifyoncheck` waits for that before the service counts as
+up. `docker compose logs tkiller` shows both processes; look for
+`worker service: on` from the init and `starting background workers` from the
+worker.
+
+The worker runs as the same `tkiller` account and shares `/config/tkiller`, so
+the metadata change-feed cursor and the pre-migration backups stay where they
+were. Leaving `TKILLER_WORKER_SERVICE` unset (or `false`) is the default and
+starts no worker service. Full details, including the worker names and their
+schedule, are in [workers.md](workers.md).
 
 ### Not implemented yet
 
@@ -142,7 +183,7 @@ runs PostgreSQL's defaults. Issue #13 tracks it.
 | File | What it runs |
 |---|---|
 | `docker-compose.yml` | the omnibus install: one service, one `/config` volume, `.env` |
-| `docker-compose.advanced.yml` | the same image against a `postgres` and a `redis` service of their own |
+| `docker-compose.advanced.yml` | the same image against a `postgres` and a `redis` service of their own; adds an opt-in `worker` service behind `--profile worker` |
 | `dev/compose.yml` | PostgreSQL, Redis, Minio, the Clerk emulator and Mailpit, for running the API and Vite on the host |
 
 `cp .env.example .env`, set the two required values, `docker compose up -d`.
@@ -191,7 +232,11 @@ no bundled services. The base image is what runs then, and it is the same binary
 `latest` / `build-N` / `<sha>` (plus a version tag when the ref is one). Its
 `smoke` job is the part worth keeping: it installs the image the way the
 instructions do, then asserts the acceptance criteria — `/healthz` answers,
-the embedded frontend is served, the migration ledger reaches 32 and the schema
-has 46 tables, the same image against an external PostgreSQL starts no bundled
-server and still migrates it, and SIGTERM exits 0 with PostgreSQL shut down
-cleanly.
+the embedded frontend is served, the migration ledger reaches the newest
+migration and the schema has its tables, the same image against an external
+PostgreSQL starts no bundled server and still migrates it, and SIGTERM exits 0
+with PostgreSQL shut down cleanly.
+
+The smoke job covers the default install (workers inside the API). The opt-in
+worker service (`TKILLER_WORKER_SERVICE=true`) is not yet exercised there — it
+needs its own step, which is a follow-up rather than part of this change.

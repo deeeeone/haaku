@@ -11,6 +11,14 @@
 # unreadable, and the key without the dump is useless.
 #
 # For a database and cache of your own instead, use docker-compose.advanced.yml.
+#
+# The app runs the background workers (webhook delivery, activity fan-out, the
+# event outbox, the TMDB upkeep jobs) inside the API process, so one container
+# is still the whole install. To hand them to a process of their own instead,
+# set TKILLER_WORKER_SERVICE=true (and optionally TKILLER_WORKER_SERVICE_SELECTION
+# to a subset): the init then starts a second service in this container and
+# turns the API's own workers off, so each worker runs in exactly one place. See
+# docs/architecture/workers.md.
 
 services:
   tkiller:

@@ -17,7 +17,6 @@ import (
 	"trakt-api/internal/database"
 	"trakt-api/internal/handlers/webhooks"
 	"trakt-api/internal/obs"
-	"trakt-api/redis"
 
 	goredis "github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
@@ -36,59 +35,47 @@ const (
 
 // webhookWorkerMetrics instruments this worker for the metrics listener: a
 // heartbeat so a dead worker is detectable (the gauge stops advancing) plus
-// delivery outcomes.
-var webhookWorkerMetrics = obs.NewWorker("webhook_worker")
+// delivery outcomes. The name matches obs.WorkerWebhooks, which is also the
+// TKILLER_WORKER selection name.
+var webhookWorkerMetrics = obs.NewWorker(obs.WorkerWebhooks)
 
-// StartWebhookWorker launches a background goroutine that consumes events
-// from the Redis Stream "events" and delivers them to matching webhook endpoints.
+// DeliverWebhooks runs one delivery pass: it reads a batch of events from the
+// Redis Stream "events" via the "webhooks" consumer group and POSTs each one to
+// the matching endpoints, retrying with backoff and disabling an endpoint after
+// too many consecutive failures.
 //
-// Uses a separate consumer group from the activity worker (group "webhooks").
-func StartWebhookWorker() {
-	go func() {
-		time.Sleep(2 * time.Second)
-
-		setupConsumerGroup()
-
-		for {
-			webhookWorkerMetrics.Heartbeat()
-			processWebhookEvents()
-			time.Sleep(500 * time.Millisecond)
-		}
-	}()
+// It is a single pass, not a loop: the worker runtime (internal/workers) owns
+// the loop, the heartbeat and the shutdown, so the same code can run
+// in-process in the API or in a dedicated worker process. A pass that finds
+// nothing returns nil.
+func DeliverWebhooks(ctx context.Context, db *gorm.DB, rdb *goredis.Client) error {
+	if rdb == nil {
+		return nil // Redis is unavailable; the next pass retries.
+	}
+	if db == nil {
+		return nil // Database is unavailable; the next pass retries.
+	}
+	ensureConsumerGroup(ctx, rdb)
+	return processWebhookEvents(ctx, db, rdb)
 }
 
-// setupConsumerGroup creates the consumer group for webhooks if it doesn't exist.
-func setupConsumerGroup() {
-	client := redis.GetClient()
-	if client == nil {
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+// ensureConsumerGroup creates the consumer group for webhooks if it doesn't exist.
+func ensureConsumerGroup(ctx context.Context, rdb *goredis.Client) {
+	readCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	err := client.XGroupCreateMkStream(ctx, streamName, consumerGroup, "0").Err()
+	err := rdb.XGroupCreateMkStream(readCtx, streamName, consumerGroup, "0").Err()
 	if err != nil && !strings.Contains(err.Error(), "BUSYGROUP") {
 		log.Printf("[webhook-worker] failed to create consumer group: %v", err)
 	}
 }
 
 // processWebhookEvents reads pending/new events from Redis Stream and delivers webhooks.
-func processWebhookEvents() {
-	client := redis.GetClient()
-	if client == nil {
-		return
-	}
-
-	gormDB, err := database.GetDB()
-	if err != nil {
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func processWebhookEvents(ctx context.Context, db *gorm.DB, rdb *goredis.Client) error {
+	readCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	streams, err := client.XReadGroup(ctx, &goredis.XReadGroupArgs{
+	streams, err := rdb.XReadGroup(readCtx, &goredis.XReadGroupArgs{
 		Group:    consumerGroup,
 		Consumer: consumerName,
 		Streams:  []string{streamName, ">"},
@@ -98,22 +85,23 @@ func processWebhookEvents() {
 
 	if err != nil {
 		if err != goredis.Nil {
-			log.Printf("[webhook-worker] XReadGroup error: %v", err)
+			return fmt.Errorf("webhook worker XReadGroup: %w", err)
 		}
-		return
+		return nil
 	}
 
 	for _, stream := range streams {
 		for _, msg := range stream.Messages {
-			handleWebhookEvent(gormDB, msg)
-			client.XAck(ctx, streamName, consumerGroup, msg.ID)
+			handleWebhookEvent(ctx, db, msg)
+			_ = rdb.XAck(readCtx, streamName, consumerGroup, msg.ID).Err()
 		}
 	}
+	return nil
 }
 
 // handleWebhookEvent processes a single Redis Stream message, finds matching
 // webhook endpoints, and delivers the event.
-func handleWebhookEvent(db *gorm.DB, msg goredis.XMessage) {
+func handleWebhookEvent(ctx context.Context, db *gorm.DB, msg goredis.XMessage) {
 	eventType, _ := msg.Values["event_type"].(string)
 	if eventType == "" {
 		return
@@ -173,18 +161,18 @@ func handleWebhookEvent(db *gorm.DB, msg goredis.XMessage) {
 		body := string(bodyBytes)
 
 		// Deliver with retries.
-		deliverWithRetries(db, &ep, eventID, canonical, body)
+		deliverWithRetries(ctx, db, &ep, eventID, canonical, body)
 	}
 }
 
 // deliverWithRetries attempts to POST the webhook payload with exponential backoff.
-func deliverWithRetries(db *gorm.DB, ep *database.WebhookEndpoint, eventID, eventType, body string) {
+func deliverWithRetries(ctx context.Context, db *gorm.DB, ep *database.WebhookEndpoint, eventID, eventType, body string) {
 	var lastCode int
 	var lastBody string
 	var lastDuration int
 
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		code, respBody, durMs, err := doWebhookPost(ep, body)
+		code, respBody, durMs, err := doWebhookPost(ctx, ep, body)
 
 		lastCode = code
 		lastBody = respBody
@@ -199,7 +187,9 @@ func deliverWithRetries(db *gorm.DB, ep *database.WebhookEndpoint, eventID, even
 		// 429: slow down but don't count as failure.
 		if code == 429 {
 			recordDelivery(db, ep.ID, eventID, eventType, "retrying", attempt, &code, &respBody, &durMs)
-			time.Sleep(10 * time.Second)
+			if !sleepCtx(ctx, 10*time.Second) {
+				return
+			}
 			continue
 		}
 
@@ -208,7 +198,9 @@ func deliverWithRetries(db *gorm.DB, ep *database.WebhookEndpoint, eventID, even
 			backoff := time.Duration(math.Pow(2, float64(attempt-1))) * backoffBase
 			log.Printf("[webhook-worker] delivery attempt %d for endpoint %d failed with %d, retrying in %v",
 				attempt, ep.ID, code, backoff)
-			time.Sleep(backoff)
+			if !sleepCtx(ctx, backoff) {
+				return
+			}
 		}
 	}
 
@@ -225,7 +217,7 @@ func deliverWithRetries(db *gorm.DB, ep *database.WebhookEndpoint, eventID, even
 }
 
 // doWebhookPost sends the payload via HTTP POST to the webhook endpoint.
-func doWebhookPost(ep *database.WebhookEndpoint, body string) (int, string, int, error) {
+func doWebhookPost(ctx context.Context, ep *database.WebhookEndpoint, body string) (int, string, int, error) {
 	// SSRF guard: resolve to a verified public IP and PIN it at dial time.
 	// Re-resolving in the transport would let a DNS-rebinding attacker swap in
 	// an internal address after the check.
@@ -270,7 +262,7 @@ func doWebhookPost(ep *database.WebhookEndpoint, body string) (int, string, int,
 
 	start := time.Now()
 
-	req, err := http.NewRequest("POST", ep.URL, bytes.NewBufferString(body))
+	req, err := http.NewRequestWithContext(ctx, "POST", ep.URL, bytes.NewBufferString(body))
 	if err != nil {
 		return 0, "", 0, fmt.Errorf("request creation failed: %w", err)
 	}
@@ -366,4 +358,18 @@ func stringSliceContains(slice database.StringSlice, value string) bool {
 		}
 	}
 	return false
+}
+
+// sleepCtx waits for d or until ctx is done, reporting whether the wait
+// completed. It replaces a bare time.Sleep so a worker pass yields promptly on
+// shutdown instead of holding the process open for a backoff interval.
+func sleepCtx(ctx context.Context, d time.Duration) bool {
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return false
+	case <-timer.C:
+		return true
+	}
 }

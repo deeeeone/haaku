@@ -10,6 +10,17 @@
 # already managed somewhere else, or when the app should run as an unprivileged
 # user (then also add `user: "911:911"` and `entrypoint: ["/app/api"]` to the
 # api service, since /init needs root).
+#
+# Running the background workers in their own container is opt-in, with the
+# `worker` profile:
+#
+#   echo 'TKILLER_WORKER=none' >> .env      # the API must not also run them
+#   docker compose -f docker-compose.advanced.yml --profile worker up -d
+#
+# Setting TKILLER_WORKER=none is what turns the API's in-process workers off,
+# exactly as setting DATABASE_URL turns the bundled PostgreSQL off. The worker
+# service overrides TKILLER_WORKER with TKILLER_WORKER_SELECTION, so the two
+# containers never run the same worker. See docs/architecture/workers.md.
 
 services:
   api:
@@ -21,6 +32,9 @@ services:
     environment:
       DATABASE_URL: postgres://trakt:${POSTGRES_PASSWORD:-trakt}@postgres:5432/trakt?sslmode=disable
       REDIS_URL: redis://redis:6379
+      # Explicit default so the switch is visible in this file: "all" runs the
+      # background workers in the API, "none" leaves them to the worker service.
+      TKILLER_WORKER: ${TKILLER_WORKER:-all}
     ports:
       - "${TKILLER_PORT:-8080}:8080"
     volumes:
@@ -39,6 +53,38 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5m
+
+  # Opt-in (`--profile worker`): the background workers, with no HTTP API. The
+  # same image, the same binary — only TKILLER_MODE changes. It answers /readyz
+  # on its own health listener, which is what the health check reads.
+  worker:
+    profiles: ["worker"]
+    image: ${TKILLER_IMAGE:-ghcr.io/haaku-tv/haaku:latest}
+    container_name: tkiller-worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      TKILLER_MODE: worker
+      TKILLER_WORKER: ${TKILLER_WORKER_SELECTION:-all}
+      DATABASE_URL: postgres://trakt:${POSTGRES_PASSWORD:-trakt}@postgres:5432/trakt?sslmode=disable
+      REDIS_URL: redis://redis:6379
+    volumes:
+      # The metadata change-feed cursor and the pre-migration backups live here.
+      - ${TKILLER_CONFIG:-./config}:/config
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Long enough for a pass in flight (a webhook backoff, a TMDB page) to end.
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:9090/readyz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
   postgres:
     image: postgres:17-alpine

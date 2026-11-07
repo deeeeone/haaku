@@ -1,109 +1,63 @@
-package main
+package metadata
 
 import (
 	"context"
-	"flag"
 	"log/slog"
 	"os"
-	"os/signal"
-	"syscall"
+	"strconv"
+	"strings"
 	"time"
 
 	"trakt-api/external/tmdb"
-	"trakt-api/internal/config"
-	"trakt-api/internal/database"
-	"trakt-api/internal/logging"
-	"trakt-api/internal/metadata"
 
 	"gorm.io/gorm"
 )
 
-func main() {
-	// Parse CLI flags.
-	mode := flag.String("mode", "backfill", "Worker mode: backfill or sync")
-	pages := flag.Int("pages", 5, "Number of pages to fetch in backfill mode")
-	flag.Parse()
+// This file holds the TMDB upkeep work that the retired cmd/workers/metadata
+// binary used to run: a bulk backfill of popular/trending titles, and the
+// change-feed sync in sync.go. Both are now driven by the one binary's worker
+// mode (TKILLER_WORKER=metadata), so the schedule lives in one place and there
+// is no second main to keep in step.
 
-	// Load configuration.
-	cfg, err := config.Load()
-	if err != nil {
-		slog.Error("[metadata-worker] failed to load config", "error", err)
-		os.Exit(1)
+// SinceFile returns the change-feed cursor path: $METADATA_SINCE_FILE, or
+// .hermes/metadata_sync_since.txt relative to the working directory (which is
+// /config/tkiller in the omnibus image, so the cursor survives an update with
+// the rest of the config directory).
+func SinceFile() string {
+	if v := strings.TrimSpace(os.Getenv("METADATA_SINCE_FILE")); v != "" {
+		return v
 	}
-	logger := logging.New(cfg.Env)
-	slog.SetDefault(logger)
-
-	logger.Info("[metadata-worker] starting", "env", cfg.Env, "mode", *mode)
-
-	// Initialize database.
-	db, err := database.InitDB()
-	if err != nil {
-		logging.Fatal(logger, "[metadata-worker] failed to init DB", "error", err)
-	}
-	sqlDB, _ := db.DB()
-	if sqlDB != nil {
-		defer func() { _ = sqlDB.Close() }()
-	}
-
-	// Initialize TMDB client.
-	tmdbClient, err := tmdb.New()
-	if err != nil {
-		logging.Fatal(logger, "[metadata-worker] failed to create TMDB client", "error", err)
-	}
-
-	// Run in a cancellable context.
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	// Handle signals.
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		<-quit
-		logger.Info("[metadata-worker] received shutdown signal")
-		cancel()
-	}()
-
-	// Execute chosen mode.
-	switch *mode {
-	case "backfill":
-		if err := runBackfill(ctx, tmdbClient, db, *pages); err != nil {
-			logger.Error("[metadata-worker] backfill failed", "error", err)
-			os.Exit(1)
-		}
-	case "sync":
-		sinceFile := os.Getenv("METADATA_SINCE_FILE")
-		if sinceFile == "" {
-			sinceFile = ".hermes/metadata_sync_since.txt"
-		}
-		if err := runSync(ctx, tmdbClient, db, sinceFile); err != nil {
-			logger.Error("[metadata-worker] sync failed", "error", err)
-			os.Exit(1)
-		}
-	default:
-		logger.Error("[metadata-worker] unknown mode", "mode", *mode)
-		os.Exit(1)
-	}
-
-	logger.Info("[metadata-worker] finished successfully")
+	return ".hermes/" + SinceFileName
 }
 
-// runBackfill fetches popular movies, TV shows, and trending items from TMDB
-// and ingests them into the local media cache.
-func runBackfill(ctx context.Context, c *tmdb.Client, db *gorm.DB, maxPages int) error {
+// BackfillPages returns how many pages of popular titles one backfill pass
+// walks: $METADATA_BACKFILL_PAGES, or 5. Trending uses a fixed two pages.
+func BackfillPages() int {
+	if v := strings.TrimSpace(os.Getenv("METADATA_BACKFILL_PAGES")); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
+	}
+	return 5
+}
+
+// Backfill refreshes the local media cache from TMDB's popular and trending
+// lists. It is idempotent (ingest upserts), so a re-run costs API calls but
+// changes nothing it has already seen.
+func Backfill(ctx context.Context, c *tmdb.Client, db *gorm.DB, maxPages int) error {
+	if c == nil || db == nil {
+		return nil
+	}
 	slog.Info("[backfill] starting", "pages", maxPages)
 
-	// 1. Backfill popular movies.
+	// Each stage logs its own failures and continues: one bad page must not
+	// abandon the rest of the backfill.
 	if err := backfillPopularMovies(ctx, c, db, maxPages); err != nil {
 		slog.Error("[backfill] movie backfill error", "error", err)
 	}
-
-	// 2. Backfill popular TV shows.
 	if err := backfillPopularTV(ctx, c, db, maxPages); err != nil {
 		slog.Error("[backfill] TV backfill error", "error", err)
 	}
-
-	// 3. Backfill trending (all types).
 	if err := backfillTrending(ctx, c, db, 2); err != nil {
 		slog.Error("[backfill] trending backfill error", "error", err)
 	}
@@ -147,7 +101,7 @@ func backfillPopularMovies(ctx context.Context, c *tmdb.Client, db *gorm.DB, max
 			}
 
 			// Ingest the movie.
-			if _, err := metadata.IngestMovie(db, movie); err != nil {
+			if _, err := IngestMovie(db, movie); err != nil {
 				slog.Error("[backfill] movie ingest failed, skipping",
 					"tmdb_id", item.ID, "title", movie.Title, "error", err)
 				skipped++
@@ -202,7 +156,7 @@ func backfillPopularTV(ctx context.Context, c *tmdb.Client, db *gorm.DB, maxPage
 			}
 
 			// Ingest the show.
-			dbShow, err := metadata.IngestShow(db, show)
+			dbShow, err := IngestShow(db, show)
 			if err != nil {
 				slog.Error("[backfill] show ingest failed, skipping",
 					"tmdb_id", item.ID, "title", show.Name, "error", err)
@@ -230,7 +184,7 @@ func backfillPopularTV(ctx context.Context, c *tmdb.Client, db *gorm.DB, maxPage
 				}
 
 				// Ingest the season record.
-				_, err = metadata.IngestSeason(db, dbShow.ID, show.ID, seasonSummary)
+				_, err = IngestSeason(db, dbShow.ID, show.ID, seasonSummary)
 				if err != nil {
 					slog.Error("[backfill] season ingest failed",
 						"show_id", dbShow.ID, "season", seasonSummary.SeasonNumber, "error", err)
@@ -239,7 +193,7 @@ func backfillPopularTV(ctx context.Context, c *tmdb.Client, db *gorm.DB, maxPage
 
 				// Batch ingest episodes.
 				if len(seasonDetail.Episodes) > 0 {
-					if err := metadata.IngestEpisodesBatch(db, dbShow.ID, dbShow.ID,
+					if err := IngestEpisodesBatch(db, dbShow.ID, dbShow.ID,
 						seasonDetail.Episodes); err != nil {
 						slog.Error("[backfill] episode batch ingest failed",
 							"show_id", dbShow.ID, "season", seasonSummary.SeasonNumber, "error", err)
@@ -293,7 +247,7 @@ func backfillTrending(ctx context.Context, c *tmdb.Client, db *gorm.DB, maxPages
 							"tmdb_id", item.ID, "error", err)
 						continue
 					}
-					if _, err := metadata.IngestMovie(db, movie); err != nil {
+					if _, err := IngestMovie(db, movie); err != nil {
 						slog.Error("[backfill] trending movie ingest failed",
 							"tmdb_id", item.ID, "error", err)
 					}
@@ -304,7 +258,7 @@ func backfillTrending(ctx context.Context, c *tmdb.Client, db *gorm.DB, maxPages
 							"tmdb_id", item.ID, "error", err)
 						continue
 					}
-					if _, err := metadata.IngestShow(db, show); err != nil {
+					if _, err := IngestShow(db, show); err != nil {
 						slog.Error("[backfill] trending TV ingest failed",
 							"tmdb_id", item.ID, "error", err)
 					}
@@ -319,10 +273,4 @@ func backfillTrending(ctx context.Context, c *tmdb.Client, db *gorm.DB, maxPages
 
 	slog.Info("[backfill] trending complete")
 	return nil
-}
-
-// runSync runs the change-feed sync mode.
-func runSync(ctx context.Context, c *tmdb.Client, db *gorm.DB, sinceFile string) error {
-	slog.Info("[sync] starting change feed sync", "since_file", sinceFile)
-	return metadata.RunSync(c, db, sinceFile)
 }

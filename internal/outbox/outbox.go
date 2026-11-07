@@ -3,20 +3,21 @@ package outbox
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"time"
 
 	"trakt-api/internal/database"
 	"trakt-api/internal/obs"
-	"trakt-api/redis"
 
 	goredis "github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
 // outboxWorkerMetrics instruments the outbox publisher for the metrics listener;
-// its heartbeat is what makes a stalled publisher detectable.
-var outboxWorkerMetrics = obs.NewWorker("outbox_publisher")
+// its heartbeat is what makes a stalled publisher detectable. The name matches
+// obs.WorkerOutbox, which is also the TKILLER_WORKER name.
+var outboxWorkerMetrics = obs.NewWorker(obs.WorkerOutbox)
 
 // Event type constants — the canonical event names emitted to the outbox.
 // Names match the webhook event catalog (plan 03-api/webhooks.md §Event catalog).
@@ -80,53 +81,36 @@ func PublishEvent(db *gorm.DB, eventType string, userID string, payload map[stri
 	).Error
 }
 
-// StartPublisher launches a background goroutine that polls the events_outbox
-// table for unpublished events and publishes them to the Redis Stream "events".
+// PublishBatch runs one pass: it fetches the next batch of unpublished events
+// from events_outbox, publishes them to the Redis Stream "events", and marks
+// them as published.
 //
-// Polling interval: 1 second.
-// Events are marked as published after successful delivery.
-//
-// Returns immediately; the goroutine runs until the process exits.
-func StartPublisher(rdb interface{}) {
-	go func() {
-		ticker := time.NewTicker(1 * time.Second)
-		defer ticker.Stop()
-
-		for range ticker.C {
-			outboxWorkerMetrics.Heartbeat()
-			publishBatch()
-		}
-	}()
-}
-
-// publishBatch fetches the next batch of unpublished events, publishes them
-// to Redis Streams, and marks them as published.
-func publishBatch() {
-	gormDB, err := database.GetDB()
-	if err != nil {
-		return
+// It is a single pass, not a loop: the worker runtime (internal/workers) owns
+// the loop, the heartbeat and shutdown, so the same code can run in-process in
+// the API or in a dedicated worker process. The runtime polls about once a
+// second, which bounds what a crash loses.
+func PublishBatch(ctx context.Context, db *gorm.DB, rdb *goredis.Client) error {
+	if db == nil {
+		return nil // Database is unavailable; the next pass retries.
+	}
+	if rdb == nil {
+		return nil // Redis is unavailable; the next pass retries.
 	}
 
 	var events []database.EventsOutbox
-	if err := gormDB.
+	if err := db.
 		Where("published = ?", false).
 		Order("created_at ASC").
 		Limit(100).
 		Find(&events).Error; err != nil {
-		log.Printf("[outbox] failed to fetch events: %v", err)
-		return
+		return fmt.Errorf("outbox: fetch unpublished events: %w", err)
 	}
 
 	if len(events) == 0 {
-		return
+		return nil
 	}
 
-	client := redis.GetClient()
-	if client == nil {
-		return // Redis not available — wait for next tick
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	var publishedIDs []int64
@@ -146,7 +130,7 @@ func publishBatch() {
 			"created_at": event.CreatedAt.Format(time.RFC3339Nano),
 		}
 
-		if err := client.XAdd(ctx, &goredis.XAddArgs{
+		if err := rdb.XAdd(ctx, &goredis.XAddArgs{
 			Stream: "events",
 			Values: values,
 		}).Err(); err != nil {
@@ -160,13 +144,14 @@ func publishBatch() {
 
 	// Mark published events.
 	if len(publishedIDs) > 0 {
-		if err := gormDB.Model(&database.EventsOutbox{}).
+		if err := db.Model(&database.EventsOutbox{}).
 			Where("id IN ?", publishedIDs).
 			Update("published", true).Error; err != nil {
-			log.Printf("[outbox] failed to mark events as published: %v", err)
-		} else {
-			log.Printf("[outbox] published %d events to Redis Stream", len(publishedIDs))
-			outboxWorkerMetrics.Processed(len(publishedIDs))
+			return fmt.Errorf("outbox: mark %d events published: %w", len(publishedIDs), err)
 		}
+		log.Printf("[outbox] published %d events to Redis Stream", len(publishedIDs))
+		outboxWorkerMetrics.Processed(len(publishedIDs))
 	}
+
+	return nil
 }

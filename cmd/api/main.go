@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"trakt-api/external/tmdb"
 	"trakt-api/internal/backup"
 	"trakt-api/internal/config"
 	"trakt-api/internal/database"
@@ -21,11 +22,11 @@ import (
 	"trakt-api/internal/logging"
 	"trakt-api/internal/mode"
 	"trakt-api/internal/obs"
-	"trakt-api/internal/outbox"
 	"trakt-api/internal/workers"
 	"trakt-api/redis"
 
 	"github.com/robfig/cron/v3"
+	"gorm.io/gorm"
 )
 
 func main() {
@@ -105,8 +106,10 @@ func run() int {
 	// or listener starts, so the tables are the ones the SQL migrations define
 	// and never the ones GORM's AutoMigrate used to invent. The runner is the
 	// same one `--migrate-only`/`TKILLER_MODE=migrate` uses, so there is a
-	// single, tested path; it is a fast no-op once the schema is current.
-	if serverMode.MayMigrate() && cfg.DatabaseURL != "" {
+	// single, tested path; it is a fast no-op once the schema is current. A
+	// worker mode never gets here (wantsMigrations is false for it), which is
+	// the whole point of internal/mode.
+	if wantsMigrations(serverMode, cfg.DatabaseURL != "") {
 		if code := migrate(logger); code != 0 {
 			return code
 		}
@@ -120,37 +123,86 @@ func run() int {
 		defer func() { _ = redis.CloseRedis() }()
 	}
 
+	// Worker selection (T0.9). One binary runs every role, so the same worker
+	// registry drives an API that hosts the workers in-process and a dedicated
+	// worker process. TKILLER_WORKER picks which run:
+	//
+	//	unset / all  every worker (the classic single-container install)
+	//	<n>,<n>      only those workers
+	//	none         no background worker in this process
+	//
+	// "none" is how a separate worker deployment claims the workers without the
+	// API running a second copy of the same loop: a worker runs in exactly the
+	// process that selected it, and nowhere else. See
+	// docs/architecture/workers.md.
+	selection, err := workers.ParseSelection(os.Getenv(workers.EnvSelection))
+	if err != nil {
+		logger.Error("invalid worker selection", "error", err)
+		return 2
+	}
+
+	startWorkers, fatalSelection := workerPlan(serverMode, selection)
+	switch {
+	case fatalSelection:
+		// A worker-only process that selected nothing would start, do nothing
+		// and look healthy. Refuse instead.
+		logger.Error("worker mode selected no workers",
+			"selection", selection.String(),
+			"hint", "set "+workers.EnvSelection+" to a worker name, a list, or all")
+		return 2
+	case !startWorkers && serverMode.ServesHTTP():
+		logger.Info("workers: none — API only (this process runs no background workers)")
+	}
+
+	var runtime *workers.Runtime
+	if startWorkers {
+		deps := workers.Deps{
+			Logger: logger,
+			DB:     currentDB(),
+			Redis:  redis.GetClient(),
+			TMDB:   tmdbForSelection(logger, selection),
+		}
+		runtime = workers.NewRuntime(deps, workers.Catalog(deps, selection), healthListenFor(serverMode))
+		logger.Info("starting background workers",
+			"mode", serverMode.String(), "workers", selection.Names())
+	}
+
 	// Observability listeners (issue #9). Off unless TKILLER_METRICS_LISTEN is set.
 	if err := obs.Start(context.Background()); err != nil {
 		logger.Warn("observability listeners unavailable", "error", err)
 	}
 
-	// Background workers (T0.9)
-	// - Webhooks: reads events_outbox rows via cron and delivers webhooks
-	// - Outbox publisher: polls events_outbox → Redis Streams "events"
-	// - Activity worker: consumes "events" → activity_feed fan-out
-	//
-	// A worker mode runs exactly these and nothing else, so one image can serve
-	// every role.
-	if serverMode.RunsWorkers() {
-		workers.StartWebhookWorker()
-		outbox.StartPublisher(redis.GetClient())
-		workers.StartActivityWorker()
+	// One context for the whole process: the HTTP listener and the workers both
+	// stop on the same SIGINT/SIGTERM, and the runtime drains before the
+	// process exits.
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	if runtime != nil {
+		if err := runtime.Start(ctx); err != nil {
+			logger.Error("background workers failed to start", "error", err)
+			// An API can still serve without its background workers; a
+			// worker-only process has nothing left to do.
+			if !serverMode.ServesHTTP() {
+				return 1
+			}
+		}
 	}
 
 	if !serverMode.ServesHTTP() {
 		logger.Info("worker mode — no HTTP listener")
-		waitForShutdown(logger)
+		<-ctx.Done()
+		shutdownWorkers(logger, runtime)
 		return 0
 	}
 
 	app := httpapi.NewServer(cfg)
 
-	// Cron jobs (T0.9 — TIDB pattern: UTC, panic recovery, startup refresh)
+	// Cron jobs (T0.9 — TIDB pattern: UTC, panic recovery, startup refresh).
+	// The background workers are NOT here: they run through the worker runtime
+	// above, which the worker mode shares, so there is one implementation of
+	// each loop rather than one per entrypoint.
 	setupCronJobs(logger)
-
-	// TODO(T0.9): Worker entrypoints in cmd/workers/ — run as separate containers:
-	// metadata-worker, webhooks-worker, stats-worker, import-worker, notify-worker
 
 	go func() {
 		logger.Info("trakt-api listening", "port", cfg.Port)
@@ -159,16 +211,93 @@ func run() int {
 		}
 	}()
 
-	waitForShutdown(logger)
+	<-ctx.Done()
+	logger.Info("shutting down")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := app.ShutdownWithContext(ctx); err != nil {
+	if err := app.ShutdownWithContext(shutdownCtx); err != nil {
 		logger.Error("server forced to shutdown", "error", err)
 	}
+	shutdownWorkers(logger, runtime)
 	logger.Info("server stopped gracefully")
 	return 0
+}
+
+// workerPlan decides what a mode and a worker selection mean:
+//
+//   - no workers run outside api/worker modes;
+//   - an empty selection is fatal only for a worker-only process, which would
+//     otherwise start, do nothing and look healthy;
+//   - otherwise the selected workers run.
+//
+// It is a pure function so the two properties the deployment depends on —
+// "worker mode never migrates" and "an API-only process starts no worker" —
+// can be asserted without a database, a Redis or a socket.
+func workerPlan(m mode.Mode, sel workers.Selection) (start, fatal bool) {
+	if !m.RunsWorkers() {
+		return false, false
+	}
+	if sel.Empty() {
+		return false, m == mode.Worker
+	}
+	return true, false
+}
+
+// wantsMigrations reports whether a mode may and should apply migrations.
+func wantsMigrations(m mode.Mode, hasDatabase bool) bool {
+	return hasDatabase && m.MayMigrate()
+}
+
+// healthListenFor returns the address the worker health listener should bind.
+// The API already answers /healthz and /readyz on its own port, so it gets no
+// second listener; a worker-only process needs one.
+func healthListenFor(m mode.Mode) string {
+	if m.ServesHTTP() {
+		return ""
+	}
+	return workers.HealthListenAddr()
+}
+
+// currentDB returns the initialized database handle, or nil when the process is
+// running without persistence. The workers treat a nil handle as "retry later".
+func currentDB() *gorm.DB {
+	db, err := database.GetDB()
+	if err != nil {
+		return nil
+	}
+	return db
+}
+
+// tmdbForSelection builds the TMDB client only when the metadata worker is
+// selected, so a process that does not need it does not pay for it (and a
+// missing token cannot fail an unrelated worker).
+func tmdbForSelection(logger *slog.Logger, sel workers.Selection) *tmdb.Client {
+	if !sel.Has(workers.NameMetadata) {
+		return nil
+	}
+	client, err := tmdb.New()
+	if err != nil {
+		logger.Warn("metadata worker selected but the TMDB client is unavailable", "error", err)
+		return nil
+	}
+	return client
+}
+
+// shutdownWorkers stops the worker runtime, bounded so a wedged pass cannot
+// hold the process open. A nil runtime (API-only, or worker mode with workers
+// off) is a no-op.
+func shutdownWorkers(logger *slog.Logger, rt *workers.Runtime) {
+	if rt == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if err := rt.Shutdown(ctx); err != nil {
+		logger.Warn("background workers did not stop cleanly", "error", err)
+	}
+	logger.Info("background workers stopped")
 }
 
 // migrate applies pending migrations and reports the outcome as an exit code.
@@ -201,24 +330,21 @@ func migrate(logger *slog.Logger) int {
 	return 0
 }
 
-// waitForShutdown blocks until SIGINT or SIGTERM.
-func waitForShutdown(logger *slog.Logger) {
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	sig := <-quit
-	logger.Info("shutting down", "signal", sig.String())
-}
-
 // setupCronJobs initializes cron with UTC timezone and panic recovery.
 // Pattern: theintrodb-api main.go setupCronJobs().
+//
+// It is the API's own scheduler, for jobs that must run exactly where the API
+// runs. The recurring background work — webhook delivery, activity fan-out,
+// outbox publishing and the TMDB maintenance jobs — is NOT here: it goes
+// through the worker runtime (internal/workers), so a dedicated worker process
+// can own it instead.
 func setupCronJobs(logger *slog.Logger) {
 	c := cron.New(cron.WithLocation(time.UTC))
 
-	// TODO(Phase 3): refresh trending rankings every 15m
+	// TODO(Phase 3): refresh trending rankings every 15m. The ranking recompute
+	// is the stats worker's job list (internal/workers catalog); this seam is
+	// for anything that must be API-local.
 	// _, err := c.AddFunc("*/15 * * * *", refreshTrendingRankings)
-
-	// TODO(Phase 1): daily TMDB change-feed poll
-	// _, err := c.AddFunc("0 3 * * *", refreshMetadataCache)
 
 	// Start the scheduler; jobs are added by domain agents as phases land.
 	c.Start()

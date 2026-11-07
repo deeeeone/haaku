@@ -82,6 +82,10 @@ LABEL org.opencontainers.image.title="haaku" \
       org.opencontainers.image.created="${BUILD_DATE}"
 WORKDIR /app
 COPY --from=build /out/api /app/api
+# One binary, every role: /app/api is the API by default, and the same file runs
+# `TKILLER_MODE=worker` (background workers, no HTTP) or `TKILLER_MODE=migrate`
+# once. A worker deployment therefore needs no second image or binary — see
+# docs/architecture/workers.md.
 # Unprivileged by default here. The omnibus image starts as root instead,
 # because its init has to map accounts and hand directories to them; it
 # documents /app/api as the way to run it without root.
@@ -91,7 +95,12 @@ RUN groupadd -g 911 tkiller && \
 ENV TKILLER_BACKUP_DIR=/home/tkiller/backups \
     TKILLER_MIGRATION_BACKUP_DIR=/home/tkiller/pre-migrate-backups
 EXPOSE 8080
+# The health check has to work for whichever role the binary runs. The API
+# answers /healthz on PORT; a worker-only process answers on its own listener
+# (TKILLER_WORKER_HEALTH_LISTEN, default 127.0.0.1:9090). Trying the API port
+# first leaves the API path exactly as it was.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-  CMD curl -fsS "http://127.0.0.1:${PORT:-8080}/healthz" || exit 1
+  CMD curl -fsS "http://127.0.0.1:${PORT:-8080}/healthz" >/dev/null || \
+      curl -fsS "http://${TKILLER_WORKER_HEALTH_LISTEN:-127.0.0.1:9090}/healthz" >/dev/null || exit 1
 USER tkiller
 CMD ["/app/api"]
