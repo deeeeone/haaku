@@ -3,7 +3,7 @@
 // specification (openapi.yaml) and fails when the difference includes a breaking
 // change that has not been acknowledged in
 // contracts/api/v1/breaking-changes.yaml.
-//
+// 
 // It exists because the freshness gate (cmd/openapi) proves the spec matches the
 // code and the parity gate proves the routes match the Trakt inventory, but
 // neither stops a pull request from silently dropping a path, a response field,
@@ -11,6 +11,8 @@
 // — depends on. The baseline is the contract as clients know it; a break must be
 // written down before the gate will pass. See docs/architecture/api-versioning.md.
 //
+// TODO remove this one we reach parity, we'll branch and no longer need to check parity.
+// 
 // Usage:
 //
 //	go run ./cmd/contract-diff            # print the diff, warn on an unacknowledged break

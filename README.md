@@ -18,7 +18,7 @@
 
 ---
 
-**haaku** is an open, self-hostable replacement for trakt.tv: watch history, scrobbling, ratings, watchlists, lists, comments and a social feed — on a server you own, in a database you can `psql` into.
+**haaku** is an open, self-hostable media tracker: watch history, scrobbling, ratings, watchlists, lists, comments and a social feed — on a server you own, in a database you can `psql` into.
 
 This repository is the whole server. The Go API and the React UI compile into **one binary**, and the image that ships it carries **its own PostgreSQL and Redis**, so the install is one `docker compose up -d` and a backup is a directory plus one key.
 
@@ -76,7 +76,7 @@ The worker process serves `/healthz` and `/readyz` on its own listener and beats
 - Authenticate with `X-API-Key: tk_…` from an integration, or an OAuth bearer token from the UI.
 - The spec is **generated from the route registry** and never hand-written: 169 paths / 203 operations in [`openapi.yaml`](openapi.yaml), served live at `GET /v1/openapi.json`. `make api-spec` regenerates it, `make api-check` fails if it is stale or the route inventory drifts, and CI runs both.
 - `GET /healthz` for liveness, `GET /readyz` for readiness. Prometheus metrics are on a **separate listener**, deliberately not on the app port.
-- The Trakt-shaped surface is coming rather than here: `/v1` is our own shape today, and the compatibility listener plus importer are [#4](https://github.com/haaku-tv/haaku/issues/4) and [#7](https://github.com/haaku-tv/haaku/issues/7).
+- The Trakt-shaped surface is coming rather than here: `/v1` is our own shape today, and the compatibility listener plus importer are [#4](https://github.com/haaku-tv/haaku/issues/4) and [#7](https://github.com/haaku-tv/haaku/issues/7). TODO remove when we reach parity.
 
 ## Clients
 

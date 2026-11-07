@@ -110,6 +110,7 @@ coverage: embed-stub ## Run both Go suites under coverage and enforce COVERAGE_F
 
 check: lint-go vuln secrets workflow-lint check-size check-bidi api-check parity-check contract-diff ## Run every gate CI runs
 
+# TODO remove this once we reach parity, we'll branch off and no longer need to check.
 # --- Trakt parity manifest (issue #4) ---
 #
 # docs/parity/parity.yaml grades every Trakt endpoint in issue #4 against the

@@ -134,6 +134,7 @@ jobs:
       - name: Check the route inventory (registry <-> spec)
         run: make api-check
 
+      # TODO remove this once we reach parity, we'll branch off and no longer need to check.
       # The parity manifest grades every Trakt endpoint inventoried in issue #4
       # against the same registry, so a route that does not exist, a 501 marked
       # implemented, or an unrecorded 501 fails the build.
