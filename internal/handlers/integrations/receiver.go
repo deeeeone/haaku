@@ -10,7 +10,6 @@ import (
 	"trakt-api/internal/outbox"
 
 	"github.com/gofiber/fiber/v2"
-	"gorm.io/gorm"
 	"trakt-api/internal/response"
 )
 
@@ -53,7 +52,7 @@ func handleReceiveEvent(c *fiber.Ctx) error {
 
 	tok, err := LookupToken(db, tokenStr)
 	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
+		if errors.Is(err, ErrIntegrationTokenNotFound) {
 			// Token genuinely unknown/inactive → invalid credentials.
 			return response.Unauthorized(c)
 		}

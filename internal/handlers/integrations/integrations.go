@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -176,12 +175,6 @@ func handleCreateToken(c *fiber.Ctx) error {
 		return response.BadRequest(c, "name is required")
 	}
 
-	tokenStr, err := generateToken()
-	if err != nil {
-		fmt.Printf("integrations: generate token failed: %v\n", err)
-		return response.InternalError(c)
-	}
-
 	db, err := getDB()
 	if err != nil {
 		fmt.Printf("integrations: database unavailable: %v\n", err)
@@ -210,25 +203,60 @@ func handleCreateToken(c *fiber.Ctx) error {
 		scopes = database.StringSlice(granted)
 	}
 
-	tok := database.IntegrationToken{
-		UserID:    uid,
-		Token:     tokenStr,
-		Name:      req.Name,
-		Scopes:    scopes,
-		Active:    true,
-		CreatedAt: time.Now().UTC(),
-	}
-
-	if err := db.Create(&tok).Error; err != nil {
+	tok, tokenStr, err := createToken(db, uid, req.Name, scopes)
+	if err != nil {
 		fmt.Printf("integrations: create token failed: %v\n", err)
 		return response.InternalError(c)
 	}
 
 	resp := createTokenResponse{
-		tokenResponse: toTokenResponse(&tok),
+		tokenResponse: toTokenResponse(tok),
 		Token:         tokenStr,
 	}
 	return c.Status(fiber.StatusCreated).JSON(resp)
+}
+
+// createToken generates a credential and stores it encrypted with a blind index,
+// inside one transaction. The ciphertext is AAD-bound to the row id, which the
+// database assigns on insert, so the insert must happen first. The row is
+// created with an empty token placeholder and the final UPDATE writes the
+// ciphertext and the hash together — the raw token is never written to the row
+// (an insert-with-plaintext would leave the value in a superseded heap tuple
+// until autovacuum, which is exactly the readable-bytes leak this change closes).
+//
+// The raw token is returned so the caller can show it once; it is not stored.
+func createToken(db *gorm.DB, uid, name string, scopes database.StringSlice) (*database.IntegrationToken, string, error) {
+	tokenStr, err := generateToken()
+	if err != nil {
+		return nil, "", err
+	}
+	tok := database.IntegrationToken{
+		UserID:    uid,
+		Name:      name,
+		Scopes:    scopes,
+		Active:    true,
+		CreatedAt: time.Now().UTC(),
+	}
+	err = db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&tok).Error; err != nil {
+			return err
+		}
+		enc, err := EncryptToken(tok.ID, tokenStr)
+		if err != nil {
+			return err
+		}
+		hash, err := TokenLookupHash(tokenStr)
+		if err != nil {
+			return err
+		}
+		tok.Token = enc
+		tok.TokenHash = hash
+		return tx.Model(&tok).Updates(map[string]any{"token": enc, "token_hash": hash}).Error
+	})
+	if err != nil {
+		return nil, "", err
+	}
+	return &tok, tokenStr, nil
 }
 
 // GET /v1/integrations
@@ -285,19 +313,4 @@ func handleRevokeToken(c *fiber.Ctx) error {
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
-}
-
-// ---------------------------------------------------------------------------
-// LookupToken is used by the receiver to authenticate inbound requests.
-// ---------------------------------------------------------------------------
-
-func LookupToken(db *gorm.DB, tokenStr string) (*database.IntegrationToken, error) {
-	var tok database.IntegrationToken
-	if err := db.Where("token = ? AND active = ?", tokenStr, true).First(&tok).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("integration token not found or inactive: %w", err)
-		}
-		return nil, err
-	}
-	return &tok, nil
 }

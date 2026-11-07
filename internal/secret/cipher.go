@@ -26,16 +26,19 @@
 // fails to decrypt — wrong key, tampering, truncation, AAD mismatch — is an
 // error and is never silently used as a credential.
 //
-// # Follow-up: equality-looked-up secrets
+// # Equality-looked-up secrets
 //
 // Some secrets are looked up by their raw value (integration tokens matched
 // with WHERE token = $1). AES-256-GCM uses a random nonce, so storing the
 // ciphertext alone is NOT sufficient there — the lookup would never match.
-// Encrypting them requires a deterministic blind-index hash column (e.g.
-// SHA-256 of the token) alongside the randomized ciphertext, plus a migration
-// to populate that column for existing rows and to switch LookupToken onto it.
-// That schema change is out of scope for this package and must land as its own
-// migration-backed change; do not half-migrate those call sites.
+// Integration tokens therefore carry a second, deterministic column: an
+// HMAC-SHA256 blind index under an HKDF-derived lookup key
+// ("tkiller/integration-token-lookup/v1"), matched under a partial unique index,
+// alongside the randomized, AAD-bound ciphertext the create/rotate path writes.
+// See internal/handlers/integrations/token_secret.go for the write/read path and
+// the startup backfill that converts pre-existing plaintext rows. Any future
+// equality-looked-up secret should follow the same two-column pattern rather
+// than be half-migrated.
 package secret
 
 import (

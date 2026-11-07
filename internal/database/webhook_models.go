@@ -41,10 +41,18 @@ func (WebhookDelivery) TableName() string { return "webhook_deliveries" }
 // ---------------------------------------------------------------------------
 
 // IntegrationToken is an inbound receiver authentication token.
+//
+// The credential is never stored in plaintext. Token holds the AES-256-GCM
+// ciphertext (enc:v1: envelope, row-bound AAD — see
+// internal/handlers/integrations/token_secret.go) and TokenHash holds the
+// deterministic HMAC blind index the receiver matches on, because a random-nonce
+// ciphertext cannot be found with an equality query. Neither field is ever
+// serialised to a client.
 type IntegrationToken struct {
 	ID        int64       `gorm:"primaryKey;autoIncrement" json:"id"`
 	UserID    string      `gorm:"type:text;not null" json:"user_id"`
-	Token     string      `gorm:"type:text;not null;uniqueIndex" json:"token"`
+	Token     string      `gorm:"type:text;not null;default:''" json:"-"`
+	TokenHash string      `gorm:"type:text;not null;default:''" json:"-"`
 	Name      string      `gorm:"type:text;not null;default:''" json:"name"`
 	Scopes    StringSlice `gorm:"type:jsonb;not null;default:'[]'" json:"scopes"`
 	Active    bool        `gorm:"default:true" json:"active"`
