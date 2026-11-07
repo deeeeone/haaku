@@ -64,6 +64,19 @@ func run() int {
 
 	logger.Info("starting haaku", "env", cfg.Env, "port", cfg.Port, "mode", serverMode.String())
 
+	// Apply the identity mode BEFORE anything consults LocalAuthEnabled().
+	//
+	// internal/httpapi also calls InitAuthMode when it builds the server, but the
+	// owner bootstrap below runs first, and it refuses to start an ownerless
+	// LOCAL instance. Without this call a fresh clerk-mode deployment was refused
+	// for a reason that does not apply to it: the mode was still the zero-value
+	// local default at bootstrap time. initAuthMode is idempotent, so the server's
+	// later call is a no-op.
+	if err := auth.InitAuthMode(cfg.AuthMode, cfg.SignupPolicy); err != nil {
+		logger.Error("invalid auth mode — refusing to start", "error", err)
+		return 1
+	}
+
 	// Database (T0.4)
 	if cfg.DatabaseURL != "" {
 		if _, err := database.InitDB(); err != nil {

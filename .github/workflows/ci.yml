@@ -272,6 +272,50 @@ jobs:
       # The ledger must match the files on disk. Expected version/count are
       # derived from migrations/sql, never hardcoded (same derivation as the
       # Docker smoke job).
+      # The identity mode must be in effect BEFORE the owner bootstrap runs, or a
+      # clerk deployment is unusable on its first start: the bootstrap refuses an
+      # ownerless LOCAL instance, and a mode that was never applied reads as the
+      # local default. A unit test cannot catch that — the bootstrap's own test
+      # calls InitAuthMode first, so it passed while the binary refused.
+      - name: The identity mode is applied before the owner bootstrap
+        run: |
+          set -euo pipefail
+
+          # 1. clerk mode, fresh database, no HAAKU_ADMIN_*: must serve.
+          HAAKU_AUTH_MODE=clerk go run ./cmd/api >/tmp/clerk.log 2>&1 &
+          clerk_pid=$!
+          served=""
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/healthz >/dev/null 2>&1; then served=yes; break; fi
+            if grep -q "refusing to start" /tmp/clerk.log; then break; fi
+            sleep 2
+          done
+          # `go run` execs a child binary; kill it too or the port stays bound and
+          # the next assertion would fail for the wrong reason.
+          kill "$clerk_pid" 2>/dev/null || true
+          pkill -f 'exe/api' 2>/dev/null || true
+          if [ -z "$served" ]; then
+            echo "::error::clerk mode refused to serve a fresh database — the mode was not applied before the bootstrap"
+            cat /tmp/clerk.log
+            exit 1
+          fi
+          echo "clerk mode served a fresh database with no owner configured"
+
+          # 2. local mode, same empty database, no HAAKU_ADMIN_*: must refuse.
+          # Its own port, so a lingering process cannot make this fail for the
+          # wrong reason.
+          if PORT=8081 timeout 30 go run ./cmd/api >/tmp/local.log 2>&1; then
+            echo "::error::a local instance with no accounts and no HAAKU_ADMIN_* served instead of refusing"
+            cat /tmp/local.log
+            exit 1
+          fi
+          grep -q "refusing to start" /tmp/local.log || {
+            echo "::error::expected the ownerless local instance to refuse in a way that says so"
+            cat /tmp/local.log
+            exit 1
+          }
+          echo "local mode refused to serve without an owner, as documented"
+
       - name: Assert the migration ledger matches the files on disk
         run: make check-migration-ledger
 
