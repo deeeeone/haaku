@@ -2,8 +2,14 @@
 # `docker compose up -d` is the whole thing. See
 # docs/architecture/omnibus-image.md.
 #
-#   cp .env.example .env      # then set HAAKU_SECRET_KEY and TMDB_API_TOKEN
+#   cp .env.example .env      # then set HAAKU_SECRET_KEY, TMDB_API_TOKEN and
+#                             # HAAKU_ADMIN_EMAIL / HAAKU_ADMIN_PASSWORD
 #   docker compose up -d
+#
+# The two HAAKU_ADMIN_* values create the owner account on the first start of an
+# empty database, before the API serves; a first start with them unset on a
+# local-mode instance refuses to start. See .env.example and
+# docs/architecture/local-auth.md.
 #
 # Everything lives in ./config: the database, the Redis append-only file, the
 # app's own directory, and the pre-migration backups. Back that directory up

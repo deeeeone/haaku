@@ -302,7 +302,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create a local account (first account on an empty instance becomes the owner) */
+        /** Create a local account (subject to the HAAKU_SIGNUP policy; the owner comes from HAAKU_ADMIN_*) */
         post: operations["_v1_auth_local_signup_POST"];
         delete?: never;
         options?: never;

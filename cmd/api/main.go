@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/haaku-tv/haaku/external/tmdb"
+	"github.com/haaku-tv/haaku/internal/auth"
 	"github.com/haaku-tv/haaku/internal/backup"
 	"github.com/haaku-tv/haaku/internal/config"
 	"github.com/haaku-tv/haaku/internal/database"
@@ -63,6 +64,19 @@ func run() int {
 
 	logger.Info("starting haaku", "env", cfg.Env, "port", cfg.Port, "mode", serverMode.String())
 
+	// Apply the identity mode BEFORE anything consults LocalAuthEnabled().
+	//
+	// internal/httpapi also calls InitAuthMode when it builds the server, but the
+	// owner bootstrap below runs first, and it refuses to start an ownerless
+	// LOCAL instance. Without this call a fresh clerk-mode deployment was refused
+	// for a reason that does not apply to it: the mode was still the zero-value
+	// local default at bootstrap time. initAuthMode is idempotent, so the server's
+	// later call is a no-op.
+	if err := auth.InitAuthMode(cfg.AuthMode, cfg.SignupPolicy); err != nil {
+		logger.Error("invalid auth mode — refusing to start", "error", err)
+		return 1
+	}
+
 	// Database (T0.4)
 	if cfg.DatabaseURL != "" {
 		if _, err := database.InitDB(); err != nil {
@@ -110,6 +124,19 @@ func run() int {
 	if wantsMigrations(serverMode, cfg.DatabaseURL != "") {
 		if code := migrate(logger); code != 0 {
 			return code
+		}
+	}
+
+	// Owner bootstrap (issue #53 follow-up). On an empty LOCAL-mode instance
+	// the owner account is created from HAAKU_ADMIN_EMAIL / HAAKU_ADMIN_PASSWORD
+	// before anything serves, and an empty local-mode instance with no owner
+	// configured refuses to start rather than come up with no way in. Clerk mode
+	// ignores both variables, and the migrate-only mode returned above, so CI's
+	// migrate-only jobs (and the omnibus first start) never reach this.
+	if cfg.DatabaseURL != "" {
+		if err := auth.BootstrapOwner(currentDB(), cfg.AdminEmail, cfg.AdminPassword); err != nil {
+			logger.Error("owner bootstrap failed — refusing to start", "error", err)
+			return 1
 		}
 	}
 

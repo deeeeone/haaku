@@ -26,7 +26,11 @@ on:
 
 concurrency:
   group: docker-${{ github.ref }}
-  cancel-in-progress: true
+  # Cancel a superseded PR build, but never cancel the default branch: with
+  # cancel-in-progress: true keyed by ref, every merge to main killed the
+  # in-flight main image build, so `smoke`/`publish` never finished and `latest`
+  # lagged main. main builds now queue; PR builds still cancel.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   REGISTRY: ghcr.io
@@ -256,6 +260,8 @@ jobs:
           cat > "$workdir/.env" <<ENV
           HAAKU_SECRET_KEY=$(openssl rand -base64 48)
           TMDB_API_TOKEN=ci-smoke-test
+          HAAKU_ADMIN_EMAIL=owner@smoke.test
+          HAAKU_ADMIN_PASSWORD=smoke-owner-password
           HAAKU_PORT=18080
           HAAKU_CONFIG=$workdir/config
           HAAKU_IMAGE=haaku:smoke
@@ -305,6 +311,56 @@ jobs:
           # regression, a schema that silently lost tables is.
           test "$tables" -ge 46
 
+      # Issue #53's acceptance criterion in its new form: a fresh install with NO
+      # Clerk configuration and the owner supplied through the environment must be
+      # usable out of the box. The .env above sets no HAAKU_AUTH_MODE (so this
+      # asserts the documented default, local) and sets HAAKU_ADMIN_EMAIL /
+      # HAAKU_ADMIN_PASSWORD — the owner now comes from those, not from whoever
+      # signs up first. (This supersedes PR #76, which asserted first-signup
+      # ownership; that behaviour is removed.)
+      - name: Assert the env-configured owner works and signups are pending
+        run: |
+          set -euo pipefail
+          api=http://127.0.0.1:18080/v1
+
+          cfg="$(curl -fsS "$api/auth/config")"
+          echo "auth config: $cfg"
+          test "$(echo "$cfg" | jq -r .mode)" = "local"
+          test "$(echo "$cfg" | jq -r .local_auth)" = "true"
+          # A serving local instance always has the env-seeded owner, so this is
+          # never a "first run" with no accounts.
+          test "$(echo "$cfg" | jq -r .first_run)" = "false"
+
+          # The owner created from HAAKU_ADMIN_EMAIL / HAAKU_ADMIN_PASSWORD logs
+          # in — proving the seed happened and the credential is usable.
+          login="$(curl -fsS -X POST "$api/auth/local/login" \
+            -H 'content-type: application/json' \
+            -d '{"email":"owner@smoke.test","password":"smoke-owner-password"}')"
+          echo "owner login: $(echo "$login" | jq -c '{user:.user.id,admin:.user.is_admin,has_session:(.session!=null)}')"
+          test "$(echo "$login" | jq -r .user.is_admin)" = "true"
+          token="$(echo "$login" | jq -r .session.token)"
+          case "$token" in hs_*) ;; *) echo "::error::expected an hs_ session token, got '$token'"; exit 1;; esac
+
+          # As that owner, the admin panel lists users.
+          users="$(curl -fsS "$api/admin/users" -H "authorization: Bearer ${token}")"
+          echo "admin users: $(echo "$users" | jq -c '{total:.total,first:.users[0].email}')"
+          test "$(echo "$users" | jq -r .total)" -ge 1
+          test "$(echo "$users" | jq -r '.users[0].email')" = "owner@smoke.test"
+
+          # And the approval default still holds: a new signup lands pending and
+          # cannot log in until an admin approves it — no open door.
+          second="$(curl -fsS -X POST "$api/auth/local/signup" \
+            -H 'content-type: application/json' \
+            -d '{"email":"pending@smoke.test","password":"smoke-pending-password"}')"
+          echo "second signup: $(echo "$second" | jq -c '{status:.status,session:.session}')"
+          test "$(echo "$second" | jq -r .status)" = "pending"
+          test "$(echo "$second" | jq -r .session)" = "null"
+          code="$(curl -s -o /dev/null -w '%{http_code}' -X POST "$api/auth/local/login" \
+            -H 'content-type: application/json' \
+            -d '{"email":"pending@smoke.test","password":"smoke-pending-password"}')"
+          echo "pending login: http $code"
+          test "$code" = "403"
+
       # The acceptance criterion is DATABASE_URL *and* REDIS_URL: with both set,
       # neither bundled service may start. Setting only one leaves the other
       # bundled, which is the point of the opt-out — and what this step asserts.
@@ -319,6 +375,8 @@ jobs:
           docker run -d --name smoke-adv-app --network smoke-adv \
             -e HAAKU_SECRET_KEY="$(openssl rand -base64 48)" \
             -e TMDB_API_TOKEN=ci-smoke-test \
+            -e HAAKU_ADMIN_EMAIL=owner@smoke.test \
+            -e HAAKU_ADMIN_PASSWORD=smoke-owner-password \
             -e DATABASE_URL='postgres://haaku:haaku@smoke-pg:5432/haaku?sslmode=disable' \
             -e REDIS_URL='redis://smoke-redis:6379' \
             haaku:smoke

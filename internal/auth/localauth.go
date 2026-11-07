@@ -103,7 +103,7 @@ func RegisterLocalAuthRoutes(api fiber.Router) {
 // registration so the two cannot drift.
 func localAuthRouteDefs() []openapi.RouteDef {
 	return []openapi.RouteDef{
-		{Method: "POST", Path: "/v1/auth/local/signup", Summary: "Create a local account (first account on an empty instance becomes the owner)", Tags: []string{"Local Auth"}, Auth: "none", StatusCodes: map[int]string{201: "Account created", 400: "Invalid request", 403: "Signup closed", 409: "Email already registered"}},
+		{Method: "POST", Path: "/v1/auth/local/signup", Summary: "Create a local account (subject to the HAAKU_SIGNUP policy; the owner comes from HAAKU_ADMIN_*)", Tags: []string{"Local Auth"}, Auth: "none", StatusCodes: map[int]string{201: "Account created", 400: "Invalid request", 403: "Signup closed", 409: "Email already registered"}},
 		{Method: "POST", Path: "/v1/auth/local/login", Summary: "Log in with email + password, returning an opaque session token", Tags: []string{"Local Auth"}, Auth: "none", StatusCodes: map[int]string{200: "Logged in", 400: "Invalid request", 401: "Invalid credentials", 403: "Account pending or banned", 429: "Too many attempts"}},
 		{Method: "POST", Path: "/v1/auth/local/logout", Summary: "Revoke the session token used for this request", Tags: []string{"Local Auth"}, Auth: "required", StatusCodes: map[int]string{204: "Session revoked"}},
 		{Method: "POST", Path: "/v1/auth/local/password-reset", Summary: "Redeem a one-time reset token issued by an admin and set a new password", Tags: []string{"Local Auth"}, Auth: "none", StatusCodes: map[int]string{200: "Password updated", 400: "Invalid or expired token"}},
@@ -280,8 +280,11 @@ type issuedSession struct {
 }
 
 // createLocalAccount creates the users row and its credential in one
-// transaction. The first account on an empty instance becomes the owner/admin
-// and is active; later accounts follow the signup policy.
+// transaction. Every new account follows the sign-up policy — the owner is no
+// longer "whoever signs up first" (issue #53 follow-up): the owner is seeded
+// from HAAKU_ADMIN_EMAIL / HAAKU_ADMIN_PASSWORD at startup (auth.BootstrapOwner),
+// so a fresh local instance refuses to serve without one and this path can never
+// mint an admin.
 func createLocalAccount(db *gorm.DB, email, requestedUsername, hash string) (*database.User, *issuedSession, error) {
 	var user database.User
 	var session *issuedSession
@@ -297,22 +300,12 @@ func createLocalAccount(db *gorm.DB, email, requestedUsername, hash string) (*da
 			return errEmailTaken
 		}
 
-		var total int64
-		if err := tx.Model(&database.User{}).Count(&total).Error; err != nil {
-			return err
-		}
-		firstRun := total == 0
-
-		status := database.UserStatusActive
-		if !firstRun {
-			switch SignupPolicy() {
-			case config.SignupClosed:
-				return errSignupClosed
-			case config.SignupOpen:
-				status = database.UserStatusActive
-			default: // config.SignupApproval
-				status = database.UserStatusPending
-			}
+		status := database.UserStatusPending
+		switch SignupPolicy() {
+		case config.SignupClosed:
+			return errSignupClosed
+		case config.SignupOpen:
+			status = database.UserStatusActive
 		}
 
 		username, err := allocateUsername(tx, requestedUsername, email)
@@ -328,7 +321,7 @@ func createLocalAccount(db *gorm.DB, email, requestedUsername, hash string) (*da
 			Username:  username,
 			Email:     email,
 			Status:    status,
-			IsAdmin:   firstRun,
+			IsAdmin:   false,
 			Plan:      "free",
 			CreatedAt: time.Now().UTC(),
 			UpdatedAt: time.Now().UTC(),
