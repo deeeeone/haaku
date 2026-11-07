@@ -22,11 +22,10 @@ import (
 )
 
 // These tests run against a REAL PostgreSQL, never sqlite: the advisory lock,
-// the jsonb/partial-index DDL and the ledger bootstrap have no sqlite
-// equivalent, and a sqlite-backed test would prove nothing about the schema a
-// deployment actually gets. They skip with a reason when DATABASE_URL is unset
-// (a plain `make test-go`), and run when it is (./scripts/dev-pg.sh start -q
-// exports it).
+// the jsonb/partial-index DDL and the Goose ledger have no sqlite equivalent,
+// and a sqlite-backed test would prove nothing about the schema a deployment
+// actually gets. They skip with a reason when DATABASE_URL is unset (a plain
+// `make test-go`), and run when it is (./scripts/dev-pg.sh start -q exports it).
 //
 // Each test creates its own throwaway database on the same server so tests
 // never share a schema, and drops it afterwards.
@@ -261,73 +260,6 @@ func TestMigrateIsIdempotent(t *testing.T) {
 	}
 	if !secondStamp.Equal(firstStamp) {
 		t.Fatalf("migration 0001 was re-applied: tstamp %s -> %s", firstStamp, secondStamp)
-	}
-}
-
-// TestMigrateSeedsLegacyLedgerWithoutReplay models an existing install: a
-// schema_versions table recording the numbered migrations it already applied,
-// an empty Goose ledger, and a populated schema. The runner must bootstrap the
-// Goose ledger from schema_versions and replay nothing.
-func TestMigrateSeedsLegacyLedgerWithoutReplay(t *testing.T) {
-	dsn := newTestDatabase(t)
-	g := openGorm(t, dsn)
-	opts := testOptions(t)
-
-	// Build the schema and the Goose ledger, then simulate the legacy world:
-	// schema_versions holds every version with an old timestamp, and the Goose
-	// ledger is wiped.
-	if err := runMigrate(t, g, opts); err != nil {
-		t.Fatalf("initial Migrate: %v", err)
-	}
-	versions := appliedVersions(t, g)
-	if len(versions) == 0 {
-		t.Fatal("nothing applied")
-	}
-	if err := g.Exec(`CREATE TABLE schema_versions (
-		version bigint PRIMARY KEY,
-		applied_at timestamptz NOT NULL DEFAULT now()
-	)`).Error; err != nil {
-		t.Fatalf("creating legacy schema_versions: %v", err)
-	}
-	const legacyStamp = "2020-01-01T00:00:00Z"
-	if err := g.Exec(`INSERT INTO schema_versions (version, applied_at)
-		SELECT version_id, '` + legacyStamp + `'::timestamptz FROM goose_db_version WHERE is_applied AND version_id > 0`).Error; err != nil {
-		t.Fatalf("seeding legacy schema_versions: %v", err)
-	}
-	if err := g.Exec(`DELETE FROM goose_db_version WHERE version_id > 0`).Error; err != nil {
-		t.Fatalf("clearing the goose ledger: %v", err)
-	}
-
-	// A sentinel row proves no migration re-ran: CREATE TABLE IF NOT EXISTS
-	// would silently pass, so plant data that a replay would disturb.
-	if err := g.Exec(`INSERT INTO users (id, username) VALUES ('sentinel', 'sentinel')`).Error; err != nil {
-		t.Fatalf("planting sentinel user: %v", err)
-	}
-
-	if err := runMigrate(t, g, opts); err != nil {
-		t.Fatalf("Migrate after legacy seed: %v", err)
-	}
-
-	got := appliedVersions(t, g)
-	if len(got) != len(versions) {
-		t.Fatalf("goose ledger not bootstrapped from schema_versions: got %d rows, want %d", len(got), len(versions))
-	}
-	var stamp time.Time
-	if err := g.Raw(`SELECT tstamp FROM goose_db_version WHERE version_id=1 AND is_applied`).Scan(&stamp).Error; err != nil {
-		t.Fatalf("reading bootstrapped tstamp: %v", err)
-	}
-	want, _ := time.Parse(time.RFC3339, legacyStamp)
-	if !stamp.UTC().Equal(want.UTC()) {
-		t.Fatalf("version 1 tstamp = %s, want the copied legacy %s (a fresh tstamp means it was replayed, not bootstrapped)", stamp.UTC(), want.UTC())
-	}
-
-	// The sentinel survived, and the legacy table stayed put.
-	var count int
-	if err := g.Raw(`SELECT count(*) FROM users WHERE id='sentinel'`).Scan(&count).Error; err != nil {
-		t.Fatalf("counting sentinel: %v", err)
-	}
-	if count != 1 {
-		t.Fatalf("sentinel row count = %d, want 1 (a replay recreated the table)", count)
 	}
 }
 

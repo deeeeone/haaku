@@ -44,7 +44,7 @@ install -d -o postgres -g postgres -m 2775 /run/postgresql
 
 # Settings the binary itself refuses to start without. Checking them here turns
 # a crash loop into one line that says what to do.
-if [[ -z "${TKILLER_SECRET_KEY:-}${WEBHOOK_SECRET_KEY:-}" ]]; then
+if [[ -z "${TKILLER_SECRET_KEY:-}" ]]; then
   cat >&2 <<'MSG'
 TKILLER_SECRET_KEY is not set, and the server refuses to start without it: it
 is the root key for everything stored encrypted at rest, so changing it later

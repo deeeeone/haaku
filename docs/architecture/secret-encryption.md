@@ -12,7 +12,7 @@ This is the security half of running the app on someone's own box: the operator 
 | Derivation | HKDF-SHA256, per **purpose**: `DeriveKey(root, info, n)` where `info` is a versioned label like `tkiller/integration-token-lookup/v1`. A new purpose gets a new label; a changed label is a rotation event, never a silent edit. |
 | Cipher | AES-256-GCM with a random nonce per value, `enc:v1:` envelope, base64url payload. |
 | AAD binding | `RowAAD(table, column, rowID)` is passed as additional authenticated data, so a ciphertext cannot be moved between rows or columns and still decrypt. This is what makes a partial SQL dump useless rather than merely opaque. |
-| Legacy tolerance | `DecryptIfEncrypted` passes plaintext through (a row the backfill has not reached) but treats any failure to open an `enc:v1:` envelope — wrong key, tamper, AAD swap — as an error. `IsEncrypted` lets a caller detect the envelope. |
+| Read path | `Decrypt` requires an `enc:v1:` envelope and treats any failure to open it — wrong key, tamper, AAD swap, a value that is not an envelope — as an error. An absent value is an empty column the caller checks before decrypting. |
 
 ## What is encrypted today
 
@@ -41,20 +41,8 @@ token      = AES-256-GCM(raw, AAD(table,column,rowID))                          
 ```
 
 - The index is **keyed** (HMAC under a derived key, not a bare SHA-256), so a dump alone gives an attacker nothing to brute-force candidate tokens against — the column is an opaque MAC without the root key.
-- The unique constraint lives on the hash (partial, `WHERE token_hash <> ''`, so not-yet-backfilled rows coexist), which is the real "a token must not collide" guarantee. A `UNIQUE` on a ciphertext column would be meaningless: every ciphertext is distinct by its random nonce, so it would forbid nothing.
+- The unique constraint lives on the hash (partial, `WHERE token_hash <> ''`), which is the real "a token must not collide" guarantee. A `UNIQUE` on a ciphertext column would be meaningless: every ciphertext is distinct by its random nonce, so it would forbid nothing.
 - **The honest trade-off:** a hash-only design (store no recoverable token; show it once at creation) is strictly more secure — even a dump *plus* the root key then recovers nothing — but it makes rotation and display-after-creation impossible. The current shape keeps the recoverable ciphertext because the existing contract (`returned once`, revocable, listable) is a product promise. Changing that is a product decision, not a security patch.
-
-## Backfilling legacy plaintext
-
-`integrations.BackfillPlaintextTokens` runs in the `migrate`/`api` startup path (never in worker mode — a worker must not touch the schema) and:
-
-- **refuses without a usable root key** — it builds the keys before touching a row, so it cannot write unreadable values;
-- **is idempotent** — it only selects rows whose value is not already an `enc:v1:` envelope, so a second run converts nothing;
-- **is resumable** — the sweep is driven by "which rows are still plaintext", so an interrupted run resumes with no cursor state;
-- **is serialised** — the whole sweep runs under a PostgreSQL advisory lock, and each update is optimistic (`WHERE id = ? AND token = <old>`), so two servers starting at once cannot clobber each other;
-- **is bounded** — batches of 500 rows, a 100 000-row cap per run, logging when it stops early.
-
-The migration itself is schema-only (columns + index swap) and never rewrites rows, so it stays fast and its lock implications are stated in the migration comment.
 
 ## Key rotation: not implemented
 

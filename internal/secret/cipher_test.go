@@ -43,9 +43,6 @@ func TestEncryptDecryptRoundTrip(t *testing.T) {
 	if !strings.HasPrefix(ct, "enc:v1:") {
 		t.Fatalf("ciphertext missing enc:v1: prefix: %q", ct)
 	}
-	if !IsEncrypted(ct) {
-		t.Fatalf("IsEncrypted(%q) = false, want true", ct)
-	}
 	if ct == plaintext {
 		t.Fatal("ciphertext equals plaintext")
 	}
@@ -166,93 +163,9 @@ func TestNewRejectsShortKey(t *testing.T) {
 	}
 }
 
-func TestIsEncrypted(t *testing.T) {
-	cases := map[string]bool{
-		"enc:v1:x":   true,
-		"sa_abc":     false,
-		"":           false,
-		"ENC:V1:x":   false,
-		"enc:v1":     false,
-		"plain text": false,
-	}
-	for in, want := range cases {
-		if got := IsEncrypted(in); got != want {
-			t.Errorf("IsEncrypted(%q) = %v, want %v", in, got, want)
-		}
-	}
-}
-
-func TestDecryptIfEncrypted(t *testing.T) {
-	c := newTestCipher(t)
-	const aad = "webhook_endpoints:secret_hash:7"
-
-	// Empty passes through.
-	if got, err := c.DecryptIfEncrypted("", aad); err != nil || got != "" {
-		t.Fatalf("DecryptIfEncrypted(\"\") = (%q, %v), want (\"\", nil)", got, err)
-	}
-	// Legacy plaintext passes through unchanged.
-	if got, err := c.DecryptIfEncrypted("legacy-plaintext-key", aad); err != nil || got != "legacy-plaintext-key" {
-		t.Fatalf("DecryptIfEncrypted(plaintext) = (%q, %v), want pass-through", got, err)
-	}
-	// A real enc:v1: value is decrypted.
-	ct, err := c.Encrypt("real-secret", aad)
-	if err != nil {
-		t.Fatalf("Encrypt: %v", err)
-	}
-	if got, err := c.DecryptIfEncrypted(ct, aad); err != nil || got != "real-secret" {
-		t.Fatalf("DecryptIfEncrypted(ct) = (%q, %v), want (\"real-secret\", nil)", got, err)
-	}
-	// A corrupt enc:v1: value errors — never falls back to the ciphertext.
-	raw, _ := base64.RawURLEncoding.DecodeString(strings.TrimPrefix(ct, "enc:v1:"))
-	raw[len(raw)-1] ^= 0xFF
-	corrupt := "enc:v1:" + base64.RawURLEncoding.EncodeToString(raw)
-	if got, err := c.DecryptIfEncrypted(corrupt, aad); err == nil {
-		t.Fatalf("DecryptIfEncrypted(tampered) = (%q, nil), want error", got)
-	}
-	// Wrong AAD errors, never returns the ciphertext.
-	if got, err := c.DecryptIfEncrypted(ct, "webhook_endpoints:secret_hash:8"); err == nil {
-		t.Fatalf("DecryptIfEncrypted with wrong AAD = (%q, nil), want error", got)
-	}
-}
-
 func TestAADHelpers(t *testing.T) {
 	if got := RowAAD("webhook_endpoints", "secret_hash", "42"); got != "webhook_endpoints:secret_hash:42" {
 		t.Errorf("RowAAD = %q", got)
-	}
-}
-
-func TestEncryptIfPlaintextIdempotent(t *testing.T) {
-	c := newTestCipher(t)
-	const aad = "t:c:1"
-
-	// First call encrypts.
-	ct, changed, err := c.EncryptIfPlaintext("secret", aad)
-	if err != nil {
-		t.Fatalf("EncryptIfPlaintext: %v", err)
-	}
-	if !changed {
-		t.Fatal("first EncryptIfPlaintext reported changed=false, want true")
-	}
-	if !IsEncrypted(ct) {
-		t.Fatalf("EncryptIfPlaintext did not produce an envelope: %q", ct)
-	}
-
-	// Second call is a no-op on the already-encrypted value.
-	ct2, changed2, err := c.EncryptIfPlaintext(ct, aad)
-	if err != nil {
-		t.Fatalf("EncryptIfPlaintext (2nd): %v", err)
-	}
-	if changed2 {
-		t.Fatal("second EncryptIfPlaintext reported changed=true, want false (double-encrypt)")
-	}
-	if ct2 != ct {
-		t.Fatalf("second EncryptIfPlaintext mutated the value: %q -> %q", ct, ct2)
-	}
-
-	// Empty is a no-op too.
-	got, changed3, err := c.EncryptIfPlaintext("", aad)
-	if err != nil || changed3 || got != "" {
-		t.Fatalf("EncryptIfPlaintext(\"\") = (%q, %v, %v), want (\"\", false, nil)", got, changed3, err)
 	}
 }
 
@@ -307,41 +220,21 @@ func TestDeriveKeyPurposeSeparation(t *testing.T) {
 	}
 }
 
-// TestRootKeyFromEnv pins the required-root-key behaviour: preferred variable,
-// legacy fallback, missing, and too-short.
+// TestRootKeyFromEnv pins the required-root-key behaviour: only EnvVar is read,
+// and a missing or too-short key is rejected.
 func TestRootKeyFromEnv(t *testing.T) {
 	const good = "0123456789abcdef0123456789abcdef" // 32 chars
 
-	t.Run("preferred variable", func(t *testing.T) {
+	t.Run("set", func(t *testing.T) {
 		t.Setenv(EnvVar, good)
-		t.Setenv(LegacyEnvVar, "")
 		got, err := RootKeyFromEnv()
 		if err != nil || string(got) != good {
 			t.Fatalf("RootKeyFromEnv() = (%q, %v), want (%q, nil)", got, err, good)
-		}
-	})
-
-	t.Run("legacy fallback", func(t *testing.T) {
-		t.Setenv(EnvVar, "")
-		t.Setenv(LegacyEnvVar, good)
-		got, err := RootKeyFromEnv()
-		if err != nil || string(got) != good {
-			t.Fatalf("RootKeyFromEnv() = (%q, %v), want (%q, nil)", got, err, good)
-		}
-	})
-
-	t.Run("preferred wins over legacy", func(t *testing.T) {
-		t.Setenv(EnvVar, good)
-		t.Setenv(LegacyEnvVar, strings.Repeat("z", 48))
-		got, err := RootKeyFromEnv()
-		if err != nil || string(got) != good {
-			t.Fatalf("RootKeyFromEnv() = (%q, %v), want the %s value", got, err, EnvVar)
 		}
 	})
 
 	t.Run("missing", func(t *testing.T) {
 		t.Setenv(EnvVar, "")
-		t.Setenv(LegacyEnvVar, "")
 		if _, err := RootKeyFromEnv(); err == nil {
 			t.Fatal("RootKeyFromEnv with no key succeeded, want error")
 		}
@@ -352,7 +245,6 @@ func TestRootKeyFromEnv(t *testing.T) {
 
 	t.Run("too short", func(t *testing.T) {
 		t.Setenv(EnvVar, strings.Repeat("a", MinMasterKeyLen-1))
-		t.Setenv(LegacyEnvVar, "")
 		if _, err := RootKeyFromEnv(); err == nil {
 			t.Fatal("RootKeyFromEnv with a 31-char key succeeded, want error")
 		}
@@ -360,7 +252,6 @@ func TestRootKeyFromEnv(t *testing.T) {
 
 	t.Run("exactly the minimum", func(t *testing.T) {
 		t.Setenv(EnvVar, strings.Repeat("a", MinMasterKeyLen))
-		t.Setenv(LegacyEnvVar, "")
 		if _, err := RootKeyFromEnv(); err != nil {
 			t.Fatalf("RootKeyFromEnv with a 32-char key failed: %v", err)
 		}

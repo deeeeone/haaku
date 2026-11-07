@@ -7,11 +7,11 @@
 // The one primitive everything reuses is AES-256-GCM with a random 12-byte
 // nonce and a versioned envelope, enc:v1:<base64url(nonce‖sealed)>. The 32-byte
 // data key is HKDF-SHA256 derived from a root key (the TKILLER_SECRET_KEY env
-// value, or the legacy WEBHOOK_SECRET_KEY) under a versioned domain label, so
-// the key that protects the data lives outside Postgres and encrypted secrets
-// survive a full database dump. The root key is never stored in the database
-// and must be backed up separately from database dumps — a dump full of
-// ciphertext that travels with the key gives no confidentiality at all.
+// value) under a versioned domain label, so the key that protects the data
+// lives outside Postgres and encrypted secrets survive a full database dump.
+// The root key is never stored in the database and must be backed up separately
+// from database dumps — a dump full of ciphertext that travels with the key
+// gives no confidentiality at all.
 //
 // Each ciphertext is GCM-bound to its logical row via additional-authenticated
 // data (AAD) of the form <table>:<column>:<row key>, so a database-write
@@ -20,11 +20,10 @@
 //
 // # Read path
 //
-// DecryptIfEncrypted is the canonical read primitive: an empty value returns
-// empty; a non-enveloped value is legacy plaintext and passes through
-// unchanged (so a not-yet-migrated row keeps working); an enc:v1: value that
-// fails to decrypt — wrong key, tampering, truncation, AAD mismatch — is an
-// error and is never silently used as a credential.
+// Read sites decrypt with Decrypt: a stored value must be an enc:v1: envelope,
+// and any failure to open it — wrong key, tampering, truncation, AAD mismatch —
+// is an error, never a plaintext fallback. An absent value is represented as an
+// empty column, which the caller checks before calling Decrypt.
 //
 // # Equality-looked-up secrets
 //
@@ -35,10 +34,9 @@
 // HMAC-SHA256 blind index under an HKDF-derived lookup key
 // ("tkiller/integration-token-lookup/v1"), matched under a partial unique index,
 // alongside the randomized, AAD-bound ciphertext the create/rotate path writes.
-// See internal/handlers/integrations/token_secret.go for the write/read path and
-// the startup backfill that converts pre-existing plaintext rows. Any future
-// equality-looked-up secret should follow the same two-column pattern rather
-// than be half-migrated.
+// See internal/handlers/integrations/token_secret.go for the write/read path.
+// Any future equality-looked-up secret should follow the same two-column
+// pattern rather than be half-migrated.
 package secret
 
 import (
@@ -74,15 +72,9 @@ const (
 	dataKeyLen = 32
 )
 
-// Environment variable names for the root key.
-const (
-	// EnvVar is the preferred root-key variable for the general case.
-	EnvVar = "TKILLER_SECRET_KEY"
-	// LegacyEnvVar is accepted as a fallback so deployments that already set
-	// the webhook-specific key keep running unchanged. New deployments should
-	// set EnvVar; both must hold at least MinMasterKeyLen characters.
-	LegacyEnvVar = "WEBHOOK_SECRET_KEY"
-)
+// EnvVar is the root-key environment variable. It must hold at least
+// MinMasterKeyLen characters.
+const EnvVar = "TKILLER_SECRET_KEY"
 
 // ErrUnknownVersion is returned by Decrypt when the envelope carries a version
 // this build does not understand. It is the forward-compatibility hook for a
@@ -98,26 +90,21 @@ type Cipher struct {
 	gcm cipher.AEAD
 }
 
-// RootKeyFromEnv returns the raw root-key bytes from the environment: EnvVar
-// when set, otherwise LegacyEnvVar. It errors when neither is set, or when the
-// chosen value is shorter than MinMasterKeyLen characters, so an unusable
-// encryption root is rejected before any cipher is built.
+// RootKeyFromEnv returns the raw root-key bytes from EnvVar. It errors when the
+// variable is unset, or when its value is shorter than MinMasterKeyLen
+// characters, so an unusable encryption root is rejected before any cipher is
+// built.
 func RootKeyFromEnv() ([]byte, error) {
-	if v := os.Getenv(EnvVar); v != "" {
-		if len(v) < MinMasterKeyLen {
-			return nil, fmt.Errorf("secret: %s must be at least %d characters, got %d", EnvVar, MinMasterKeyLen, len(v))
-		}
-		return []byte(v), nil
+	v := os.Getenv(EnvVar)
+	if v == "" {
+		return nil, fmt.Errorf(
+			"secret: no root key set — set %s to at least %d characters; generate one with `openssl rand -base64 48`",
+			EnvVar, MinMasterKeyLen)
 	}
-	if v := os.Getenv(LegacyEnvVar); v != "" {
-		if len(v) < MinMasterKeyLen {
-			return nil, fmt.Errorf("secret: %s must be at least %d characters, got %d", LegacyEnvVar, MinMasterKeyLen, len(v))
-		}
-		return []byte(v), nil
+	if len(v) < MinMasterKeyLen {
+		return nil, fmt.Errorf("secret: %s must be at least %d characters, got %d", EnvVar, MinMasterKeyLen, len(v))
 	}
-	return nil, fmt.Errorf(
-		"secret: no root key set — set %s (preferred) or %s to at least %d characters; generate one with `openssl rand -base64 48`",
-		EnvVar, LegacyEnvVar, MinMasterKeyLen)
+	return []byte(v), nil
 }
 
 // LoadFromEnv builds the process Cipher from the environment. It is the entry
@@ -189,10 +176,10 @@ func (c *Cipher) Encrypt(plaintext, aad string) (string, error) {
 
 // Decrypt opens an enc:v1: envelope produced by Encrypt with the same aad. Any
 // failure — unknown version, malformed base64, truncation, tampering, the wrong
-// key, or an aad mismatch — returns an error. Decrypt never falls back to
-// returning the input ciphertext or an empty string; passing through
-// non-prefixed legacy plaintext is the caller's responsibility (see
-// DecryptIfEncrypted), not Decrypt's.
+// key, an aad mismatch, or a value that is not an envelope at all — returns an
+// error. Decrypt never falls back to returning the input ciphertext or an empty
+// string; an absent credential is an empty column the caller checks before
+// calling Decrypt.
 func (c *Cipher) Decrypt(ciphertext, aad string) (string, error) {
 	// Parse "enc:<version>:<body>" and dispatch on the version so a future
 	// enc:v2: can be added without touching existing call sites.
@@ -224,50 +211,6 @@ func (c *Cipher) openV1(encoded, aad string) (string, error) {
 		return "", fmt.Errorf("secret: authenticate ciphertext: %w", err)
 	}
 	return string(plaintext), nil
-}
-
-// IsEncrypted reports whether s carries the v1 envelope prefix. It is a cheap
-// prefix check, not a validity check: a value that begins with enc:v1: but
-// holds a corrupt body still reports true here and then fails Decrypt — it never
-// silently degrades to being used as a plaintext credential.
-func IsEncrypted(s string) bool {
-	return strings.HasPrefix(s, envelopePrefix)
-}
-
-// DecryptIfEncrypted is the canonical read-path primitive shared by every
-// decrypt site. It implements the read-path contract:
-//
-//  1. an empty value returns "" unchanged;
-//  2. a non-enveloped (legacy plaintext) value is returned unchanged — during
-//     the backfill window a not-yet-encrypted credential is no worse than today;
-//  3. an enc:v1: value is decrypted, and any failure (wrong key, tamper,
-//     truncation, AAD mismatch) is returned, never swallowed and never returned
-//     as the ciphertext string.
-//
-// This reconciles best-effort backfill (a skipped/failed row stays readable as
-// plaintext) with the hard guarantee that a real enc:v1: value never silently
-// degrades into using ciphertext as a credential.
-func (c *Cipher) DecryptIfEncrypted(value, aad string) (string, error) {
-	if value == "" || !IsEncrypted(value) {
-		return value, nil
-	}
-	return c.Decrypt(value, aad)
-}
-
-// EncryptIfPlaintext encrypts s only when it is non-empty, non-enveloped
-// plaintext, returning (ciphertext, true, nil). An already-encrypted or empty
-// value is returned unchanged with changed=false. This is the idempotent
-// primitive a startup backfill uses to sweep a column without ever
-// double-encrypting an already-wrapped value.
-func (c *Cipher) EncryptIfPlaintext(s, aad string) (string, bool, error) {
-	if s == "" || IsEncrypted(s) {
-		return s, false, nil
-	}
-	ct, err := c.Encrypt(s, aad)
-	if err != nil {
-		return s, false, err
-	}
-	return ct, true, nil
 }
 
 // RowAAD returns the additional-authenticated-data string binding a ciphertext

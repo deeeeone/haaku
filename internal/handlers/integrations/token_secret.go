@@ -113,22 +113,20 @@ func EncryptToken(id int64, token string) (string, error) {
 	return ts.cipher.Encrypt(token, tokenAAD(id))
 }
 
-// DecryptToken reverses EncryptToken. The read path is tolerant of a legacy
-// plaintext value (a row the backfill has not reached) but treats any failure to
-// decrypt an enc:v1: envelope — wrong key, tampering, or a row-level AAD swap —
-// as an error. It never hands back the ciphertext as if it were the credential.
+// DecryptToken reverses EncryptToken. An empty stored value returns "" (an
+// absent credential, which the caller treats as a missing token); any other
+// value must be an enc:v1: envelope, and any failure to decrypt it — wrong key,
+// tampering, a row-level AAD swap, or a value that is not an envelope at all —
+// is an error. It never hands back the ciphertext as if it were the credential.
 func DecryptToken(id int64, stored string) (string, error) {
+	if stored == "" {
+		return "", nil
+	}
 	ts, err := loadTokenSecrets()
 	if err != nil {
 		return "", err
 	}
-	return ts.cipher.DecryptIfEncrypted(stored, tokenAAD(id))
-}
-
-// isCiphertext reports whether a stored token value is already an enc:v1:
-// envelope. A row that is not is legacy plaintext awaiting the backfill.
-func isCiphertext(stored string) bool {
-	return secret.IsEncrypted(stored)
+	return ts.cipher.Decrypt(stored, tokenAAD(id))
 }
 
 // ErrIntegrationTokenNotFound is returned when no active token matches.
@@ -137,12 +135,9 @@ var ErrIntegrationTokenNotFound = errors.New("integration token not found or ina
 // LookupToken authenticates an inbound request from the raw token in the path.
 //
 // It computes the blind index and matches integration_tokens.token_hash under
-// the unique index. A row that predates the backfill still holds plaintext with
-// an empty hash, so a miss on the hash falls back to a plaintext equality match
-// for that still-unconverted row (availability during the migrate→backfill
-// window). The matched row's ciphertext is decrypted so callers receive the
-// real credential; an AAD-swapped or tampered row fails here rather than being
-// used.
+// the unique index; the matched row's ciphertext is decrypted so callers receive
+// the real credential. An AAD-swapped or tampered row fails here rather than
+// being used.
 func LookupToken(db *gorm.DB, tokenStr string) (*database.IntegrationToken, error) {
 	if tokenStr == "" {
 		return nil, ErrIntegrationTokenNotFound
@@ -157,12 +152,6 @@ func LookupToken(db *gorm.DB, tokenStr string) (*database.IntegrationToken, erro
 
 	var tok database.IntegrationToken
 	err = db.Where("token_hash = ? AND active = ?", hash, true).First(&tok).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		// Legacy row not yet converted by the backfill: the token is still
-		// stored as plaintext, so match it directly. A ciphertext never equals
-		// the raw token, so this can only ever find an unconverted row.
-		err = db.Where("token = ? AND active = ?", tokenStr, true).First(&tok).Error
-	}
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, ErrIntegrationTokenNotFound

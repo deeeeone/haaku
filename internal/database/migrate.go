@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
@@ -28,8 +27,7 @@ import (
 //
 //  1. take a PostgreSQL advisory lock, so two servers starting at once do not
 //     race (the second waits for the first rather than applying the same SQL);
-//  2. seed the Goose ledger from the legacy numbered `schema_versions` table, so
-//     an existing install bootstraps instead of replaying old migrations;
+//  2. ensure the Goose ledger exists, so Goose's own bookkeeping has a home;
 //  3. check whether anything is pending (a no-op when it is not);
 //  4. on a database that already has a schema, take a pg_dump safety copy and
 //     refuse to continue if it fails;
@@ -38,8 +36,8 @@ import (
 // Only the API and migrate run modes call this (see internal/mode); a worker
 // never touches the schema.
 
-// migrationLockID serialises the whole migration sequence. It wraps the legacy
-// bootstrap, the pending check, the backup and Goose's own Up, and it has to
+// migrationLockID serialises the whole migration sequence. It wraps the ledger
+// setup, the pending check, the backup and Goose's own Up, and it has to
 // survive across connections, so it is a session-level advisory lock held on a
 // dedicated connection outside the pool.
 //
@@ -69,12 +67,6 @@ const (
 	// pre-migration copy is only useful if it outlives the container.
 	defaultBackupDir = "pre-migrate-backups"
 )
-
-// ErrMigrationsNotImplemented is kept as a sentinel so the callers that named it
-// keep compiling; Migrate no longer returns it. It is unused by the runner.
-//
-// Deprecated: the runner is implemented; this remains only for older call sites.
-var ErrMigrationsNotImplemented = errors.New("schema migrations are not implemented yet (see issue #14)")
 
 // Migrate applies every pending schema migration to the configured database.
 //
@@ -142,9 +134,9 @@ func migrateTo(ctx context.Context, db *gorm.DB, opts migrateOptions) error {
 	}
 	defer wrap.release()
 
-	// 2. Seed the Goose ledger from the legacy numbering before anything reads
-	//    the ledger, so an old install does not replay what it already applied.
-	if err := bootstrapLegacyLedger(ctx, wrap.conn, logger); err != nil {
+	// 2. Ensure the Goose ledger exists before anything reads or applies a
+	//    migration.
+	if err := ensureGooseVersionTable(ctx, wrap.conn); err != nil {
 		return err
 	}
 
@@ -329,10 +321,4 @@ func withTimeout(ctx context.Context, d time.Duration) (context.Context, context
 		return context.WithTimeout(ctx, d)
 	}
 	return context.WithCancel(ctx)
-}
-
-// queryer is the subset of *sql.Conn / *sql.DB the ledger helpers use.
-type queryer interface {
-	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
-	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }

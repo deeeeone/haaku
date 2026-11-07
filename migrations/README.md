@@ -12,7 +12,7 @@ tool. The runner lives in `internal/database/migrate*.go`.
 - **Applied at startup:** `cmd/api` calls `database.Migrate` before it listens.
   `TKILLER_MODE=api` and `TKILLER_MODE=migrate` (or `--migrate-only`) apply
   migrations; `TKILLER_MODE=worker` never touches the schema.
-- **Under a lock:** the whole sequence — ledger bootstrap, pending check, backup,
+- **Under a lock:** the whole sequence — ledger setup, pending check, backup,
   apply — is serialised by a PostgreSQL advisory lock, so two servers starting at
   once do not race. The second waits up to `TKILLER_MIGRATION_WAIT` (default
   `60m`) for the first.
@@ -21,20 +21,18 @@ tool. The runner lives in `internal/database/migrate*.go`.
   The two newest copies are kept under `TKILLER_MIGRATION_BACKUP_DIR` (default
   `./pre-migrate-backups`). Pass `TKILLER_SKIP_BACKUP_BEFORE_MIGRATE=true` only on
   a dev box without a matching `pg_dump`.
-- **Ledger:** Goose records applied versions in `goose_db_version`. On an install
-  that predates this runner, the ledger is **seeded from the legacy
-  `schema_versions` table** before anything is read or applied, so old migrations
-  are not replayed.
+- **Ledger:** Goose records applied versions in `goose_db_version`; the runner
+  ensures that table exists before anything is read or applied.
 
 ## Rules
 
-- **Never renumber a legacy file.** The `0001`–`0032` files keep their original
-  numbers so an existing install's `schema_versions` rows line up with the Goose
-  ledger. Renumbering makes a replayed migration look new.
+- **Leave existing migration files alone.** The `0001`–`0032` files keep their
+  original numbers; renumbering them would make a migration that has already run
+  look new.
 - **New migrations use timestamped names** (`20261105120000_add_x.sql`, via
   `make migrate-create NAME=add_x`) so parallel PRs cannot collide on a number.
-- **Never run `goose fix`.** It renames files to sequential numbers and breaks the
-  legacy bootstrap above.
+- **Never run `goose fix`.** It renames files to sequential numbers, rewriting
+  history that the ledger already records.
 - **Never edit a merged migration.** The ledger records that a version was
   applied; editing its SQL afterwards is silently skipped, which is worse than a
   loud failure. A change is always a new migration.
@@ -65,9 +63,7 @@ make migrate-up                       # = go run ./cmd/api --migrate-only
 #    log line "database schema is up to date".
 ```
 
-`make migrate-status` reads the Goose ledger directly. On an install upgrading
-from the old numbering, run `make migrate-up` once first — that run bootstraps
-the ledger from `schema_versions` — and status is accurate from then on.
+`make migrate-status` reads the Goose ledger directly.
 
 ### Treating a failure
 
@@ -105,8 +101,8 @@ mid-migration.
 
 The migration tests in `internal/database/migrate_test.go` run against a **real
 PostgreSQL** and skip with a reason when `DATABASE_URL` is unset. They cover the
-fresh schema, idempotency, the legacy-ledger bootstrap, two concurrent runs, and
-a failed migration leaving its backup in place:
+fresh schema, idempotency, two concurrent runs, and a failed migration leaving
+its backup in place:
 
 ```sh
 make pg-up

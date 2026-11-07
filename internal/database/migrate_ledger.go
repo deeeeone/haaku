@@ -4,91 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log/slog"
 )
 
-// The ledger bootstrap.
+// The Goose ledger.
 //
-// This repository shipped numbered migrations before it had a runner, and an
-// install that already applied them records what it did in a `schema_versions`
-// table. Goose keeps its own `goose_db_version` ledger. If those two are not
-// reconciled, a Goose run sees every migration as pending and replays the whole
-// history against a schema that already has it — which either fails loudly
-// (duplicate column) or, worse, half-applies.
-//
-// So before anything reads or applies a migration, seed goose_db_version from
-// schema_versions, under the migration lock. The legacy files keep their
-// original numbers precisely so the versions line up.
+// The binary carries its own schema (migrations/embed.go) and applies it at
+// startup with Goose, which records applied versions in goose_db_version. This
+// file ensures that ledger exists before anything reads or applies a migration.
 
-const (
-	gooseVersionTable  = "goose_db_version"
-	legacyVersionTable = "schema_versions"
-)
-
-// bootstrapLegacyLedger creates the Goose ledger if it does not exist and, when
-// the legacy schema_versions table is present and the Goose ledger is still
-// empty, copies the legacy versions into it.
-func bootstrapLegacyLedger(ctx context.Context, conn *sql.Conn, logger *slog.Logger) error {
-	if err := ensureGooseVersionTable(ctx, conn); err != nil {
-		return err
-	}
-
-	hasLegacy, err := tableExists(ctx, conn, legacyVersionTable)
-	if err != nil {
-		return fmt.Errorf("checking for the legacy %s table: %w", legacyVersionTable, err)
-	}
-	if !hasLegacy {
-		return nil
-	}
-
-	var gooseApplied int
-	if err := conn.QueryRowContext(ctx,
-		`SELECT count(*) FROM `+gooseVersionTable+` WHERE is_applied AND version_id > 0`).Scan(&gooseApplied); err != nil {
-		return fmt.Errorf("reading the goose ledger: %w", err)
-	}
-	if gooseApplied > 0 {
-		// The Goose ledger is already in use; never rewrite it from the legacy
-		// table, which may be stale.
-		return nil
-	}
-
-	var legacyRows int
-	if err := conn.QueryRowContext(ctx,
-		`SELECT count(*) FROM `+legacyVersionTable).Scan(&legacyRows); err != nil {
-		return fmt.Errorf("reading the legacy %s table: %w", legacyVersionTable, err)
-	}
-	if legacyRows == 0 {
-		return nil
-	}
-
-	// schema_versions is not defined in this repository, so tolerate the two
-	// shapes a legacy install is likely to have: with and without a timestamp.
-	tstamp := "now()"
-	hasAppliedAt, err := columnExists(ctx, conn, legacyVersionTable, "applied_at")
-	if err != nil {
-		return err
-	}
-	if hasAppliedAt {
-		tstamp = "coalesce(sv.applied_at::timestamp, now())"
-	}
-
-	insert := `INSERT INTO ` + gooseVersionTable + ` (version_id, is_applied, tstamp)
-		SELECT sv.version::bigint, true, ` + tstamp + `
-		FROM ` + legacyVersionTable + ` sv
-		WHERE NOT EXISTS (
-			SELECT 1 FROM ` + gooseVersionTable + ` gv
-			WHERE gv.version_id = sv.version::bigint AND gv.is_applied
-		)
-		ORDER BY sv.version`
-	if _, err := conn.ExecContext(ctx, insert); err != nil {
-		return fmt.Errorf("seeding %s from %s: %w", gooseVersionTable, legacyVersionTable, err)
-	}
-
-	logger.InfoContext(ctx, "seeded the goose ledger from the legacy ledger",
-		"from", legacyVersionTable, "versions", legacyRows,
-		"note", "legacy files keep their original numbers, so nothing is replayed")
-	return nil
-}
+const gooseVersionTable = "goose_db_version"
 
 // ensureGooseVersionTable creates the Goose ledger with exactly the shape Goose
 // itself uses (internal/dialects/postgres.go), so Goose's own existence check
@@ -114,26 +38,4 @@ func ensureGooseVersionTable(ctx context.Context, conn *sql.Conn) error {
 		return fmt.Errorf("seeding the goose initial version: %w", err)
 	}
 	return nil
-}
-
-// tableExists reports whether an unqualified table is visible from the current
-// search_path.
-func tableExists(ctx context.Context, q queryer, name string) (bool, error) {
-	var exists bool
-	if err := q.QueryRowContext(ctx, "SELECT to_regclass($1) IS NOT NULL", name).Scan(&exists); err != nil {
-		return false, fmt.Errorf("checking whether %s exists: %w", name, err)
-	}
-	return exists, nil
-}
-
-func columnExists(ctx context.Context, q queryer, table, column string) (bool, error) {
-	var exists bool
-	err := q.QueryRowContext(ctx, `SELECT EXISTS (
-		SELECT 1 FROM information_schema.columns
-		WHERE table_schema = current_schema() AND table_name = $1 AND column_name = $2)`,
-		table, column).Scan(&exists)
-	if err != nil {
-		return false, fmt.Errorf("checking whether %s.%s exists: %w", table, column, err)
-	}
-	return exists, nil
 }
