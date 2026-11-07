@@ -75,6 +75,20 @@ export function clearSession(): void {
   emit()
 }
 
+/**
+ * Drop the stored local session when the API answers 401 while a token is
+ * held. A 401 means the token was revoked (banned, signed out elsewhere,
+ * expired) — retrying it only fails again, so the session is cleared and the
+ * auth guard sends the user back to /login.
+ *
+ * Both frontends' error paths (the auth/admin `authFetch` helper and the
+ * generated `createApiClient` response interceptor) call this one function so
+ * the two copies of this security-relevant rule cannot drift.
+ */
+export function clearSessionOnUnauthorized(response: Response): void {
+  if (response.status === 401 && readSession()) clearSession()
+}
+
 /** Subscribe to set/clear events. Returns an unsubscribe function. */
 export function subscribeSession(listener: Listener): () => void {
   listeners.add(listener)

@@ -1,3 +1,4 @@
+// @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // `client.ts` pulls in Clerk (for the `useApi` hook) and sonner (toasts); stub
@@ -11,6 +12,7 @@ vi.mock('sonner', () => ({
 }))
 
 import { toast } from 'sonner'
+import { clearSession, readSession, writeSession } from '@/auth/session-store'
 import { ApiError, createApiClient } from './client'
 
 function jsonResponse(body: unknown, status: number) {
@@ -23,6 +25,7 @@ function jsonResponse(body: unknown, status: number) {
 describe('createApiClient — error normalisation', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.clear()
     // Node's fetch/Request require an absolute URL; a relative baseUrl (the
     // production default) cannot be constructed outside a browser.
     vi.stubEnv('VITE_API_URL', 'http://api.test')
@@ -116,6 +119,36 @@ describe('createApiClient — error normalisation', () => {
     expect(error).toBeUndefined()
     expect(data).toEqual({ status: 'ok' })
     expect(toast.error).not.toHaveBeenCalled()
+  })
+
+  it('clears a stored local session when a request is answered 401', async () => {
+    writeSession({ token: 'hs_stale', user: { id: 'local_1' } as never })
+    expect(readSession()).not.toBeNull()
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => jsonResponse({ error: { code: 'unauthorized' } }, 401))
+    )
+
+    const client = createApiClient(async () => 'hs_stale')
+    await client.GET('/healthz').catch(() => {})
+
+    expect(readSession()).toBeNull()
+  })
+
+  it('leaves an unrelated stored session alone on a non-401 error', async () => {
+    writeSession({ token: 'hs_ok', user: { id: 'local_1' } as never })
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => jsonResponse({ error: { code: 'not_found' } }, 404))
+    )
+
+    const client = createApiClient(async () => 'hs_ok')
+    await client.GET('/healthz').catch(() => {})
+
+    expect(readSession()).not.toBeNull()
+    clearSession()
   })
 
   it('injects the bearer token from getToken on every request', async () => {

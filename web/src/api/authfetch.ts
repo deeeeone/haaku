@@ -8,7 +8,7 @@
  */
 
 import { ApiError } from '@/api/fetch'
-import { clearSession, readSession } from '@/auth/session-store'
+import { clearSessionOnUnauthorized } from '@/auth/session-store'
 
 const BASE_URL = import.meta.env.VITE_API_URL || '/'
 
@@ -67,7 +67,7 @@ export async function authFetch<T>(
   if (!response.ok) {
     // A 401 while holding a local token means it was revoked (banned, signed
     // out elsewhere, expired). Drop it so the guard returns to /login.
-    if (response.status === 401 && readSession()) clearSession()
+    clearSessionOnUnauthorized(response)
     const payload = (await response.json().catch(() => null)) as {
       error?: { code?: string; message?: string }
     } | null
