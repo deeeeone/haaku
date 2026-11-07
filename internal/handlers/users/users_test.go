@@ -9,10 +9,12 @@ import (
 
 func TestDefaultSettings(t *testing.T) {
 	s := defaultSettings()
-	if s.Privacy.Profile != "public" || s.Privacy.History != "friends" {
+	// Privacy defaults are the non-tightening values so the displayed default
+	// agrees with enforcement (an unset flag preserves pre-feature visibility).
+	if s.Privacy.Profile != "public" || s.Privacy.History != "public" {
 		t.Errorf("privacy defaults wrong: %+v", s.Privacy)
 	}
-	if s.Privacy.Ratings != "public" || s.Privacy.Activity != "friends" {
+	if s.Privacy.Ratings != "public" || s.Privacy.Activity != "public" {
 		t.Errorf("privacy defaults wrong: %+v", s.Privacy)
 	}
 	if !s.Notifications.Follows || !s.Notifications.Replies || !s.Notifications.ImportComplete {
@@ -41,8 +43,8 @@ func TestParseSettingsOverridesAndBackfills(t *testing.T) {
 	if got.Privacy.Profile != "private" {
 		t.Errorf("Profile = %q, want private", got.Privacy.Profile)
 	}
-	// Missing privacy fields are backfilled from defaults.
-	if got.Privacy.History != "friends" || got.Privacy.Ratings != "public" || got.Privacy.Activity != "friends" {
+	// Missing privacy fields are backfilled from defaults (all non-tightening).
+	if got.Privacy.History != "public" || got.Privacy.Ratings != "public" || got.Privacy.Activity != "public" {
 		t.Errorf("backfill failed: %+v", got.Privacy)
 	}
 	// Note (current impl behavior): parseSettings backfills privacy fields only,

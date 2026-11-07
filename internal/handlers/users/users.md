@@ -6,8 +6,8 @@ Account/profile management:
 
 - `GET /v1/users/me` — full profile (incl. admin/moderator flags, plan, status).
 - `PUT /v1/users/me` — partial profile update (name, bio, location, timezone, language, is_private).
-- `GET /v1/users/:id` — public profile wrapped in the shared `auth.PrivacyFilter("id")` middleware; stats/activity are not fabricated (followers/following are real; watched/lists/activity omitted until the stats engine lands).
-- **Public-profile read surface** (`profile_reads.go`, issue #4 Users section) — read-only views of another user's data, every `:id` route behind `auth.PrivacyFilter("id")` and the same deleted/pending-deletion gate `handleGetUser` uses (`profileTarget`):
+- `GET /v1/users/:id` — public profile wrapped in the shared `auth.PrivacyFilterSection("id", "profile")` middleware (so `settings.privacy.profile` is enforced on top of `is_private`); stats/activity are not fabricated (followers/following are real; watched/lists/activity omitted until the stats engine lands).
+- **Public-profile read surface** (`profile_reads.go`, issue #4 Users section) — read-only views of another user's data, every `:id` route behind the shared profile gate (`auth.PrivacyFilterSection("id", <section>)` where a per-section flag names it, else `auth.PrivacyFilter("id")`) and the same deleted/pending-deletion gate `handleGetUser` uses (`profileTarget`):
   - `GET /v1/users/:id/history`, `/history/{movies|shows|seasons|episodes|all}`, `/history/{type}/{id}` (`?id_type=` resolves an external id).
   - `GET /v1/users/:id/ratings` and `/ratings/{type}`.
   - `GET /v1/users/:id/watchlist` and `/watchlist/{type}` (`?sort_by=rank|listed|added|title`, `?sort_how=asc|desc`).
@@ -17,7 +17,7 @@ Account/profile management:
   - `GET /v1/users/:id/notes/{type}`.
   - `GET /v1/users/:id/likes/comments`, `/likes/lists`; plus the caller's own `GET /v1/users/me/likes/comments`, `/me/likes/lists`.
   - Response shapes are the ones the caller's own `/v1/sync/...`, `/v1/comments/...` and `/v1/notes/...` routes return (exported aliases in those packages: `sync.BuildHistoryResponse`, `comments.ToCommentResponse`, `notes.ToNoteResponse`) — list endpoints use the `{items,page,limit,row_count}` envelope, comments/notes use their own `{data,page,limit,total_count}`. Empty collections are `[]`, never `null`.
-- `GET|PUT /v1/users/me/settings` — settings as JSON on the user row (privacy + notification prefs, defaulted/backfilled).
+- `GET|PUT /v1/users/me/settings` — settings as JSON on the user row (privacy + notification prefs, defaulted/backfilled). The `privacy.{profile,history,ratings,activity}` flags are **enforced** on the reads they name — see "Per-section privacy flags (enforced)".
 - `GET /v1/users/me/export` — owner-scoped, **streamed** JSON archive of everything the caller owns (`export.go`, issue #10 §1). See "Data export" below.
 - ~~`POST /v1/users/me/avatar`~~ — **removed (2026-08)**. Avatars are Clerk-managed (mirrored via webhook/lazy sync); there is no upload route, so a placeholder `avatar_url` can never be persisted.
 - `DELETE /v1/users/me` — soft-delete (`status = pending_deletion`; async cleanup is a stub).
@@ -34,6 +34,7 @@ Uses shared `auth.PrivacyFilter` for the public route; shared `auth.AuthRequired
 | Public profile + privacy filter | Done |
 | **Public-profile read surface** (history/ratings/watchlist/collection/watching/comments/notes/likes, issue #4) | Done (read-only; stats-engine-dependent pieces out of scope) |
 | Settings get/update | Done |
+| **Per-section privacy flags enforced** (`settings.privacy.{profile,history,ratings,activity}` gate the reads they name; `is_private` master override; unset = today's behaviour; social graph ratified public — issue #48) | Done |
 | **Data export** (`GET /users/me/export`, streamed, versioned) | Done (issue #10 §1) |
 | Avatar upload | N/A — endpoint removed (Clerk-managed identity); no placeholder `avatar_url` ever persisted |
 | Account deletion | Partial (no async cleanup) |
@@ -70,27 +71,90 @@ absent from the serialised bytes.
 Intended to round-trip with the importer in issue #7 (same format family). A
 Trakt-compatible export shape is a **follow-up**, not a second format today.
 
-## Public-profile read surface — privacy model and what it does NOT gate
+## Public-profile read surface — privacy model
 
-Every `/v1/users/:id/...` route added for issue #4 runs `auth.PrivacyFilter("id")`
-first, then `profileTarget`. The combined behaviour is:
+Every `/v1/users/:id/...` route added for issue #4 runs `auth.PrivacyFilterSection("id", <section>)`
+(or, where no section flag names the route, plain `auth.PrivacyFilter("id")`) first, then
+`profileTarget`. The combined behaviour is:
 
 | Request | Result |
 |---|---|
 | unknown id | 404 (PrivacyFilter) |
 | block in either direction (caller ↔ target) | 404 — existence is not leaked |
-| `status = deleted` / `pending_deletion` | 404 (`profileTarget`; PrivacyFilter does not look at status) |
-| private profile, caller is a stranger | 403 |
+| `status = deleted` / `pending_deletion` | 404 (`profileTarget`; the filter does not look at status) |
+| private profile (`is_private`), caller is a stranger | 403 — **master override: every section is hidden** |
 | private profile, caller is self / admin / a follower | 200 |
-| public profile | 200 for anyone, including anonymous |
+| public profile, section flag `friends`, stranger | 403 |
+| public profile, section flag `friends`, follower / self / admin | 200 |
+| public profile, section flag `private`, stranger / follower | 403 |
+| public profile, section flag `private`, self / admin | 200 |
+| public profile, section flag absent / `public` | 200 for anyone, including anonymous |
+
+## Per-section privacy flags (enforced)
+
+`users.settings.privacy.{profile,history,ratings,activity}` are enforced on the reads each
+flag names. This is the **single source of truth** for the semantics; the enforcement lives in
+`auth.PrivacyFilterSection` (`internal/auth/privacy.go`).
+
+### Which flag gates which route family
+
+| Flag (`settings.privacy.*`) | Routes gated |
+|---|---|
+| `profile` | `GET /v1/users/{id}` and its aggregates `GET /v1/users/{id}/stats` |
+| `history` | `GET /v1/users/{id}/history`, `/history/{media_type}`, `/history/{media_type}/{media_id}` |
+| `ratings` | `GET /v1/users/{id}/ratings`, `/ratings/{media_type}` |
+| `activity` | `GET /v1/users/{id}/watching` (the target's live playback — there is no `/users/{id}/activity` route; the caller-scoped feed is `/users/me/activity`) |
+
+### Value semantics (per flag)
+
+| Stored value | Who sees the section |
+|---|---|
+| `"friends"` | self, admins, and followers (any approved `user_follows` row — the same notion of "follower" the `is_private` gate already used) |
+| `"private"` | self and admins only |
+| `"public"` | anyone the `is_private` gate admits, including anonymous |
+| **absent / unset** | **exactly as `"public"`** — today's behaviour (see "Unset flags" below) |
+| unknown value | treated as non-restricting (`"public"`); never a 500 |
+
+### `is_private` is the master override
+
+`users.is_private` remains a **master override**: a private profile hides **every** section from
+everyone but self, admins, and followers, no matter what the sub-flags say. A sub-flag set to
+`"private"` tightens *further* on top of `is_private` (e.g. a private profile whose `history` is
+`"private"` hides history even from a follower); a sub-flag can never **loosen** `is_private`.
+
+### Unset flags preserve today's behaviour (opt-in tightening)
+
+The flags are **opt-in privacy tightening, never a retroactive public→private flip**. Rows that
+predate the feature carry `users.settings = '{}'` (the column default) — no `privacy` key at all.
+An absent flag is treated as non-restricting, so those rows read exactly as they did before the
+flag was enforced. Because the flag only ever tightens, `defaultSettings()` returns the
+non-tightening values (`profile`/`history`/`ratings`/`activity` all `"public"`), so the value
+`/users/me/settings` reports always agrees with what is actually enforced and a settings save can
+never silently flip an existing row private.
+
+### Failure mode: a malformed settings blob fails safe
+
+`auth.PrivacyFilterSection` parses `users.settings` itself (the target row is already loaded, so
+there is no second query per handler). An empty/absent/`null`/malformed blob — or a `privacy`
+value that is not a string — yields "no restriction": the section stays at today's default and the
+request is **never a 500**, and the independent `is_private`/block gates still apply, so a
+malformed blob can never over-share past a private profile.
+
+### Deliberately NOT gated — no flag names them
+
+`collection`, `watchlist`, `comments`, `notes`, `likes`, `lists`, and the **social graph**
+(`followers`/`following`/`friends`) carry no per-section flag, so they run plain
+`auth.PrivacyFilter("id")`: only `is_private` and blocks apply. These were **not** silently
+dropped — the flags defined today are `profile`/`history`/`ratings`/`activity`, and none of them
+names collection/watchlist/watching/comments/notes/likes. Whether a future flag should cover
+them is an explicit open question (raised on the PR for this change), not an accident. The
+social graph is ratified as public by design — see `internal/handlers/social/social.md`.
 
 ### What the filter does NOT gate (deliberate, must not be misread as covered)
 
-- **Per-section privacy settings.** `users.settings.privacy.{profile,history,ratings,activity}`
-  ("public"/"friends"/"private") are stored and returned by `/users/me/settings`, but
-  **nothing enforces them**. History/ratings/activity visibility is currently all-or-nothing
-  via the single `is_private` flag. A user who sets `privacy.history = private` while
-  `is_private = false` still gets a public `/users/:id/history`.
+- **Per-section privacy settings — ENFORCED (superseded).** The flags are now read on the routes
+  listed above; the semantics live in "Per-section privacy flags (enforced)" just above. (Previously
+  this bullet said "nothing enforces them".)
 - **User-authored content and authorship.** For a public profile, comment bodies
   (`comment.body`), note bodies (`user_notes.note`) and the `user_id` on every comment are
   returned. The comments route filters by author (`user_id = target`), so third-party replies
@@ -104,13 +168,14 @@ first, then `profileTarget`. The combined behaviour is:
   `/v1/users/:id/stats` (stats package) *were* registered without the profile gate. `/lists` ran
   `auth.AuthRequired()` only and `/stats` had no middleware at all, so an authenticated stranger
   could read a private user's lists and an **anonymous** caller could read a private user's
-  aggregate stats. **FIXED**: both now run `auth.PrivacyFilter("id")` — `/lists` keeps its
-  `auth.AuthRequired()` first (AuthRequired then PrivacyFilter, matching this package). A private
+  aggregate stats. **FIXED**: both now run the profile gate — `/lists` keeps its
+  `auth.AuthRequired()` first then `auth.PrivacyFilter("id")` (matching this package), and `/stats`
+  runs `auth.PrivacyFilterSection("id", "profile")` (it is part of the profile surface). A private
   profile's lists/stats are 403 to a stranger, 200 to self/admin/follower, 404 on a block in either
   direction or an unknown user. Regression tests (`stats_privacy_test.go`, `lists_privacy_test.go`)
   assert the wired chain still carries the filter.
-- **`user_playback` / `user_checkins`.** Not exposed at all; the only "activity" read is
-  `watching` below.
+- **`user_playback` / `user_checkins`.** Not exposed at all; `watching` below is the only
+  target-scoped "activity" read (and its `activity` flag is enforced, see above).
 
 ### Watching (`GET /v1/users/:id/watching`)
 

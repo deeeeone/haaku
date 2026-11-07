@@ -89,27 +89,27 @@ func RegisterProfileReadRoutes(api fiber.Router) {
 	users.Get("/me/likes/comments", auth.AuthRequired(), handleMyLikedComments)
 	users.Get("/me/likes/lists", auth.AuthRequired(), handleMyLikedLists)
 
-	// History
-	users.Get("/:id/history", auth.PrivacyFilter("id"), handleUserHistory)
-	users.Get("/:id/history/:media_type", auth.PrivacyFilter("id"), handleUserHistory)
-	users.Get("/:id/history/:media_type/:media_id", auth.PrivacyFilter("id"), handleUserHistoryItem)
+	// History — gated by users.settings.privacy.history.
+	users.Get("/:id/history", auth.PrivacyFilterSection("id", "history"), handleUserHistory)
+	users.Get("/:id/history/:media_type", auth.PrivacyFilterSection("id", "history"), handleUserHistory)
+	users.Get("/:id/history/:media_type/:media_id", auth.PrivacyFilterSection("id", "history"), handleUserHistoryItem)
 
-	// Ratings
-	users.Get("/:id/ratings", auth.PrivacyFilter("id"), handleUserRatings)
-	users.Get("/:id/ratings/:media_type", auth.PrivacyFilter("id"), handleUserRatings)
+	// Ratings — gated by users.settings.privacy.ratings.
+	users.Get("/:id/ratings", auth.PrivacyFilterSection("id", "ratings"), handleUserRatings)
+	users.Get("/:id/ratings/:media_type", auth.PrivacyFilterSection("id", "ratings"), handleUserRatings)
 
-	// Watchlist
+	// Watchlist — no per-section flag names this collection; is_private/block only.
 	users.Get("/:id/watchlist", auth.PrivacyFilter("id"), handleUserWatchlist)
 	users.Get("/:id/watchlist/:media_type", auth.PrivacyFilter("id"), handleUserWatchlist)
 
-	// Collection
+	// Collection — no per-section flag names this collection; is_private/block only.
 	users.Get("/:id/collection", auth.PrivacyFilter("id"), handleUserCollection)
 	users.Get("/:id/collection/:media_type", auth.PrivacyFilter("id"), handleUserCollection)
 
-	// Watching (live scrobble session)
-	users.Get("/:id/watching", auth.PrivacyFilter("id"), handleUserWatching)
+	// Watching — the target's live activity; gated by users.settings.privacy.activity.
+	users.Get("/:id/watching", auth.PrivacyFilterSection("id", "activity"), handleUserWatching)
 
-	// Comments, notes, likes
+	// Comments, notes, likes — no per-section flag names these; is_private/block only.
 	users.Get("/:id/comments/:comment_type/:media_type", auth.PrivacyFilter("id"), handleUserComments)
 	users.Get("/:id/notes/:media_type", auth.PrivacyFilter("id"), handleUserNotes)
 	users.Get("/:id/likes/comments", auth.PrivacyFilter("id"), handleUserLikedComments)

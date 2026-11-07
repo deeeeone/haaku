@@ -53,8 +53,9 @@ func RegisterRoutes(api fiber.Router) {
 	me.Get("/export", auth.AuthRequired(), handleExport)
 	me.Delete("/", auth.AuthRequired(), handleDeleteAccount)
 
-	// /users/:id routes (public, privacy-filtered)
-	users.Get("/:id", auth.PrivacyFilter("id"), handleGetUser)
+	// /users/:id routes (public, privacy-filtered). The profile read is gated by
+	// users.settings.privacy.profile in addition to is_private/blocks.
+	users.Get("/:id", auth.PrivacyFilterSection("id", "profile"), handleGetUser)
 
 	// Block endpoints (stub — 501)
 	users.Post("/:id/block", auth.AuthRequired(), handleBlockUser)
@@ -524,13 +525,20 @@ func queueUserVersion(cacheTx *cache.CacheTransaction, userID string) {
 // ---------------------------------------------------------------------------
 
 // defaultSettings returns the default settings shape.
+//
+// The privacy defaults are the NON-tightening values: history/activity default
+// to "public", matching the pre-feature behaviour (with is_private=false every
+// section was already public). The per-section flags are opt-in tightening, so
+// the displayed default must agree with enforcement — a row that never set a
+// flag stays public, and a default of "friends" here would both lie about
+// enforcement and let a settings save silently flip an existing row private.
 func defaultSettings() SettingsResponse {
 	return SettingsResponse{
 		Privacy: PrivacySettings{
 			Profile:  "public",
-			History:  "friends",
+			History:  "public",
 			Ratings:  "public",
-			Activity: "friends",
+			Activity: "public",
 		},
 		Notifications: NotificationSettings{
 			Follows:        true,
