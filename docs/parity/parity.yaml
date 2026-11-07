@@ -631,3 +631,43 @@ sections:
         status: blocked-engine
         rationale: "Custom 501: our own show 'more like this' route; answers 501 not_implemented until the recommendations engine lands. Recorded here so a 501 route cannot go unmeasured."
         engine: "recommendations engine (issue #5)"
+      - trakt: ""
+        ours: "GET /v1/auth/config"
+        status: out-of-scope
+        rationale: "custom: identity-mode discovery (local vs clerk, signup policy, first-run state). Registered in BOTH modes — this is how a client knows whether to show a local login form at all."
+      - trakt: ""
+        ours: "POST /v1/auth/local/signup"
+        status: out-of-scope
+        rationale: "custom: local account signup (issue #53). Registered only when HAAKU_AUTH_MODE=local; in clerk mode neither the route nor this row's target exists, and openapi.yaml is generated in the default local mode."
+      - trakt: ""
+        ours: "POST /v1/auth/local/login"
+        status: out-of-scope
+        rationale: "custom: email+password login issuing an opaque, revocable server-side session token (hs_ prefix)."
+      - trakt: ""
+        ours: "POST /v1/auth/local/logout"
+        status: out-of-scope
+        rationale: "custom: revokes the session row named by the bearer token."
+      - trakt: ""
+        ours: "POST /v1/auth/local/password-reset"
+        status: out-of-scope
+        rationale: "custom: redeems the one-time admin-issued reset token and revokes every session for that user."
+      - trakt: ""
+        ours: "GET /v1/admin/users"
+        status: out-of-scope
+        rationale: "custom: admin account list (email, username, created_at, last_active_at, status) for the local panel."
+      - trakt: ""
+        ours: "POST /v1/admin/users/{id}/ban"
+        status: out-of-scope
+        rationale: "custom: ban/lock an account and revoke its live sessions."
+      - trakt: ""
+        ours: "POST /v1/admin/users/{id}/unlock"
+        status: out-of-scope
+        rationale: "custom: lift a ban/lock."
+      - trakt: ""
+        ours: "POST /v1/admin/users/{id}/approve"
+        status: out-of-scope
+        rationale: "custom: approve a pending signup (the default HAAKU_SIGNUP=approval queue)."
+      - trakt: ""
+        ours: "POST /v1/admin/users/{id}/password-reset"
+        status: out-of-scope
+        rationale: "custom: issue a one-time reset token for an admin to hand over; no mail transport is involved."
