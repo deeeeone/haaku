@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
-	"trakt-api/internal/database"
-	"trakt-api/internal/openapi"
-	"trakt-api/internal/response"
+	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/openapi"
+	"github.com/haaku-tv/haaku/internal/response"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"

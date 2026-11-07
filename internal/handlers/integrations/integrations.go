@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
-	"trakt-api/internal/auth"
-	"trakt-api/internal/database"
-	"trakt-api/internal/openapi"
+	"github.com/haaku-tv/haaku/internal/auth"
+	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/openapi"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/haaku-tv/haaku/internal/response"
 	"gorm.io/gorm"
-	"trakt-api/internal/response"
 )
 
 // ---------------------------------------------------------------------------

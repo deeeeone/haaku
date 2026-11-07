@@ -175,11 +175,11 @@ func TestAADHelpers(t *testing.T) {
 // changes, this test fails — which is the point.
 func TestDeriveKeyIsHKDFSHA256(t *testing.T) {
 	master := []byte("0123456789abcdef0123456789abcdef")
-	got, err := DeriveKey(master, "tkiller/data-encryption/v1", 32)
+	got, err := DeriveKey(master, "haaku/data-encryption/v1", 32)
 	if err != nil {
 		t.Fatalf("DeriveKey: %v", err)
 	}
-	const want = "0ea806900c7a8aaa2f4f5b94f0c1d906205aaab8dded605be6814f74555cc725"
+	const want = "c2cf18f752c435380042579a57bdab1070d179dd6e11cafec77eb5c686f11c8c"
 	if hex.EncodeToString(got) != want {
 		t.Fatalf("DeriveKey data key = %s, want %s", hex.EncodeToString(got), want)
 	}
@@ -190,7 +190,7 @@ func TestDeriveKeyIsHKDFSHA256(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
 	}
-	want2, err := hkdf.Expand(sha256.New, prk, "tkiller/data-encryption/v1", 32)
+	want2, err := hkdf.Expand(sha256.New, prk, "haaku/data-encryption/v1", 32)
 	if err != nil {
 		t.Fatalf("Expand: %v", err)
 	}
@@ -201,11 +201,11 @@ func TestDeriveKeyIsHKDFSHA256(t *testing.T) {
 
 func TestDeriveKeyPurposeSeparation(t *testing.T) {
 	master := []byte("0123456789abcdef0123456789abcdef")
-	a, err := DeriveKey(master, "tkiller/data-encryption/v1", 32)
+	a, err := DeriveKey(master, "haaku/data-encryption/v1", 32)
 	if err != nil {
 		t.Fatalf("DeriveKey a: %v", err)
 	}
-	b, err := DeriveKey(master, "tkiller/backup-encryption/v1", 32)
+	b, err := DeriveKey(master, "haaku/backup-encryption/v1", 32)
 	if err != nil {
 		t.Fatalf("DeriveKey b: %v", err)
 	}

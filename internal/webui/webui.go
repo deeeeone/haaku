@@ -14,7 +14,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 
-	"trakt-api/web"
+	"github.com/haaku-tv/haaku/web"
 )
 
 // apiPrefixes are path prefixes owned by the API. A request under one of these

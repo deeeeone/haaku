@@ -1,9 +1,9 @@
 #!/command/with-contenv bash
 # shellcheck shell=bash
-# Map the tkiller account onto PUID and PGID.
+# Map the haaku account onto PUID and PGID.
 set -euo pipefail
-# shellcheck source=omnibus/rootfs/etc/tkiller-omnibus/lib.sh
-source /etc/tkiller-omnibus/lib.sh
+# shellcheck source=omnibus/rootfs/etc/haaku-omnibus/lib.sh
+source /etc/haaku-omnibus/lib.sh
 
 PUID="${PUID:-911}"
 PGID="${PGID:-911}"
@@ -16,18 +16,18 @@ fi
 # the app's processes, which breaks PostgreSQL peer authentication: the server
 # maps the process's user name to the database role.
 other="$(getent passwd "$PUID" | cut -d: -f1 || true)"
-if [[ -n "$other" && "$other" != tkiller ]]; then
+if [[ -n "$other" && "$other" != haaku ]]; then
   echo "PUID $PUID is already used by the $other account in this image; choose another uid" >&2
   exit 1
 fi
 
-[[ "$(id -g tkiller)" == "$PGID" ]] || groupmod -o -g "$PGID" tkiller
-[[ "$(id -u tkiller)" == "$PUID" ]] || usermod -o -u "$PUID" tkiller
+[[ "$(id -g haaku)" == "$PGID" ]] || groupmod -o -g "$PGID" haaku
+[[ "$(id -u haaku)" == "$PUID" ]] || usermod -o -u "$PUID" haaku
 
 cat <<BANNER
 ───────────────────────────────────────
-trakt-killer omnibus
-tkiller uid: $(id -u tkiller)
-tkiller gid: $(id -g tkiller)
+haaku omnibus
+haaku uid: $(id -u haaku)
+haaku gid: $(id -g haaku)
 ───────────────────────────────────────
 BANNER

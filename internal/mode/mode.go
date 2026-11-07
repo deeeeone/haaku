@@ -27,7 +27,7 @@ const (
 )
 
 // EnvVar is the environment variable that selects the mode.
-const EnvVar = "TKILLER_MODE"
+const EnvVar = "HAAKU_MODE"
 
 // Parse converts a raw value to a Mode, defaulting to API when empty.
 func Parse(raw string) (Mode, error) {

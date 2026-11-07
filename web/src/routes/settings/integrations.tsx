@@ -66,17 +66,17 @@ function IntegrationsPage() {
 
   const connectedApps = [
     {
-      id: 'trakt-web',
-      name: 'Trakt Web',
-      description: 'Official Trakt web application',
+      id: 'haaku-web',
+      name: 'Haaku Web',
+      description: 'Official Haaku web application',
       icon: Globe,
       lastUsed: 'Now',
       scopes: ['read', 'write'],
     },
     {
-      id: 'trakt-ios',
-      name: 'Trakt iOS',
-      description: 'Official iOS application',
+      id: 'haaku-ios',
+      name: 'Haaku iOS',
+      description: 'Official Haaku iOS application',
       icon: Shield,
       lastUsed: '2 days ago',
       scopes: ['read', 'write', 'sync'],

@@ -1,5 +1,5 @@
 /**
- * API data type definitions for the trakt-killer API.
+ * API data type definitions for the haaku API.
  * These mirror the backend response shapes (Trakt-compatible format).
  */
 

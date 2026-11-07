@@ -72,7 +72,7 @@ func TestDBPoolCollectorReportsSaturation(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	reg.MustRegister(newDBPoolCollectorFrom(func() (*sql.DB, bool) { return pool, true }))
 
-	states := gaugeByLabel(t, reg, "tkiller_db_pool_connections", "state")
+	states := gaugeByLabel(t, reg, "haaku_db_pool_connections", "state")
 	if got := states["max"]; got != 7 {
 		t.Errorf("max = %v, want 7", got)
 	}
@@ -94,7 +94,7 @@ func TestDBPoolCollectorSilentWithoutDatabase(t *testing.T) {
 		t.Fatalf("gather: %v", err)
 	}
 	for _, mf := range mfs {
-		if mf.GetName() == "tkiller_db_pool_connections" {
+		if mf.GetName() == "haaku_db_pool_connections" {
 			t.Fatal("pool series emitted with no database configured")
 		}
 	}
@@ -114,20 +114,20 @@ func TestRedisCollectorExposesAvailabilityAndBreakerState(t *testing.T) {
 	var breaker *dto.MetricFamily
 	for _, mf := range mfs {
 		switch mf.GetName() {
-		case "tkiller_redis_available":
+		case "haaku_redis_available":
 			available = mf
-		case "tkiller_redis_circuit_breaker_state":
+		case "haaku_redis_circuit_breaker_state":
 			breaker = mf
 		}
 	}
 	if available == nil {
-		t.Fatal("tkiller_redis_available missing")
+		t.Fatal("haaku_redis_available missing")
 	}
 	if got := available.Metric[0].GetGauge().GetValue(); got != 0 {
 		t.Errorf("redis available = %v, want 0 with no client configured", got)
 	}
 	if breaker == nil {
-		t.Fatal("tkiller_redis_circuit_breaker_state missing")
+		t.Fatal("haaku_redis_circuit_breaker_state missing")
 	}
 	ones := 0
 	for _, m := range breaker.Metric {

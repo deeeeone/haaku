@@ -8,14 +8,14 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/haaku-tv/haaku/internal/openapi"
+	tredis "github.com/haaku-tv/haaku/redis"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"strings"
 	"time"
-	"trakt-api/internal/openapi"
-	tredis "trakt-api/redis"
 
 	"github.com/gofiber/fiber/v2"
 )

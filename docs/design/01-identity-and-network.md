@@ -12,8 +12,8 @@ One build, two independent config toggles. Haaku is primarily a self-hosted trac
 
 | Toggle | Values | Default | What it controls |
 |---|---|---|---|
-| `TKILLER_AUTH_MODE` | `local` \| `clerk` | `local` | Who issues identity. `local` enables the in-app account module (signup/login/sessions/admin panel, issue #53); `clerk` disables that module entirely and delegates to Clerk. |
-| `TKILLER_SOCIAL_MODE` | `off` \| `host` \| `client` | `off` | Whether this instance speaks to the social network, and in which direction. `host` = this instance runs the network (official domain). `client` = this instance points at a network host and piggybacks it. `off` = no social, no outbound calls. |
+| `HAAKU_AUTH_MODE` | `local` \| `clerk` | `local` | Who issues identity. `local` enables the in-app account module (signup/login/sessions/admin panel, issue #53); `clerk` disables that module entirely and delegates to Clerk. |
+| `HAAKU_SOCIAL_MODE` | `off` \| `host` \| `client` | `off` | Whether this instance speaks to the social network, and in which direction. `host` = this instance runs the network (official domain). `client` = this instance points at a network host and piggybacks it. `off` = no social, no outbound calls. |
 
 Any combination is legal and each has a coherent story:
 
@@ -24,8 +24,8 @@ Any combination is legal and each has a coherent story:
 
 ## Accounts
 
-- **Local (`TKILLER_AUTH_MODE=local`)** — the in-app module. Signup, login, logout, sessions derived from `TKILLER_SECRET_KEY` (the existing root key, via `internal/secret`'s per-purpose HKDF — no second key, no second crypto scheme), plus a deliberately small admin panel: a table of users (email, username, created, last active, status) with ban/lock, unlock and "send password reset". First account on an empty instance becomes the owner/admin; signup policy after that is config. Multi-user is expected — several people on the same box, each with their own history and lists. Full scope in issue #53.
-- **Clerk (`TKILLER_AUTH_MODE=clerk`)** — Clerk owns accounts, signup, password reset and the user directory; the local module is **disabled** (routes not registered, so the OpenAPI inventory shows it). That is what the official instance runs; TheIntroDB's setup is the reference for how clean it should be.
+- **Local (`HAAKU_AUTH_MODE=local`)** — the in-app module. Signup, login, logout, sessions derived from `HAAKU_SECRET_KEY` (the existing root key, via `internal/secret`'s per-purpose HKDF — no second key, no second crypto scheme), plus a deliberately small admin panel: a table of users (email, username, created, last active, status) with ban/lock, unlock and "send password reset". First account on an empty instance becomes the owner/admin; signup policy after that is config. Multi-user is expected — several people on the same box, each with their own history and lists. Full scope in issue #53.
+- **Clerk (`HAAKU_AUTH_MODE=clerk`)** — Clerk owns accounts, signup, password reset and the user directory; the local module is **disabled** (routes not registered, so the OpenAPI inventory shows it). That is what the official instance runs; TheIntroDB's setup is the reference for how clean it should be.
 - The two never both authenticate the same instance. There is no dual-write and no local account shadowing a Clerk account.
 
 Both modes must produce the same downstream contract: `c.Locals("user_id")` and the existing `AuthRequired` / `PrivacyFilterSection` / `RequireModerator` middleware keep working untouched. Identity is issued above them, not inside them.

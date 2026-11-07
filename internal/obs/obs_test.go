@@ -76,14 +76,14 @@ func TestMetricsListenerServesLabeledSeries(t *testing.T) {
 
 	// Labels are rendered in alphabetical order: method, route, status.
 	wants := []string{
-		`tkiller_http_requests_total{method="GET",route="/v1/users/:id",status="200"} 1`,
-		`tkiller_http_requests_total{method="GET",route="/v1/users/:id",status="404"} 1`,
-		`tkiller_http_rate_limited_total 1`,
-		`tkiller_worker_heartbeat_timestamp_seconds{worker="stats_worker"}`,
-		`tkiller_worker_processed_total{worker="stats_worker"} 2`,
-		`tkiller_worker_failed_total{worker="stats_worker"} 1`,
-		`tkiller_redis_available`,
-		`tkiller_redis_circuit_breaker_state{state=`,
+		`haaku_http_requests_total{method="GET",route="/v1/users/:id",status="200"} 1`,
+		`haaku_http_requests_total{method="GET",route="/v1/users/:id",status="404"} 1`,
+		`haaku_http_rate_limited_total 1`,
+		`haaku_worker_heartbeat_timestamp_seconds{worker="stats_worker"}`,
+		`haaku_worker_processed_total{worker="stats_worker"} 2`,
+		`haaku_worker_failed_total{worker="stats_worker"} 1`,
+		`haaku_redis_available`,
+		`haaku_redis_circuit_breaker_state{state=`,
 	}
 	for _, want := range wants {
 		if !strings.Contains(body, want) {
@@ -93,11 +93,11 @@ func TestMetricsListenerServesLabeledSeries(t *testing.T) {
 
 	// The latency histogram must be present, and it must carry the route and
 	// status labels — that is the whole point of the per-route series.
-	if !strings.Contains(body, "# TYPE tkiller_http_request_duration_seconds histogram") {
+	if !strings.Contains(body, "# TYPE haaku_http_request_duration_seconds histogram") {
 		t.Error("latency histogram type line missing")
 	}
-	if !strings.Contains(body, `tkiller_http_request_duration_seconds_count{method="GET",route="/v1/users/:id",status="200"} 1`) {
-		t.Errorf("latency histogram is not labelled by route and status:\n%s", grepLines(body, "tkiller_http_request_duration_seconds_count"))
+	if !strings.Contains(body, `haaku_http_request_duration_seconds_count{method="GET",route="/v1/users/:id",status="200"} 1`) {
+		t.Errorf("latency histogram is not labelled by route and status:\n%s", grepLines(body, "haaku_http_request_duration_seconds_count"))
 	}
 }
 
@@ -135,7 +135,7 @@ func TestWorkerHeartbeatRecordsNow(t *testing.T) {
 		t.Fatalf("gather: %v", err)
 	}
 	for _, mf := range mfs {
-		if mf.GetName() != "tkiller_worker_heartbeat_timestamp_seconds" {
+		if mf.GetName() != "haaku_worker_heartbeat_timestamp_seconds" {
 			continue
 		}
 		for _, m := range mf.Metric {

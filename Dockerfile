@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 #
-# The base image: the tkiller binary with its frontend embedded, plus a
+# The base image: the haaku binary with its frontend embedded, plus a
 # postgresql-client. The omnibus image (omnibus/Dockerfile) is built FROM this
 # one, so anything the service needs at runtime belongs here, and omnibus/
 # adds only the bundled services and s6. Both images then run the same binary.
@@ -75,7 +75,9 @@ RUN apt-get update && \
     apt-get purge -y gnupg && apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/*
 LABEL org.opencontainers.image.title="haaku" \
-      org.opencontainers.image.description="Open, self-hostable watch-tracking server (Trakt replacement)" \
+      org.opencontainers.image.description="Open, self-hostable watch-tracking server" \
+      org.opencontainers.image.authors="Haaku TV <hello@haaku.tv>" \
+      org.opencontainers.image.licenses="GPL-3.0+" \
       org.opencontainers.image.source="https://github.com/haaku-tv/haaku" \
       org.opencontainers.image.version="${IMAGE_VERSION}" \
       org.opencontainers.image.revision="${BUILD_REVISION}" \
@@ -83,24 +85,24 @@ LABEL org.opencontainers.image.title="haaku" \
 WORKDIR /app
 COPY --from=build /out/api /app/api
 # One binary, every role: /app/api is the API by default, and the same file runs
-# `TKILLER_MODE=worker` (background workers, no HTTP) or `TKILLER_MODE=migrate`
+# `HAAKU_MODE=worker` (background workers, no HTTP) or `HAAKU_MODE=migrate`
 # once. A worker deployment therefore needs no second image or binary — see
 # docs/architecture/workers.md.
 # Unprivileged by default here. The omnibus image starts as root instead,
 # because its init has to map accounts and hand directories to them; it
 # documents /app/api as the way to run it without root.
-RUN groupadd -g 911 tkiller && \
-    useradd -u 911 -g tkiller -d /home/tkiller -s /usr/sbin/nologin -m tkiller && \
-    install -d -o tkiller -g tkiller /home/tkiller
-ENV TKILLER_BACKUP_DIR=/home/tkiller/backups \
-    TKILLER_MIGRATION_BACKUP_DIR=/home/tkiller/pre-migrate-backups
+RUN groupadd -g 911 haaku && \
+    useradd -u 911 -g haaku -d /home/haaku -s /usr/sbin/nologin -m haaku && \
+    install -d -o haaku -g haaku /home/haaku
+ENV HAAKU_BACKUP_DIR=/home/haaku/backups \
+    HAAKU_MIGRATION_BACKUP_DIR=/home/haaku/pre-migrate-backups
 EXPOSE 8080
 # The health check has to work for whichever role the binary runs. The API
 # answers /healthz on PORT; a worker-only process answers on its own listener
-# (TKILLER_WORKER_HEALTH_LISTEN, default 127.0.0.1:9090). Trying the API port
+# (HAAKU_WORKER_HEALTH_LISTEN, default 127.0.0.1:9090). Trying the API port
 # first leaves the API path exactly as it was.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD curl -fsS "http://127.0.0.1:${PORT:-8080}/healthz" >/dev/null || \
-      curl -fsS "http://${TKILLER_WORKER_HEALTH_LISTEN:-127.0.0.1:9090}/healthz" >/dev/null || exit 1
-USER tkiller
+      curl -fsS "http://${HAAKU_WORKER_HEALTH_LISTEN:-127.0.0.1:9090}/healthz" >/dev/null || exit 1
+USER haaku
 CMD ["/app/api"]

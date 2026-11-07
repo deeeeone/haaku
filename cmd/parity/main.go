@@ -6,6 +6,8 @@
 // endpoint, graded honest/divergent/blocked); the registry is the only source of
 // truth for what we actually serve, so the two are diffed on every run.
 //
+// TODO remove this once we reach parity, we'll branch and no longer need to check
+//
 // Usage:
 //
 //	go run ./cmd/parity            # print the coverage table, warn on problems
@@ -17,9 +19,9 @@ import (
 	"fmt"
 	"os"
 
-	"trakt-api/internal/httpapi"
-	"trakt-api/internal/openapi"
-	"trakt-api/internal/parity"
+	"github.com/haaku-tv/haaku/internal/httpapi"
+	"github.com/haaku-tv/haaku/internal/openapi"
+	"github.com/haaku-tv/haaku/internal/parity"
 
 	"github.com/gofiber/fiber/v2"
 )

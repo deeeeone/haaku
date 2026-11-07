@@ -7,15 +7,15 @@ import (
 	"strconv"
 	"time"
 
-	"trakt-api/internal/database"
-	"trakt-api/internal/obs"
+	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/obs"
 
 	goredis "github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
 // activityWorkerMetrics instruments the activity worker for the metrics listener.
-// The name matches obs.WorkerActivity, which is also the TKILLER_WORKER name.
+// The name matches obs.WorkerActivity, which is also the HAAKU_WORKER name.
 var activityWorkerMetrics = obs.NewWorker(obs.WorkerActivity)
 
 // FanOutActivity runs one pass: it reads new events from the Redis Stream

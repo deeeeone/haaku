@@ -1,8 +1,8 @@
 #!/command/with-contenv bash
 # shellcheck shell=bash
 set -euo pipefail
-# shellcheck source=omnibus/rootfs/etc/tkiller-omnibus/lib.sh
-source /etc/tkiller-omnibus/lib.sh
+# shellcheck source=omnibus/rootfs/etc/haaku-omnibus/lib.sh
+source /etc/haaku-omnibus/lib.sh
 
 # A service that is off still reports ready and sleeps, so the dependency graph
 # stays fixed and s6-rc does not need a different bundle per configuration.

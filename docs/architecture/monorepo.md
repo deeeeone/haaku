@@ -15,7 +15,7 @@ docs/architecture/       design docs (this directory)
 scripts/                 developer tooling
 ```
 
-The frontend was previously a separate repository (`haaku-tv/tkiller-web`),
+The frontend was previously a separate repository (`haaku-tv/haaku-web`),
 imported here with its history preserved. The C# Jellyfin plugin stays in
 `haaku-jellyfin`: it targets Jellyfin's ABI and ships through Jellyfin's plugin
 catalogue, so it has a genuinely independent release cycle.
@@ -53,7 +53,7 @@ server with `web/` embedded, `contracts/`, embedded Goose migrations, and an
 ## Modes
 
 One binary runs several roles (`internal/mode`), selected with
-`TKILLER_MODE=api|worker|migrate` or `--migrate-only`:
+`HAAKU_MODE=api|worker|migrate` or `--migrate-only`:
 
 | Mode | Serves HTTP | Runs workers | May migrate |
 |---|---|---|---|
@@ -65,10 +65,10 @@ A worker must never change the schema — several run against one database, and 
 migration under a running API is a deployment accident rather than a feature.
 Encoding that in the mode table means it holds by construction.
 
-**Which** workers a process runs is a second axis: `TKILLER_WORKER` is a
+**Which** workers a process runs is a second axis: `HAAKU_WORKER` is a
 comma-separated list of worker names, or `all` (the default) / `none`. The
 default keeps an existing install running the workers in-process; a dedicated
-worker deployment sets `TKILLER_WORKER=none` on the API so the same worker is
+worker deployment sets `HAAKU_WORKER=none` on the API so the same worker is
 never started twice. The names, their schedule and the deployment recipes are in
 [workers.md](workers.md); the topology itself is `internal/workers`.
 

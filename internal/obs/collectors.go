@@ -5,8 +5,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"trakt-api/internal/database"
-	"trakt-api/redis"
+	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/redis"
 )
 
 // The dependency collectors read live state from the owning packages at scrape

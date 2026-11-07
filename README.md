@@ -18,7 +18,7 @@
 
 ---
 
-**haaku** is an open, self-hostable replacement for trakt.tv: watch history, scrobbling, ratings, watchlists, lists, comments and a social feed — on a server you own, in a database you can `psql` into.
+**haaku** is an open, self-hostable media tracker: watch history, scrobbling, ratings, watchlists, lists, comments and a social feed — on a server you own, in a database you can `psql` into.
 
 This repository is the whole server. The Go API and the React UI compile into **one binary**, and the image that ships it carries **its own PostgreSQL and Redis**, so the install is one `docker compose up -d` and a backup is a directory plus one key.
 
@@ -42,11 +42,11 @@ This repository is the whole server. The Go API and the React UI compile into **
 ```bash
 git clone https://github.com/haaku-tv/haaku.git
 cd haaku
-cp .env.example .env       # set TKILLER_SECRET_KEY and TMDB_API_TOKEN
+cp .env.example .env       # set HAAKU_SECRET_KEY and TMDB_API_TOKEN
 docker compose up -d
 ```
 
-Then open <http://localhost:8080>. Everything the server owns lives in `./config`: the database, Redis' append-only file, the pre-migration backups and the app's own directory. **Back that directory up together with `TKILLER_SECRET_KEY`** — a dump without the key is unreadable, and the key without the dump is useless.
+Then open <http://localhost:8080>. Everything the server owns lives in `./config`: the database, Redis' append-only file, the pre-migration backups and the app's own directory. **Back that directory up together with `HAAKU_SECRET_KEY`** — a dump without the key is unreadable, and the key without the dump is useless.
 
 `docker-compose.advanced.yml` runs the same image against a PostgreSQL and Redis of your own. Setting `DATABASE_URL` / `REDIS_URL` is what switches the bundled services off.
 
@@ -62,11 +62,11 @@ make dev-backend                 # API on :8080; migrations run on start
 make dev-frontend                # second terminal: Vite on :5173, proxies /v1 to the API
 ```
 
-The server refuses to start without `TKILLER_SECRET_KEY` (32+ characters — `openssl rand -base64 48`), and a first start on an empty database migrates it for you. `make bin` builds the single binary with the real UI embedded; `make help` lists every target.
+The server refuses to start without `HAAKU_SECRET_KEY` (32+ characters — `openssl rand -base64 48`), and a first start on an empty database migrates it for you. `make bin` builds the single binary with the real UI embedded; `make help` lists every target.
 
 ## Background workers
 
-Webhook delivery, activity fan-out, the event outbox and the TMDB upkeep jobs run as **background workers**. By default they run inside the API process, so `docker compose up -d` is still the whole install. To run them in a process of their own, set `TKILLER_WORKER_SERVICE=true` in `.env`: the init then starts a second service in the same container and turns the API's own workers off, so each worker runs in exactly one place. `docker-compose.advanced.yml` offers the same split as an opt-in `worker` container (`--profile worker`). From source it is `TKILLER_WORKER=none go run ./cmd/api` for the API and `TKILLER_MODE=worker go run ./cmd/api` for the worker.
+Webhook delivery, activity fan-out, the event outbox and the TMDB upkeep jobs run as **background workers**. By default they run inside the API process, so `docker compose up -d` is still the whole install. To run them in a process of their own, set `HAAKU_WORKER_SERVICE=true` in `.env`: the init then starts a second service in the same container and turns the API's own workers off, so each worker runs in exactly one place. `docker-compose.advanced.yml` offers the same split as an opt-in `worker` container (`--profile worker`). From source it is `HAAKU_WORKER=none go run ./cmd/api` for the API and `HAAKU_MODE=worker go run ./cmd/api` for the worker.
 
 The worker process serves `/healthz` and `/readyz` on its own listener and beats a Prometheus heartbeat gauge per worker, so a stalled one is visible. Names, schedule (UTC) and metrics: [docs/architecture/workers.md](docs/architecture/workers.md).
 
@@ -76,7 +76,7 @@ The worker process serves `/healthz` and `/readyz` on its own listener and beats
 - Authenticate with `X-API-Key: tk_…` from an integration, or an OAuth bearer token from the UI.
 - The spec is **generated from the route registry** and never hand-written: 169 paths / 203 operations in [`openapi.yaml`](openapi.yaml), served live at `GET /v1/openapi.json`. `make api-spec` regenerates it, `make api-check` fails if it is stale or the route inventory drifts, and CI runs both.
 - `GET /healthz` for liveness, `GET /readyz` for readiness. Prometheus metrics are on a **separate listener**, deliberately not on the app port.
-- The Trakt-shaped surface is coming rather than here: `/v1` is our own shape today, and the compatibility listener plus importer are [#4](https://github.com/haaku-tv/haaku/issues/4) and [#7](https://github.com/haaku-tv/haaku/issues/7).
+- The Trakt-shaped surface is coming rather than here: `/v1` is our own shape today, and the compatibility listener plus importer are [#4](https://github.com/haaku-tv/haaku/issues/4) and [#7](https://github.com/haaku-tv/haaku/issues/7). TODO remove when we reach parity.
 
 ## Clients
 
@@ -88,8 +88,8 @@ The worker process serves `/healthz` and `/readyz` on its own listener and beats
 ## Layout
 
 ```
-cmd/api/            one binary: TKILLER_MODE=api|worker|migrate, or --migrate-only;
-                    TKILLER_WORKER picks which background workers a process runs
+cmd/api/            one binary: HAAKU_MODE=api|worker|migrate, or --migrate-only;
+                    HAAKU_WORKER picks which background workers a process runs
 internal/           ~30 domain packages — handlers, auth, database, cache, workers,
                     obs, backup, secret, mode, webui — each with an audit *.md beside it
 internal/webui/     serves the embedded frontend

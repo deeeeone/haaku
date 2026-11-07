@@ -10,16 +10,16 @@ tool. The runner lives in `internal/database/migrate*.go`.
 - **Tool:** [Goose](https://github.com/pressly/goose) v3, pinned in the Makefile
   (`go run github.com/pressly/goose/v3/cmd/goose@v3.27.1`) and in `go.mod`.
 - **Applied at startup:** `cmd/api` calls `database.Migrate` before it listens.
-  `TKILLER_MODE=api` and `TKILLER_MODE=migrate` (or `--migrate-only`) apply
-  migrations; `TKILLER_MODE=worker` never touches the schema.
+  `HAAKU_MODE=api` and `HAAKU_MODE=migrate` (or `--migrate-only`) apply
+  migrations; `HAAKU_MODE=worker` never touches the schema.
 - **Under a lock:** the whole sequence — ledger setup, pending check, backup,
   apply — is serialised by a PostgreSQL advisory lock, so two servers starting at
-  once do not race. The second waits up to `TKILLER_MIGRATION_WAIT` (default
+  once do not race. The second waits up to `HAAKU_MIGRATION_WAIT` (default
   `60m`) for the first.
 - **With a backup:** before changing a database that already has a schema, the
   runner takes a `pg_dump` (custom format) and **refuses to migrate if it fails**.
-  The two newest copies are kept under `TKILLER_MIGRATION_BACKUP_DIR` (default
-  `./pre-migrate-backups`). Pass `TKILLER_SKIP_BACKUP_BEFORE_MIGRATE=true` only on
+  The two newest copies are kept under `HAAKU_MIGRATION_BACKUP_DIR` (default
+  `./pre-migrate-backups`). Pass `HAAKU_SKIP_BACKUP_BEFORE_MIGRATE=true` only on
   a dev box without a matching `pg_dump`.
 - **Ledger:** Goose records applied versions in `goose_db_version`; the runner
   ensures that table exists before anything is read or applied.
@@ -87,13 +87,13 @@ lives in the same Goose-annotated file.)
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `TKILLER_MIGRATE_TIMEOUT` | `20m` | How long applying migrations may take. `0` disables the deadline. |
-| `TKILLER_MIGRATION_WAIT` | `60m` | How long a server waits for another server's migration sequence. `0` waits forever. |
-| `TKILLER_MIGRATION_BACKUP_DIR` | `./pre-migrate-backups` | Where pre-migration dumps are written. |
-| `TKILLER_SKIP_BACKUP_BEFORE_MIGRATE` | unset | `true` to migrate without a backup (dev boxes only). |
-| `TKILLER_PG_DUMP` | `pg_dump` | Override the `pg_dump` binary path. |
+| `HAAKU_MIGRATE_TIMEOUT` | `20m` | How long applying migrations may take. `0` disables the deadline. |
+| `HAAKU_MIGRATION_WAIT` | `60m` | How long a server waits for another server's migration sequence. `0` waits forever. |
+| `HAAKU_MIGRATION_BACKUP_DIR` | `./pre-migrate-backups` | Where pre-migration dumps are written. |
+| `HAAKU_SKIP_BACKUP_BEFORE_MIGRATE` | unset | `true` to migrate without a backup (dev boxes only). |
+| `HAAKU_PG_DUMP` | `pg_dump` | Override the `pg_dump` binary path. |
 
-A deployment that raises `TKILLER_MIGRATE_TIMEOUT` must raise the container's
+A deployment that raises `HAAKU_MIGRATE_TIMEOUT` must raise the container's
 `HEALTHCHECK --start-period` to match, so a migrating server is not restarted
 mid-migration.
 

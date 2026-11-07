@@ -3,13 +3,13 @@ package webhooks
 import (
 	"strconv"
 
-	"trakt-api/internal/secret"
+	"github.com/haaku-tv/haaku/internal/secret"
 )
 
 // Webhook endpoint secrets are encrypted at rest with the shared
-// trakt-api/internal/secret primitive: AES-256-GCM with a random 12-byte nonce
+// haaku/internal/secret primitive: AES-256-GCM with a random 12-byte nonce
 // and the enc:v1:<base64url(nonce‖sealed)> envelope, under a data key that is
-// HKDF-SHA256 derived from the root key (TKILLER_SECRET_KEY). This file owns the
+// HKDF-SHA256 derived from the root key (HAAKU_SECRET_KEY). This file owns the
 // two things that are webhook-specific: the AAD row binding, and the read/write
 // points that pin it to the endpoint row.
 

@@ -4,9 +4,9 @@ Read this before touching anything. This file is the contract for every agent (H
 
 ## What this is
 
-The server for **haaku** — an open, self-hostable Trakt replacement (watch history, scrobbling, lists, ratings, social). We are building **feature parity with Trakt first**; importers and a Trakt-compat layer are post-MVP. The Go module is still named `trakt-api` and environment variables are still `TKILLER_*`; the product is haaku (`haaku.tv`).
+The server for **haaku** — an open, self-hostable Trakt replacement (watch history, scrobbling, lists, ratings, social). We are building **feature parity with Trakt first**; importers and a Trakt-compat layer are post-MVP. The Go module is still named `haaku` and environment variables are still `HAAKU_*`; the product is haaku (`haaku.tv`).
 
-- **Planning DB (READ ONLY — never edit):** `../trakt-killer-plan/` — specs, schema, patterns, roadmap. The `docs/` paths referenced throughout this file point there.
+- **Planning DB (READ ONLY — never edit):** `../haaku-plan/` — specs, schema, patterns, roadmap. The `docs/` paths referenced throughout this file point there.
 - **Status:** pre-release. The API surface is broad; the deployable pieces (schema migrations, the single image, backups) are still landing. The repository issues are the source of truth for status. See `docs/architecture/monorepo.md` for the layout.
 
 ## Stack
@@ -56,17 +56,17 @@ make docker-omnibus # build the single image (app + PostgreSQL + Redis, s6-overl
 ### Two things that will bite you
 
 1. **`web/dist` must exist for any Go build.** `web/embed.go` embeds it. `make build` and `make test` depend on `embed-stub`, which writes a placeholder; a bare `go build ./...` on a fresh checkout fails until you run it once.
-2. **Modes.** `TKILLER_MODE=api|worker|migrate` (or `--migrate-only`) selects the role. Only `api` and `migrate` may change the schema; a worker never does.
+2. **Modes.** `HAAKU_MODE=api|worker|migrate` (or `--migrate-only`) selects the role. Only `api` and `migrate` may change the schema; a worker never does.
 3. **`_tests_/` is invisible to `./...`.** A leading underscore hides a directory from the pattern, so `go test ./...` and `golangci-lint run ./...` both skip it. `make test-go` and `make lint-go` run it as a second, explicit invocation — see `docs/architecture/ci-gates.md`.
 
 ## Conventions (non-negotiable)
 
-1. **Error envelope** — every error response is `{"error":{"code":"...","message":"..."}}` (`internal/httpapi/errors.go`). Status codes per `../trakt-killer-plan/03-api/api-conventions.md` §9. **Never** 420 quota errors or `X-Upgrade-URL` (charter).
+1. **Error envelope** — every error response is `{"error":{"code":"...","message":"..."}}` (`internal/httpapi/errors.go`). Status codes per `../haaku-plan/03-api/api-conventions.md` §9. **Never** 420 quota errors or `X-Upgrade-URL` (charter).
 2. **Config via env only** — secrets in `.env` (gitignored); never hardcode, never commit. No pass-cli dependency.
-3. **DB writes** — use `WithCacheTransaction` (DB commits first, cache invalidations run async), Postgres advisory locks for concurrent writes, version-counter cache invalidation. Patterns: `../trakt-killer-plan/02-architecture/engineering-patterns.md`. Do NOT reimplement these.
+3. **DB writes** — use `WithCacheTransaction` (DB commits first, cache invalidations run async), Postgres advisory locks for concurrent writes, version-counter cache invalidation. Patterns: `../haaku-plan/02-architecture/engineering-patterns.md`. Do NOT reimplement these.
 4. **TDD** — failing test first, then minimal implementation. `make test` must pass.
 5. **Route registry** — every endpoint is registered in `internal/httpapi/routes.go` (later the OpenAPI generator); CI fails on stale generated spec.
-6. **Migrations** — append-only, numbered; never edit a merged migration. Schema changes update `../trakt-killer-plan/02-architecture/data-model.md` FIRST.
+6. **Migrations** — append-only, numbered; never edit a merged migration. Schema changes update `../haaku-plan/02-architecture/data-model.md` FIRST.
 7. **No caps on personal data** — unlimited history/watchlist/lists. Anti-abuse limits use 429, never paywall semantics.
 8. **Identity is Clerk** — dev uses clerk-emulator (`CLERK_API_BASE_URL=http://localhost:4000`, secret `***`); API keys live in Clerk user metadata, looked up by key body, Redis-cached (TIDB pattern). Phase 2 wiring.
 
@@ -82,11 +82,11 @@ make docker-omnibus # build the single image (app + PostgreSQL + Redis, s6-overl
 ## Forbidden
 
 - Committing to `main` directly (human merges only)
-- Editing `../trakt-killer-plan/` specs (propose via issue/PR there)
+- Editing `../haaku-plan/` specs (propose via issue/PR there)
 - Reimplementing cache-tx / advisory locks / version counters
 - Inventing endpoints or fields not in the specs — if the spec is ambiguous, ask, don't guess
 - Adding 420 / X-Upgrade-URL / VIP-gated behavior (charter)
 
 ## Working here
 
-Short-lived branches (`feat/<phase>-<task>`), TDD, self-review, PR → spec-compliance review → code-quality review (different model) → human merge. Full process: `../trakt-killer-plan/07-roadmap/agent-delegation-plan.md`.
+Short-lived branches (`feat/<phase>-<task>`), TDD, self-review, PR → spec-compliance review → code-quality review (different model) → human merge. Full process: `../haaku-plan/07-roadmap/agent-delegation-plan.md`.

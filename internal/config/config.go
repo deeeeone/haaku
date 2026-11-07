@@ -8,7 +8,7 @@ import (
 
 	"github.com/joho/godotenv"
 
-	"trakt-api/internal/secret"
+	"github.com/haaku-tv/haaku/internal/secret"
 )
 
 // Config holds all runtime configuration, loaded once from env vars.

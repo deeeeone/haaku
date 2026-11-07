@@ -4,9 +4,9 @@ import (
 	"log/slog"
 	"time"
 
-	"trakt-api/internal/auth"
-	"trakt-api/internal/config"
-	"trakt-api/internal/webui"
+	"github.com/haaku-tv/haaku/internal/auth"
+	"github.com/haaku-tv/haaku/internal/config"
+	"github.com/haaku-tv/haaku/internal/webui"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
@@ -56,7 +56,7 @@ func NewServer(cfg *config.Config) *fiber.App {
 	RegisterRoutes(app)
 
 	// The metrics surface is NOT registered here. It lives on its own listener
-	// (internal/obs, TKILLER_METRICS_LISTEN) with no application auth, for a
+	// (internal/obs, HAAKU_METRICS_LISTEN) with no application auth, for a
 	// private monitoring network. The old public JSON /metrics route was removed:
 	// it published traffic volume on the main listener and described nothing.
 

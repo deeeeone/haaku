@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"trakt-api/redis"
+	"github.com/haaku-tv/haaku/redis"
 )
 
 // ---------------------------------------------------------------------------

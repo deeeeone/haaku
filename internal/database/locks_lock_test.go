@@ -43,7 +43,7 @@ func pgTestDB(t *testing.T) *gorm.DB {
 func TestAdvisoryLockStrActuallyLocks(t *testing.T) {
 	db := pgTestDB(t)
 
-	name := "tkiller:test:advisory-lock-overflow"
+	name := "haaku:test:advisory-lock-overflow"
 	held := AdvisoryLockKeyStr(name)
 
 	// The raw halves are what the old code passed as int4s; at least one must be
@@ -109,7 +109,7 @@ func TestAdvisoryLockStrFailsClosed(t *testing.T) {
 	err = WithAdvisoryLockStr(db, func(tx *gorm.DB) error {
 		called = true
 		return nil
-	}, "tkiller:test:fails-closed")
+	}, "haaku:test:fails-closed")
 	if err == nil {
 		t.Fatal("WithAdvisoryLockStr returned nil with an unusable database: it must fail closed")
 	}

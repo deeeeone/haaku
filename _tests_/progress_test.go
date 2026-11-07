@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	"trakt-api/internal/handlers/media"
-	_ "trakt-api/internal/handlers/progress"
-	"trakt-api/internal/openapi"
+	"github.com/haaku-tv/haaku/internal/handlers/media"
+	_ "github.com/haaku-tv/haaku/internal/handlers/progress"
+	"github.com/haaku-tv/haaku/internal/openapi"
 )
 
 // TestPlaybackOpenAPIRoutesRegistered verifies playback progress routes are registered.

@@ -6,9 +6,9 @@ import (
 	"log/slog"
 	"time"
 
-	"trakt-api/external/tmdb"
-	"trakt-api/internal/metadata"
-	"trakt-api/internal/outbox"
+	"github.com/haaku-tv/haaku/external/tmdb"
+	"github.com/haaku-tv/haaku/internal/metadata"
+	"github.com/haaku-tv/haaku/internal/outbox"
 
 	goredis "github.com/redis/go-redis/v9"
 	"gorm.io/gorm"

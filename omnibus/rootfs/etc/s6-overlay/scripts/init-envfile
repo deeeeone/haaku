@@ -1,11 +1,11 @@
 #!/command/with-contenv bash
 # shellcheck shell=bash
 # FILE__NAME=/path makes NAME the contents of that file, so secrets such as
-# TKILLER_SECRET_KEY can come from Docker or Compose secrets instead of the
+# HAAKU_SECRET_KEY can come from Docker or Compose secrets instead of the
 # environment.
 set -euo pipefail
-# shellcheck source=omnibus/rootfs/etc/tkiller-omnibus/lib.sh
-source /etc/tkiller-omnibus/lib.sh
+# shellcheck source=omnibus/rootfs/etc/haaku-omnibus/lib.sh
+source /etc/haaku-omnibus/lib.sh
 
 # The first init script. Every one of them needs root to map accounts and hand
 # directories to them, so say how to run without root instead of failing later.
@@ -19,19 +19,19 @@ fi
 chmod 0700 "$CONTAINER_ENV"
 
 # service_uids: the uids the service accounts run as. init-adduser runs after
-# this and maps the tkiller account onto PUID, so take PUID as it will — which
+# this and maps the haaku account onto PUID, so take PUID as it will — which
 # includes one loaded from FILE__PUID — along with the account's current uid.
 service_uids() {
   local puid=911
   if [[ -f "$CONTAINER_ENV/PUID" ]]; then
     puid="$(<"$CONTAINER_ENV/PUID")"
   fi
-  printf '%s\n' "$puid" "$(id -u tkiller)" "$(id -u postgres)" "$(id -u redis)"
+  printf '%s\n' "$puid" "$(id -u haaku)" "$(id -u postgres)" "$(id -u redis)"
 }
 
 # trusted_source PATH: whether root may read PATH as a secret. A service account
 # that could rewrite the file, replace it, or change a link on the way to it
-# could otherwise point root at TKILLER_SECRET_KEY and have it exported under
+# could otherwise point root at HAAKU_SECRET_KEY and have it exported under
 # another name. So PATH must resolve, outside /config and the image's state, to
 # a regular file that no service account owns and that group and others cannot
 # write, in directories only root can change. Any other owner is fine: Docker

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"trakt-api/internal/database"
+	"github.com/haaku-tv/haaku/internal/database"
 )
 
 func TestParseWatchedAt(t *testing.T) {

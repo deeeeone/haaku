@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	_ "trakt-api/internal/handlers/reference"
-	"trakt-api/internal/openapi"
+	_ "github.com/haaku-tv/haaku/internal/handlers/reference"
+	"github.com/haaku-tv/haaku/internal/openapi"
 )
 
 // ---------------------------------------------------------------------------

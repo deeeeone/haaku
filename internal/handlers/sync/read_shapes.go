@@ -1,6 +1,6 @@
 package sync
 
-import "trakt-api/internal/database"
+import "github.com/haaku-tv/haaku/internal/database"
 
 // Exported views of the read-response shapes and their builders. The
 // public-profile read surface (/v1/users/{id}/history, /collection, /watchlist,

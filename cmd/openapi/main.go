@@ -1,4 +1,4 @@
-// Command openapi generates the OpenAPI 3.1 specification for trakt-api from
+// Command openapi generates the OpenAPI 3.1 specification for haaku from
 // the code-first route registry, and verifies that the checked-in spec is
 // fresh.
 //
@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"os"
 
-	"trakt-api/internal/httpapi"
-	"trakt-api/internal/openapi"
+	"github.com/haaku-tv/haaku/internal/httpapi"
+	"github.com/haaku-tv/haaku/internal/openapi"
 
 	"github.com/gofiber/fiber/v2"
 )

@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	"trakt-api/internal/obs"
+	"github.com/haaku-tv/haaku/internal/obs"
 )
 
 // The background workers a process can run. They are the label values
-// obs.NewWorker renders and the names TKILLER_WORKER selects, so a heartbeat, a
+// obs.NewWorker renders and the names HAAKU_WORKER selects, so a heartbeat, a
 // processed counter and a log line always name the same worker regardless of
 // which process hosts it.
 const (
@@ -23,7 +23,7 @@ const (
 // workers a process runs: a comma-separated list of names, or "all" / "none".
 // Unset or empty means "all", so a single-container install keeps running the
 // workers in-process and nothing changes for an existing install.
-const EnvSelection = "TKILLER_WORKER"
+const EnvSelection = "HAAKU_WORKER"
 
 // canonicalOrder fixes both the order workers start in and the order Names
 // reports, so logs and metrics are stable no matter how the selector was
@@ -49,7 +49,7 @@ func Select(names ...string) (Selection, error) {
 // Names returns every known worker name, in canonical order.
 func Names() []string { return append([]string(nil), canonicalOrder...) }
 
-// ParseSelection turns a raw TKILLER_WORKER value into a Selection. An empty
+// ParseSelection turns a raw HAAKU_WORKER value into a Selection. An empty
 // value or "all" selects every worker; "none" selects none; anything else is a
 // comma-separated list of names. An unknown name is an error rather than a
 // silent fallthrough: a typo that quietly started (or skipped) the whole fleet

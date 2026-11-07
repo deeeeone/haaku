@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"trakt-api/external/tmdb"
+	"github.com/haaku-tv/haaku/external/tmdb"
 
 	"gorm.io/gorm"
 )

@@ -3,7 +3,7 @@
 # REDIS_URL is what turns the bundled services off — the init script starts
 # neither, and no PostgreSQL or Redis process runs in the app container.
 #
-#   cp .env.example .env      # then set TKILLER_SECRET_KEY and TMDB_API_TOKEN
+#   cp .env.example .env      # then set HAAKU_SECRET_KEY and TMDB_API_TOKEN
 #   docker compose -f docker-compose.advanced.yml up -d
 #
 # Use this when the database should outlive the app container, when it is
@@ -14,33 +14,33 @@
 # Running the background workers in their own container is opt-in, with the
 # `worker` profile:
 #
-#   echo 'TKILLER_WORKER=none' >> .env      # the API must not also run them
+#   echo 'HAAKU_WORKER=none' >> .env      # the API must not also run them
 #   docker compose -f docker-compose.advanced.yml --profile worker up -d
 #
-# Setting TKILLER_WORKER=none is what turns the API's in-process workers off,
+# Setting HAAKU_WORKER=none is what turns the API's in-process workers off,
 # exactly as setting DATABASE_URL turns the bundled PostgreSQL off. The worker
-# service overrides TKILLER_WORKER with TKILLER_WORKER_SELECTION, so the two
+# service overrides HAAKU_WORKER with HAAKU_WORKER_SELECTION, so the two
 # containers never run the same worker. See docs/architecture/workers.md.
 
 services:
   api:
-    image: ${TKILLER_IMAGE:-ghcr.io/haaku-tv/haaku:latest}
-    container_name: tkiller-api
+    image: ${HAAKU_IMAGE:-ghcr.io/haaku-tv/haaku:latest}
+    container_name: haaku
     restart: unless-stopped
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgres://trakt:${POSTGRES_PASSWORD:-trakt}@postgres:5432/trakt?sslmode=disable
+      DATABASE_URL: postgres://haaku:${POSTGRES_PASSWORD:-haaku}@postgres:5432/haaku?sslmode=disable
       REDIS_URL: redis://redis:6379
       # Explicit default so the switch is visible in this file: "all" runs the
       # background workers in the API, "none" leaves them to the worker service.
-      TKILLER_WORKER: ${TKILLER_WORKER:-all}
+      HAAKU_WORKER: ${HAAKU_WORKER:-all}
     ports:
-      - "${TKILLER_PORT:-8080}:8080"
+      - "${HAAKU_PORT:-8080}:8080"
     volumes:
       # Still needed: the app's own directory holds the pre-migration backups
       # and an optional .env. No database lives here.
-      - ${TKILLER_CONFIG:-./config}:/config
+      - ${HAAKU_CONFIG:-./config}:/config
     depends_on:
       postgres:
         condition: service_healthy
@@ -55,23 +55,23 @@ services:
       start_period: 5m
 
   # Opt-in (`--profile worker`): the background workers, with no HTTP API. The
-  # same image, the same binary — only TKILLER_MODE changes. It answers /readyz
+  # same image, the same binary — only HAAKU_MODE changes. It answers /readyz
   # on its own health listener, which is what the health check reads.
   worker:
     profiles: ["worker"]
-    image: ${TKILLER_IMAGE:-ghcr.io/haaku-tv/haaku:latest}
-    container_name: tkiller-worker
+    image: ${HAAKU_IMAGE:-ghcr.io/haaku-tv/haaku:latest}
+    container_name: haaku-worker
     restart: unless-stopped
     env_file:
       - .env
     environment:
-      TKILLER_MODE: worker
-      TKILLER_WORKER: ${TKILLER_WORKER_SELECTION:-all}
-      DATABASE_URL: postgres://trakt:${POSTGRES_PASSWORD:-trakt}@postgres:5432/trakt?sslmode=disable
+      HAAKU_MODE: worker
+      HAAKU_WORKER: ${HAAKU_WORKER_SELECTION:-all}
+      DATABASE_URL: postgres://haaku:${POSTGRES_PASSWORD:-haaku}@postgres:5432/haaku?sslmode=disable
       REDIS_URL: redis://redis:6379
     volumes:
       # The metadata change-feed cursor and the pre-migration backups live here.
-      - ${TKILLER_CONFIG:-./config}:/config
+      - ${HAAKU_CONFIG:-./config}:/config
     depends_on:
       postgres:
         condition: service_healthy
@@ -88,23 +88,23 @@ services:
 
   postgres:
     image: postgres:17-alpine
-    container_name: tkiller-postgres
+    container_name: haaku-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: trakt
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-trakt}
-      POSTGRES_DB: trakt
+      POSTGRES_USER: haaku
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-haaku}
+      POSTGRES_DB: haaku
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U trakt -d trakt"]
+      test: ["CMD-SHELL", "pg_isready -U haaku -d haaku"]
       interval: 5s
       timeout: 5s
       retries: 12
 
   redis:
     image: redis:7-alpine
-    container_name: tkiller-redis
+    container_name: haaku-redis
     restart: unless-stopped
     # The append-only file bounds what a crash loses to about a second.
     command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]

@@ -9,11 +9,11 @@ one, and what a self-hoster does to run them at all.
 
 ## One binary, every role
 
-There is one binary (`cmd/api`, the image's `/app/api`). `TKILLER_MODE` picks
-the role (see [monorepo.md](monorepo.md)); `TKILLER_WORKER` picks *which workers
+There is one binary (`cmd/api`, the image's `/app/api`). `HAAKU_MODE` picks
+the role (see [monorepo.md](monorepo.md)); `HAAKU_WORKER` picks *which workers
 that role runs*:
 
-| `TKILLER_MODE` | Serves HTTP | Runs workers | May migrate |
+| `HAAKU_MODE` | Serves HTTP | Runs workers | May migrate |
 |---|---|---|---|
 | `api` (default) | yes | yes (the classic install) | yes |
 | `worker` | no | yes | **no** |
@@ -54,7 +54,7 @@ nothing else here changes.
 
 ## The selector
 
-`TKILLER_WORKER` is a comma-separated list of worker names, or:
+`HAAKU_WORKER` is a comma-separated list of worker names, or:
 
 | Value | Meaning |
 |---|---|
@@ -82,17 +82,17 @@ their own process turns the API's own workers **off** and runs a `worker`
 process instead:
 
 - **Omnibus (one container, docker-compose.yml)** — set
-  `TKILLER_WORKER_SERVICE=true`. `init-config` then starts the
-  `svc-tkiller-worker` s6 service and exports `TKILLER_WORKER=none` for the API,
+  `HAAKU_WORKER_SERVICE=true`. `init-config` then starts the
+  `svc-haaku-worker` s6 service and exports `HAAKU_WORKER=none` for the API,
   so the API and the worker service each run one process's worth of workers.
   Optionally restrict the worker service with
-  `TKILLER_WORKER_SERVICE_SELECTION=webhooks,metadata`.
-- **Multi-container (docker-compose.advanced.yml)** — set `TKILLER_WORKER=none`
+  `HAAKU_WORKER_SERVICE_SELECTION=webhooks,metadata`.
+- **Multi-container (docker-compose.advanced.yml)** — set `HAAKU_WORKER=none`
   in `.env` (the API stops running them) and bring up the `worker` service:
   `docker compose -f docker-compose.advanced.yml --profile worker up -d`. That
-  service reads `TKILLER_WORKER_SELECTION` for its own subset.
-- **From source** — `TKILLER_WORKER=none go run ./cmd/api` for the API, and
-  `TKILLER_MODE=worker TKILLER_WORKER=all go run ./cmd/api` for the worker.
+  service reads `HAAKU_WORKER_SELECTION` for its own subset.
+- **From source** — `HAAKU_WORKER=none go run ./cmd/api` for the API, and
+  `HAAKU_MODE=worker HAAKU_WORKER=all go run ./cmd/api` for the worker.
 
 When the API is only the API it logs `workers: none — API only (this process
 runs no background workers)` at startup, so the state is visible in the logs
@@ -101,7 +101,7 @@ rather than inferred.
 ## Readiness, liveness and the heartbeat
 
 A worker-only process serves no API, so it serves its signals on a listener of
-its own — `TKILLER_WORKER_HEALTH_LISTEN`, default `127.0.0.1:9090` (a port away
+its own — `HAAKU_WORKER_HEALTH_LISTEN`, default `127.0.0.1:9090` (a port away
 from the API's 8080, because the omnibus worker service shares the container's
 network namespace):
 
@@ -113,13 +113,13 @@ network namespace):
 Every worker also beats a Prometheus gauge each time it runs
 (`obs.NewWorker(name)`), which is what a scrape alerts on:
 
-- `tkiller_worker_heartbeat_timestamp_seconds{worker="…"}` — the wall-clock time
+- `haaku_worker_heartbeat_timestamp_seconds{worker="…"}` — the wall-clock time
   of the last run; **stops advancing** means the worker is dead.
-- `tkiller_worker_processed_total{worker="…"}` / `tkiller_worker_failed_total{worker="…"}`
+- `haaku_worker_processed_total{worker="…"}` / `haaku_worker_failed_total{worker="…"}`
 
 The `worker` label is the name from the selector, so metrics, logs and
-`TKILLER_WORKER` all agree whatever process hosts the worker. The metrics
-listener itself is the usual separate one (`TKILLER_METRICS_LISTEN`, off unless
+`HAAKU_WORKER` all agree whatever process hosts the worker. The metrics
+listener itself is the usual separate one (`HAAKU_METRICS_LISTEN`, off unless
 set) — see issue #9.
 
 ## Shutdown and failures
@@ -139,7 +139,7 @@ set) — see issue #9.
 
 ```promql
 # A worker that has not beaten in 5 minutes.
-time() - tkiller_worker_heartbeat_timestamp_seconds > 300
+time() - haaku_worker_heartbeat_timestamp_seconds > 300
 ```
 
 ## Not here yet

@@ -4,12 +4,12 @@ import (
 	"sort"
 	"time"
 
-	"trakt-api/internal/cache"
-	"trakt-api/internal/database"
-	"trakt-api/internal/handlers/media"
-	"trakt-api/internal/outbox"
-	"trakt-api/internal/response"
-	"trakt-api/redis"
+	"github.com/haaku-tv/haaku/internal/cache"
+	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/handlers/media"
+	"github.com/haaku-tv/haaku/internal/outbox"
+	"github.com/haaku-tv/haaku/internal/response"
+	"github.com/haaku-tv/haaku/redis"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"

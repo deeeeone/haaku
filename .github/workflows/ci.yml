@@ -134,6 +134,7 @@ jobs:
       - name: Check the route inventory (registry <-> spec)
         run: make api-check
 
+      # TODO remove this once we reach parity, we'll branch off and no longer need to check.
       # The parity manifest grades every Trakt endpoint inventoried in issue #4
       # against the same registry, so a route that does not exist, a 501 marked
       # implemented, or an unrecorded 501 fails the build.
@@ -220,21 +221,21 @@ jobs:
       postgres:
         image: postgres:17-alpine
         env:
-          POSTGRES_USER: trakt
-          POSTGRES_PASSWORD: trakt
-          POSTGRES_DB: trakt
+          POSTGRES_USER: haaku
+          POSTGRES_PASSWORD: haaku
+          POSTGRES_DB: haaku
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U trakt"
+          --health-cmd "pg_isready -U haaku"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
-      DATABASE_URL: postgres://trakt:trakt@localhost:5432/trakt?sslmode=disable
+      DATABASE_URL: postgres://haaku:haaku@localhost:5432/haaku?sslmode=disable
       # config.Load requires both before it will run; neither is a real secret.
       TMDB_API_TOKEN: ci-postgres
-      TKILLER_SECRET_KEY: ci-postgres-not-a-secret-value-32-chars-min
+      HAAKU_SECRET_KEY: ci-postgres-not-a-secret-value-32-chars-min
     steps:
       - uses: actions/checkout@v4
 

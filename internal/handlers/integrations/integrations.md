@@ -21,7 +21,7 @@ An integration token is a bearer credential the receiver looks up on every reque
 
 | Column | Holds | Purpose |
 |---|---|---|
-| `token_hash` | `HMAC-SHA256(raw, HKDF(root, "tkiller/integration-token-lookup/v1"))`, lowercase hex | The deterministic blind index the lookup matches on. Unique (partial, `WHERE token_hash <> ''`). |
+| `token_hash` | `HMAC-SHA256(raw, HKDF(root, "haaku/integration-token-lookup/v1"))`, lowercase hex | The deterministic blind index the lookup matches on. Unique (partial, `WHERE token_hash <> ''`). |
 | `token` | `enc:v1:<base64url(nonce‖sealed)>`, AES-256-GCM with `RowAAD("integration_tokens","token",id)` | The recoverable credential, used for display/rotation and decrypted on a successful lookup. |
 
 - **Lookup** matches the blind index, so the raw token never participates in a `WHERE` against storage that could be dumped. A ciphertext never equals a raw token, so there is no plaintext path into the lookup.

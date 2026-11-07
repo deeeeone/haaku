@@ -17,7 +17,7 @@ import (
 
 	"github.com/robfig/cron/v3"
 
-	"trakt-api/internal/obs"
+	"github.com/haaku-tv/haaku/internal/obs"
 )
 
 // DefaultHealthListen is where a worker-only process answers /healthz and
@@ -26,13 +26,13 @@ import (
 const DefaultHealthListen = "127.0.0.1:9090"
 
 // HealthListenEnv overrides DefaultHealthListen.
-const HealthListenEnv = "TKILLER_WORKER_HEALTH_LISTEN"
+const HealthListenEnv = "HAAKU_WORKER_HEALTH_LISTEN"
 
 // healthShutdownTimeout bounds how long the health listener may take to drain.
 const healthShutdownTimeout = 2 * time.Second
 
 // HealthListenAddr returns the address a worker-only process should serve
-// health on: $TKILLER_WORKER_HEALTH_LISTEN, or DefaultHealthListen.
+// health on: $HAAKU_WORKER_HEALTH_LISTEN, or DefaultHealthListen.
 func HealthListenAddr() string {
 	if v := strings.TrimSpace(os.Getenv(HealthListenEnv)); v != "" {
 		return v
@@ -46,7 +46,7 @@ func HealthListenAddr() string {
 //
 // One Runtime lives per process. The workers it was built with are the only
 // ones it can run, so selecting a worker in two processes is what double-runs
-// it — which is why a dedicated worker deployment sets TKILLER_WORKER=none on
+// it — which is why a dedicated worker deployment sets HAAKU_WORKER=none on
 // the API (see docs/architecture/workers.md).
 type Runtime struct {
 	logger  *slog.Logger

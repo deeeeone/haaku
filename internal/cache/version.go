@@ -1,6 +1,6 @@
 package cache
 
-import "trakt-api/redis"
+import "github.com/haaku-tv/haaku/redis"
 
 // IncrementMediaVersion atomically bumps the version counter for a media entity.
 // This invalidates all cached responses for that media in O(1) — callers

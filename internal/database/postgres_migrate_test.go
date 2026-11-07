@@ -62,7 +62,7 @@ func testDatabaseURL(t *testing.T) string {
 func newTestDatabase(t *testing.T) string {
 	t.Helper()
 	base := testDatabaseURL(t)
-	name := "tkiller_mig_" + randomSuffix(t)
+	name := "haaku_mig_" + randomSuffix(t)
 
 	adminDSN, err := withDatabaseName(base, "postgres")
 	if err != nil {
@@ -190,7 +190,7 @@ func relationExists(t *testing.T, g *gorm.DB, name string) bool {
 func TestMigrateAppliesEveryMigration(t *testing.T) {
 	dsn := newTestDatabase(t)
 	t.Setenv("DATABASE_URL", dsn)
-	t.Setenv("TKILLER_MIGRATION_BACKUP_DIR", t.TempDir())
+	t.Setenv("HAAKU_MIGRATION_BACKUP_DIR", t.TempDir())
 	g := openGorm(t, dsn)
 	SetDBForTest(t, g)
 
@@ -401,7 +401,7 @@ func TestMigrateFailingMigrationKeepsBackupAndRefuses(t *testing.T) {
 
 // TestMigrateRefusesWithoutPgDump covers the safety net's escape hatch: with a
 // usable pg_dump absent, a run against an existing schema refuses; only the
-// documented TKILLER_SKIP_BACKUP_BEFORE_MIGRATE=true proceeds.
+// documented HAAKU_SKIP_BACKUP_BEFORE_MIGRATE=true proceeds.
 func TestMigrateRefusesWithoutPgDump(t *testing.T) {
 	dsn := newTestDatabase(t)
 	g := openGorm(t, dsn)
@@ -418,7 +418,7 @@ func TestMigrateRefusesWithoutPgDump(t *testing.T) {
 		"0001_ok.sql":   &fstest.MapFile{Data: []byte(good)},
 		"0002_next.sql": &fstest.MapFile{Data: []byte(next)},
 	}
-	t.Setenv("TKILLER_PG_DUMP", "/nonexistent/definitely-not-pg_dump")
+	t.Setenv("HAAKU_PG_DUMP", "/nonexistent/definitely-not-pg_dump")
 
 	opts := base
 	opts.FS = both
@@ -428,7 +428,7 @@ func TestMigrateRefusesWithoutPgDump(t *testing.T) {
 		t.Fatalf("ledger = %v, want only version 1 (must refuse before applying)", got)
 	}
 
-	t.Setenv("TKILLER_SKIP_BACKUP_BEFORE_MIGRATE", "true")
+	t.Setenv("HAAKU_SKIP_BACKUP_BEFORE_MIGRATE", "true")
 	opts.SkipBackup = skipBackupBeforeMigrate() // the env is read when the options are built
 	if err := runMigrate(t, g, opts); err != nil {
 		t.Fatalf("Migrate with the skip escape hatch set: %v", err)

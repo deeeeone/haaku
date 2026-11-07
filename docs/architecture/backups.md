@@ -22,7 +22,7 @@ backups/<server-id>/<UTC time>-<kind>/
   manifest.json  written last; its presence is the commit point
 ```
 
-- `server-id` is `TKILLER_SERVER_ID` (default `default`). Every server writes and
+- `server-id` is `HAAKU_SERVER_ID` (default `default`). Every server writes and
   rotates only its own prefix.
 - The folder name is the backup id: the start of the run in UTC, to the
   millisecond, and the kind — `20260102T030405.123Z-nightly`. The kinds are
@@ -53,7 +53,7 @@ lists was written in full, at the size and checksum it records. Therefore:
 
 ### Manifest
 
-`manifest.json` has `format: "tkiller-backup"` and `version: 1`. A reader accepts
+`manifest.json` has `format: "haaku-backup"` and `version: 1`. A reader accepts
 every version up to its own and refuses a newer one. It records the id, kind,
 server id, start and completion times, the app version, the PostgreSQL and
 `pg_dump` versions, the database name, each object's name, size and SHA-256, and
@@ -192,8 +192,8 @@ api --backup-restore <id>          restore the backup in full and exit
 ```
 
 They need `DATABASE_URL`, `pg_dump`/`pg_restore` on the host, and
-`TKILLER_BACKUP_DIR` (default `./backups`). `TKILLER_BACKUP_KEEP` sets the
-retention count; `TKILLER_BACKUP_REQUIRE_TABLES` (default `users`) sets the tables
+`HAAKU_BACKUP_DIR` (default `./backups`). `HAAKU_BACKUP_KEEP` sets the
+retention count; `HAAKU_BACKUP_REQUIRE_TABLES` (default `users`) sets the tables
 whose absence fails a backup. `make backup` / `make backup-list` wrap the first
 two.
 

@@ -110,6 +110,7 @@ coverage: embed-stub ## Run both Go suites under coverage and enforce COVERAGE_F
 
 check: lint-go vuln secrets workflow-lint check-size check-bidi api-check parity-check contract-diff ## Run every gate CI runs
 
+# TODO remove this once we reach parity, we'll branch off and no longer need to check.
 # --- Trakt parity manifest (issue #4) ---
 #
 # docs/parity/parity.yaml grades every Trakt endpoint in issue #4 against the
@@ -228,7 +229,7 @@ api-check: embed-stub ## Verify openapi.yaml is fresh and its route inventory ma
 # --- Backups (issue #16) ---
 #
 # One-shot backup commands. They need DATABASE_URL and pg_dump/pg_restore on the
-# host; the destination is $TKILLER_BACKUP_DIR (default ./backups). See
+# host; the destination is $HAAKU_BACKUP_DIR (default ./backups). See
 # docs/architecture/backups.md.
 
 backup: embed-stub ## Take a manual database backup and exit (needs DATABASE_URL)
@@ -267,7 +268,7 @@ docker-base: ## Build the base image (haaku:base)
 
 docker-omnibus: docker-base ## Build the omnibus image (haaku:omnibus) from the base
 	docker build -f omnibus/Dockerfile \
-		--build-arg TKILLER_IMAGE=haaku:base \
+		--build-arg HAAKU_IMAGE=haaku:base \
 		-t haaku:omnibus omnibus/
 
 # The init and service scripts carry an s6 shebang (`#!/command/with-contenv
@@ -276,7 +277,7 @@ docker-omnibus: docker-base ## Build the omnibus image (haaku:omnibus) from the 
 docker-lint: ## Lint the omnibus shell scripts
 	shellcheck -s bash -e SC1091 \
 		omnibus/rootfs/etc/s6-overlay/scripts/* \
-		omnibus/rootfs/etc/tkiller-omnibus/lib.sh \
+		omnibus/rootfs/etc/haaku-omnibus/lib.sh \
 		omnibus/rootfs/etc/s6-overlay/s6-rc.d/*/run \
 		omnibus/rootfs/etc/s6-overlay/s6-rc.d/*/finish
 	shellcheck -s sh omnibus/rootfs/etc/s6-overlay/s6-rc.d/*/data/check

@@ -27,7 +27,7 @@ const (
 
 const (
 	// manifestFormat identifies the file to a reader that finds it by accident.
-	manifestFormat = "tkiller-backup"
+	manifestFormat = "haaku-backup"
 	// manifestVersion is the version this build writes. A reader accepts any
 	// version up to this one and refuses a newer one.
 	manifestVersion = 1

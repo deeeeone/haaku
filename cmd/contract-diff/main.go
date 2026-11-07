@@ -11,6 +11,8 @@
 // — depends on. The baseline is the contract as clients know it; a break must be
 // written down before the gate will pass. See docs/architecture/api-versioning.md.
 //
+// TODO remove this one we reach parity, we'll branch and no longer need to check parity.
+//
 // Usage:
 //
 //	go run ./cmd/contract-diff            # print the diff, warn on an unacknowledged break
@@ -22,7 +24,7 @@ import (
 	"fmt"
 	"os"
 
-	"trakt-api/internal/contractdiff"
+	"github.com/haaku-tv/haaku/internal/contractdiff"
 )
 
 func main() {

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/haaku-tv/haaku/internal/openapi"
 	"gopkg.in/yaml.v3"
-	"trakt-api/internal/openapi"
 )
 
 // TestRouteRegistration verifies that a registered route appears in generated YAML.
@@ -59,8 +59,8 @@ func TestRouteRegistration(t *testing.T) {
 	if !ok {
 		t.Fatal("missing 'info' section")
 	}
-	if info["title"] != "trakt-api" {
-		t.Errorf("expected title 'trakt-api', got %v", info["title"])
+	if info["title"] != "haaku" {
+		t.Errorf("expected title 'haaku', got %v", info["title"])
 	}
 
 	// Verify servers.

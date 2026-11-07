@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"trakt-api/internal/database"
+	"github.com/haaku-tv/haaku/internal/database"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/driver/sqlite"
@@ -42,7 +42,7 @@ func newTokenDB(t *testing.T) *gorm.DB {
 
 func useRootKey(t *testing.T, key string) {
 	t.Helper()
-	t.Setenv("TKILLER_SECRET_KEY", key)
+	t.Setenv("HAAKU_SECRET_KEY", key)
 }
 
 // TestTokenLookupHashIsDeterministicAndKeyed pins the blind index: same token →
@@ -273,7 +273,7 @@ func TestIntegrationTokenTamperedCiphertextFails(t *testing.T) {
 func TestIntegrationTokenMissingRootKeyRefuses(t *testing.T) {
 	db := newTokenDB(t)
 
-	t.Setenv("TKILLER_SECRET_KEY", "")
+	t.Setenv("HAAKU_SECRET_KEY", "")
 	if _, _, err := createToken(db, "u", "x", nil); err == nil {
 		t.Fatal("createToken with no root key succeeded, want an error")
 	}
@@ -292,7 +292,7 @@ func TestIntegrationTokenMissingRootKeyRefuses(t *testing.T) {
 		t.Fatalf("a refused create left %d rows behind", n)
 	}
 
-	t.Setenv("TKILLER_SECRET_KEY", strings.Repeat("a", 31)) // one short of the floor
+	t.Setenv("HAAKU_SECRET_KEY", strings.Repeat("a", 31)) // one short of the floor
 	if _, _, err := createToken(db, "u", "x", nil); err == nil {
 		t.Fatal("createToken with a 31-char key succeeded, want an error")
 	}

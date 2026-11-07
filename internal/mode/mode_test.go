@@ -38,7 +38,7 @@ func TestParseKnownModes(t *testing.T) {
 }
 
 // TestParseRejectsUnknown asserts a typo fails loudly instead of silently
-// starting the API. A misspelled TKILLER_MODE that quietly served traffic would
+// starting the API. A misspelled HAAKU_MODE that quietly served traffic would
 // be a very expensive kind of wrong.
 func TestParseRejectsUnknown(t *testing.T) {
 	for _, raw := range []string{"worker2", "false", "0", "all", "proxy"} {

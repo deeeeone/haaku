@@ -12,7 +12,7 @@ const testRootKey = "abababababababababababababababababababababababababababababa
 
 func setRootKey(t *testing.T) {
 	t.Helper()
-	t.Setenv("TKILLER_SECRET_KEY", testRootKey)
+	t.Setenv("HAAKU_SECRET_KEY", testRootKey)
 }
 
 func TestWebhookSecretRoundTrip(t *testing.T) {
@@ -92,7 +92,7 @@ func TestWebhookSecretWrongKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EncryptSecret: %v", err)
 	}
-	t.Setenv("TKILLER_SECRET_KEY", strings.Repeat("cd", 24)) // 48 chars, a different key
+	t.Setenv("HAAKU_SECRET_KEY", strings.Repeat("cd", 24)) // 48 chars, a different key
 	if got, err := DecryptSecret(4, stored); err == nil {
 		t.Fatalf("decrypting under the wrong key = (%q, nil), want error", got)
 	}
@@ -128,7 +128,7 @@ func TestWebhookSecretUnrecognisedFails(t *testing.T) {
 // TestWebhookSecretMissingOrShortKey proves the server-side guarantee: with no
 // usable root key, neither encrypt nor decrypt proceeds.
 func TestWebhookSecretMissingOrShortKey(t *testing.T) {
-	t.Setenv("TKILLER_SECRET_KEY", "")
+	t.Setenv("HAAKU_SECRET_KEY", "")
 	if _, err := EncryptSecret(1, "x"); err == nil {
 		t.Error("EncryptSecret with no root key succeeded, want error")
 	}
@@ -136,7 +136,7 @@ func TestWebhookSecretMissingOrShortKey(t *testing.T) {
 		t.Error("DecryptSecret with no root key succeeded, want error")
 	}
 
-	t.Setenv("TKILLER_SECRET_KEY", strings.Repeat("a", 31)) // one short of the floor
+	t.Setenv("HAAKU_SECRET_KEY", strings.Repeat("a", 31)) // one short of the floor
 	if _, err := EncryptSecret(1, "x"); err == nil {
 		t.Error("EncryptSecret with a 31-char key succeeded, want error")
 	}

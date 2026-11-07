@@ -3,8 +3,8 @@ package tests
 import (
 	"testing"
 
-	_ "trakt-api/internal/handlers/hidden"
-	"trakt-api/internal/openapi"
+	_ "github.com/haaku-tv/haaku/internal/handlers/hidden"
+	"github.com/haaku-tv/haaku/internal/openapi"
 )
 
 // ---------------------------------------------------------------------------

@@ -1,7 +1,7 @@
-# TKiller Web — Architecture & Project Plan
+# Haaku Web — Architecture & Project Plan
 
 > **Status:** Planning phase · **Last updated:** 2026-08-03
-> **API:** [trakt-api](../../trakt-api/openapi.yaml) — 195 endpoints, 29 tags
+> **API:** [haaku](../../haaku/openapi.yaml) — 195 endpoints, 29 tags
 > **Design system:** [design-kit](../../design-kit/) — 35 components, Tailwind v4 + Radix UI
 
 ---
@@ -28,7 +28,7 @@
 ## Project Structure
 
 ```
-tkiller-web/
+haaku-web/
 ├── plan/                    # Planning documents (this dir)
 ├── src/
 │   ├── main.tsx             # Entry point, providers

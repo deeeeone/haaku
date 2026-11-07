@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"trakt-api/internal/database"
-	"trakt-api/internal/openapi"
+	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/openapi"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -657,7 +657,7 @@ func handleDeviceCode(c *fiber.Ctx) error {
 	return c.JSON(deviceCodeResponse{
 		DeviceCode:      deviceCode,
 		UserCode:        userCode,
-		VerificationURI: "https://trakt-killer.app/activate",
+		VerificationURI: "https://haaku.tv/activate",
 		ExpiresIn:       int(deviceCodeTTL.Seconds()),
 		Interval:        devicePollInterval,
 	})

@@ -1,6 +1,6 @@
 package notes
 
-import "trakt-api/internal/database"
+import "github.com/haaku-tv/haaku/internal/database"
 
 // NoteResponse is the canonical note shape, exported as an alias so the
 // public-profile read surface (/v1/users/{id}/notes/...) returns the same note

@@ -9,13 +9,13 @@ import (
 	"sync"
 	"time"
 
-	"trakt-api/external/tmdb"
-	"trakt-api/internal/database"
-	"trakt-api/internal/openapi"
-	redisPkg "trakt-api/redis"
+	"github.com/haaku-tv/haaku/external/tmdb"
+	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/openapi"
+	redisPkg "github.com/haaku-tv/haaku/redis"
 
 	"github.com/gofiber/fiber/v2"
-	"trakt-api/internal/response"
+	"github.com/haaku-tv/haaku/internal/response"
 )
 
 func init() {

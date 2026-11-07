@@ -13,8 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"trakt-api/internal/config"
-	"trakt-api/internal/database"
+	"github.com/haaku-tv/haaku/internal/config"
+	"github.com/haaku-tv/haaku/internal/database"
 
 	"github.com/golang-jwt/jwt/v5"
 	"gorm.io/gorm"

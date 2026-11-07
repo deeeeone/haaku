@@ -28,7 +28,7 @@ import (
 func TestInitDBDoesNotCreateSchema(t *testing.T) {
 	dsn := newTestDatabase(t)
 	t.Setenv("DATABASE_URL", dsn)
-	t.Setenv("TKILLER_MIGRATION_BACKUP_DIR", t.TempDir())
+	t.Setenv("HAAKU_MIGRATION_BACKUP_DIR", t.TempDir())
 
 	// InitDB is guarded by a package-level sync.Once and writes a package-level
 	// singleton. Reset both so this test starts from a clean slate, and restore

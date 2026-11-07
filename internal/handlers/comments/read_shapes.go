@@ -1,6 +1,6 @@
 package comments
 
-import "trakt-api/internal/database"
+import "github.com/haaku-tv/haaku/internal/database"
 
 // CommentResponse is the canonical comment shape. Exported as an alias so the
 // public-profile read surface (/v1/users/{id}/comments/... and

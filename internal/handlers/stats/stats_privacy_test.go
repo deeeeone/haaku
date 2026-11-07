@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"trakt-api/internal/database"
+	"github.com/haaku-tv/haaku/internal/database"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/driver/postgres"

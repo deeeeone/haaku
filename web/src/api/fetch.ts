@@ -1,5 +1,5 @@
 /**
- * Thin fetch wrapper for the trakt-killer API.
+ * Thin fetch wrapper for the haaku API.
  * Used when the generated openapi-fetch client doesn't have typed response schemas.
  * Handles base URL, JSON parsing, and error normalization.
  */

@@ -31,8 +31,8 @@ import (
 	"log"
 	"time"
 
-	"trakt-api/internal/database"
-	"trakt-api/internal/handlers/media"
+	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/handlers/media"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"

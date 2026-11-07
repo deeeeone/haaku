@@ -4,11 +4,11 @@ import (
 	"errors"
 	"strconv"
 
-	"trakt-api/internal/database"
+	"github.com/haaku-tv/haaku/internal/database"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/haaku-tv/haaku/internal/response"
 	"gorm.io/gorm"
-	"trakt-api/internal/response"
 )
 
 // ResolveID resolves a route param to a canonical media ID and type.

@@ -4,9 +4,9 @@ import (
 	"errors"
 	"strconv"
 
-	"trakt-api/internal/database"
-	"trakt-api/internal/handlers/comments"
-	"trakt-api/internal/response"
+	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/handlers/comments"
+	"github.com/haaku-tv/haaku/internal/response"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"

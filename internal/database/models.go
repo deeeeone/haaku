@@ -8,7 +8,7 @@ import (
 
 // User mirrors Clerk identity. id IS the Clerk user id (text PK).
 // Profile fields synced via Clerk webhooks; local fields (bio, privacy, role, plan)
-// are ours. See ../trakt-killer-plan/02-architecture/data-model.md §1.
+// are ours. See ../haaku-plan/02-architecture/data-model.md §1.
 type User struct {
 	ID              string         `gorm:"primaryKey;type:text" json:"id"`
 	Username        string         `gorm:"uniqueIndex;type:text;not null" json:"username"`

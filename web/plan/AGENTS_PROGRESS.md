@@ -1,7 +1,7 @@
 # AGENTS_PROGRESS.md
 
 > **Last updated:** 2026-08-03
-> **API:** trakt-api (195 endpoints, 358 tests, port 8080)
+> **API:** haaku (195 endpoints, 358 tests, port 8080)
 
 ---
 
@@ -16,7 +16,7 @@
 - TanStack Router file-based routing with 9 placeholder routes
 - TanStack Query v5 with 30s stale time, 2x retry
 - Clerk auth integration (provider, styled sign-in, auth guards on root route)
-- API client generated from `trakt-api/openapi.yaml` (195 endpoints typed)
+- API client generated from `haaku/openapi.yaml` (195 endpoints typed)
 - `ApiClient` with Clerk token injection + error normalization + toast on failure
 - App shell: Topbar + Sidebar + MobileNav + Page layout components
 - Biome 2.5.6 config (matching design-kit)
@@ -88,6 +88,6 @@
 Button, Input, Select, SearchBar, FilterPill, Badge, Chip, GlassPill, Label, Eyebrow, Number, Card, MoodTile, Dialog, Dropdown, Tooltip, Banner, Toaster, PosterCard, Hero, MiniInfoCard, GenreStrip, DetailStat, StatCard, FactRow, Pagination, PaginationControls, ShimmerText, JsonHighlight, Topbar, Rail, MobileNav, SectionHead, InfoPanel, ProfilePill
 
 ## API Integration
-- Generated client: `src/api/generated/schema.ts` (from trakt-api/openapi.yaml)
+- Generated client: `src/api/generated/schema.ts` (from haaku/openapi.yaml)
 - Typed fetcher with Clerk auth header injection
 - 29 API tags, 195 endpoints available

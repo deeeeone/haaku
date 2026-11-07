@@ -1,7 +1,7 @@
 package database
 
 import (
-	"trakt-api/internal/cache"
+	"github.com/haaku-tv/haaku/internal/cache"
 
 	"gorm.io/gorm"
 )

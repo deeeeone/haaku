@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"trakt-api/internal/openapi"
+	"github.com/haaku-tv/haaku/internal/openapi"
 )
 
 // The fixtures below are deliberately tiny: a serving route, a 501 route, and a

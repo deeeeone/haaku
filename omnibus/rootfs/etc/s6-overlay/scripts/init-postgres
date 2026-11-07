@@ -3,8 +3,8 @@
 # Create the PostgreSQL cluster on first start and refuse to open a data
 # directory written by another major version.
 set -euo pipefail
-# shellcheck source=omnibus/rootfs/etc/tkiller-omnibus/lib.sh
-source /etc/tkiller-omnibus/lib.sh
+# shellcheck source=omnibus/rootfs/etc/haaku-omnibus/lib.sh
+source /etc/haaku-omnibus/lib.sh
 
 enabled postgres || exit 0
 export HOME=/config/postgres
@@ -32,7 +32,7 @@ if [[ -e "$PGDATA/PG_VERSION" ]]; then
     cat >&2 <<MSG
 /config/postgres/data was written by PostgreSQL $have but this image ships PostgreSQL $PG_MAJOR.
 PostgreSQL cannot open a data directory from another major version. Start the
-previous image, dump the trakt database with pg_dump, move the old data
+previous image, dump the haaku database with pg_dump, move the old data
 directory aside, then start this image and restore the dump. See "Upgrading
 PostgreSQL" in docs/architecture/omnibus-image.md.
 MSG
@@ -54,10 +54,10 @@ else
   s6-setuidgid postgres mkdir -p "$PGDATA"
   own_tree postgres postgres "$PGDATA"
   s6-setuidgid postgres chmod 0700 "$PGDATA"
-  # The tkiller role is the cluster superuser, so peer authentication on the
+  # The haaku role is the cluster superuser, so peer authentication on the
   # socket is the only way in; no database password exists. en_US.UTF-8 keeps
   # text sorting independent of whatever locale the host has.
-  s6-setuidgid postgres initdb -D "$PGDATA" -U tkiller \
+  s6-setuidgid postgres initdb -D "$PGDATA" -U haaku \
     --encoding=UTF8 --locale=en_US.UTF-8 \
     --auth-local=peer --auth-host=scram-sha-256 >/dev/null
 fi
@@ -70,13 +70,13 @@ if ! s6-setuidgid postgres grep -q "^include_dir = 'conf.d'" "$PGDATA/postgresql
 fi
 
 s6-setuidgid postgres install -d -m 0755 "$PGDATA/conf.d"
-s6-setuidgid postgres install -m 0644 /etc/tkiller-omnibus/postgresql.omnibus.conf "$PGDATA/conf.d/00-omnibus.conf"
+s6-setuidgid postgres install -m 0644 /etc/haaku-omnibus/postgresql.omnibus.conf "$PGDATA/conf.d/00-omnibus.conf"
 
 # pg_hba.conf belongs to the image too. A data directory from the official
 # PostgreSQL image trusts every local connection, which here would let any
 # account in the container sign in as the superuser.
 (umask 077 && write_as postgres "$PGDATA/pg_hba.conf") <<'HBA'
-# Written by the tkiller omnibus image on every start; edits do not survive.
+# Written by the haaku omnibus image on every start; edits do not survive.
 local   all          all                 peer
 host    all          all   127.0.0.1/32  scram-sha-256
 host    all          all   ::1/128       scram-sha-256
