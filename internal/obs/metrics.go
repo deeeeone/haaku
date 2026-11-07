@@ -12,6 +12,18 @@ import (
 // that also collects runtime and process metrics stays readable.
 const metricsNamespace = "tkiller"
 
+// Canonical background-worker names. They are the label value of every
+// tkiller_worker_* series and the name TKILLER_WORKER selects, so a heartbeat,
+// a processed counter and a log line always name the same worker whichever
+// process hosts it (see internal/workers).
+const (
+	WorkerWebhooks = "webhooks"
+	WorkerActivity = "activity"
+	WorkerOutbox   = "outbox"
+	WorkerMetadata = "metadata"
+	WorkerStats    = "stats"
+)
+
 // registry holds only what this service registers. A dedicated registry (rather
 // than prometheus.DefaultRegisterer) keeps the exposition free of anything an
 // imported library registers implicitly, and keeps tests deterministic.

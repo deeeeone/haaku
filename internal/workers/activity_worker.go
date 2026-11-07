@@ -9,33 +9,59 @@ import (
 
 	"trakt-api/internal/database"
 	"trakt-api/internal/obs"
-	"trakt-api/redis"
 
 	goredis "github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
 // activityWorkerMetrics instruments the activity worker for the metrics listener.
-var activityWorkerMetrics = obs.NewWorker("activity_worker")
+// The name matches obs.WorkerActivity, which is also the TKILLER_WORKER name.
+var activityWorkerMetrics = obs.NewWorker(obs.WorkerActivity)
 
-// StartActivityWorker launches a background goroutine that consumes events
-// from the Redis Stream "events" and transforms them into activity_feed rows
-// for relevant followers (fan-out).
+// FanOutActivity runs one pass: it reads new events from the Redis Stream
+// "events" and turns each into activity_feed rows for the actor's followers.
 //
-// The worker runs in a consumer group called "activity-workers".
-// Events that cannot be processed are sent to the dead letter queue
-// "events-dlq" for manual inspection.
-func StartActivityWorker() {
-	go func() {
-		// Give Redis and DB time to initialize
-		time.Sleep(2 * time.Second)
+// It is a single pass, not a loop: the worker runtime (internal/workers) owns
+// the loop, the heartbeat and shutdown, so the same code can run in-process in
+// the API or in a dedicated worker process. A pass that finds nothing returns
+// nil.
+//
+// The read is a plain XRead from "$", so it observes only events published
+// after the call; a message that arrives between passes is not fanned out. That
+// is the fan-out lane's own bug to fix (it is not the topology's), and it is
+// why the topology must keep this worker owned by exactly one process: two
+// readers on "$" would both see — and both apply — every new event.
+func FanOutActivity(ctx context.Context, db *gorm.DB, rdb *goredis.Client) error {
+	if rdb == nil {
+		return nil // Redis is unavailable; the next pass retries.
+	}
+	if db == nil {
+		return nil // Database is unavailable; the next pass retries.
+	}
 
-		for {
-			activityWorkerMetrics.Heartbeat()
-			processActivityEvents()
-			time.Sleep(500 * time.Millisecond)
+	readCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	streams, err := rdb.XRead(readCtx, &goredis.XReadArgs{
+		Streams: []string{"events", "$"},
+		Count:   100,
+		Block:   1 * time.Second,
+	}).Result()
+
+	if err != nil {
+		// A blocking XRead that times out is the steady state, not a failure.
+		if err != goredis.Nil && readCtx.Err() == nil {
+			return err
 		}
-	}()
+		return nil
+	}
+
+	for _, stream := range streams {
+		for _, msg := range stream.Messages {
+			processActivityMessage(db, msg)
+		}
+	}
+	return nil
 }
 
 // Event types we care about for activity fan-out.
@@ -58,48 +84,8 @@ var activityEventTypes = map[string]bool{
 	"list.items.removed": true,
 }
 
-// processActivityEvents reads new events from Redis Stream and fans them out.
-func processActivityEvents() {
-	client := redis.GetClient()
-	if client == nil {
-		return // Redis not available
-	}
-
-	gormDB, err := database.GetDB()
-	if err != nil {
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// Read pending/new messages from the "events" stream
-	// We use XReadGroup for consumer group support, but since we may not have
-	// created a group yet, we'll use simple XRead and track the last ID.
-	// For now, use XRead with ">" to get new messages.
-	streams, err := client.XRead(ctx, &goredis.XReadArgs{
-		Streams: []string{"events", "$"},
-		Count:   100,
-		Block:   1 * time.Second,
-	}).Result()
-
-	if err != nil {
-		// Timeout is expected on XRead with block
-		if err != goredis.Nil {
-			log.Printf("[activity-worker] XRead error: %v", err)
-		}
-		return
-	}
-
-	for _, stream := range streams {
-		for _, msg := range stream.Messages {
-			processMessage(gormDB, msg)
-		}
-	}
-}
-
-// processMessage handles a single Redis Stream message and fans out activity.
-func processMessage(db *gorm.DB, msg goredis.XMessage) {
+// processActivityMessage handles a single Redis Stream message and fans out activity.
+func processActivityMessage(db *gorm.DB, msg goredis.XMessage) {
 	eventType, _ := msg.Values["event_type"].(string)
 	if !activityEventTypes[eventType] {
 		// Not an activity-generating event

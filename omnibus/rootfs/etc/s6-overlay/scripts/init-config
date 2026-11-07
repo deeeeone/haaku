@@ -108,6 +108,20 @@ else
   redis_state="external"
 fi
 
+# The dedicated worker service is the opt-in for running the background workers
+# in their own process instead of inside the API: TKILLER_WORKER_SERVICE=true.
+# Enabling it hands the workers to svc-tkiller-worker by telling the API (and
+# every other service) to run none — a worker is started by exactly one process,
+# never two. Off by default, so `docker compose up -d` still runs everything in
+# the API, which is what a single-container install wants.
+if truthy "${TKILLER_WORKER_SERVICE:-}"; then
+  : >"$STATE_DIR/worker-service.enabled"
+  export_env TKILLER_WORKER none
+  worker_state="on (selection: ${TKILLER_WORKER_SERVICE_SELECTION:-all})"
+else
+  worker_state="off (the API runs them in-process)"
+fi
+
 # APP_ENV decides prod-vs-dev behaviour (log format, and Clerk is only relaxed
 # in development). A bundled install is a deployment, not a dev box.
 if [[ -z "${APP_ENV:-}" ]]; then
@@ -117,3 +131,4 @@ fi
 log "mode: api"
 log "postgres: $postgres_state"
 log "redis: $redis_state"
+log "worker service: $worker_state"

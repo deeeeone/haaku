@@ -106,9 +106,12 @@ VOLUME /config
 # The base image's health check probes 8080; here PORT may be overridden, and
 # the first start applies every migration, which can take minutes on a large
 # database. Not healthy before that is correct — the API is not serving yet.
+# A worker container (TKILLER_MODE=worker, no API port) answers on its health
+# listener instead, so the same check covers both roles.
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5m --retries=3 \
-  CMD curl -fsS "http://127.0.0.1:$(printf '%s' "${PORT:-8080}")/healthz" || exit 1
+  CMD curl -fsS "http://127.0.0.1:$(printf '%s' "${PORT:-8080}")/healthz" >/dev/null || \
+      curl -fsS "http://${TKILLER_WORKER_HEALTH_LISTEN:-127.0.0.1:9090}/healthz" >/dev/null || exit 1
 
 # /init needs root to map accounts and hand directories to them. To run this
 # image without root, set the entrypoint to /app/api with an external

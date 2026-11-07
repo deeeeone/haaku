@@ -64,6 +64,12 @@ make dev-frontend                # second terminal: Vite on :5173, proxies /v1 t
 
 The server refuses to start without `TKILLER_SECRET_KEY` (32+ characters — `openssl rand -base64 48`), and a first start on an empty database migrates it for you. `make bin` builds the single binary with the real UI embedded; `make help` lists every target.
 
+## Background workers
+
+Webhook delivery, activity fan-out, the event outbox and the TMDB upkeep jobs run as **background workers**. By default they run inside the API process, so `docker compose up -d` is still the whole install. To run them in a process of their own, set `TKILLER_WORKER_SERVICE=true` in `.env`: the init then starts a second service in the same container and turns the API's own workers off, so each worker runs in exactly one place. `docker-compose.advanced.yml` offers the same split as an opt-in `worker` container (`--profile worker`). From source it is `TKILLER_WORKER=none go run ./cmd/api` for the API and `TKILLER_MODE=worker go run ./cmd/api` for the worker.
+
+The worker process serves `/healthz` and `/readyz` on its own listener and beats a Prometheus heartbeat gauge per worker, so a stalled one is visible. Names, schedule (UTC) and metrics: [docs/architecture/workers.md](docs/architecture/workers.md).
+
 ## API
 
 - `/v1` is the versioned surface: JSON in, JSON out, one error envelope — `{"error":{"code":"…","message":"…"}}`.
@@ -82,7 +88,8 @@ The server refuses to start without `TKILLER_SECRET_KEY` (32+ characters — `op
 ## Layout
 
 ```
-cmd/api/            one binary: TKILLER_MODE=api|worker|migrate, or --migrate-only
+cmd/api/            one binary: TKILLER_MODE=api|worker|migrate, or --migrate-only;
+                    TKILLER_WORKER picks which background workers a process runs
 internal/           ~30 domain packages — handlers, auth, database, cache, workers,
                     obs, backup, secret, mode, webui — each with an audit *.md beside it
 internal/webui/     serves the embedded frontend
@@ -116,6 +123,7 @@ Do not put real data behind this yet.
 | Doc | Subject |
 |---|---|
 | [monorepo.md](docs/architecture/monorepo.md) | Why one repo, one binary, one image |
+| [workers.md](docs/architecture/workers.md) | The background workers: names, selector, schedule, metrics |
 | [backups.md](docs/architecture/backups.md) | Backups, restore, rotation and the pre-migration safety copy |
 | [api-versioning.md](docs/architecture/api-versioning.md) | API versioning, the generated spec and its gates |
 | [release-versioning.md](docs/architecture/release-versioning.md) | Release, upgrade and rollback policy |

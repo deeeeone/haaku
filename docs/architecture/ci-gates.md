@@ -52,6 +52,20 @@ treat a drop through it as a signal that a suite stopped running.
 - **Bidi controls** (`scripts/check-bidi.sh`): fails on Unicode bidirectional
   control characters in tracked text (CVE-2021-42574). Nothing here needs them.
 
+## Worker topology
+
+The background-worker topology (`internal/workers`) is covered by `./...`, not
+the `_tests_` harness: the selector, the catalog, panic recovery per pass, prompt
+shutdown and the worker health listener are unit tests built from fake workers,
+so they need no database and no Redis. The readiness/liveness signal and the
+heartbeat metric share this coverage (see [workers.md](workers.md)).
+
+The **modes** themselves — `TKILLER_MODE=worker` refusing to migrate, an
+API-only process starting no worker — are asserted on the pure decision
+functions (`wantsMigrations`, `workerPlan`) and exercised for real by running the
+binary against a throwaway PostgreSQL, which is a manual step because there is
+no PostgreSQL- or Redis-backed CI job yet (see below).
+
 ## Deliberately not gated yet
 
 - `bodyclose` and `errorlint` (golangci-lint): ~56 and ~27 sites respectively,
