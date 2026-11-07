@@ -6,7 +6,7 @@ Follow graph + approval flow. Eight routes:
 
 - `POST /v1/users/:id/follow` — follow; private target → pending (`ApprovedAt` nil), else approved immediately. Idempotent (already-following returns 201 with current status).
 - `DELETE /v1/users/:id/follow` — unfollow (204 / 404).
-- `GET /v1/users/:id/followers|following|friends` — lists; friends = mutual approved follows (self-join on `user_follows`).
+- `GET /v1/users/:id/followers|following|friends` — lists; friends = mutual approved follows (self-join on `user_follows`). **Public by design (ratified, issue #48).** The graph is served without a privacy gate even for a private `:id`: the follow counters are how the product shows community size, and the relationship is already visible through the public profile stub, so gating the list while the counters stay public would be inconsistent. No `settings.privacy.*` flag names the graph, so it stays ungated. See the cross-reference in `internal/handlers/users/users.md` ("Per-section privacy flags").
 - `GET /v1/users/me/follow_requests` — pending incoming requests.
 - `POST /v1/users/me/follow_requests/:follower_id/approve` — sets `approved_at`.
 - `DELETE /v1/users/me/follow_requests/:follower_id` — deny (delete row).
@@ -39,7 +39,7 @@ Emits outbox events (`user.followed`, `user.unfollowed`, `user.follow_approved`)
 
 ## Todos
 
-- [x] Attach `auth.AuthRequired` to all mutation routes; drop unchecked asserts (fail closed with 401). Public reads (followers/following/friends) stay open.
+- [x] Attach `auth.AuthRequired` to all mutation routes; drop unchecked asserts (fail closed with 401). Public reads (followers/following/friends) stay open — **ratified as public by design (issue #48), see "What it does".**
 - [x] Wrap follow/unfollow/approve/deny in `cache.WithCacheTransaction` with version-counter invalidation and in-tx outbox publish.
 - [x] Define typed outbox constants for follow events — `EventFollowCreated/Approved/Removed` matching the webhook catalog (`follow.created` / `follow.approved` / `follow.removed`); old `user.*` names were drift. Advisory locks on follow still pending.
 - [x] Create inbox notifications on follow/approve. (Batch 7 — in-tx via `notifications.CreateNotification`)

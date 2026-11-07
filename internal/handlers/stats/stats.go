@@ -54,7 +54,12 @@ func RegisterRoutes(api fiber.Router) {
 	// user are 404, a private profile is 403 to a stranger and 200 to
 	// self/admins/followers. Without it an anonymous or authenticated stranger
 	// could read a private user's aggregate stats (plays/minutes/ratings).
-	api.Get("/users/:id/stats", auth.PrivacyFilter("id"), handleGetUserStats)
+	// The public profile's aggregate stats are part of the profile surface, so
+	// they share the profile section flag (users.settings.privacy.profile) in
+	// addition to the is_private/block gate. A block in either direction and an
+	// unknown user are 404, a private profile is 403 to a stranger and 200 to
+	// self/admins/followers; profile="friends"/"private" tightens the same way.
+	api.Get("/users/:id/stats", auth.PrivacyFilterSection("id", "profile"), handleGetUserStats)
 }
 
 // ---------------------------------------------------------------------------

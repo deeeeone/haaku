@@ -243,3 +243,45 @@ func TestStatsRouteIsPrivacyGated(t *testing.T) {
 		t.Fatal("GET /v1/users/:id/stats is not registered at all")
 	}
 }
+
+// ---------------------------------------------------------------------------
+// The per-section profile flag also gates the public profile's aggregates:
+// users.settings.privacy.profile="friends" hides /stats from a stranger on an
+// otherwise-public profile, and 200s self/follower/admin.
+// ---------------------------------------------------------------------------
+
+func setStatsUserSettings(t *testing.T, db *gorm.DB, id, settings string) {
+	t.Helper()
+	if err := db.Model(&database.User{}).Where("id = ?", id).
+		Update("settings", settings).Error; err != nil {
+		t.Fatalf("set settings for %s: %v", id, err)
+	}
+}
+
+func TestStatsProfileFlagGatesAggregates(t *testing.T) {
+	db := statsPrivacyDB(t)
+	seedStatsUser(t, db, "target", false, false)
+	seedStatsUser(t, db, "follower", false, false)
+	seedStatsUser(t, db, "admin", false, true)
+	seedFreshStats(t, db, "target")
+	setStatsUserSettings(t, db, "target", `{"privacy":{"profile":"friends"}}`)
+
+	if err := db.Create(&database.UserFollow{
+		FollowerID: "follower", FollowingID: "target", CreatedAt: time.Now(),
+	}).Error; err != nil {
+		t.Fatalf("seed follow: %v", err)
+	}
+
+	for _, caller := range []string{"stranger", ""} {
+		status, body := statsDoGET(t, newStatsApp(caller), "/v1/users/target/stats")
+		if status != http.StatusForbidden {
+			t.Errorf("profile=friends caller=%q: want 403, got %d (%s)", caller, status, body)
+		}
+	}
+	for _, caller := range []string{"target", "follower", "admin"} {
+		status, body := statsDoGET(t, newStatsApp(caller), "/v1/users/target/stats")
+		if status != http.StatusOK {
+			t.Errorf("profile=friends caller=%q: want 200, got %d (%s)", caller, status, body)
+		}
+	}
+}
