@@ -57,16 +57,19 @@ Go 1.26+, Node 20+ with pnpm, and PostgreSQL 16 (Redis is optional — the code
 degrades without it and says so on `/readyz`).
 
 ```bash
-cp deploy/.env.example .env      # set HAAKU_SECRET_KEY, TMDB_API_TOKEN, and
-                                 # HAAKU_ADMIN_EMAIL + HAAKU_ADMIN_PASSWORD
+cp .env.example .env             # same template as the container install
+                                 # set HAAKU_SECRET_KEY, TMDB_API_TOKEN and
+                                 # HAAKU_ADMIN_EMAIL + HAAKU_ADMIN_PASSWORD;
+                                 # uncomment DATABASE_URL (:55432) and REDIS_URL
+                                 # (:56379) to match make dev-db
 make dev-db                      # Docker: PostgreSQL + Redis only, no app container
 make dev-backend                 # API on :8080; migrations run on start
 make dev-frontend                # second terminal: Vite on :5173, proxies /v1 to the API
 ```
 
 `make dev-db` runs just the infrastructure from `dev/compose.yml`: PostgreSQL on
-**55432** and Redis on **56379**, matching the `DATABASE_URL` / `REDIS_URL` in
-`deploy/.env.example`. Prefer no Docker at all? `make pg-up` starts a throwaway
+**55432** and Redis on **56379**, matching the commented `DATABASE_URL` /
+`REDIS_URL` examples in `.env.example`. Prefer no Docker at all? `make pg-up` starts a throwaway
 PostgreSQL on a unix socket and prints the `DATABASE_URL` to paste into `.env`.
 `make compose-down` stops everything.
 
@@ -122,7 +125,7 @@ internal/           ~30 domain packages — handlers, auth, database, cache, wor
 internal/webui/     serves the embedded frontend
 web/                React + TypeScript frontend, embedded via web/embed.go
 migrations/sql/     32 Goose migrations (append-only)
-deploy/             compose file and env template for running from source
+dev/                compose file for host development (PostgreSQL, Redis, MinIO)
 docs/architecture/  design docs
 scripts/            developer tooling (dev-pg.sh boots a throwaway PostgreSQL)
 ```

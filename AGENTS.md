@@ -28,7 +28,7 @@ Dockerfile          the base image: frontend + binary + postgresql-client
 omnibus/            the single image: + PostgreSQL, Redis, s6-overlay (issue #13)
 docker-compose.yml  the omnibus install (one container, one command)
 dev/compose.yml     PostgreSQL, Redis, Minio, Clerk emulator, Mailpit for host dev
-deploy/.env.example the longer env list for running the API from source
+.env.example        the one environment template: container install and source run
 docs/architecture/  design docs for decisions that outgrow a comment
 scripts/            developer tooling (dev-pg.sh boots a throwaway PostgreSQL)
 ```

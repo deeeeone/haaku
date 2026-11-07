@@ -10,7 +10,7 @@ internal/                domain packages
 web/                     the React frontend, embedded into the binary
 migrations/              SQL migrations (embedded; see issue #14)
 contracts/               frozen API-contract baseline + acknowledged breaks (#15)
-deploy/                  compose files for local services
+dev/                     compose file for local services (host dev)
 docs/architecture/       design docs (this directory)
 scripts/                 developer tooling
 ```

@@ -6,7 +6,8 @@
 #   make pg-up          # alternative: a throwaway cluster, no Docker needed
 #
 # Host ports are offset (+50000) so native macOS/brew services (5432, 6379)
-# don't shadow these containers; keep deploy/.env.example in sync.
+# don't shadow these containers; keep the DATABASE_URL/REDIS_URL examples in
+# .env.example in sync.
 
 services:
   postgres:
