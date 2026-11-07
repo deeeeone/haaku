@@ -352,14 +352,9 @@ func handleDismissReport(c *fiber.Ctx) error {
 func handleActOnReport(c *fiber.Ctx, newStatus string) error {
 	operatorID := c.Locals("user_id").(string)
 
-	// Parse inline and return immediately on failure. response.ParseIDParam
-	// writes the 400 but returns a nil error (its BadRequest call is a
-	// responder), so a caller that branches on its error would fall through and
-	// answer 404 instead. The report-submit handlers already parse inline for
-	// the same reason.
-	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
+	id, err := response.ParseIDParam(c, "report")
 	if err != nil {
-		return response.BadRequest(c, "invalid report id")
+		return err
 	}
 
 	var req resolveRequest

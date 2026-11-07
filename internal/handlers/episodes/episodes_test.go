@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"trakt-api/internal/database"
+	"trakt-api/internal/response"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/driver/sqlite"
@@ -116,7 +117,7 @@ func seedEpisodeFixture(t *testing.T, db *gorm.DB) int64 {
 }
 
 func makeEpisodesApp() *fiber.App {
-	app := fiber.New()
+	app := fiber.New(fiber.Config{ErrorHandler: response.HandleError})
 	v1 := app.Group("/v1")
 	RegisterRoutes(v1)
 	return app
@@ -187,16 +188,23 @@ func TestGetEpisodeHandler(t *testing.T) {
 		}
 	})
 
-	t.Run("404 for non-numeric id", func(t *testing.T) {
-		// NB: a malformed id writes a 400 via response.ParseIDParam but that
-		// helper returns a nil error, so the handler falls through to the DB
-		// lookup (id=0) and the NotFound branch overwrites the status to 404.
-		// This is the current on-main behavior; a genuine 400 is unreachable
-		// here until ParseIDParam stops swallowing the parse error (see note
-		// in the module report).
+	t.Run("400 for non-numeric id", func(t *testing.T) {
 		resp := doGET(t, app, "/v1/episodes/abc")
-		if resp.StatusCode != http.StatusNotFound {
-			t.Errorf("expected 404, got %d", resp.StatusCode)
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d", resp.StatusCode)
+		}
+		var body struct {
+			Error struct {
+				Code    string `json:"code"`
+				Message string `json:"message"`
+			} `json:"error"`
+		}
+		decodeBody(t, resp, &body)
+		if body.Error.Code != "invalid_request" {
+			t.Errorf("error code = %q, want invalid_request", body.Error.Code)
+		}
+		if body.Error.Message != "invalid episode id" {
+			t.Errorf("error message = %q, want %q", body.Error.Message, "invalid episode id")
 		}
 	})
 
@@ -232,12 +240,10 @@ func TestGetEpisodeStats(t *testing.T) {
 		}
 	})
 
-	t.Run("404 for non-numeric id", func(t *testing.T) {
-		// Malformed ids fall through to the 404 not-found branch (see the
-		// TestGetEpisodeHandler non-numeric comment for the ParseIDParam detail).
+	t.Run("400 for non-numeric id", func(t *testing.T) {
 		resp := doGET(t, app, "/v1/episodes/nope/stats")
-		if resp.StatusCode != http.StatusNotFound {
-			t.Errorf("expected 404, got %d", resp.StatusCode)
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d", resp.StatusCode)
 		}
 	})
 

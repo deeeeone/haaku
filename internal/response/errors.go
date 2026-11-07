@@ -5,6 +5,8 @@
 package response
 
 import (
+	"errors"
+
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -70,4 +72,41 @@ func ServiceUnavailable(c *fiber.Ctx, message string) error {
 // NotImplemented writes a 501 envelope.
 func NotImplemented(c *fiber.Ctx, message string) error {
 	return WriteError(c, fiber.StatusNotImplemented, "not_implemented", message)
+}
+
+// ErrHandled is returned by a helper that has ALREADY written its response.
+//
+// The envelope writers below return whatever c.JSON returns, which is nil on
+// success — so a helper that writes an error and also needs to stop the handler
+// cannot hand the writer's value back to a caller that branches on it. It
+// returns ErrHandled instead: the caller's `if err != nil { return err }` fires,
+// and HandleError treats it as a no-op so the status already written survives.
+//
+// This is what made malformed ids answer 404: ParseIDParam returned nil, the
+// handler carried on with id 0 and its NotFound branch overwrote the 400.
+var ErrHandled = errors.New("response already written")
+
+// HandleError renders the JSON error envelope for an error returned from a
+// handler. It is the Fiber app-level error handler, and it lives here in the
+// leaf package (rather than in httpapi) so handler tests can wire the same
+// handler production uses — otherwise the error path they would be testing is
+// Fiber's default one, not ours.
+func HandleError(c *fiber.Ctx, err error) error {
+	if errors.Is(err, ErrHandled) {
+		return nil
+	}
+	// Route not found / method not allowed / explicit fiber status.
+	var fe *fiber.Error
+	if errors.As(err, &fe) {
+		switch fe.Code {
+		case fiber.StatusNotFound:
+			return WriteError(c, fiber.StatusNotFound, "not_found", "unknown route")
+		case fiber.StatusMethodNotAllowed:
+			return WriteError(c, fiber.StatusMethodNotAllowed, "method_not_allowed", "method not allowed for this route")
+		default:
+			return WriteError(c, fe.Code, "error", fe.Message)
+		}
+	}
+	// Panics recovered by middleware land here as well.
+	return InternalError(c)
 }
