@@ -281,7 +281,7 @@ func handleListFriends(c *fiber.Ctx) error {
 	}
 
 	var rows []database.UserFollow
-	if err := db.Raw("SELECT f1.*"+mutual+" ORDER BY f1.created_at DESC, f1.id ASC LIMIT ? OFFSET ?",
+	if err := db.Raw("SELECT f1.*"+mutual+" ORDER BY f1.created_at DESC, f1.following_id ASC LIMIT ? OFFSET ?",
 		targetID, limit, (page-1)*limit).Scan(&rows).Error; err != nil {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to fetch friends")
 	}
@@ -301,7 +301,8 @@ func handleListFriends(c *fiber.Ctx) error {
 }
 
 // listFollowRelations returns followers or following for a user, paginated
-// per api-conventions.md §7 with a stable created_at DESC, id ASC order.
+// per api-conventions.md §7 with a stable created_at DESC order (the composite
+// primary key is the tie-breaker; user_follows has no surrogate id).
 func listFollowRelations(c *fiber.Ctx, targetID, direction string) error {
 	db, err := database.GetDB()
 	if err != nil {
@@ -332,7 +333,7 @@ func listFollowRelations(c *fiber.Ctx, targetID, direction string) error {
 	}
 
 	var follows []database.UserFollow
-	if err := query.Order("created_at DESC, id ASC").
+	if err := query.Order("created_at DESC, follower_id ASC, following_id ASC").
 		Offset((page - 1) * limit).Limit(limit).
 		Find(&follows).Error; err != nil {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
@@ -383,7 +384,7 @@ func handleListFollowRequests(c *fiber.Ctx) error {
 
 	var follows []database.UserFollow
 	if err := db.Where("following_id = ? AND approved_at IS NULL", userID).
-		Order("created_at DESC, id ASC").
+		Order("created_at DESC, follower_id ASC").
 		Offset((page - 1) * limit).Limit(limit).
 		Find(&follows).Error; err != nil {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to fetch follow requests")

@@ -240,6 +240,27 @@ func TestMigrateAppliesEveryMigration(t *testing.T) {
 	if dataType != "USER-DEFINED" && dataType != "citext" {
 		t.Errorf("users.username data_type = %q, want citext (migration 0001's CREATE EXTENSION citext did not run)", dataType)
 	}
+
+	// Columns the models and handlers query. 0005 created user_follows with
+	// `followed_id`, so 0021's CREATE TABLE IF NOT EXISTS was a no-op, and 0012
+	// created user_playback without the id the playback handlers paginate on.
+	// The reconciliation migration must leave both in the shape the code reads.
+	for _, want := range []struct{ table, column string }{
+		{"user_follows", "following_id"},
+		{"user_follows", "approved_at"},
+		{"user_playback", "id"},
+	} {
+		var exists bool
+		if err := g.Raw(`SELECT EXISTS (
+			SELECT 1 FROM information_schema.columns
+			WHERE table_schema='public' AND table_name=? AND column_name=?
+		)`, want.table, want.column).Scan(&exists).Error; err != nil {
+			t.Fatalf("checking %s.%s: %v", want.table, want.column, err)
+		}
+		if !exists {
+			t.Errorf("column %s.%s missing after migrations", want.table, want.column)
+		}
+	}
 }
 
 // TestMigrateIsIdempotent asserts a second run is a no-op: no error, no new

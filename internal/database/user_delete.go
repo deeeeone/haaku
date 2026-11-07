@@ -67,7 +67,7 @@ func DeleteUserData(db *gorm.DB, userID string) error {
 		// 2. Social graph — both directions so neither side references a
 		//    deleted user.
 		if err := tx.Exec(
-			"DELETE FROM user_follows WHERE follower_id = ? OR followed_id = ?",
+			"DELETE FROM user_follows WHERE follower_id = ? OR following_id = ?",
 			userID, userID,
 		).Error; err != nil {
 			return fmt.Errorf("delete user_follows: %w", err)
