@@ -615,14 +615,12 @@ sections:
         rationale: "custom: development-only Clerk webhook simulator, registered outside production only."
       - trakt: ""
         ours: "GET /v1/syncs/{id}/paused"
-        status: blocked-engine
-        rationale: "Custom 501: unmatched/paused items require the sync engine."
-        engine: "sync engine (issue #6)"
+        status: out-of-scope
+        rationale: "custom: the paused items (unmatched or errored) of a haaku sync session, now that the sync engine (issue #6) has landed and records per-item outcomes. Our own session concept, not a Trakt path."
       - trakt: ""
         ours: "GET /v1/syncs/{id}/skipped"
-        status: blocked-engine
-        rationale: "Custom 501: skipped items require the sync engine."
-        engine: "sync engine (issue #6)"
+        status: out-of-scope
+        rationale: "custom: the skipped (duplicate) items of a haaku sync session, now that the sync engine (issue #6) has landed and records per-item outcomes. Our own session concept, not a Trakt path."
       - trakt: ""
         ours: "GET /v1/movies/recommendations/{id}"
         status: blocked-engine
