@@ -9,6 +9,7 @@ import (
 
 	"trakt-api/internal/auth"
 	"trakt-api/internal/database"
+	"trakt-api/internal/response"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/driver/sqlite"
@@ -62,7 +63,7 @@ func seedReport(t *testing.T, db *gorm.DB, r database.ContentReport) database.Co
 // into ctx locals (bypassing Clerk) but keeps the real RequireModerator gate,
 // so 200/400/403/404 can be asserted without a Clerk emulator.
 func makeModApp(userID string) *fiber.App {
-	app := fiber.New()
+	app := fiber.New(fiber.Config{ErrorHandler: response.HandleError})
 	stub := func(c *fiber.Ctx) error {
 		c.Locals("user_id", userID)
 		return c.Next()
@@ -77,7 +78,7 @@ func makeModApp(userID string) *fiber.App {
 // makeSubmitApp registers the four report-submission routes behind the same
 // stub, so the reopen/duplicate paths can be exercised.
 func makeSubmitApp(userID string) *fiber.App {
-	app := fiber.New()
+	app := fiber.New(fiber.Config{ErrorHandler: response.HandleError})
 	stub := func(c *fiber.Ctx) error {
 		c.Locals("user_id", userID)
 		return c.Next()
@@ -93,7 +94,7 @@ func makeSubmitApp(userID string) *fiber.App {
 // makeRealApp registers the routes exactly as production does, with the shared
 // auth.AuthRequired() middleware, so the 401 guard can be asserted.
 func makeRealApp() *fiber.App {
-	app := fiber.New()
+	app := fiber.New(fiber.Config{ErrorHandler: response.HandleError})
 	v1 := app.Group("/v1")
 	RegisterRoutes(v1)
 	return app

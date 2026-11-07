@@ -17,19 +17,7 @@ import (
 // errorHandler is the Fiber app-level error handler: renders envelopes for
 // route-not-found, panics, and errors returned from handlers.
 func errorHandler(c *fiber.Ctx, err error) error {
-	// Route not found (Fiber's ErrNotFound)
-	if e, ok := err.(*fiber.Error); ok {
-		switch e.Code {
-		case fiber.StatusNotFound:
-			return response.WriteError(c, fiber.StatusNotFound, "not_found", "unknown route")
-		case fiber.StatusMethodNotAllowed:
-			return response.WriteError(c, fiber.StatusMethodNotAllowed, "method_not_allowed", "method not allowed for this route")
-		default:
-			return response.WriteError(c, e.Code, "error", e.Message)
-		}
-	}
-	// Panics recovered by middleware land here as well
-	return response.InternalError(c)
+	return response.HandleError(c, err)
 }
 
 // Common error constructors for handlers.
