@@ -266,14 +266,29 @@ export interface HistoryItem {
 
 export interface HistoryResponse extends PaginatedResponse<HistoryItem> {}
 
+// PlaybackItem is one row of /v1/sync/playback/{movies,episodes}, normalised
+// by the hooks: the movie endpoint returns `movie`, the episode endpoint
+// returns `episode` + `show`. `type` and `id` are added client-side because
+// the API omits them.
+export interface PlaybackEpisodeInfo {
+  title: string
+  season: number
+  number: number
+}
+
+export interface PlaybackShowInfo {
+  title: string
+  ids: Ids
+}
+
 export interface PlaybackItem {
   id: number
   progress: number
   paused_at: string
-  type: SearchType
+  type: 'movie' | 'episode'
   movie?: Movie
-  episode?: Episode
-  show?: Show
+  episode?: PlaybackEpisodeInfo
+  show?: PlaybackShowInfo
 }
 
 export interface ActivityItem {
@@ -301,15 +316,25 @@ export interface ActivityItem {
   }
 }
 
+// RecommendationItem is one row of /v1/recommendations/* or
+// /v1/social_recommendations/*. Those endpoints return a flat media object
+// inside an `{items, page, limit, row_count}` envelope (the hooks unwrap it and
+// add `media_type` so a merged movie/show list can be rendered).
 export interface RecommendationItem {
-  rank: number
-  listed_at: string
-  type: string
-  score: number
-  movie?: Movie
-  show?: Show
-  total_user_count?: number
-  total_friend_count?: number
+  id: number
+  tmdb_id: number
+  title: string
+  overview?: string
+  popularity: number
+  genres?: string[]
+  released?: string
+  first_aired?: string
+  status?: string
+  episode_count?: number
+  friend_count?: number
+  rating_avg: number
+  poster?: string
+  media_type: 'movie' | 'show'
 }
 
 export interface WatchlistReorderBody {

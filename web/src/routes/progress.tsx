@@ -25,10 +25,7 @@ function ProgressPage() {
   const isLoading = moviesLoading || episodesLoading
 
   // Combine and sort by most recent
-  const allItems: PlaybackItem[] = [
-    ...movies.map((m) => ({ ...m, _mediaType: 'movie' as const })),
-    ...episodes.map((e) => ({ ...e, _mediaType: 'show' as const })),
-  ]
+  const allItems: PlaybackItem[] = [...movies, ...episodes]
     .filter((item) => !hidden.has(item.id))
     .sort(
       (a, b) =>
@@ -107,8 +104,8 @@ function ProgressPage() {
               const onClick = () => {
                 if (item.movie)
                   navigate({ to: `/movies/${item.movie.ids.trakt}` })
-                else if (item.episode)
-                  navigate({ to: `/episodes/${item.episode.ids.trakt}` })
+                else if (item.show)
+                  navigate({ to: `/shows/${item.show.ids.trakt}` })
               }
 
               return (
@@ -125,7 +122,7 @@ function ProgressPage() {
                   {/* Progress bar overlay */}
                   <div className="absolute bottom-8 left-2 right-2 opacity-0 transition-opacity group-hover:opacity-100">
                     <ProgressBar
-                      value={item.progress * 100}
+                      value={item.progress}
                       size="sm"
                       showLabel={false}
                     />
@@ -134,7 +131,7 @@ function ProgressPage() {
                   {/* Progress badge */}
                   <div className="absolute top-2 left-2 rounded-full bg-black/60 px-1.5 py-0.5 backdrop-blur-sm">
                     <span className="text-[10px] font-bold text-sf-accent-2">
-                      {Math.round(item.progress * 100)}%
+                      {Math.round(item.progress)}%
                     </span>
                   </div>
 

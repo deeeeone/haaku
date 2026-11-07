@@ -1,6 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { motion } from 'framer-motion'
-import { Bookmark, Clock, Heart, Play, Star } from 'lucide-react'
 import {
   useActivityFeed,
   usePlaybackEpisodes,
@@ -10,14 +8,9 @@ import {
   useSocialRecommendationsMovies,
   useSocialRecommendationsShows,
 } from '@/api/hooks'
-import type {
-  ActivityItem,
-  PlaybackItem,
-  RecommendationItem,
-} from '@/api/types'
+import type { PlaybackItem, RecommendationItem } from '@/api/types'
 import { Page, ScrollRow, Section } from '@/components/layout'
-import { PosterCard, SectionHead } from '@/components/ui'
-import { formatDate } from '@/lib/utils'
+import { ActivityItem, PosterCard, SectionHead } from '@/components/ui'
 
 export const Route = createFileRoute('/')({
   component: HomePage,
@@ -64,7 +57,7 @@ function HomePage() {
           <ScrollRow>
             {continueWatching.map((item) => (
               <PosterCard
-                key={`${item.type}-${item.movie?.ids.trakt ?? item.episode?.ids.trakt}`}
+                key={`${item.type}-${item.id}-${item.episode?.season ?? ''}-${item.episode?.number ?? ''}`}
                 title={
                   item.type === 'episode'
                     ? (item.show?.title ?? item.episode?.title ?? 'Unknown')
@@ -103,19 +96,16 @@ function HomePage() {
         <Section>
           <SectionHead title="Recommended for You" />
           <ScrollRow>
-            {personalizedRecs.map((item) => {
-              const media = item.movie ?? item.show
-              if (!media) return null
-              return (
-                <PosterCard
-                  key={`rec-${media.ids.trakt}`}
-                  title={media.title}
-                  meta={String(media.year)}
-                  aspect="2:3"
-                  type={item.movie ? 'movie' : 'series'}
-                />
-              )
-            })}
+            {personalizedRecs.map((item) => (
+              <PosterCard
+                key={`rec-${item.media_type}-${item.id}`}
+                title={item.title}
+                meta={recommendationMeta(item)}
+                image={item.poster || undefined}
+                aspect="2:3"
+                type={item.media_type === 'movie' ? 'movie' : 'series'}
+              />
+            ))}
           </ScrollRow>
         </Section>
       )}
@@ -125,19 +115,16 @@ function HomePage() {
         <Section>
           <SectionHead title="Friends Are Watching" />
           <ScrollRow>
-            {friendRecs.map((item) => {
-              const media = item.movie ?? item.show
-              if (!media) return null
-              return (
-                <PosterCard
-                  key={`social-${media.ids.trakt}`}
-                  title={media.title}
-                  meta={String(media.year)}
-                  aspect="2:3"
-                  type={item.movie ? 'movie' : 'series'}
-                />
-              )
-            })}
+            {friendRecs.map((item) => (
+              <PosterCard
+                key={`social-${item.media_type}-${item.id}`}
+                title={item.title}
+                meta={recommendationMeta(item)}
+                image={item.poster || undefined}
+                aspect="2:3"
+                type={item.media_type === 'movie' ? 'movie' : 'series'}
+              />
+            ))}
           </ScrollRow>
         </Section>
       )}
@@ -148,7 +135,7 @@ function HomePage() {
           <SectionHead title="Activity Feed" />
           <div className="space-y-2">
             {(activity ?? []).map((item) => (
-              <ActivityRow key={item.id} item={item} />
+              <ActivityItem key={item.id} item={item} />
             ))}
           </div>
         </Section>
@@ -174,66 +161,6 @@ function HomePage() {
   )
 }
 
-function getActivityIcon(action: string) {
-  if (
-    action.includes('watch') ||
-    action.includes('scrobble') ||
-    action.includes('checkin')
-  )
-    return <Play className="size-3.5" />
-  if (action.includes('rating') || action.includes('rate'))
-    return <Star className="size-3.5" />
-  if (action.includes('watchlist') || action.includes('list'))
-    return <Bookmark className="size-3.5" />
-  if (
-    action.includes('favorite') ||
-    action.includes('like') ||
-    action.includes('recommend')
-  )
-    return <Heart className="size-3.5" />
-  return <Clock className="size-3.5" />
-}
-
-function ActivityRow({ item }: { item: ActivityItem }) {
-  const media = item.movie ?? item.show ?? item.episode
-  const mediaTitle = media?.title ?? 'something'
-  const userName = item.user?.name ?? item.user?.username ?? 'Someone'
-
-  let actionText = ''
-  if (item.action.includes('watch') || item.action.includes('scrobble')) {
-    actionText = `${userName} watched ${mediaTitle}`
-  } else if (item.action.includes('rating') || item.action.includes('rate')) {
-    actionText = `${userName} rated ${mediaTitle} ${item.rating}/10`
-  } else if (
-    item.action.includes('watchlist') ||
-    item.action.includes('list')
-  ) {
-    actionText = `${userName} added ${mediaTitle} to their watchlist`
-  } else if (item.action.includes('favorite')) {
-    actionText = `${userName} favorited ${mediaTitle}`
-  } else if (item.action.includes('recommend')) {
-    actionText = `${userName} recommends ${mediaTitle}`
-  } else if (item.action.includes('checkin')) {
-    actionText = `${userName} is watching ${mediaTitle}`
-  } else {
-    actionText = `${userName} ${item.action} ${mediaTitle}`
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: -12 }}
-      animate={{ opacity: 1, x: 0 }}
-      className="glass sf-lift flex items-center gap-3 rounded-[var(--sf-radius)] p-3"
-    >
-      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-sf-accent/12 text-sf-accent-2">
-        {getActivityIcon(item.action)}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm text-sf-ink">{actionText}</p>
-        <p className="text-xs text-sf-ink-faint">
-          {formatDate(item.timestamps.start)}
-        </p>
-      </div>
-    </motion.div>
-  )
+function recommendationMeta(item: RecommendationItem): string {
+  return item.released?.slice(0, 4) || item.first_aired?.slice(0, 4) || ''
 }

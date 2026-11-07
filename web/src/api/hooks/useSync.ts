@@ -10,6 +10,7 @@ import type {
   HistoryItem,
   HistoryResponse,
   Ids,
+  Movie,
   PlaybackItem,
   RatingItem,
   RatingResponse,
@@ -559,16 +560,65 @@ export function useRemoveFromFavorites() {
 // Playback hooks (Continue Watching)
 // ============================================================
 
+// The media endpoints serialise ids as `{id, slug, tmdb, imdb}`; the frontend
+// types use Trakt's `{trakt, slug, ...}`. Normalise here so route links keep
+// working without changing every consumer.
+interface ApiIDs {
+  id?: number
+  slug?: string
+  tmdb?: number
+  imdb?: string
+}
+
+function normalizeIDs(ids: ApiIDs | undefined): Ids {
+  return {
+    trakt: ids?.id ?? 0,
+    slug: ids?.slug ?? (ids?.id != null ? String(ids.id) : ''),
+    tmdb: ids?.tmdb,
+    imdb: ids?.imdb,
+  }
+}
+
+interface ApiMoviePlayback {
+  progress: number
+  paused_at: string
+  movie?: { ids?: ApiIDs; title: string; year: number } & Record<
+    string,
+    unknown
+  >
+}
+
+interface ApiEpisodePlayback {
+  progress: number
+  paused_at: string
+  episode?: { title: string; season: number; number: number }
+  show?: { title: string; ids?: ApiIDs }
+}
+
+function normalizeMovie(raw: ApiMoviePlayback['movie']): Movie | undefined {
+  if (!raw) return undefined
+  return { ...raw, ids: normalizeIDs(raw.ids) } as Movie
+}
+
 export function usePlaybackMovies() {
   const api = useApi()
 
   return useQuery({
     queryKey: ['playback', 'movies'],
-    queryFn: async () => {
+    queryFn: async (): Promise<PlaybackItem[]> => {
       if (!api) return []
       const res = await api.GET('/v1/sync/playback/movies')
-      const data = res.data as unknown as unknown[] | undefined
-      return (data ?? []) as PlaybackItem[]
+      const data = res.data as unknown as ApiMoviePlayback[] | undefined
+      return (data ?? []).map((item) => {
+        const movie = normalizeMovie(item.movie)
+        return {
+          id: movie?.ids.trakt ?? 0,
+          progress: item.progress,
+          paused_at: item.paused_at,
+          type: 'movie' as const,
+          movie,
+        }
+      })
     },
     enabled: !!api,
   })
@@ -579,11 +629,23 @@ export function usePlaybackEpisodes() {
 
   return useQuery({
     queryKey: ['playback', 'episodes'],
-    queryFn: async () => {
+    queryFn: async (): Promise<PlaybackItem[]> => {
       if (!api) return []
       const res = await api.GET('/v1/sync/playback/episodes')
-      const data = res.data as unknown as unknown[] | undefined
-      return (data ?? []) as PlaybackItem[]
+      const data = res.data as unknown as ApiEpisodePlayback[] | undefined
+      return (data ?? []).map((item) => {
+        const show = item.show
+          ? { title: item.show.title, ids: normalizeIDs(item.show.ids) }
+          : undefined
+        return {
+          id: show?.ids.trakt ?? 0,
+          progress: item.progress,
+          paused_at: item.paused_at,
+          type: 'episode' as const,
+          episode: item.episode,
+          show,
+        }
+      })
     },
     enabled: !!api,
   })
@@ -592,6 +654,38 @@ export function usePlaybackEpisodes() {
 // ============================================================
 // Activity feed hooks
 // ============================================================
+
+interface ApiActivity {
+  id: number
+  actor_id: string
+  event_type: string
+  media_type?: string
+  media_id?: number
+  payload?: Record<string, unknown>
+  created_at: string
+}
+
+function normalizeActivity(raw: unknown): ActivityItem[] {
+  const items = Array.isArray(raw)
+    ? raw
+    : ((raw as { data?: unknown } | undefined)?.data ?? [])
+  if (!Array.isArray(items)) return []
+  return items.map((item) => {
+    const a = item as ApiActivity
+    return {
+      id: a.id,
+      action: a.event_type,
+      type: a.media_type ?? '',
+      timestamps: { start: a.created_at },
+      user: {
+        username: a.actor_id,
+        name: a.actor_id,
+        private: false,
+        ids: { slug: a.actor_id },
+      },
+    }
+  })
+}
 
 export function useActivityFeed(params?: {
   page?: number
@@ -602,7 +696,7 @@ export function useActivityFeed(params?: {
 
   return useQuery({
     queryKey: ['activity', params],
-    queryFn: async () => {
+    queryFn: async (): Promise<ActivityItem[]> => {
       if (!api) return []
       const searchParams: Record<string, string> = {}
       if (params?.page) searchParams.page = String(params.page)
@@ -612,8 +706,7 @@ export function useActivityFeed(params?: {
       const res = await api.GET('/v1/users/me/activity', {
         params: { query: searchParams as Record<string, never> },
       } as never)
-      const data = res.data as unknown as unknown[] | undefined
-      return (data ?? []) as ActivityItem[]
+      return normalizeActivity(res.data)
     },
     enabled: !!api,
   })
@@ -623,16 +716,45 @@ export function useActivityFeed(params?: {
 // Recommendations hooks
 // ============================================================
 
+interface ApiRecommendation {
+  id: number
+  tmdb_id: number
+  title: string
+  overview?: string
+  popularity: number
+  genres?: string[]
+  released?: string
+  first_aired?: string
+  status?: string
+  episode_count?: number
+  friend_count?: number
+  rating_avg: number
+  poster?: string
+}
+
+function normalizeRecommendations(
+  raw: unknown,
+  mediaType: 'movie' | 'show'
+): RecommendationItem[] {
+  const items = Array.isArray(raw)
+    ? raw
+    : ((raw as { items?: unknown } | undefined)?.items ?? [])
+  if (!Array.isArray(items)) return []
+  return items.map((item) => ({
+    ...(item as ApiRecommendation),
+    media_type: mediaType,
+  }))
+}
+
 export function useRecommendationsMovies() {
   const api = useApi()
 
   return useQuery({
     queryKey: ['recommendations', 'movies'],
-    queryFn: async () => {
+    queryFn: async (): Promise<RecommendationItem[]> => {
       if (!api) return []
       const res = await api.GET('/v1/recommendations/movies')
-      const data = res.data as unknown as unknown[] | undefined
-      return (data ?? []) as RecommendationItem[]
+      return normalizeRecommendations(res.data, 'movie')
     },
     enabled: !!api,
   })
@@ -643,11 +765,10 @@ export function useRecommendationsShows() {
 
   return useQuery({
     queryKey: ['recommendations', 'shows'],
-    queryFn: async () => {
+    queryFn: async (): Promise<RecommendationItem[]> => {
       if (!api) return []
       const res = await api.GET('/v1/recommendations/shows')
-      const data = res.data as unknown as unknown[] | undefined
-      return (data ?? []) as RecommendationItem[]
+      return normalizeRecommendations(res.data, 'show')
     },
     enabled: !!api,
   })
@@ -658,11 +779,10 @@ export function useSocialRecommendationsMovies() {
 
   return useQuery({
     queryKey: ['social-recommendations', 'movies'],
-    queryFn: async () => {
+    queryFn: async (): Promise<RecommendationItem[]> => {
       if (!api) return []
       const res = await api.GET('/v1/social_recommendations/movies')
-      const data = res.data as unknown as unknown[] | undefined
-      return (data ?? []) as RecommendationItem[]
+      return normalizeRecommendations(res.data, 'movie')
     },
     enabled: !!api,
   })
@@ -673,11 +793,10 @@ export function useSocialRecommendationsShows() {
 
   return useQuery({
     queryKey: ['social-recommendations', 'shows'],
-    queryFn: async () => {
+    queryFn: async (): Promise<RecommendationItem[]> => {
       if (!api) return []
       const res = await api.GET('/v1/social_recommendations/shows')
-      const data = res.data as unknown as unknown[] | undefined
-      return (data ?? []) as RecommendationItem[]
+      return normalizeRecommendations(res.data, 'show')
     },
     enabled: !!api,
   })
