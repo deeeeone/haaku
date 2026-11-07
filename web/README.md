@@ -32,7 +32,9 @@ Run from `web/`, or use the Makefile targets from the repository root.
 | `pnpm build` | Typecheck + production build into `dist/` |
 | `pnpm test` | Vitest unit tests (`src/**/*.test.ts`) |
 | `pnpm e2e` | Playwright end-to-end tests |
-| `pnpm lint` | Biome |
+| `pnpm lint` | Biome lint — `biome ci --error-on-warnings`, so a warning fails |
+| `pnpm lint:fix` | Apply Biome fixes in place |
+| `pnpm format:check` | Biome format check (no writes) |
 | `pnpm api:generate` | Regenerate `src/api/generated/schema.ts` from `openapi.yaml` |
 
 From the root: `make frontend`, `make api-client`, `make dev-frontend`,

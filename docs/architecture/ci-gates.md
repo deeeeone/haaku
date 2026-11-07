@@ -19,7 +19,7 @@ Every gate is a `make` target; the workflow only calls those targets, so
 | `openapi` | `openapi.yaml` freshness + two-way route inventory | `make api-check` |
 | `openapi` | Trakt parity manifest graded against the route registry | `make parity-check` |
 | `openapi` | public-contract diff vs the frozen baseline; unacknowledged break fails | `make contract-diff` |
-| `frontend` | frontend lint, build, tests (incl. typed-client drift) | `make lint-web`, `make test-web` |
+| `frontend` | frontend format check + strict lint, build, tests (incl. typed-client drift) | `make lint-web`, `make test-web` |
 
 `make check` is `lint-go vuln secrets workflow-lint check-size check-bidi
 api-check parity-check contract-diff`; the frontend job has its own toolchain and
@@ -49,6 +49,27 @@ break in the diff. This is what keeps a silent break — the kind the Jellyfin
 plugin would hit — out of a release. The tool only reads `openapi.yaml`; it never
 regenerates it. See [api-versioning.md](api-versioning.md) for when the baseline
 itself is refreshed.
+
+## The frontend gate
+
+The `frontend` job runs two commands, and both are fatal:
+
+- `make lint-web` → `pnpm format:check` (`biome format .`) **then** `pnpm lint`
+  (`biome ci --error-on-warnings .`).
+- `make test-web` → `pnpm test`.
+
+The formatter check fails when a tracked file is not what the formatter would
+print, and `biome ci` fails on a *warning* as well as an error. `--error-on-warnings`
+is deliberate rather than elevating the two rules that happened to fire
+(`noExplicitAny`, `noNonNullAssertion`) to `error`: biome's `recommended` preset
+ships other rules at warning severity, so per-rule elevation would leave those
+free to regress. The flag is the mechanism; the rules stay at their recommended
+severity in `web/biome.json`.
+
+`make check` deliberately stays frontend-free — it runs on a host with no node
+toolchain, and the `frontend` job carries its own (`pnpm` pinned by
+`web/package.json`). `make lint-web` is the local entry point and writes nothing;
+`lint:fix` and `format` apply fixes.
 
 ## Two things that surprise people
 
