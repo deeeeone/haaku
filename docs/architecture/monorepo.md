@@ -46,6 +46,14 @@ server with `web/` embedded, `contracts/`, embedded Goose migrations, and an
   falls back to `index.html` so client-side routes survive a reload.
 - **API paths are excluded from that fallback.** An unknown `/v1/...` must
   answer with the JSON error envelope, never the SPA shell.
+- **A source run serves no UI of its own.** When `HAAKU_DEV_FRONTEND_URL` is set
+  (the Makefile's `dev` and `dev-backend` targets set it), `internal/webui`
+  answers every UI request with a redirect to the Vite dev server instead of the
+  bundle. `web/dist` is refreshed only by `make frontend`, so an API that served
+  it would answer with the frontend as it was at that build, next to a current
+  API; a build-time input that no longer matches the server (`VITE_CLERK_
+  PUBLISHABLE_KEY`) then surfaces as an error in the browser rather than as a
+  stale build. Production leaves the variable unset and serves the bundle.
 - `make embed-stub` writes a placeholder `web/dist/index.html` so `go build` and
   `go test` work on a checkout that has never run pnpm. Only that placeholder is
   tracked; the rest of `dist/` is ignored.

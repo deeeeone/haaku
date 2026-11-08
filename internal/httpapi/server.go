@@ -77,13 +77,21 @@ func NewServer(cfg *config.Config) *fiber.App {
 	// API route, so it only sees requests the router did not handle; API paths
 	// are excluded inside the handler so an unknown /v1 request still gets the
 	// JSON envelope (internal/webui).
-	ui, err := webui.Handler()
+	//
+	// cfg.DevFrontendURL is set only by the Makefile's dev targets: a source run
+	// has no UI of its own and redirects to the Vite dev server, so the browser
+	// can never be shown a web/dist frozen at the last `make frontend`.
+	ui, err := webui.Handler(cfg.DevFrontendURL)
 	if err != nil {
 		// The bundle is embedded at build time, so a failure here is a packaging
 		// bug, not a runtime condition. Serve the API rather than refusing to
 		// start, and say so loudly.
 		slog.Error("embedded frontend unavailable — serving API only", "error", err)
 	} else {
+		if cfg.DevFrontendURL != "" {
+			slog.Info("development: UI requests redirect to the frontend dev server",
+				"url", cfg.DevFrontendURL)
+		}
 		app.Use(ui)
 	}
 
