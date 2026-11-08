@@ -11,9 +11,8 @@ import (
 	"gorm.io/gorm"
 )
 
-// setupTestDB creates an in-memory SQLite database with the media schema
-// for unit testing the record-level ingest functions (season, episode, person,
-// credit). The composite movie/show ingest's own suite is provider_ingest_test.go.
+// setupTestDB creates the media schema for the record-level ingest tests
+// (season, episode, person, credit); provider_ingest_test.go owns the composite.
 func setupTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
