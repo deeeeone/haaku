@@ -111,9 +111,15 @@ dev: embed-stub $(INSTALL_STAMP) ## Run the API and the UI together, in one term
 	$(ENV_SOURCE); \
 		export HAAKU_DEV_FRONTEND_URL="$${HAAKU_DEV_FRONTEND_URL:-http://localhost:$(VITE_PORT)}"; \
 		go build -o $(DEV_BIN) ./cmd/api || exit 1; \
+		stop_tree() { for p in "$$@"; do for c in $$(pgrep -P "$$p" 2>/dev/null); do stop_tree "$$c"; done; kill -TERM "$$p" 2>/dev/null; done; }; \
 		./$(DEV_BIN) & api=$$!; \
-		trap 'kill $$api 2>/dev/null' EXIT INT TERM; \
-		cd web && $(PNPM) run dev --port $(VITE_PORT) --strictPort
+		( cd web && exec $(PNPM) run dev --port $(VITE_PORT) --strictPort ) & vite=$$!; \
+		trap 'stop_tree "$$api" "$$vite"' EXIT INT TERM; \
+		while kill -0 "$$api" 2>/dev/null && kill -0 "$$vite" 2>/dev/null; do sleep 0.5; done; \
+		if kill -0 "$$api" 2>/dev/null; then wait "$$vite"; status=$$?; \
+		else wait "$$api"; status=$$?; fi; \
+		stop_tree "$$api" "$$vite"; \
+		exit $$status
 
 run: dev-backend ## Alias for dev-backend
 
@@ -122,7 +128,7 @@ run: dev-backend ## Alias for dev-backend
 # is the loop for editing the frontend; this is for looking at the bundle the
 # image ships.
 build-run: bin ## Build the binary with the current UI embedded, then run it
-	$(ENV_SOURCE); ./$(DEV_BIN)
+	$(ENV_SOURCE); unset HAAKU_DEV_FRONTEND_URL; ./$(DEV_BIN)
 
 fmt: ## Format Go sources
 	gofmt -l -w .

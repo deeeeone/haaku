@@ -201,9 +201,21 @@ func Load() (*Config, error) {
 	// refused here rather than debugged in a browser tab.
 	if cfg.DevFrontendURL != "" {
 		parsed, err := url.Parse(cfg.DevFrontendURL)
+		// The handler appends the request's path and query to this base, so a
+		// base that already carries a path, query or fragment would produce a
+		// doubled or malformed redirect (http://host/base/movies/123?x=1). The
+		// redirect target must be an origin only. An empty "?" or "#" is refused
+		// too: it would survive as a dangling delimiter in the appended URL.
 		if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
 			return nil, fmt.Errorf(
 				"HAAKU_DEV_FRONTEND_URL must be an absolute http(s) URL such as http://localhost:5173, got %q",
+				cfg.DevFrontendURL)
+		}
+		if parsed.Path != "" || parsed.RawQuery != "" || parsed.Fragment != "" ||
+			strings.ContainsAny(cfg.DevFrontendURL, "?#") {
+			return nil, fmt.Errorf(
+				"HAAKU_DEV_FRONTEND_URL must be an origin with no path, query or fragment "+
+					"(the request path and query are appended to it), got %q",
 				cfg.DevFrontendURL)
 		}
 	}
