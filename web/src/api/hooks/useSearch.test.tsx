@@ -35,7 +35,7 @@ describe('useSearch — request contract', () => {
   it('sends the term as `query`, not `q`', async () => {
     vi.stubEnv('VITE_API_URL', 'http://api.test')
     const fetchMock = vi.fn(
-      async () =>
+      async (_url: string, _init?: RequestInit) =>
         new Response('[]', {
           status: 200,
           headers: { 'content-type': 'application/json' },

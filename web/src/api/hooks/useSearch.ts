@@ -132,13 +132,14 @@ export function useSearch(params: SearchParams | null) {
 }
 
 /**
- * Exact title match for movies/shows.
+ * Exact title match for movies/shows. The endpoint requires a `type`; there is
+ * no "any" mode, so the caller has to say which side it wants.
  */
-export function useExactSearch(q: string) {
+export function useExactSearch(q: string, type: 'movie' | 'show') {
   return useQuery({
     queryKey: searchKeys.exact(q),
     queryFn: () =>
-      api.get<Movie | Show | null>('/v1/search/exact', { query: q }),
+      api.get<Movie | Show | null>('/v1/search/exact', { query: q, type }),
     enabled: q.length > 0,
     staleTime: 60_000,
   })
