@@ -18,6 +18,12 @@ export interface Ids {
   slug: string
   imdb?: string
   tmdb?: number
+  // tvdb is haaku's PRIMARY media id: TVDB is the media source the catalogue
+  // is ingested from, so a client should send it whenever it has one.
+  tvdb?: string
+  // id is the canonical API field name; the media endpoints serialise
+  // `{id, slug, tmdb, imdb, tvdb}` and the hooks normalise it to `trakt`.
+  id?: number
 }
 
 export interface ImageSet {
@@ -34,6 +40,8 @@ export interface Movie {
   title: string
   year: number
   ids: Ids
+  // in_catalog is set by /v1/search: true when the row already exists locally.
+  in_catalog?: boolean
   overview?: string
   released?: string
   runtime?: number
@@ -55,6 +63,8 @@ export interface Show {
   title: string
   year: number
   ids: Ids
+  // in_catalog is set by /v1/search: true when the row already exists locally.
+  in_catalog?: boolean
   overview?: string
   first_aired?: string
   airs?: {
@@ -150,6 +160,10 @@ export type SearchType =
 export interface SearchResult {
   type: SearchType
   score: number
+  // source is "catalog" for a title the instance already holds and "tvdb" for
+  // a live provider hit that has not been ingested yet. A provider hit must be
+  // resolved (POST /v1/media/resolve) before it can be watched or watchlisted.
+  source?: 'catalog' | 'tvdb'
   movie?: Movie
   show?: Show
   episode?: Episode

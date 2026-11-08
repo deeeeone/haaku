@@ -7,11 +7,27 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 )
 
-// Client talks to TMDB v4 API (api.themoviedb.org/4) using a v4 read-access
-// token. Rate-limit aware; no caching (the metadata worker handles that).
+// v3BaseURL is the TMDB API root this client addresses. Everything in this
+// package — details, search, changes, popular/trending, credits, configuration
+// — lives on v3; the v4 tree is for lists/auth/account.
+const v3BaseURL = "https://api.themoviedb.org/3"
+
+// Client talks to the TMDB v3 API (api.themoviedb.org/3) using a v4
+// read-access token. Rate-limit aware; no caching (the metadata worker
+// handles that).
+//
+// WHY v3 AND NOT /4: the client used to address /4, and every detail route
+// there answers 404 for this project's token — GET /4/movie/603,
+// /4/tv/1396, /4/search/multi and /4/configuration all return
+// {"status_code":34,"status_message":"The resource you requested could not be
+// found."} while the same calls on /3 return 200. The v4 tree is for lists,
+// auth and account routes; the detail/search surface this package needs is v3.
+// The token is still the v4 bearer token — it authenticates BOTH trees, which
+// is why the failure was a 404 (route not found) rather than a 401.
 type Client struct {
 	baseURL    string
 	httpClient *http.Client
@@ -25,12 +41,24 @@ func New() (*Client, error) {
 		return nil, fmt.Errorf("TMDB_API_TOKEN environment variable is required")
 	}
 	return &Client{
-		baseURL: "https://api.themoviedb.org/4",
+		baseURL: v3BaseURL,
 		httpClient: &http.Client{
 			Timeout: 15 * time.Second,
 		},
 		token: token,
 	}, nil
+}
+
+// SetBaseURL points the client at another host (tests, a proxy in front of
+// TMDB). It does not change which API version is addressed: callers pass the
+// root, e.g. an httptest server.
+func (c *Client) SetBaseURL(base string) { c.baseURL = strings.TrimRight(base, "/") }
+
+// SetHTTPClient replaces the underlying HTTP client.
+func (c *Client) SetHTTPClient(h *http.Client) {
+	if h != nil {
+		c.httpClient = h
+	}
 }
 
 // authHeader builds the Authorization header value.
@@ -185,39 +213,11 @@ func (c *Client) GetConfiguration() (*ImageConfig, error) {
 
 // --- v3 API methods (discover, popular, trending, credits) ---
 
-const v3BaseURL = "https://api.themoviedb.org/3"
-
-// doV3 performs a TMDB v3 API request.
+// doV3 performs a TMDB v3 API request. Every method in this package goes
+// through here now (the whole client is v3); it is kept as a named seam so the
+// v3 call sites read as v3.
 func (c *Client) doV3(method, path string, params url.Values) (*http.Response, error) {
-	u, err := url.Parse(v3BaseURL + path)
-	if err != nil {
-		return nil, fmt.Errorf("invalid URL: %w", err)
-	}
-	if params != nil {
-		u.RawQuery = params.Encode()
-	}
-
-	req, err := http.NewRequest(method, u.String(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-	req.Header.Set("Authorization", c.authHeader())
-	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-
-	resp, err := c.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("tmdb v3 request failed: %w", err)
-	}
-	if resp.StatusCode == http.StatusTooManyRequests {
-		_ = resp.Body.Close()
-		return nil, fmt.Errorf("tmdb rate limited (429) on %s", path)
-	}
-	if resp.StatusCode >= 400 {
-		body, _ := io.ReadAll(resp.Body)
-		_ = resp.Body.Close()
-		return nil, fmt.Errorf("tmdb v3 error %d on %s: %s", resp.StatusCode, path, string(body))
-	}
-	return resp, nil
+	return c.do(method, path, params)
 }
 
 // MoviePopular returns the popular movies list (v3).

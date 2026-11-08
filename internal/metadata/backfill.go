@@ -183,8 +183,11 @@ func backfillPopularTV(ctx context.Context, c *tmdb.Client, db *gorm.DB, maxPage
 					continue
 				}
 
-				// Ingest the season record.
-				_, err = IngestSeason(db, dbShow.ID, show.ID, seasonSummary)
+				// Ingest the season record. Its id is the season_id the episodes
+				// hang off — passing the SHOW id here (as this did) puts every
+				// episode of every season under one bogus season row, which breaks
+				// /shows/{id}/seasons/{n}/episodes and every season-level count.
+				dbSeason, err := IngestSeason(db, dbShow.ID, show.ID, seasonSummary)
 				if err != nil {
 					slog.Error("[backfill] season ingest failed",
 						"show_id", dbShow.ID, "season", seasonSummary.SeasonNumber, "error", err)
@@ -193,7 +196,7 @@ func backfillPopularTV(ctx context.Context, c *tmdb.Client, db *gorm.DB, maxPage
 
 				// Batch ingest episodes.
 				if len(seasonDetail.Episodes) > 0 {
-					if err := IngestEpisodesBatch(db, dbShow.ID, dbShow.ID,
+					if err := IngestEpisodesBatch(db, dbSeason.ID, dbShow.ID,
 						seasonDetail.Episodes); err != nil {
 						slog.Error("[backfill] episode batch ingest failed",
 							"show_id", dbShow.ID, "season", seasonSummary.SeasonNumber, "error", err)

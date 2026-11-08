@@ -1,10 +1,12 @@
 package httpapi
 
 import (
+	"log/slog"
 	"strconv"
 	"strings"
 
 	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/metadata"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -95,6 +97,16 @@ func parseCSV(s string) []string {
 }
 
 // handleSearch handles GET /v1/search.
+//
+// It answers from the local catalogue FIRST and fills the rest of the page from
+// TVDB's live name search. The catalogue is a cache of the titles this instance
+// has actually ingested, so on a fresh install it is empty — which is exactly
+// why the page used to look broken: it was querying a database that had never
+// been populated. Live results carry their TVDB id and in_catalog=false; a
+// client resolves one through GET /v1/media/resolve, which ingests it.
+//
+// The provider is optional at runtime: with no TVDB client configured, or when
+// TVDB is unreachable, the endpoint still answers with catalogue results.
 func handleSearch(c *fiber.Ctx) error {
 	params, err := parseSearchParams(c)
 	if err != nil {
@@ -106,19 +118,33 @@ func handleSearch(c *fiber.Ctx) error {
 		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
-	resp, err := database.SearchMulti(db, params)
+	local, err := database.SearchMulti(db, params)
 	if err != nil {
 		return writeError(c, fiber.StatusInternalServerError, "internal", "search failed")
 	}
 
-	// Set pagination headers per api-conventions.md §7.
-	c.Set("X-Pagination-Page", strconv.Itoa(resp.Page))
-	c.Set("X-Pagination-Limit", strconv.Itoa(resp.Limit))
-	c.Set("X-Pagination-Total-Pages", strconv.Itoa(resp.TotalPages))
-	c.Set("X-Pagination-Total-Items", strconv.FormatInt(resp.TotalItems, 10))
-	c.Set("X-Pagination-Items-Count", strconv.Itoa(len(resp.Results)))
+	items := catalogSearchItems(local.Results)
+	total := local.TotalItems
 
-	return c.JSON(resp.Results)
+	if providerTypes, ok := metadata.NormalizeMediaTypes(params.Types); ok {
+		if resolver, resolverErr := metadataResolver(); resolverErr != nil {
+			slog.Debug("[search] metadata provider unavailable, answering from the catalogue only", "error", resolverErr)
+		} else if hits, providerTotal, providerErr := resolver.SearchProvider(c.UserContext(), params.Query, providerTypes, params.Page, params.Limit); providerErr != nil {
+			slog.Warn("[search] provider search failed, answering from the catalogue only", "error", providerErr)
+		} else {
+			total += int64(providerTotal)
+			items = appendProviderItems(items, hits, params.Limit)
+		}
+	}
+
+	// Set pagination headers per api-conventions.md §7.
+	c.Set("X-Pagination-Page", itoa(params.Page))
+	c.Set("X-Pagination-Limit", itoa(params.Limit))
+	c.Set("X-Pagination-Total-Pages", itoa(pageCount(total, params.Limit)))
+	c.Set("X-Pagination-Total-Items", itoa64(total))
+	c.Set("X-Pagination-Items-Count", itoa(len(items)))
+
+	return c.JSON(items)
 }
 
 // handleSearchExact handles GET /v1/search/exact.

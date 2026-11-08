@@ -38,7 +38,7 @@ func setupRatingsDB(t *testing.T) *gorm.DB {
 		// carry tables from an earlier run, and AutoMigrate's index/constraint
 		// reconciliation is not idempotent across those leftovers.
 		if err := db.Migrator().DropTable(
-			&database.Show{}, &database.Season{}, &database.Episode{},
+			&database.Movie{}, &database.Show{}, &database.Season{}, &database.Episode{},
 			&database.ExternalID{}, &database.UserRating{}, &database.EventsOutbox{},
 		); err != nil {
 			t.Fatalf("drop stale PG tables: %v", err)
@@ -51,7 +51,10 @@ func setupRatingsDB(t *testing.T) *gorm.DB {
 		stripPostgresCastsForSQLite(t, db)
 	}
 	models := []interface{}{
-		&database.Show{}, &database.Season{}, &database.Episode{},
+		// Movies are migrated too: resolving an external id reads the id
+		// columns of BOTH media tables (see database.ResolveIDRefs), so a
+		// fixture without them fails the resolution before the assertion.
+		&database.Movie{}, &database.Show{}, &database.Season{}, &database.Episode{},
 		&database.ExternalID{}, &database.UserRating{},
 		&database.EventsOutbox{},
 	}

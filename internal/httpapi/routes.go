@@ -157,6 +157,26 @@ func RegisterRoutes(app *fiber.App) {
 		},
 	})
 
+	// Ingest-on-demand: turns an external id a client got from the live provider
+	// search into a canonical local media row. Auth is required because it
+	// writes (it creates the movie/show, its seasons and its episodes).
+	api.Get("/media/resolve", auth.AuthRequired(), handleMediaResolve)
+	openapi.Register(openapi.RouteDef{
+		Method:  "GET",
+		Path:    "/v1/media/resolve",
+		Summary: "Resolve an external id (tvdb/tmdb/imdb) to canonical media, ingesting it from TVDB when it is not in the catalogue yet",
+		Tags:    []string{"Search"},
+		Auth:    "required",
+		StatusCodes: map[int]string{
+			200: "The canonical media record",
+			400: "Invalid query parameters",
+			401: "Unauthorized",
+			404: "The provider has no such record",
+			502: "The metadata provider could not be reached",
+			503: "The metadata provider is not configured",
+		},
+	})
+
 	// Discovery endpoints (Phase 1: T1.7)
 	//
 	// Registered BEFORE media below, and that order is load-bearing: Fiber matches

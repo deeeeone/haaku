@@ -1,9 +1,14 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { Film, List, Tv, User } from 'lucide-react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Film, List, Plus, Tv, User } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { z } from 'zod'
-import { useSearch as useSearchQuery } from '@/api/hooks/useSearch'
-import type { SearchResult, SearchType } from '@/api/types'
+import {
+  useResolveMedia,
+  useSearch as useSearchQuery,
+} from '@/api/hooks/useSearch'
+import { buildSyncPayload, useAddToWatchlist } from '@/api/hooks/useSync'
+import type { Ids, SearchResult, SearchType } from '@/api/types'
 import { Page, PosterGrid, Section } from '@/components/layout'
 import {
   Button,
@@ -219,107 +224,249 @@ function SearchPage() {
   )
 }
 
-function SearchResultCard({ result }: { result: SearchResult }) {
-  const navigate = useNavigate()
+/**
+ * cardOf reduces a search result to what a card needs: which media type it is,
+ * how to render it, and how to identify it at the provider when it is not in
+ * the catalogue yet.
+ */
+interface CardModel {
+  mediaType: 'movie' | 'show' | 'episode' | 'person' | 'list'
+  title: string
+  meta?: string
+  image?: string
+  rating?: string
+  aspect: '16:9' | '2:3'
+  ids: Ids
+  /** tvdbId is the external id /v1/media/resolve ingests from, when needed. */
+  tvdbId?: string
+  /** inCatalog means the row exists locally: link straight to it. */
+  inCatalog: boolean
+  navigateTo?: { to: string; id: string }
+}
 
+function cardOf(result: SearchResult): CardModel | null {
   switch (result.type) {
     case 'movie': {
       const m = result.movie
       if (!m) return null
-      return (
-        <PosterCard
-          title={String(m.title ?? '')}
-          meta={String(m.year ?? '')}
-          image={m.images?.poster}
-          rating={m.rating ? (Number(m.rating) / 2).toFixed(1) : undefined}
-          type="movie"
-          aspect="2:3"
-          onClick={() =>
-            navigate({
-              to: '/movies/$id',
-              params: { id: String(m.ids.trakt ?? m.ids.slug ?? '') },
-            })
-          }
-        />
-      )
+      const localId = m.ids.trakt || m.ids.id || m.ids.slug
+      return {
+        mediaType: 'movie',
+        title: String(m.title ?? ''),
+        meta: m.year ? String(m.year) : undefined,
+        image: m.images?.poster,
+        rating: m.rating ? (Number(m.rating) / 2).toFixed(1) : undefined,
+        aspect: '2:3',
+        ids: m.ids,
+        tvdbId: m.ids.tvdb,
+        inCatalog: m.in_catalog !== false && Boolean(localId),
+        navigateTo: localId
+          ? { to: '/movies/$id', id: String(localId) }
+          : undefined,
+      }
     }
     case 'show': {
       const s = result.show
       if (!s) return null
-      return (
-        <PosterCard
-          title={String(s.title ?? '')}
-          meta={String(s.year ?? '')}
-          image={s.images?.poster}
-          rating={s.rating ? (Number(s.rating) / 2).toFixed(1) : undefined}
-          type="series"
-          aspect="2:3"
-          onClick={() =>
-            navigate({
-              to: '/shows/$id',
-              params: { id: String(s.ids.trakt ?? s.ids.slug ?? '') },
-            })
-          }
-        />
-      )
+      const localId = s.ids.trakt || s.ids.id || s.ids.slug
+      return {
+        mediaType: 'show',
+        title: String(s.title ?? ''),
+        meta: s.year ? String(s.year) : undefined,
+        image: s.images?.poster,
+        rating: s.rating ? (Number(s.rating) / 2).toFixed(1) : undefined,
+        aspect: '2:3',
+        ids: s.ids,
+        tvdbId: s.ids.tvdb,
+        inCatalog: s.in_catalog !== false && Boolean(localId),
+        navigateTo: localId
+          ? { to: '/shows/$id', id: String(localId) }
+          : undefined,
+      }
     }
     case 'episode': {
       const ep = result.episode
       if (!ep) return null
-      return (
-        <PosterCard
-          title={String(ep.title ?? '')}
-          meta={`S${ep.season} E${ep.number}`}
-          image={ep.images?.poster}
-          type="episode"
-          aspect="16:9"
-          onClick={() =>
-            navigate({
-              to: '/episodes/$id',
-              params: { id: String(ep.ids.trakt ?? ep.ids.slug ?? '') },
-            })
-          }
-        />
-      )
+      const localId = ep.ids.trakt || ep.ids.slug
+      return {
+        mediaType: 'episode',
+        title: String(ep.title ?? ''),
+        meta: `S${ep.season} E${ep.number}`,
+        image: ep.images?.poster ?? ep.images?.thumb,
+        aspect: '16:9',
+        ids: ep.ids,
+        inCatalog: Boolean(localId),
+        navigateTo: localId
+          ? { to: '/episodes/$id', id: String(localId) }
+          : undefined,
+      }
     }
     case 'person': {
       const p = result.person
       if (!p) return null
-      return (
-        <div
-          role="button"
-          tabIndex={0}
-          className="cursor-pointer"
-          onClick={() =>
-            navigate({
-              to: '/people/$id',
-              params: { id: String(p.ids.trakt ?? p.ids.slug ?? '') },
-            })
-          }
-          onKeyDown={activateOnKey}
-        >
-          <PosterCard
-            title={String(p.name ?? '')}
-            image={p.images?.headshot ?? p.images?.poster}
-            aspect="2:3"
-          />
-        </div>
-      )
+      return {
+        mediaType: 'person',
+        title: String(p.name ?? ''),
+        image: p.images?.headshot ?? p.images?.poster,
+        aspect: '2:3',
+        ids: p.ids,
+        inCatalog: true,
+        navigateTo: p.ids.slug
+          ? { to: '/people/$id', id: String(p.ids.slug) }
+          : undefined,
+      }
     }
     case 'list': {
       const l = result.list
       if (!l) return null
-      return (
-        <div className="glass flex cursor-pointer flex-col gap-2 rounded-sf p-4">
-          <p className="font-semibold text-sf-ink">{String(l.name ?? '')}</p>
-          <p className="text-xs text-sf-ink-muted">
-            {String(l.item_count ?? 0)} items · by{' '}
-            {String(l.user?.username ?? '')}
-          </p>
-        </div>
-      )
+      return {
+        mediaType: 'list',
+        title: String(l.name ?? ''),
+        meta: `${String(l.item_count ?? 0)} items · by ${String(l.user?.username ?? '')}`,
+        aspect: '16:9',
+        ids: { trakt: 0, slug: '' },
+        inCatalog: true,
+      }
     }
     default:
       return null
   }
+}
+
+function SearchResultCard({ result }: { result: SearchResult }) {
+  const navigate = useNavigate()
+  const resolveMedia = useResolveMedia()
+  const addToWatchlist = useAddToWatchlist()
+  const [busy, setBusy] = useState(false)
+  const card = useMemo(() => cardOf(result), [result])
+
+  // ensureLocalIds returns ids that address a local row, ingesting the title
+  // first when the result came from TVDB and is not in the catalogue yet.
+  const ensureLocalIds = useCallback(async (): Promise<Ids | null> => {
+    if (!card) return null
+    if (card.ids.trakt > 0) return card.ids
+    if (!card.tvdbId) return null
+    const resolved = await resolveMedia.mutateAsync({
+      type: card.mediaType === 'movie' ? 'movie' : 'show',
+      id: card.tvdbId,
+      idType: 'tvdb',
+    })
+    return resolved.ids
+  }, [card, resolveMedia])
+
+  const handleOpen = useCallback(async () => {
+    if (!card) return
+    if (card.navigateTo) {
+      navigate({
+        to: card.navigateTo.to,
+        params: { id: card.navigateTo.id },
+      })
+      return
+    }
+    if (card.mediaType !== 'movie' && card.mediaType !== 'show') return
+
+    setBusy(true)
+    try {
+      const local = await ensureLocalIds()
+      if (!local) {
+        toast.error('This title has no TVDB id to open')
+        return
+      }
+      navigate({
+        to: card.mediaType === 'movie' ? '/movies/$id' : '/shows/$id',
+        params: { id: String(local.trakt || local.slug) },
+      })
+    } catch {
+      toast.error('Could not load this title')
+    } finally {
+      setBusy(false)
+    }
+  }, [card, ensureLocalIds, navigate])
+
+  const handleAddToWatchlist = useCallback(async () => {
+    if (!card) return
+    setBusy(true)
+    try {
+      const local = await ensureLocalIds()
+      if (!local) {
+        toast.error('This title has no TVDB id to watchlist')
+        return
+      }
+      await addToWatchlist.mutateAsync(
+        buildSyncPayload(card.mediaType === 'movie' ? 'movie' : 'show', local)
+      )
+    } catch {
+      // useAddToWatchlist and useResolveMedia surface their own toast; this
+      // catch only stops an unhandled rejection.
+    } finally {
+      setBusy(false)
+    }
+  }, [addToWatchlist, card, ensureLocalIds])
+
+  if (!card) return null
+
+  const { mediaType, title, meta, image, rating, aspect, inCatalog } = card
+
+  // Lists have no media row and nothing to watchlist: render a plain card.
+  if (mediaType === 'list') {
+    return (
+      <div className="glass flex flex-col gap-2 rounded-sf p-4">
+        <p className="font-semibold text-sf-ink">{title}</p>
+        <p className="text-xs text-sf-ink-muted">{meta}</p>
+      </div>
+    )
+  }
+
+  const providerOnly = !inCatalog
+
+  return (
+    <div className="group relative">
+      <div
+        role="button"
+        tabIndex={0}
+        className={busy ? 'cursor-progress opacity-70' : 'cursor-pointer'}
+        onClick={handleOpen}
+        onKeyDown={activateOnKey}
+      >
+        <PosterCard
+          title={title}
+          meta={meta}
+          image={image}
+          rating={rating}
+          type={
+            mediaType === 'movie'
+              ? 'movie'
+              : mediaType === 'show'
+                ? 'series'
+                : 'episode'
+          }
+          aspect={aspect}
+        />
+      </div>
+
+      {(mediaType === 'movie' || mediaType === 'show') && (
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={handleAddToWatchlist}
+            className="inline-flex items-center gap-1 rounded-sf px-2 py-1 text-xs text-sf-ink-muted transition hover:text-sf-ink disabled:opacity-50"
+            title={
+              providerOnly
+                ? 'Adds it to the catalogue and to your watchlist'
+                : 'Add to watchlist'
+            }
+          >
+            <Plus className="size-3.5" />
+            Add to watchlist
+          </button>
+          {providerOnly && (
+            <span className="text-[10px] uppercase tracking-wide text-sf-ink-muted">
+              TVDB
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }

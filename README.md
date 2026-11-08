@@ -43,7 +43,7 @@ This repository is the whole server. The Go API and the React UI compile into **
 ```bash
 git clone https://github.com/haaku-tv/haaku.git
 cd haaku
-cp .env.example .env       # set HAAKU_SECRET_KEY and TMDB_API_TOKEN
+cp .env.example .env       # set HAAKU_SECRET_KEY, TVDB_API_KEY and TMDB_API_TOKEN
 docker compose up -d
 ```
 
@@ -58,7 +58,7 @@ degrades without it and says so on `/readyz`).
 
 ```bash
 cp .env.example .env             # same template as the container install
-                                 # set HAAKU_SECRET_KEY, TMDB_API_TOKEN and
+                                 # set HAAKU_SECRET_KEY, TVDB_API_KEY, TMDB_API_TOKEN and
                                  # HAAKU_ADMIN_EMAIL + HAAKU_ADMIN_PASSWORD;
                                  # uncomment DATABASE_URL (:55432) and REDIS_URL
                                  # (:56379) to match make dev-db
