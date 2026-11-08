@@ -217,6 +217,11 @@ func ingestTVDBSeasons(db *gorm.DB, show *database.Show, episodes []tvdb.Episode
 		default:
 			season.ID = existing.ID
 			season.CreatedAt = existing.CreatedAt
+			// Save writes every column, and TVDB's episode list carries no
+			// season poster or air date, so carry the row's own values over
+			// instead of blanking them.
+			season.Images = existing.Images
+			season.AiredAt = existing.AiredAt
 			if err := db.Save(&season).Error; err != nil {
 				return fmt.Errorf("update season %d for show %d: %w", number, show.ID, err)
 			}
@@ -444,6 +449,21 @@ func preserveExistingMovie(record, existing *database.Movie, hasSupplement bool)
 		record.Slug = existing.Slug
 	}
 	record.Images = mergeImages(existing.Images, record.Images)
+	// db.Save writes every column, so a field TVDB did not supply (a failed
+	// translation call leaves Overview/Tagline empty, and TVDB carries no
+	// OriginalTitle) would blank what an earlier TMDB ingest stored.
+	if record.Overview == "" {
+		record.Overview = existing.Overview
+	}
+	if record.Tagline == "" {
+		record.Tagline = existing.Tagline
+	}
+	if record.OriginalTitle == "" {
+		record.OriginalTitle = existing.OriginalTitle
+	}
+	// The metadata blob is namespaced ({"tvdb": ..., "tmdb": ...}); replacing
+	// it would drop the other provider's half.
+	record.Metadata = mergeJSONMaps(existing.Metadata, record.Metadata)
 	if hasSupplement {
 		return
 	}
@@ -469,6 +489,13 @@ func preserveExistingShow(record, existing *database.Show, hasSupplement bool) {
 		record.Slug = existing.Slug
 	}
 	record.Images = mergeImages(existing.Images, record.Images)
+	if record.Overview == "" {
+		record.Overview = existing.Overview
+	}
+	if record.OriginalTitle == "" {
+		record.OriginalTitle = existing.OriginalTitle
+	}
+	record.Metadata = mergeJSONMaps(existing.Metadata, record.Metadata)
 	if hasSupplement {
 		return
 	}
@@ -476,6 +503,25 @@ func preserveExistingShow(record, existing *database.Show, hasSupplement bool) {
 	record.RatingAvg = existing.RatingAvg
 	record.RatingCount = existing.RatingCount
 	record.Adult = existing.Adult
+}
+
+// mergeJSONMaps layers incoming over existing, so keys this ingest set win and
+// keys it did not know about survive.
+func mergeJSONMaps(existing, incoming database.JSONMap) database.JSONMap {
+	if len(existing) == 0 {
+		return incoming
+	}
+	if len(incoming) == 0 {
+		return existing
+	}
+	merged := make(database.JSONMap, len(existing)+len(incoming))
+	for key, value := range existing {
+		merged[key] = value
+	}
+	for key, value := range incoming {
+		merged[key] = value
+	}
+	return merged
 }
 
 // mergeImages layers a new image set over an existing one, so a refresh keeps

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/haaku-tv/haaku/external/tmdb"
 	"github.com/haaku-tv/haaku/external/tvdb"
@@ -473,5 +474,99 @@ func TestNormalizeMediaTypes(t *testing.T) {
 		if ok != c.supported || fmt.Sprint(got) != fmt.Sprint(c.want) {
 			t.Errorf("NormalizeMediaTypes(%v) = %v/%v, want %v/%v", c.in, got, ok, c.want, c.supported)
 		}
+	}
+}
+
+// TestIngestTVDBMovie_ReingestKeepsTMDBTextAndMetadata pins the merge rules
+// CodeRabbit flagged: db.Save writes every column, so a TVDB refresh that has
+// no overview/tagline (a failed translation call) or no original title would
+// blank the values an earlier TMDB ingest stored, and the namespaced metadata
+// blob would lose its tmdb half.
+func TestIngestTVDBMovie_ReingestKeepsTMDBTextAndMetadata(t *testing.T) {
+	db := setupTVDBTestDB(t)
+
+	legacy := database.Movie{
+		TmdbID:        603,
+		ImdbID:        "tt0133093",
+		Title:         "The Matrix",
+		Overview:      "TMDB's overview",
+		Tagline:       "TMDB's tagline",
+		OriginalTitle: "The Matrix (original)",
+		Metadata:      database.JSONMap{"tmdb": map[string]any{"id": 603}},
+	}
+	if err := db.Create(&legacy).Error; err != nil {
+		t.Fatalf("seed legacy row: %v", err)
+	}
+
+	// A TVDB record whose translation call came back empty.
+	record := sampleMovie()
+	record.OverviewText = ""
+	record.TaglineText = ""
+
+	ingested, err := metadata.IngestTVDBMovie(db, record, nil)
+	if err != nil {
+		t.Fatalf("ingest: %v", err)
+	}
+	if ingested.ID != legacy.ID {
+		t.Fatalf("ingest did not merge into the legacy row (%d != %d)", ingested.ID, legacy.ID)
+	}
+
+	var stored database.Movie
+	if err := db.First(&stored, legacy.ID).Error; err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+	if stored.Overview != "TMDB's overview" {
+		t.Errorf("overview = %q, want the TMDB value kept", stored.Overview)
+	}
+	if stored.Tagline != "TMDB's tagline" {
+		t.Errorf("tagline = %q, want the TMDB value kept", stored.Tagline)
+	}
+	if stored.OriginalTitle != "The Matrix (original)" {
+		t.Errorf("original title = %q, want the TMDB value kept", stored.OriginalTitle)
+	}
+	if _, ok := stored.Metadata["tmdb"]; !ok {
+		t.Error("metadata lost its tmdb half on re-ingest")
+	}
+	if _, ok := stored.Metadata["tvdb"]; !ok {
+		t.Error("metadata is missing the tvdb record")
+	}
+}
+
+// TestIngestTVDBShow_ReingestKeepsSeasonArtworkAndAirDates pins the season
+// branch of the same problem: seasons are derived from TVDB's episode list,
+// which carries no poster and no air date, so a re-ingest must carry the
+// existing row's values forward instead of blanking them.
+func TestIngestTVDBShow_ReingestKeepsSeasonArtworkAndAirDates(t *testing.T) {
+	db := setupTVDBTestDB(t)
+
+	show, err := metadata.IngestTVDBShow(db, sampleShow(), sampleEpisodes(), nil)
+	if err != nil {
+		t.Fatalf("first ingest: %v", err)
+	}
+
+	var season database.Season
+	if err := db.Where("show_id = ? AND season_number = ?", show.ID, 1).First(&season).Error; err != nil {
+		t.Fatalf("load season 1: %v", err)
+	}
+	aired := database.Date{Time: time.Date(2008, 1, 20, 0, 0, 0, 0, time.UTC)}
+	season.Images = database.JSONMap{"poster": "https://example.test/season1.jpg"}
+	season.AiredAt = &aired
+	if err := db.Save(&season).Error; err != nil {
+		t.Fatalf("seed season artwork: %v", err)
+	}
+
+	if _, err := metadata.IngestTVDBShow(db, sampleShow(), sampleEpisodes(), nil); err != nil {
+		t.Fatalf("re-ingest: %v", err)
+	}
+
+	var reloaded database.Season
+	if err := db.Where("show_id = ? AND season_number = ?", show.ID, 1).First(&reloaded).Error; err != nil {
+		t.Fatalf("reload season 1: %v", err)
+	}
+	if got, _ := reloaded.Images["poster"].(string); got != "https://example.test/season1.jpg" {
+		t.Errorf("season poster = %v, want it kept across re-ingest", reloaded.Images["poster"])
+	}
+	if reloaded.AiredAt == nil || !reloaded.AiredAt.Equal(aired.Time) {
+		t.Errorf("season aired_at = %v, want %v kept", reloaded.AiredAt, aired.Time)
 	}
 }

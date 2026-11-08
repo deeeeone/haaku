@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/haaku-tv/haaku/external/tmdb"
@@ -116,9 +117,16 @@ func TestBackfillAttachesEpisodesToTheirSeason(t *testing.T) {
 // tree, where every one of these routes 404s (measured against the live API):
 // the backfill then "succeeds" while importing nothing.
 func TestBackfillUsesV3Paths(t *testing.T) {
-	var paths []string
+	// The handler runs on the server's goroutines; the test goroutine reads
+	// paths after Backfill returns. Without the lock `go test -race` flags it.
+	var (
+		mu    sync.Mutex
+		paths []string
+	)
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
 		paths = append(paths, r.URL.Path)
+		mu.Unlock()
 		switch {
 		case r.URL.Path == "/tv/popular":
 			_, _ = w.Write([]byte(`{"page":1,"results":[],"total_pages":1}`))
@@ -144,10 +152,13 @@ func TestBackfillUsesV3Paths(t *testing.T) {
 	if err := metadata.Backfill(context.Background(), client, db, 1); err != nil {
 		t.Fatalf("Backfill: %v", err)
 	}
-	if len(paths) == 0 {
+	mu.Lock()
+	recorded := append([]string(nil), paths...)
+	mu.Unlock()
+	if len(recorded) == 0 {
 		t.Fatal("the backfill made no requests")
 	}
-	for _, p := range paths {
+	for _, p := range recorded {
 		if strings.HasPrefix(p, "/v4/") || strings.HasPrefix(p, "/4/") {
 			t.Errorf("backfill requested %s — the client is addressing the v4 tree again", p)
 		}
