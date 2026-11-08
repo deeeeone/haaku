@@ -56,6 +56,16 @@ export `VITE_API_PROXY_TARGET` to point `pnpm dev` at a backend on another host.
 
 ## Working on the frontend
 
+`make dev` (repository root) starts the API and this dev server together and
+prints the one URL to open — Vite's. **The UI in a source run is this dev server
+and nothing else:** the API redirects UI requests to it (`make dev-backend` sets
+`HAAKU_DEV_FRONTEND_URL`) instead of serving `web/dist`, because `web/dist` is a
+build output that only `make frontend` refreshes. An API serving it would answer
+with the frontend as it was at that build, next to a current API — which reads as
+an app bug rather than a stale build, and is exactly how a build-time switch such
+as `VITE_CLERK_PUBLISHABLE_KEY` ends up looking like a runtime error. To see the
+embedded bundle instead, `make build-run` rebuilds it first.
+
 `make dev-frontend` proxies `/v1` and `/oauth` to the Go server (`make
 dev-backend`), so relative API calls work in development without CORS.
 

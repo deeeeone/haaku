@@ -2,6 +2,7 @@ package webui
 
 import (
 	"io/fs"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -12,14 +13,15 @@ import (
 )
 
 // newApp mounts the UI handler exactly as the server does: after the API routes,
-// with a route that shadows nothing.
-func newApp(t *testing.T) *fiber.App {
+// with a route that shadows nothing. devFrontendURL is the pairing handed to
+// Handler (empty is the production case).
+func newApp(t *testing.T, devFrontendURL string) *fiber.App {
 	t.Helper()
 
 	app := fiber.New()
 	app.Get("/v1/known", func(c *fiber.Ctx) error { return c.JSON(fiber.Map{"ok": true}) })
 
-	h, err := Handler()
+	h, err := Handler(devFrontendURL)
 	if err != nil {
 		t.Fatalf("Handler() error = %v", err)
 	}
@@ -30,10 +32,7 @@ func newApp(t *testing.T) *fiber.App {
 func get(t *testing.T, app *fiber.App, path string) (int, string) {
 	t.Helper()
 
-	resp, err := app.Test(httptest.NewRequest(fiber.MethodGet, path, nil))
-	if err != nil {
-		t.Fatalf("app.Test(%q) error = %v", path, err)
-	}
+	resp := getResp(t, app, path)
 	defer func() { _ = resp.Body.Close() }()
 
 	body := make([]byte, 4096)
@@ -41,9 +40,20 @@ func get(t *testing.T, app *fiber.App, path string) (int, string) {
 	return resp.StatusCode, string(body[:n])
 }
 
+// getResp returns the whole response, for the cases that assert on headers.
+func getResp(t *testing.T, app *fiber.App, path string) *http.Response {
+	t.Helper()
+
+	resp, err := app.Test(httptest.NewRequest(fiber.MethodGet, path, nil))
+	if err != nil {
+		t.Fatalf("app.Test(%q) error = %v", path, err)
+	}
+	return resp
+}
+
 // TestServesIndexForRoot asserts the SPA shell is served at "/".
 func TestServesIndexForRoot(t *testing.T) {
-	status, body := get(t, newApp(t), "/")
+	status, body := get(t, newApp(t, ""), "/")
 
 	if status != fiber.StatusOK {
 		t.Fatalf("status = %d, want 200", status)
@@ -56,7 +66,7 @@ func TestServesIndexForRoot(t *testing.T) {
 // TestServesIndexForUnknownClientRoute asserts a deep link to a client-side route
 // returns the shell rather than a 404, which is what makes reloads work.
 func TestServesIndexForUnknownClientRoute(t *testing.T) {
-	status, body := get(t, newApp(t), "/movies/123")
+	status, body := get(t, newApp(t, ""), "/movies/123")
 
 	if status != fiber.StatusOK {
 		t.Fatalf("status = %d, want 200", status)
@@ -70,7 +80,7 @@ func TestServesIndexForUnknownClientRoute(t *testing.T) {
 // API path must stay a JSON 404, never the HTML shell.
 func TestUnknownAPIPathIsNotTheSPA(t *testing.T) {
 	for _, path := range []string{"/v1/nope", "/oauth/nope", "/healthz/nope"} {
-		status, body := get(t, newApp(t), path)
+		status, body := get(t, newApp(t, ""), path)
 
 		if status != fiber.StatusNotFound {
 			t.Errorf("%s: status = %d, want 404", path, status)
@@ -83,7 +93,7 @@ func TestUnknownAPIPathIsNotTheSPA(t *testing.T) {
 
 // TestKnownAPIRouteStillMatches asserts the catch-all does not shadow real routes.
 func TestKnownAPIRouteStillMatches(t *testing.T) {
-	status, body := get(t, newApp(t), "/v1/known")
+	status, body := get(t, newApp(t, ""), "/v1/known")
 
 	if status != fiber.StatusOK {
 		t.Fatalf("status = %d, want 200", status)
@@ -134,5 +144,93 @@ func TestDistFSIsReadable(t *testing.T) {
 	}
 	if _, err := fs.ReadFile(dist, "index.html"); err != nil {
 		t.Fatalf("dist/index.html is not embedded: %v", err)
+	}
+}
+
+// --- Development pairing: the UI lives on the Vite dev server ----------------
+//
+// A source run is two processes (see the Makefile's `dev` target). These tests
+// pin the handler half of that contract: hand every UI request to the dev
+// server, and keep the API surface exactly as it is in production.
+
+const devFrontendURL = "http://localhost:5173"
+
+// TestDevFrontendURLRedirectsEveryUIRoute asserts the path and query survive, so
+// a deep link or a reload lands where the Vite bundle would have routed it.
+func TestDevFrontendURLRedirectsEveryUIRoute(t *testing.T) {
+	app := newApp(t, devFrontendURL)
+
+	for _, path := range []string{"/", "/movies/123", "/settings?tab=privacy"} {
+		resp := getResp(t, app, path)
+		_ = resp.Body.Close()
+
+		if resp.StatusCode != fiber.StatusFound {
+			t.Errorf("%s: status = %d, want %d", path, resp.StatusCode, fiber.StatusFound)
+		}
+		if got, want := resp.Header.Get("Location"), devFrontendURL+path; got != want {
+			t.Errorf("%s: Location = %q, want %q", path, got, want)
+		}
+		if got := resp.Header.Get(fiber.HeaderCacheControl); got != "no-store" {
+			t.Errorf("%s: Cache-Control = %q, want no-store", path, got)
+		}
+	}
+}
+
+// TestDevFrontendURLNeverServesTheBundle is the regression this mode exists for.
+// web/dist is refreshed only by `make frontend`, so an API process serving it
+// answers with the frontend as it was at that build — old code against a current
+// API, and a build-time switch (the Clerk publishable key) that no longer
+// matches the running server surfaces as a browser error rather than a stale
+// build. Handing the request to the dev server instead makes that impossible.
+func TestDevFrontendURLNeverServesTheBundle(t *testing.T) {
+	status, body := get(t, newApp(t, devFrontendURL), "/")
+
+	if status != fiber.StatusFound {
+		t.Fatalf("status = %d, want %d", status, fiber.StatusFound)
+	}
+	if strings.Contains(body, "<html") || strings.Contains(body, "Frontend not built") {
+		t.Fatalf("the development pairing served the embedded bundle: %q", body)
+	}
+}
+
+// TestDevFrontendURLDoesNotRedirectNonGetRequests asserts the redirect is a
+// navigation affordance, not a catch-all that hides a mistyped API call.
+func TestDevFrontendURLDoesNotRedirectNonGetRequests(t *testing.T) {
+	resp, err := newApp(t, devFrontendURL).Test(
+		httptest.NewRequest(fiber.MethodPost, "/", nil))
+	if err != nil {
+		t.Fatalf("app.Test error = %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == fiber.StatusFound {
+		t.Fatalf("POST / was redirected to %q, want no redirect", resp.Header.Get("Location"))
+	}
+}
+
+// TestDevFrontendURLLeavesTheAPISurfaceAlone asserts an unknown API path is
+// still the JSON envelope, never a redirect: a client that followed one would
+// get HTML for a mistyped endpoint, which is the failure this package exists to
+// prevent.
+func TestDevFrontendURLLeavesTheAPISurfaceAlone(t *testing.T) {
+	app := newApp(t, devFrontendURL)
+
+	for _, path := range []string{"/v1/nope", "/oauth/nope", "/healthz/nope"} {
+		status, body := get(t, app, path)
+
+		if status != fiber.StatusNotFound {
+			t.Errorf("%s: status = %d, want 404", path, status)
+		}
+		if strings.Contains(body, "<html") {
+			t.Errorf("%s: served the SPA shell to an API path: %q", path, body)
+		}
+	}
+
+	status, body := get(t, app, "/v1/known")
+	if status != fiber.StatusOK {
+		t.Fatalf("/v1/known: status = %d, want 200", status)
+	}
+	if !strings.Contains(body, `"ok":true`) {
+		t.Fatalf("/v1/known: body = %q, want the JSON handler response", body)
 	}
 }

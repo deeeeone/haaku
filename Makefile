@@ -1,4 +1,4 @@
-.PHONY: help build bin frontend api-client embed-stub dev-backend dev-frontend fmt vet test test-go test-web lint lint-web \
+.PHONY: help build bin frontend api-client embed-stub dev dev-backend dev-frontend fmt vet test test-go test-web lint lint-web \
 	tidy run compose-up compose-down pg-up pg-down pg-status test-db test-db-pins \
 	backup backup-list migrate-create migrate-validate migrate-status migrate-up \
 	api-spec api-check clean docker-base docker-omnibus docker-lint lint-go vuln secrets workflow-lint check-size check-bidi coverage check parity-check contract-diff check-migration-ledger format-web
@@ -6,6 +6,17 @@
 # pnpm is expected on PATH (the frontend is a pnpm workspace). Override for a
 # checkout that keeps its own toolchain, e.g. make frontend PNPM=/opt/node/bin/pnpm
 PNPM ?= pnpm
+
+# Port the Vite dev server listens on. `make dev-backend` redirects UI requests
+# here, and `make dev-frontend` binds it with --strictPort, so the two halves
+# cannot drift apart when the port is busy. Change it for one run with
+# `make dev VITE_PORT=5199`.
+VITE_PORT ?= 5173
+
+# The source-built binary the dev targets run. Built once and run as a file
+# rather than through `go run`: a killed `go run` leaves its compiled child
+# holding the port, which is a nuisance for the process that then wants it.
+DEV_BIN := bin/api
 
 # Frontend dependencies are gitignored, so every fresh checkout starts without
 # node_modules. Targets that run pnpm depend on this stamp: the first one
@@ -68,18 +79,50 @@ build: embed-stub ## Build all Go packages
 	go build ./...
 
 bin: frontend ## Build the real single binary with the frontend embedded
-	go build -o bin/api ./cmd/api
+	go build -o $(DEV_BIN) ./cmd/api
 
+# A source run is two processes: the API, and Vite for the UI (`dev-frontend`,
+# or both together with `dev`). The API serves no UI of its own in development —
+# it redirects UI requests to Vite (HAAKU_DEV_FRONTEND_URL, internal/webui) —
+# because web/dist is a build output that only `make frontend` refreshes: serving
+# it means serving the frontend as it was at that build, next to a current API.
 dev-backend: embed-stub ## Run the API from source (needs .env; .env.local for a DB)
-	$(ENV_SOURCE); go run ./cmd/api
+	$(ENV_SOURCE); \
+		export HAAKU_DEV_FRONTEND_URL="$${HAAKU_DEV_FRONTEND_URL:-http://localhost:$(VITE_PORT)}"; \
+		go run ./cmd/api
 
 dev-frontend: $(INSTALL_STAMP) ## Run the Vite dev server (installs deps if needed)
-	cd web && $(PNPM) run dev
+	cd web && $(PNPM) run dev --port $(VITE_PORT) --strictPort
+
+# Both halves of a source run in one terminal. The API is started first and
+# stays in the foreground's background (kill it on Ctrl-C or when Vite exits),
+# so there is nothing to stop by hand and no window in which the API answers
+# without a UI behind it.
+#
+# pnpm takes the dev script's arguments with no `--`: passing one hands Vite a
+# literal separator (`vite -- --port 15173`), which it ignores — the port is then
+# 5173 from vite.config.ts, and --strictPort never applies. Verified by running
+# it: with the separator, Vite moved to 5174 and the API redirected to a port
+# nothing was listening on.
+dev: embed-stub $(INSTALL_STAMP) ## Run the API and the UI together, in one terminal
+	@echo "  UI   http://localhost:$(VITE_PORT)   ← open this (Vite, with HMR)"
+	@echo "  API  the PORT in .env — it redirects UI requests to the URL above"
+	@echo
+	$(ENV_SOURCE); \
+		export HAAKU_DEV_FRONTEND_URL="$${HAAKU_DEV_FRONTEND_URL:-http://localhost:$(VITE_PORT)}"; \
+		go build -o $(DEV_BIN) ./cmd/api || exit 1; \
+		./$(DEV_BIN) & api=$$!; \
+		trap 'kill $$api 2>/dev/null' EXIT INT TERM; \
+		cd web && $(PNPM) run dev --port $(VITE_PORT) --strictPort
 
 run: dev-backend ## Alias for dev-backend
 
-build-run: embed-stub ## Build and run the binary from source
-	$(ENV_SOURCE); go build -o bin/api ./cmd/api && ./bin/api
+# The real thing, locally: the UI is rebuilt into web/dist first, so what the
+# binary serves is the current frontend rather than a leftover build. `make dev`
+# is the loop for editing the frontend; this is for looking at the bundle the
+# image ships.
+build-run: bin ## Build the binary with the current UI embedded, then run it
+	$(ENV_SOURCE); ./$(DEV_BIN)
 
 fmt: ## Format Go sources
 	gofmt -l -w .

@@ -63,9 +63,26 @@ cp .env.example .env             # same template as the container install
                                  # uncomment DATABASE_URL (:55432) and REDIS_URL
                                  # (:56379) to match make dev-db
 make dev-db                      # Docker: PostgreSQL + Redis only, no app container
-make dev-backend                 # API on :8080; migrations run on start
-make dev-frontend                # second terminal: Vite on :5173, proxies /v1 to the API
+make dev                         # API + Vite together; open the URL it prints
 ```
+
+A source run is two processes, and `make dev` starts both in one terminal: the
+API, and Vite for the UI. **Open the URL it prints** (`http://localhost:5173` by
+default) — that is the only frontend in a source run. The API does not serve a
+UI of its own while developing: every UI request to it is answered with a
+redirect to the Vite server, so what you get in the browser is always the
+frontend you are editing. `web/dist` is a build output that only `make frontend`
+refreshes, and an API that serves it answers with the frontend as it was at that
+build — old code next to a current API, which reads as a bug in the app rather
+than as a stale build. To run the two halves in separate terminals instead:
+
+```bash
+make dev-backend                 # API on :8080; migrations run on start
+make dev-frontend                # second terminal: Vite, proxying /v1 to the API
+```
+
+The API port comes from `PORT` in `.env`; the Vite port is `VITE_PORT` (default
+`5173`), and both `make dev` and `make dev-backend` point the redirect at it.
 
 Host-only settings for a source run — the `DATABASE_URL` / `REDIS_URL` that
 `make dev-db` provides — belong in a gitignored `.env.local`. `make
@@ -93,11 +110,15 @@ HAAKU_ADMIN_PASSWORD=<10+ characters, same rule as signup>
 ```
 
 Vite inlines `VITE_*` variables at build time, and `VITE_CLERK_PUBLISHABLE_KEY`
-decides whether the UI runs in Clerk mode. **Leave it unset when using local
-auth** — setting it points the frontend at a Clerk provider the API never
-configured, and the account menu fails.
+decides whether the bundle can run Clerk mode at all. **Leave it unset when using
+local auth** — a bundle built with it set expects a Clerk provider the API never
+configured, and the account menu fails. It is a build-time input, so it only
+matters for the bundles you build; the UI `make dev` serves is compiled by Vite
+from the current `web/.env.local`, with no older build in front of it.
 
-`make bin` builds the single binary with the real UI embedded; `make help` lists
+`make bin` builds the single binary with the real UI embedded, and `make
+build-run` rebuilds that UI first and runs the binary — that pair is what an image
+ships, and the only way to see the embedded bundle locally. `make help` lists
 every target.
 
 ## Background workers

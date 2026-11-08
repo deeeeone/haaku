@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -74,6 +75,15 @@ type Config struct {
 	// (dev convenience — clerk-emulator reuses one secret).
 	ClerkWebhookSecret string
 
+	// DevFrontendURL (HAAKU_DEV_FRONTEND_URL) is the frontend dev server this
+	// source run should hand its UI requests to. When set, the embedded bundle
+	// is not served at all: every UI request is answered with a redirect to
+	// this URL. That is what `make dev` wires up — the API and Vite are two
+	// processes in development, and the API must not answer with a copy of the
+	// UI frozen at the last `make frontend`. Unset in production, where the
+	// binary owns the UI (see internal/webui).
+	DevFrontendURL string
+
 	// Admin/mod whitelists (pattern: theintrodb-api)
 	AdminUserIDs []string
 	ModUserIDs   []string
@@ -126,8 +136,14 @@ func Load() (*Config, error) {
 		ClerkBaseURL:       getEnv("CLERK_API_BASE_URL", "http://localhost:4000"),
 		ClerkSecret:        os.Getenv("CLERK_SECRET_KEY"),
 		ClerkWebhookSecret: os.Getenv("CLERK_WEBHOOK_SECRET"),
-		AdminUserIDs:       splitCSV(os.Getenv("ADMIN_USER_IDS")),
-		ModUserIDs:         splitCSV(os.Getenv("MOD_USER_IDS")),
+
+		// Development only: point UI requests at the Vite dev server instead
+		// of the embedded bundle. The Makefile's dev targets set it; a
+		// deployment leaves it unset.
+		DevFrontendURL: strings.TrimRight(strings.TrimSpace(os.Getenv("HAAKU_DEV_FRONTEND_URL")), "/"),
+
+		AdminUserIDs: splitCSV(os.Getenv("ADMIN_USER_IDS")),
+		ModUserIDs:   splitCSV(os.Getenv("MOD_USER_IDS")),
 
 		AuthMode:     getEnv("HAAKU_AUTH_MODE", AuthModeLocal),
 		SignupPolicy: getEnv("HAAKU_SIGNUP", SignupApproval),
@@ -177,6 +193,19 @@ func Load() (*Config, error) {
 	default:
 		return nil, fmt.Errorf("HAAKU_SIGNUP must be %q, %q or %q, got %q",
 			SignupApproval, SignupOpen, SignupClosed, cfg.SignupPolicy)
+	}
+
+	// A dev frontend URL that is not an absolute http(s) address would produce
+	// a redirect to nowhere (a bare "localhost:5173" parses as a scheme of
+	// "localhost" and lands in the browser as an unresolvable path), so it is
+	// refused here rather than debugged in a browser tab.
+	if cfg.DevFrontendURL != "" {
+		parsed, err := url.Parse(cfg.DevFrontendURL)
+		if err != nil || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+			return nil, fmt.Errorf(
+				"HAAKU_DEV_FRONTEND_URL must be an absolute http(s) URL such as http://localhost:5173, got %q",
+				cfg.DevFrontendURL)
+		}
 	}
 
 	// A malformed trusted-proxy entry is refused at boot, like every other
