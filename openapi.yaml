@@ -3824,7 +3824,7 @@ paths:
             security:
                 - apiKey: []
                 - oauth: []
-            summary: Resolve an external id (tvdb/tmdb/imdb) to canonical media, ingesting it from TVDB when it is not in the catalogue yet
+            summary: Resolve an external id (tmdb/tvdb/imdb) to canonical media, ingesting it from TMDB when it is not in the catalogue yet
             tags:
                 - Search
     /v1/movies/{id}:
