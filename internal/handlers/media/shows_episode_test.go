@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/response"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/driver/sqlite"
@@ -60,7 +61,12 @@ func seedShowWithEpisodes(t *testing.T, db *gorm.DB, tmdbID int, title string, a
 }
 
 func showsApp() *fiber.App {
-	app := fiber.New()
+	// Wire the application's error handler: the media handlers hand back
+	// response.ErrHandled when a helper already wrote the response, and Fiber's
+	// default handler turns that non-fiber error into a 500. Production wires
+	// the same one (httpapi/server.go), so a bare fiber.New() here would be
+	// testing a different error path than the app serves.
+	app := fiber.New(fiber.Config{ErrorHandler: response.HandleError})
 	RegisterRoutes(app.Group("/v1"))
 	return app
 }

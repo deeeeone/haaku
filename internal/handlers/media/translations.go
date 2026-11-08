@@ -323,7 +323,7 @@ func parseAliases(raw []byte) []AliasResponse {
 // ---------------------------------------------------------------------------
 
 func resolveMovieTmdbID(c *fiber.Ctx) (int, error) {
-	_, internalID, err := ResolveID(c, c.Params("id"))
+	_, internalID, err := ResolveIDAs(c, c.Params("id"), "movie")
 	if err != nil {
 		return 0, err
 	}
@@ -348,7 +348,7 @@ func resolveMovieTmdbID(c *fiber.Ctx) (int, error) {
 }
 
 func resolveShowTmdbID(c *fiber.Ctx) (int, error) {
-	_, internalID, err := ResolveID(c, c.Params("id"))
+	_, internalID, err := ResolveIDAs(c, c.Params("id"), "show")
 	if err != nil {
 		return 0, err
 	}

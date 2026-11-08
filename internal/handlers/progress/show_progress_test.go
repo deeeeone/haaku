@@ -10,6 +10,7 @@ import (
 
 	"github.com/haaku-tv/haaku/internal/database"
 	"github.com/haaku-tv/haaku/internal/outbox"
+	"github.com/haaku-tv/haaku/internal/response"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/driver/sqlite"
@@ -40,7 +41,10 @@ func setupShowProgressDB(t *testing.T) *gorm.DB {
 // showProgressApp wires the new show-progress handlers behind a middleware that
 // injects the caller's user id, so the handler body runs without Clerk.
 func showProgressApp(userID string) *fiber.App {
-	app := fiber.New()
+	// The media handlers return response.ErrHandled when a helper has already
+	// written the response; without the app's error handler Fiber would turn
+	// that into a 500. Production wires the same one (httpapi/server.go).
+	app := fiber.New(fiber.Config{ErrorHandler: response.HandleError})
 	stub := func(c *fiber.Ctx) error {
 		c.Locals("user_id", userID)
 		return c.Next()

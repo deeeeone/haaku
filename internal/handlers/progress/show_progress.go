@@ -77,12 +77,9 @@ func showProgress(c *fiber.Ctx, collection bool) error {
 		return response.Unauthorized(c)
 	}
 
-	mediaType, showID, err := media.ResolveID(c, c.Params("id"))
+	_, showID, err := media.ResolveIDAs(c, c.Params("id"), "show")
 	if err != nil {
 		return err
-	}
-	if mediaType != "show" {
-		return response.NotFound(c, "not a show")
 	}
 
 	db, dbErr := database.GetDB()
@@ -304,12 +301,9 @@ func handleShowProgressReset(c *fiber.Ctx) error {
 		return response.Unauthorized(c)
 	}
 
-	mediaType, showID, err := media.ResolveID(c, c.Params("id"))
+	_, showID, err := media.ResolveIDAs(c, c.Params("id"), "show")
 	if err != nil {
 		return err
-	}
-	if mediaType != "show" {
-		return response.NotFound(c, "not a show")
 	}
 
 	db, dbErr := database.GetDB()

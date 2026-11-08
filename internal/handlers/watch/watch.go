@@ -118,12 +118,9 @@ type cachedCountryResult struct {
 // ---------------------------------------------------------------------------
 
 func handleMovieWatch(c *fiber.Ctx) error {
-	mediaType, id, err := media.ResolveID(c, c.Params("id"))
+	_, id, err := media.ResolveIDAs(c, c.Params("id"), "movie")
 	if err != nil {
 		return err
-	}
-	if mediaType != "movie" {
-		return response.NotFound(c, "not a movie")
 	}
 
 	country, cerr := parseCountry(c)
@@ -160,12 +157,9 @@ func handleMovieWatch(c *fiber.Ctx) error {
 }
 
 func handleShowWatch(c *fiber.Ctx) error {
-	mediaType, id, err := media.ResolveID(c, c.Params("id"))
+	_, id, err := media.ResolveIDAs(c, c.Params("id"), "show")
 	if err != nil {
 		return err
-	}
-	if mediaType != "show" {
-		return response.NotFound(c, "not a show")
 	}
 
 	country, cerr := parseCountry(c)

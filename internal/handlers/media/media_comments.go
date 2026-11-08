@@ -24,12 +24,9 @@ import (
 
 // GET /v1/movies/{id}/comments/{sort}
 func handleGetMovieComments(c *fiber.Ctx) error {
-	mediaType, id, err := ResolveID(c, c.Params("id"))
+	_, id, err := ResolveIDAs(c, c.Params("id"), "movie")
 	if err != nil {
 		return err
-	}
-	if mediaType != "movie" {
-		return response.NotFound(c, "not a movie")
 	}
 
 	db, dbErr := database.GetDB()
@@ -42,12 +39,9 @@ func handleGetMovieComments(c *fiber.Ctx) error {
 
 // GET /v1/shows/{id}/comments/{sort}
 func handleGetShowComments(c *fiber.Ctx) error {
-	mediaType, showID, err := ResolveID(c, c.Params("id"))
+	_, showID, err := ResolveIDAs(c, c.Params("id"), "show")
 	if err != nil {
 		return err
-	}
-	if mediaType != "show" {
-		return response.NotFound(c, "not a show")
 	}
 
 	db, dbErr := database.GetDB()
@@ -60,12 +54,9 @@ func handleGetShowComments(c *fiber.Ctx) error {
 
 // GET /v1/shows/{id}/seasons/{season}/comments/{sort}
 func handleGetShowSeasonComments(c *fiber.Ctx) error {
-	mediaType, showID, err := ResolveID(c, c.Params("id"))
+	_, showID, err := ResolveIDAs(c, c.Params("id"), "show")
 	if err != nil {
 		return err
-	}
-	if mediaType != "show" {
-		return response.NotFound(c, "not a show")
 	}
 
 	db, dbErr := database.GetDB()
@@ -83,12 +74,9 @@ func handleGetShowSeasonComments(c *fiber.Ctx) error {
 
 // GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/comments/{sort}
 func handleGetShowEpisodeComments(c *fiber.Ctx) error {
-	mediaType, showID, err := ResolveID(c, c.Params("id"))
+	_, showID, err := ResolveIDAs(c, c.Params("id"), "show")
 	if err != nil {
 		return err
-	}
-	if mediaType != "show" {
-		return response.NotFound(c, "not a show")
 	}
 
 	db, dbErr := database.GetDB()
