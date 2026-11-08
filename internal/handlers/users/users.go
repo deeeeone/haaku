@@ -55,7 +55,7 @@ func RegisterRoutes(api fiber.Router) {
 
 	// /users/:id routes (public, privacy-filtered). The profile read is gated by
 	// users.settings.privacy.profile in addition to is_private/blocks.
-	users.Get("/:id", auth.PrivacyFilterSection("id", "profile"), handleGetUser)
+	users.Get("/:id", auth.OptionalAuth(), auth.PrivacyFilterSection("id", "profile"), handleGetUser)
 
 	// Block endpoints (stub — 501)
 	users.Post("/:id/block", auth.AuthRequired(), handleBlockUser)
@@ -237,7 +237,9 @@ func handleUpdateMe(c *fiber.Ctx) error {
 
 // handleGetUser returns a public profile for the given user ID.
 func handleGetUser(c *fiber.Ctx) error {
-	userID := c.Params("id")
+	// "me" resolves to the caller, so /v1/users/me works through this handler
+	// too (the static route is registered first, but keep the two in step).
+	userID := auth.ResolveTargetID(c, "id")
 
 	// Unknown user and deleted/pending-deletion accounts are 404 for everyone;
 	// the block/private gates already ran in auth.PrivacyFilter. profileTarget

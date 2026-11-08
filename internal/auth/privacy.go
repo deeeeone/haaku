@@ -36,6 +36,21 @@ func PrivacyFilter(targetUserIDParam string) fiber.Handler {
 	return PrivacyFilterSection(targetUserIDParam, "")
 }
 
+// ResolveTargetID resolves the "me" alias in a :id path parameter to the
+// caller's own user id. Every /users/{id}/<segment> route accepts "me" as the
+// id, so /v1/users/me/watchlist means "the caller's watchlist" the same way
+// /v1/users/me does. It returns "" when the id is "me" but nobody is
+// authenticated — the caller must then answer 401, not 404, so a signed-out
+// client does not mistake "me" for a deleted account.
+func ResolveTargetID(c *fiber.Ctx, param string) string {
+	id := c.Params(param)
+	if id != "me" {
+		return id
+	}
+	current, _ := c.Locals(ctxUserID).(string)
+	return current
+}
+
 // PrivacyFilterSection returns middleware that enforces the profile visibility
 // rules above AND, when section is non-empty, the matching
 // users.settings.privacy.<section> flag. It reads the target user row — and so
@@ -63,7 +78,10 @@ func PrivacyFilter(targetUserIDParam string) fiber.Handler {
 //   - Unknown target user → 404.
 func PrivacyFilterSection(targetUserIDParam, section string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		targetUserID := c.Params(targetUserIDParam)
+		targetUserID := ResolveTargetID(c, targetUserIDParam)
+		if c.Params(targetUserIDParam) == "me" && targetUserID == "" {
+			return writeUnauthorized(c)
+		}
 		if targetUserID == "" {
 			// No target user ID in URL — pass through (e.g. /users/me)
 			return c.Next()

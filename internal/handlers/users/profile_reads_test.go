@@ -686,3 +686,32 @@ func TestMeLikesRoutes(t *testing.T) {
 func ptrInt64(v int64) *int64 { return &v }
 
 func itoa(v int64) string { return strconv.FormatInt(v, 10) }
+
+// TestProfileReadsMeAliasResolvesToTheCaller covers the "me" alias on the
+// :id routes: /v1/users/me/watchlist must serve the caller's own list rather
+// than 404 on a user literally named "me", and must 401 — not 404 — when
+// nobody is signed in.
+func TestProfileReadsMeAliasResolvesToTheCaller(t *testing.T) {
+	db := profileTestDB(t)
+	seedUser(t, db, "self", true, "active") // private: "me" must still work
+	if err := db.Create(&database.UserWatchlist{
+		UserID: "self", MediaType: "show", MediaID: 1, Rank: 1, ListedAt: time.Now(),
+	}).Error; err != nil {
+		t.Fatalf("seed watchlist: %v", err)
+	}
+
+	app := newProfileReadApp("self")
+	status, body := doGET(t, app, "/v1/users/me/watchlist")
+	if status != http.StatusOK {
+		t.Fatalf("me/watchlist as self: want 200, got %d (%s)", status, body)
+	}
+	if !strings.Contains(body, `"row_count":1`) {
+		t.Errorf("me/watchlist must serve the caller's own row, got %s", body)
+	}
+
+	anon := newProfileReadApp("")
+	status, body = doGET(t, anon, "/v1/users/me/watchlist")
+	if status != http.StatusUnauthorized {
+		t.Fatalf("me/watchlist anonymous: want 401, got %d (%s)", status, body)
+	}
+}
