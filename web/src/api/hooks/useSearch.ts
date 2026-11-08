@@ -8,6 +8,7 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import { useApi } from '@/api/client'
 import { api } from '@/api/fetch'
 import type {
@@ -137,7 +138,7 @@ export function useSearch(params: SearchParams | null) {
  */
 export function useExactSearch(q: string, type: 'movie' | 'show') {
   return useQuery({
-    queryKey: searchKeys.exact(q),
+    queryKey: [...searchKeys.exact(q), type] as const,
     queryFn: () =>
       api.get<Movie | Show | null>('/v1/search/exact', { query: q, type }),
     enabled: q.length > 0,
@@ -198,19 +199,34 @@ export function useResolveMedia() {
           query: { type, id, id_type: idType },
         },
       } as never)
+      // openapi-fetch resolves on non-2xx with { data: undefined, error }, it
+      // does not throw. Without this check a failed resolve returned ids of
+      // { trakt: 0 }, which navigated to /movies/ and watchlisted media_id 0.
+      if (res.error) {
+        throw new Error('Could not add this title to your library')
+      }
       const resolved = res.data as unknown as
         | (Movie & { ids?: ApiIDs })
         | (Show & { ids?: ApiIDs })
+      const ids = normalizeIDs(resolved?.ids)
+      if (!ids.trakt) {
+        throw new Error('Could not add this title to your library')
+      }
       return {
         mediaType: type,
         title: resolved?.title ?? '',
-        ids: normalizeIDs(resolved?.ids),
+        ids,
       }
     },
     onSuccess: () => {
       // The title is in the catalogue now; a stale search page would still
       // show it as a live hit.
       queryClient.invalidateQueries({ queryKey: searchKeys.all })
+    },
+    // search.tsx deliberately swallows the rejection so an unhandled promise
+    // does not surface, so the failure has to be reported here.
+    onError: () => {
+      toast.error('Could not add this title to your library')
     },
   })
 }
