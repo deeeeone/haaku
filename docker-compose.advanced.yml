@@ -3,7 +3,7 @@
 # REDIS_URL is what turns the bundled services off — the init script starts
 # neither, and no PostgreSQL or Redis process runs in the app container.
 #
-#   cp .env.example .env      # then set HAAKU_SECRET_KEY, TMDB_API_TOKEN and
+#   cp .env.example .env      # then set HAAKU_SECRET_KEY, TMDB_API_KEY and
 #                             # HAAKU_ADMIN_EMAIL / HAAKU_ADMIN_PASSWORD
 #   docker compose -f docker-compose.advanced.yml up -d
 #

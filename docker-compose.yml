@@ -2,7 +2,7 @@
 # `docker compose up -d` is the whole thing. See
 # docs/architecture/omnibus-image.md.
 #
-#   cp .env.example .env      # then set HAAKU_SECRET_KEY, TMDB_API_TOKEN and
+#   cp .env.example .env      # then set HAAKU_SECRET_KEY, TMDB_API_KEY and
 #                             # HAAKU_ADMIN_EMAIL / HAAKU_ADMIN_PASSWORD
 #   docker compose up -d
 #

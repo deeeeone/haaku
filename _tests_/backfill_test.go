@@ -47,7 +47,7 @@ func newFakeTMDB(t *testing.T) *tmdb.Client {
 	srv := httptest.NewServer(mux)
 	t.Cleanup(srv.Close)
 
-	t.Setenv("TMDB_API_TOKEN", "test-token")
+	t.Setenv("TMDB_API_KEY", "test-token")
 	client, err := tmdb.New()
 	if err != nil {
 		t.Fatalf("tmdb.New: %v", err)
@@ -141,7 +141,7 @@ func TestBackfillUsesV3Paths(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	t.Setenv("TMDB_API_TOKEN", "test-token")
+	t.Setenv("TMDB_API_KEY", "test-token")
 	client, err := tmdb.New()
 	if err != nil {
 		t.Fatalf("tmdb.New: %v", err)

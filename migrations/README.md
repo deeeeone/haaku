@@ -56,7 +56,7 @@ The server applies migrations on its own; these are for an operator.
 pg_dump --format=custom "$DATABASE_URL" > backup.dump
 
 # 2. Fetch the new image / checkout, then apply and exit.
-#    (config.Load requires TMDB_API_TOKEN even for a migration.)
+#    (config.Load requires TMDB_API_KEY even for a migration.)
 make migrate-up                       # = go run ./cmd/api --migrate-only
 
 # 3. Start the server and verify: /readyz reports the schema as ready, and the

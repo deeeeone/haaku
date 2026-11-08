@@ -34,11 +34,11 @@ type Client struct {
 	token      string
 }
 
-// New creates a TMDB client. Reads TMDB_API_TOKEN from env.
+// New creates a TMDB client. Reads TMDB_API_KEY from env.
 func New() (*Client, error) {
-	token := os.Getenv("TMDB_API_TOKEN")
+	token := strings.TrimSpace(os.Getenv("TMDB_API_KEY"))
 	if token == "" {
-		return nil, fmt.Errorf("TMDB_API_TOKEN environment variable is required")
+		return nil, fmt.Errorf("TMDB_API_KEY environment variable is required")
 	}
 	return &Client{
 		baseURL: v3BaseURL,

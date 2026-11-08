@@ -57,9 +57,9 @@ secret):
 MSG
   exit 1
 fi
-if [[ -z "${TMDB_API_TOKEN:-}" ]]; then
+if [[ -z "${TMDB_API_KEY:-}" ]]; then
   cat >&2 <<'MSG'
-TMDB_API_TOKEN is not set, and the server refuses to start without it. It is a
+TMDB_API_KEY is not set, and the server refuses to start without it. It is a
 TMDB v4 API read access token, from https://www.themoviedb.org/settings/api —
 metadata fetching needs a real one; anything non-empty lets the server start.
 MSG

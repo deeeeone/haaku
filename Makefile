@@ -217,7 +217,7 @@ migrate-validate: ## Validate the Goose migration files offline (no database nee
 # Reads the Goose ledger directly, so it does not seed a legacy ledger first;
 # on an install upgrading from the old numbering, run `make migrate-up` once
 # (it bootstraps) and status is accurate from then on.
-# Needs DATABASE_URL and, because it goes through config.Load, TMDB_API_TOKEN.
+# Needs DATABASE_URL and, because it goes through config.Load, TMDB_API_KEY.
 migrate-status: ## Show migration status against $$DATABASE_URL
 	@test -n "$$DATABASE_URL" || { echo 'DATABASE_URL is not set — run: make pg-up' >&2; exit 1; }
 	$(GOOSE) -dir $(GOOSE_DIR) postgres "$$DATABASE_URL" status
@@ -259,10 +259,10 @@ api-check: embed-stub ## Verify openapi.yaml is fresh and its route inventory ma
 # docs/architecture/backups.md.
 
 backup: embed-stub ## Take a manual database backup and exit (needs DATABASE_URL)
-	TMDB_API_TOKEN=dummy go run ./cmd/api --backup
+	TMDB_API_KEY=dummy go run ./cmd/api --backup
 
 backup-list: embed-stub ## List database backups and exit (needs DATABASE_URL)
-	TMDB_API_TOKEN=dummy go run ./cmd/api --backup-list
+	TMDB_API_KEY=dummy go run ./cmd/api --backup-list
 
 # --- Housekeeping ---
 

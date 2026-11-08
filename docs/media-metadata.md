@@ -67,5 +67,6 @@ version and the paths so it cannot drift back.
   selection prefers English, then the highest TVDB score.
 - **Season artwork.** Season rows are derived from the episode list (TVDB's
   season list carries no episode counts), so season posters are not fetched.
-- **TVDB-only installs.** `TMDB_API_TOKEN` is still required at startup; making
-  the supplement genuinely optional is a separate decision.
+- **TMDB-only installs.** `TVDB_API_KEY` is optional: without it the
+  TVDB-backed live search and resolve paths report the provider unavailable and
+  the API answers from the local catalogue (which the TMDB backfill populates).

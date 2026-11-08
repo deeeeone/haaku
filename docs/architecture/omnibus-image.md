@@ -123,7 +123,8 @@ misconfiguration is one line instead of a crash loop:
 
 - `HAAKU_SECRET_KEY` (`openssl rand -base64 48`) — the root key for
   everything stored encrypted at rest. Back it up separately from the database.
-- `TMDB_API_TOKEN` — a TMDB v4 read access token.
+- `TMDB_API_KEY` — a TMDB v4 read access token. `TVDB_API_KEY` is optional;
+  without it TVDB-backed search and resolve degrade to the local catalogue.
 
 Useful, and optional: `HAAKU_PORT` (host port; the container always listens on
 8080), `HAAKU_CONFIG` (host directory for `/config`), `PUID`/`PGID`, `TZ`,
@@ -219,7 +220,7 @@ services:
     environment:
       DATABASE_URL: postgres://...      # required: no bundled PostgreSQL
       HAAKU_SECRET_KEY: ...
-      TMDB_API_TOKEN: ...
+      TMDB_API_KEY: ...
 ```
 
 Nothing is created for you in that mode: no `/config` layout, no `PUID` mapping,

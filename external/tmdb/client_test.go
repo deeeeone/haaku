@@ -21,7 +21,7 @@ func TestClientAddressesV3(t *testing.T) {
 	}
 
 	// New() reads the token from the environment.
-	t.Setenv("TMDB_API_TOKEN", "test-token")
+	t.Setenv("TMDB_API_KEY", "test-token")
 	c, err := New()
 	if err != nil {
 		t.Fatalf("New: %v", err)
@@ -29,6 +29,27 @@ func TestClientAddressesV3(t *testing.T) {
 	if c.baseURL != v3BaseURL {
 		t.Fatalf("client base URL = %q, want %q", c.baseURL, v3BaseURL)
 	}
+}
+
+// TestNewTokenEnv pins that New reads TMDB_API_KEY and nothing else.
+func TestNewTokenEnv(t *testing.T) {
+	t.Run("set", func(t *testing.T) {
+		t.Setenv("TMDB_API_KEY", "canonical-key")
+		c, err := New()
+		if err != nil {
+			t.Fatalf("New: %v", err)
+		}
+		if c.token != "canonical-key" {
+			t.Fatalf("token = %q, want the key", c.token)
+		}
+	})
+
+	t.Run("missing", func(t *testing.T) {
+		t.Setenv("TMDB_API_KEY", "")
+		if _, err := New(); err == nil {
+			t.Fatal("New without a token must fail")
+		}
+	})
 }
 
 // TestRequestPaths pins the endpoints the ingest depends on. A wrong path here
@@ -68,7 +89,7 @@ func TestRequestPaths(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	t.Setenv("TMDB_API_TOKEN", "test-token")
+	t.Setenv("TMDB_API_KEY", "test-token")
 	c, err := New()
 	if err != nil {
 		t.Fatalf("New: %v", err)

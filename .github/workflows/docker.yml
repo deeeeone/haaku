@@ -259,7 +259,7 @@ jobs:
           cp docker-compose.yml "$workdir/"
           cat > "$workdir/.env" <<ENV
           HAAKU_SECRET_KEY=$(openssl rand -base64 48)
-          TMDB_API_TOKEN=ci-smoke-test
+          TMDB_API_KEY=ci-smoke-test
           HAAKU_ADMIN_EMAIL=owner@smoke.test
           HAAKU_ADMIN_PASSWORD=smoke-owner-password
           HAAKU_PORT=18080
@@ -374,7 +374,7 @@ jobs:
           docker run -d --name smoke-redis --network smoke-adv redis:7-alpine
           docker run -d --name smoke-adv-app --network smoke-adv \
             -e HAAKU_SECRET_KEY="$(openssl rand -base64 48)" \
-            -e TMDB_API_TOKEN=ci-smoke-test \
+            -e TMDB_API_KEY=ci-smoke-test \
             -e HAAKU_ADMIN_EMAIL=owner@smoke.test \
             -e HAAKU_ADMIN_PASSWORD=smoke-owner-password \
             -e DATABASE_URL='postgres://haaku:haaku@smoke-pg:5432/haaku?sslmode=disable' \

@@ -57,15 +57,15 @@ type Config struct {
 
 	// External services
 	//
-	// TVDB is the PRIMARY media source (identity, titles, seasons/episodes,
-	// artwork); TMDB is SUPPLEMENTARY (the link back to TMDB, ratings,
-	// popularity, tagline, and a poster fallback). TVDB therefore carries the
-	// hard requirement: without its key no title can be ingested at all,
-	// while a missing TMDB token only leaves the enrichment empty.
-	TVDBAPIKey string // TheTVDB v4 API key (thetvdb.com → dashboard)
+	// TMDB is the one credential an instance must hold: it supplies the
+	// catalogue's identity links, ratings, popularity, artwork and the
+	// backfill. TVDB is an optional enrichment source — with no key the
+	// server still starts, and the TVDB-backed search/resolve paths degrade
+	// to catalogue-only results instead of failing the process.
+	TVDBAPIKey string // TheTVDB v4 API key (thetvdb.com → dashboard), optional
 	TVDBPIN    string // optional subscriber PIN, for projects that require one
 	// TMDBAPIToken is a TMDB v4 read-access token; sent as Authorization
-	// Bearer to api.themoviedb.org/4.
+	// Bearer to api.themoviedb.org/3. Read from TMDB_API_KEY.
 	TMDBAPIToken string
 	ClerkBaseURL string // Clerk API base URL (clerk-emulator in dev)
 	ClerkSecret  string // Clerk secret key (*** in dev)
@@ -122,7 +122,7 @@ func Load() (*Config, error) {
 		RedisURL:           getEnv("REDIS_URL", "redis://localhost:6379"),
 		TVDBAPIKey:         strings.TrimSpace(os.Getenv("TVDB_API_KEY")),
 		TVDBPIN:            strings.TrimSpace(os.Getenv("TVDB_PIN")),
-		TMDBAPIToken:       os.Getenv("TMDB_API_TOKEN"),
+		TMDBAPIToken:       strings.TrimSpace(os.Getenv("TMDB_API_KEY")),
 		ClerkBaseURL:       getEnv("CLERK_API_BASE_URL", "http://localhost:4000"),
 		ClerkSecret:        os.Getenv("CLERK_SECRET_KEY"),
 		ClerkWebhookSecret: os.Getenv("CLERK_WEBHOOK_SECRET"),
@@ -147,19 +147,17 @@ func Load() (*Config, error) {
 	}
 
 	if cfg.TMDBAPIToken == "" {
-		return nil, fmt.Errorf("TMDB_API_TOKEN environment variable is required (TMDB v4 read token)")
+		return nil, fmt.Errorf("TMDB_API_KEY environment variable is required (TMDB v4 read token)")
 	}
 
-	// TVDB is the primary media source, so it carries the same hard
-	// requirement: without its key the catalogue cannot be populated at all,
-	// and a server that starts without it would answer empty searches.
-	if cfg.TVDBAPIKey == "" {
-		return nil, fmt.Errorf("TVDB_API_KEY environment variable is required (TheTVDB v4 API key)")
-	}
+	// TVDB is optional. Without a key the TVDB-backed paths (live search and
+	// resolve) report the provider as unavailable and the catalogue-only
+	// answers still work, so a missing key is a degradation, not a boot
+	// failure.
 
 	// At-rest encryption root (issue #16 §2). The server must not run without a
 	// usable key: stored secrets would be unreadable, and a short key would be
-	// unsafe. Enforced here like TMDB_API_TOKEN so a misconfigured host fails
+	// unsafe. Enforced here like TMDB_API_KEY so a misconfigured host fails
 	// fast at startup instead of at the first credential write.
 	if _, err := secret.RootKeyFromEnv(); err != nil {
 		return nil, err
