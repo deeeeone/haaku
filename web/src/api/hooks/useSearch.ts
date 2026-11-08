@@ -104,7 +104,7 @@ export function useSearch(params: SearchParams | null) {
           total_pages: 0,
         } as SearchResponse
       const result = await api.get<SearchResult[]>('/v1/search', {
-        q: params.q,
+        query: params.q,
         type: params.type,
         page: params.page ?? 1,
         limit: params.limit ?? 20,
@@ -137,7 +137,8 @@ export function useSearch(params: SearchParams | null) {
 export function useExactSearch(q: string) {
   return useQuery({
     queryKey: searchKeys.exact(q),
-    queryFn: () => api.get<Movie | Show | null>('/v1/search/exact', { q }),
+    queryFn: () =>
+      api.get<Movie | Show | null>('/v1/search/exact', { query: q }),
     enabled: q.length > 0,
     staleTime: 60_000,
   })
