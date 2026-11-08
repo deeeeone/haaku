@@ -19,98 +19,93 @@ import (
 // says this does not exist" (404) apart from "the provider could not be asked"
 // (502) without reading strings.
 var (
-	// ErrMediaNotFound is TVDB's own answer that the requested record does not
-	// exist (or that it carries none of the requested type).
+	// ErrMediaNotFound is the provider's own answer that the requested record
+	// does not exist (or that it carries none of the requested type).
 	ErrMediaNotFound = errors.New("metadata: media not found")
-	// ErrProviderUnavailable means the request could not be made: no TVDB
+	// ErrProviderUnavailable means the request could not be made: no TMDB
 	// client is configured, or the provider failed/timed out.
 	ErrProviderUnavailable = errors.New("metadata: metadata provider unavailable")
 )
 
-// Resolver turns an external id into a local media row, ingesting from TVDB
-// (with the TMDB supplement) the first time a title is asked for. It is the
-// seam the search page uses: search results come from TVDB live, and opening or
+// Resolver turns an external id into a local media row, ingesting it from TMDB
+// (with the TVDB supplement) the first time a title is asked for. It is the
+// seam the search page uses: search results come from TMDB live, and opening or
 // watchlisting one goes through here, so the local catalogue fills itself with
 // the titles the owner actually cares about instead of a nightly guess at what
 // is popular.
 type Resolver struct {
 	DB   *gorm.DB
-	TVDB *tvdb.Client
 	TMDB *tmdb.Client
+	TVDB *tvdb.Client
 }
 
-// NewResolver builds a resolver. A nil TMDB client is allowed: TVDB alone is a
-// complete record, and the supplement simply stays empty.
-func NewResolver(db *gorm.DB, tvdbClient *tvdb.Client, tmdbClient *tmdb.Client) *Resolver {
-	return &Resolver{DB: db, TVDB: tvdbClient, TMDB: tmdbClient}
+// NewResolver builds a resolver. The TMDB client is the PRIMARY provider and is
+// required to resolve anything; a nil TVDB client is allowed, and the
+// supplement simply stays empty (the tvdb id link, the certification and
+// trailer fallbacks and the raw TVDB record are then absent, and TMDB's own
+// values stand).
+func NewResolver(db *gorm.DB, tmdbClient *tmdb.Client, tvdbClient *tvdb.Client) *Resolver {
+	return &Resolver{DB: db, TMDB: tmdbClient, TVDB: tvdbClient}
 }
 
-// Ready reports whether the resolver can reach a metadata provider at all.
+// Ready reports whether the resolver can reach its primary metadata provider.
 func (r *Resolver) Ready() bool {
-	return r != nil && r.DB != nil && r.TVDB != nil
+	return r != nil && r.DB != nil && r.TMDB != nil
 }
 
-// ResolveMovieByTVDBID returns the local movie behind a TVDB movie id,
+// ResolveMovieByTMDBID returns the local movie behind a TMDB movie id,
 // ingesting it when it is not in the catalogue yet. A row that already carries
-// the TVDB id is returned without any provider call.
-func (r *Resolver) ResolveMovieByTVDBID(ctx context.Context, tvdbID int) (*database.Movie, error) {
+// the TMDB id is returned without any provider call.
+func (r *Resolver) ResolveMovieByTMDBID(ctx context.Context, tmdbID int) (*database.Movie, error) {
 	if !r.Ready() {
 		return nil, ErrProviderUnavailable
 	}
-	if tvdbID <= 0 {
-		return nil, fmt.Errorf("%w: a tvdb movie id is required", ErrMediaNotFound)
+	if tmdbID <= 0 {
+		return nil, fmt.Errorf("%w: a tmdb movie id is required", ErrMediaNotFound)
 	}
 
-	if movie, err := r.localMovieByTVDBID(tvdbID); err != nil {
+	if movie, err := r.localMovieByTMDBID(tmdbID); err != nil {
 		return nil, err
 	} else if movie != nil {
 		return movie, nil
 	}
 
-	record, err := r.TVDB.GetMovieExtended(ctx, tvdbID)
+	record, err := r.TMDB.GetMovie(tmdbID)
 	if err != nil {
-		return nil, wrapProviderError("tvdb movie", tvdbID, err)
+		return nil, wrapProviderError("tmdb movie", tmdbID, err)
 	}
 
-	supplement := r.movieSupplement(ctx, record)
-	return IngestTVDBMovie(r.DB, record, supplement)
+	return IngestMovie(r.DB, record, r.movieSupplement(ctx, record))
 }
 
-// ResolveShowByTVDBID returns the local show behind a TVDB series id,
-// ingesting it (with its seasons and episodes) when it is not in the catalogue
-// yet.
-func (r *Resolver) ResolveShowByTVDBID(ctx context.Context, tvdbID int) (*database.Show, error) {
+// ResolveShowByTMDBID returns the local show behind a TMDB TV id, ingesting it
+// (with its seasons and episodes) when it is not in the catalogue yet.
+func (r *Resolver) ResolveShowByTMDBID(ctx context.Context, tmdbID int) (*database.Show, error) {
 	if !r.Ready() {
 		return nil, ErrProviderUnavailable
 	}
-	if tvdbID <= 0 {
-		return nil, fmt.Errorf("%w: a tvdb series id is required", ErrMediaNotFound)
+	if tmdbID <= 0 {
+		return nil, fmt.Errorf("%w: a tmdb show id is required", ErrMediaNotFound)
 	}
 
-	if show, err := r.localShowByTVDBID(tvdbID); err != nil {
+	if show, err := r.localShowByTMDBID(tmdbID); err != nil {
 		return nil, err
 	} else if show != nil {
 		return show, nil
 	}
 
-	record, err := r.TVDB.GetSeriesExtended(ctx, tvdbID)
+	record, err := r.TMDB.GetShow(tmdbID)
 	if err != nil {
-		return nil, wrapProviderError("tvdb series", tvdbID, err)
-	}
-	episodes, err := r.TVDB.GetSeriesEpisodes(ctx, tvdbID, "", "")
-	if err != nil {
-		return nil, wrapProviderError("tvdb series episodes", tvdbID, err)
+		return nil, wrapProviderError("tmdb show", tmdbID, err)
 	}
 
-	supplement := r.showSupplement(ctx, record)
-	return IngestTVDBShow(r.DB, record, episodes, supplement)
+	return IngestShow(r.DB, record, r.seasons(ctx, record), r.showSupplement(ctx, record))
 }
 
 // ResolveByExternalID resolves a movie or show from any supported external id
-// (tvdb, tmdb, imdb) to a canonical local row. mediaType is required for a TVDB
-// id (TVDB numbers series and movies in separate spaces, so the id alone does
-// not say which endpoint to read); for a TMDB/IMDb id it is only a filter —
-// TVDB's remote-id search reports the type.
+// (tmdb, tvdb, imdb) to a canonical local row. mediaType is required for a TMDB
+// id (the id only names a row inside a table); for a TVDB/IMDb id it is only a
+// filter — TMDB's /find reports which types carry the id.
 func (r *Resolver) ResolveByExternalID(ctx context.Context, mediaType, idType, externalID string) (string, int64, error) {
 	if !r.Ready() {
 		return "", 0, ErrProviderUnavailable
@@ -120,7 +115,7 @@ func (r *Resolver) ResolveByExternalID(ctx context.Context, mediaType, idType, e
 		return "", 0, fmt.Errorf("%w: an external id is required", ErrMediaNotFound)
 	}
 	if idType == "" {
-		idType = "tvdb"
+		idType = "tmdb"
 	}
 
 	// Already in the catalogue? Nothing to ingest, and no provider call.
@@ -130,20 +125,20 @@ func (r *Resolver) ResolveByExternalID(ctx context.Context, mediaType, idType, e
 		return mt, id, nil
 	}
 
-	tvdbID, resolvedType, err := r.tvdbIDFor(ctx, mediaType, idType, externalID)
+	tmdbID, resolvedType, err := r.tmdbIDFor(mediaType, idType, externalID)
 	if err != nil {
 		return "", 0, err
 	}
 
 	switch resolvedType {
 	case "movie":
-		movie, err := r.ResolveMovieByTVDBID(ctx, tvdbID)
+		movie, err := r.ResolveMovieByTMDBID(ctx, tmdbID)
 		if err != nil {
 			return "", 0, err
 		}
 		return "movie", movie.ID, nil
 	default:
-		show, err := r.ResolveShowByTVDBID(ctx, tvdbID)
+		show, err := r.ResolveShowByTMDBID(ctx, tmdbID)
 		if err != nil {
 			return "", 0, err
 		}
@@ -151,113 +146,159 @@ func (r *Resolver) ResolveByExternalID(ctx context.Context, mediaType, idType, e
 	}
 }
 
-// tvdbIDFor finds the TVDB id (and media type) an external id belongs to. A
-// TVDB id is taken as given; anything else goes through TVDB's remote-id
-// search, which is TVDB's own answer about which record carries that id.
-func (r *Resolver) tvdbIDFor(ctx context.Context, mediaType, idType, externalID string) (int, string, error) {
-	if idType == "tvdb" {
+// tmdbIDFor finds the TMDB id (and media type) an external id belongs to. A
+// TMDB id is taken as given; anything else goes through TMDB's /find, which is
+// TMDB's own answer about which record carries that id.
+func (r *Resolver) tmdbIDFor(mediaType, idType, externalID string) (int, string, error) {
+	if idType == "tmdb" {
 		id, err := strconv.Atoi(externalID)
 		if err != nil || id <= 0 {
-			return 0, "", fmt.Errorf("%w: %q is not a tvdb id", ErrMediaNotFound, externalID)
+			return 0, "", fmt.Errorf("%w: %q is not a tmdb id", ErrMediaNotFound, externalID)
 		}
 		if mediaType != "movie" && mediaType != "show" {
-			return 0, "", fmt.Errorf("%w: type must be movie or show when resolving a tvdb id", ErrMediaNotFound)
+			return 0, "", fmt.Errorf("%w: type must be movie or show when resolving a tmdb id", ErrMediaNotFound)
 		}
 		return id, mediaType, nil
 	}
 
-	results, err := r.TVDB.SearchByRemoteID(ctx, externalID)
+	source := ""
+	switch idType {
+	case "imdb":
+		source = "imdb_id"
+	case "tvdb":
+		source = "tvdb_id"
+	default:
+		return 0, "", fmt.Errorf("%w: id_type must be one of: tmdb, tvdb, imdb", ErrMediaNotFound)
+	}
+	// /find carries no context: it is one fast request, and the caller's
+	// cancellation is observed by the detail fetch that follows.
+	results, err := r.TMDB.Find(externalID, source)
 	if err != nil {
-		return 0, "", wrapProviderError("tvdb remote id search", 0, err)
+		return 0, "", wrapProviderError("tmdb find", 0, err)
 	}
-	for _, hit := range results {
-		hitType := hit.Type
-		if hitType == "" {
-			continue
-		}
-		if mediaType != "" && hitType != mediaType {
-			continue
-		}
-		if hit.ID > 0 {
-			return hit.ID, hitType, nil
-		}
+
+	wantMovie := mediaType != "show"
+	wantShow := mediaType != "movie"
+	if wantMovie && len(results.MovieResults) > 0 {
+		return results.MovieResults[0].ID, "movie", nil
 	}
-	return 0, "", fmt.Errorf("%w: no tvdb record carries %s:%s", ErrMediaNotFound, idType, externalID)
+	if wantShow && len(results.TVResults) > 0 {
+		return results.TVResults[0].ID, "show", nil
+	}
+	return 0, "", fmt.Errorf("%w: no tmdb record carries %s:%s", ErrMediaNotFound, idType, externalID)
 }
 
 // --- provider calls ---
 
-// movieSupplement fetches the TMDB record that supplements a TVDB movie, or
-// nil when TMDB cannot be asked or does not carry the title. TVDB's remote id
-// is preferred; the reverse lookup is the fallback for a record whose TVDB
-// links are missing or stale.
-func (r *Resolver) movieSupplement(ctx context.Context, record *tvdb.MovieExtended) *tmdb.Movie {
-	if r.TMDB == nil {
+// seasons walks a show's season list and fetches each season's episodes. A
+// season that cannot be fetched is logged and skipped rather than failing the
+// resolve: the show's own record is the valuable half, and the ingest derives
+// its episode and season counts from the seasons it actually received, so a
+// skipped season shows up honestly as a lower count instead of a lie.
+func (r *Resolver) seasons(ctx context.Context, record *tmdb.Show) []tmdb.Season {
+	if record == nil || len(record.Seasons) == 0 {
 		return nil
 	}
-
-	tmdbID := record.TMDBID()
-	if tmdbID == 0 {
-		id, err := r.TMDB.MovieIDByTVDBID(record.ID)
-		if err != nil {
-			slog.Debug("[resolve] tmdb tvdb-id lookup failed", "tvdb_id", record.ID, "error", err)
-			return nil
+	seasons := make([]tmdb.Season, 0, len(record.Seasons))
+	for _, summary := range record.Seasons {
+		if err := ctx.Err(); err != nil {
+			break
 		}
-		tmdbID = id
+		season, err := r.TMDB.GetSeason(record.ID, summary.SeasonNumber)
+		if err != nil {
+			slog.Debug("[resolve] tmdb season fetch failed",
+				"tmdb_id", record.ID, "season", summary.SeasonNumber, "error", err)
+			continue
+		}
+		seasons = append(seasons, *season)
 	}
-	if tmdbID == 0 {
+	return seasons
+}
+
+// movieSupplement fetches the TVDB record that supplements a TMDB movie, or nil
+// when TVDB is not configured or does not carry the title.
+//
+// TMDB's own movie external-ids payload names no TVDB id (measured: GET
+// /movie/603/external_ids returns imdb_id and the social handles only), so the
+// link is recovered from the IMDb id through TVDB's remote-id search. A failure
+// anywhere here is a debug line, never a failure: the supplement is optional by
+// definition.
+func (r *Resolver) movieSupplement(ctx context.Context, record *tmdb.Movie) *tvdb.MovieExtended {
+	if r.TVDB == nil || record == nil {
 		return nil
 	}
 
-	movie, err := r.TMDB.GetMovie(tmdbID)
+	tvdbID := record.TVDBID()
+	if tvdbID == 0 && record.IMDBID != "" {
+		tvdbID = r.tvdbIDFor(ctx, record.IMDBID, "movie")
+	}
+	if tvdbID == 0 {
+		return nil
+	}
+
+	movie, err := r.TVDB.GetMovieExtended(ctx, tvdbID)
 	if err != nil {
-		slog.Debug("[resolve] tmdb movie fetch failed", "tmdb_id", tmdbID, "error", err)
+		slog.Debug("[resolve] tvdb movie fetch failed", "tvdb_id", tvdbID, "error", err)
 		return nil
 	}
 	return movie
 }
 
-// showSupplement is movieSupplement for a series.
-func (r *Resolver) showSupplement(ctx context.Context, record *tvdb.SeriesExtended) *tmdb.Show {
-	if r.TMDB == nil {
+// showSupplement is movieSupplement for a series. A show's link is cheaper: the
+// TV external-ids payload TMDB appends names the tvdb id outright.
+func (r *Resolver) showSupplement(ctx context.Context, record *tmdb.Show) *tvdb.SeriesExtended {
+	if r.TVDB == nil || record == nil {
 		return nil
 	}
 
-	tmdbID := record.TMDBID()
-	if tmdbID == 0 {
-		id, err := r.TMDB.ShowIDByTVDBID(record.ID)
-		if err != nil {
-			slog.Debug("[resolve] tmdb tvdb-id lookup failed", "tvdb_id", record.ID, "error", err)
-			return nil
-		}
-		tmdbID = id
+	tvdbID := record.TVDBID()
+	if tvdbID == 0 && record.IMDBID != "" {
+		tvdbID = r.tvdbIDFor(ctx, record.IMDBID, "show")
 	}
-	if tmdbID == 0 {
+	if tvdbID == 0 {
 		return nil
 	}
 
-	show, err := r.TMDB.GetShow(tmdbID)
+	show, err := r.TVDB.GetSeriesExtended(ctx, tvdbID)
 	if err != nil {
-		slog.Debug("[resolve] tmdb show fetch failed", "tmdb_id", tmdbID, "error", err)
+		slog.Debug("[resolve] tvdb series fetch failed", "tvdb_id", tvdbID, "error", err)
 		return nil
 	}
 	return show
 }
 
+// tvdbIDFor asks TVDB which of its records carries an id (the IMDb id, and
+// TVDB's remote-id search indexes a TMDB id too), restricted to the media type
+// the caller expects. One id can match several records — TMDB numbers movies
+// and series in one space — so the type decides.
+func (r *Resolver) tvdbIDFor(ctx context.Context, remoteID, mediaType string) int {
+	matches, err := r.TVDB.SearchByRemoteID(ctx, remoteID)
+	if err != nil {
+		slog.Debug("[resolve] tvdb remote-id search failed", "id", remoteID, "error", err)
+		return 0
+	}
+	for _, match := range matches {
+		if match.ID > 0 && match.Type == mediaType {
+			return match.ID
+		}
+	}
+	return 0
+}
+
 // --- local lookups ---
 
-func (r *Resolver) localMovieByTVDBID(tvdbID int) (*database.Movie, error) {
+func (r *Resolver) localMovieByTMDBID(tmdbID int) (*database.Movie, error) {
 	var movie database.Movie
-	err := r.DB.Where("tvdb_id = ?", tvdbID).First(&movie).Error
+	err := r.DB.Where("tmdb_id = ?", tmdbID).First(&movie).Error
 	if err == nil {
 		return &movie, nil
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, fmt.Errorf("lookup movie by tvdb id: %w", err)
+		return nil, fmt.Errorf("lookup movie by tmdb id: %w", err)
 	}
-	// A row ingested before the tvdb_id column existed is still findable
+	// A row ingested before the tmdb_id column existed is still findable
 	// through its external_ids entry.
-	mt, id, err := r.localByExternalID("movie", "tvdb", strconv.Itoa(tvdbID))
+	mt, id, err := r.localByExternalID("movie", "tmdb", strconv.Itoa(tmdbID))
 	if err != nil {
 		return nil, err
 	}
@@ -273,16 +314,16 @@ func (r *Resolver) localMovieByTVDBID(tvdbID int) (*database.Movie, error) {
 	return &movie, nil
 }
 
-func (r *Resolver) localShowByTVDBID(tvdbID int) (*database.Show, error) {
+func (r *Resolver) localShowByTMDBID(tmdbID int) (*database.Show, error) {
 	var show database.Show
-	err := r.DB.Where("tvdb_id = ?", tvdbID).First(&show).Error
+	err := r.DB.Where("tmdb_id = ?", tmdbID).First(&show).Error
 	if err == nil {
 		return &show, nil
 	}
 	if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, fmt.Errorf("lookup show by tvdb id: %w", err)
+		return nil, fmt.Errorf("lookup show by tmdb id: %w", err)
 	}
-	mt, id, err := r.localByExternalID("show", "tvdb", strconv.Itoa(tvdbID))
+	mt, id, err := r.localByExternalID("show", "tmdb", strconv.Itoa(tmdbID))
 	if err != nil {
 		return nil, err
 	}
@@ -344,13 +385,13 @@ func (r *Resolver) localByExternalID(mediaType, idType, externalID string) (stri
 	return ext.MediaType, ext.MediaID, nil
 }
 
-// wrapProviderError maps a provider failure onto the resolver's sentinels:
-// TVDB's 404 is "not found", everything else is "could not be asked".
+// wrapProviderError maps a provider failure onto the resolver's sentinels: the
+// provider's 404 is "not found", everything else is "could not be asked".
 func wrapProviderError(what string, id int, err error) error {
 	if err == nil {
 		return nil
 	}
-	if tvdb.IsNotFound(err) {
+	if tmdb.IsNotFound(err) || tvdb.IsNotFound(err) {
 		return fmt.Errorf("%w: %s %d: %v", ErrMediaNotFound, what, id, err)
 	}
 	return fmt.Errorf("%w: %s %d: %v", ErrProviderUnavailable, what, id, err)

@@ -69,10 +69,10 @@ func TestResolveIDRefs_ReadsMediaColumnsNotOnlyExternalIDs(t *testing.T) {
 	}
 }
 
-// TestResolveIDRefs_PrefersTVDBIDWhenIdsDisagree pins the documented precedence:
-// TVDB is the primary identity, so a ref whose tvdb and tmdb ids name different
-// rows resolves through the TVDB one.
-func TestResolveIDRefs_PrefersTVDBIDWhenIdsDisagree(t *testing.T) {
+// TestResolveIDRefs_PrefersTMDBIDWhenIdsDisagree pins the documented precedence:
+// TMDB is the primary identity, so a ref whose tmdb and tvdb ids name different
+// rows resolves through the TMDB one.
+func TestResolveIDRefs_PrefersTMDBIDWhenIdsDisagree(t *testing.T) {
 	db := setupLookupDB(t)
 
 	byTVDB := Movie{TvdbID: 169, TmdbID: 700, Title: "By TVDB"}
@@ -89,6 +89,27 @@ func TestResolveIDRefs_PrefersTVDBIDWhenIdsDisagree(t *testing.T) {
 		t.Fatalf("ResolveIDRefs: %v", err)
 	}
 	ref := IDRef{TVDB: 169, TMDB: 603}
+	if got[ref].MediaID != byTMDB.ID {
+		t.Fatalf("resolved to media %d, want the tmdb row %d", got[ref].MediaID, byTMDB.ID)
+	}
+}
+
+// TestResolveIDRefs_FallsBackToTVDBID: with no TMDB row carrying the id, the
+// TVDB id still resolves — which is what a TVDB-keyed client (a media server
+// reporting its own ids) sends.
+func TestResolveIDRefs_FallsBackToTVDBID(t *testing.T) {
+	db := setupLookupDB(t)
+
+	byTVDB := Movie{TvdbID: 169, TmdbID: 700, Title: "By TVDB"}
+	if err := db.Create(&byTVDB).Error; err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	got, err := ResolveIDRefs(db, []IDRef{{TVDB: 169, TMDB: 999999}})
+	if err != nil {
+		t.Fatalf("ResolveIDRefs: %v", err)
+	}
+	ref := IDRef{TVDB: 169, TMDB: 999999}
 	if got[ref].MediaID != byTVDB.ID {
 		t.Fatalf("resolved to media %d, want the tvdb row %d", got[ref].MediaID, byTVDB.ID)
 	}

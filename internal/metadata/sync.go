@@ -82,12 +82,15 @@ func RunSync(client *tmdb.Client, db *gorm.DB, sinceFile string) error {
 	return nil
 }
 
-// syncMovies processes the movie change feed.
+// syncMovies processes the movie change feed. The change feed carries no TVDB
+// supplement: a changed movie is re-ingested from TMDB alone, which is the
+// primary record, and the row keeps the tvdb id it already carries
+// (preserveExistingMovie).
 func syncMovies(client *tmdb.Client, db *gorm.DB, since string) error {
 	return syncChangeFeed(client, db, since, "movie", func(c *tmdb.Client, id int) (*tmdb.Movie, error) {
 		return c.GetMovie(id)
 	}, func(db *gorm.DB, m *tmdb.Movie) error {
-		_, err := IngestMovie(db, m)
+		_, err := IngestMovie(db, m, nil)
 		return err
 	})
 }
@@ -97,14 +100,13 @@ func syncShows(client *tmdb.Client, db *gorm.DB, since string) error {
 	return syncChangeFeed(client, db, since, "tv", func(c *tmdb.Client, id int) (*tmdb.Show, error) {
 		return c.GetShow(id)
 	}, func(db *gorm.DB, s *tmdb.Show) error {
-		_, err := IngestShow(db, s)
-		if err != nil {
-			return err
-		}
-		// For shows, also refresh seasons/episodes.
-		// We skip full season refresh during sync to save API calls —
-		// changed seasons appear in their own change feed entries.
-		return nil
+		// No season detail here: the change feed asks TMDB to refresh the
+		// show's own record, and the show's counts fall back to TMDB's
+		// totals. Fetching every season of every changed show would cost one
+		// call per season per show per run; the resolve path is what walks a
+		// show's seasons in full.
+		_, err := IngestShow(db, s, nil, nil)
+		return err
 	})
 }
 

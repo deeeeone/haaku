@@ -10,30 +10,45 @@ type IDSet struct {
 }
 
 // Movie represents a TMDB movie detail response.
+//
+// GetMovie asks for external_ids, release_dates and videos alongside the base
+// record (append_to_response), so the ingest gets the IMDb/TVDB links, the
+// country certifications and the trailer in the SAME call as the title — the
+// three things a Trakt-shaped client expects per title. The appended objects
+// are pointers because a client that does not append (the change-feed sync)
+// still decodes into this type.
 type Movie struct {
-	ID                  int       `json:"id"`
-	IMDBID              string    `json:"imdb_id"`
-	Title               string    `json:"title"`
-	OriginalTitle       string    `json:"original_title"`
-	Tagline             string    `json:"tagline"`
-	Overview            string    `json:"overview"`
-	ReleaseDate         string    `json:"release_date"`
-	Runtime             int       `json:"runtime"`
-	Status              string    `json:"status"`
-	Popularity          float64   `json:"popularity"`
-	VoteAverage         float64   `json:"vote_average"`
-	VoteCount           int64     `json:"vote_count"`
-	Genres              []Genre   `json:"genres"`
-	Language            string    `json:"original_language"`
-	PosterPath          string    `json:"poster_path"`
-	BackdropPath        string    `json:"backdrop_path"`
-	Adult               bool      `json:"adult"`
-	Budget              int64     `json:"budget"`  // for metadata passthrough
-	Revenue             int64     `json:"revenue"` // for metadata passthrough
-	ProductionCountries []Country `json:"production_countries"`
+	ID                  int           `json:"id"`
+	IMDBID              string        `json:"imdb_id"`
+	Title               string        `json:"title"`
+	OriginalTitle       string        `json:"original_title"`
+	Tagline             string        `json:"tagline"`
+	Overview            string        `json:"overview"`
+	ReleaseDate         string        `json:"release_date"`
+	Runtime             int           `json:"runtime"`
+	Status              string        `json:"status"`
+	Popularity          float64       `json:"popularity"`
+	VoteAverage         float64       `json:"vote_average"`
+	VoteCount           int64         `json:"vote_count"`
+	Genres              []Genre       `json:"genres"`
+	Language            string        `json:"original_language"`
+	PosterPath          string        `json:"poster_path"`
+	BackdropPath        string        `json:"backdrop_path"`
+	Adult               bool          `json:"adult"`
+	Budget              int64         `json:"budget"`  // for metadata passthrough
+	Revenue             int64         `json:"revenue"` // for metadata passthrough
+	ProductionCountries []Country     `json:"production_countries"`
+	ExternalIDs         *ExternalIDs  `json:"external_ids,omitempty"`
+	ReleaseDates        *ReleaseDates `json:"release_dates,omitempty"`
+	Videos              *Videos       `json:"videos,omitempty"`
 }
 
 // Show represents a TMDB TV show detail response.
+//
+// As with Movie, GetShow appends external_ids, content_ratings and videos: the
+// TV SHOW external-ids payload is the only place TMDB names a show's TVDB id
+// (the movie one does not carry it — measured against the live API), which is
+// what makes the TMDB→TVDB supplementary link one call instead of a search.
 type Show struct {
 	ID                  int             `json:"id"`
 	IMDBID              string          `json:"imdb_id"`
@@ -57,6 +72,9 @@ type Show struct {
 	Seasons             []SeasonSummary `json:"seasons"`
 	Adult               bool            `json:"adult"`
 	ProductionCountries []Country       `json:"production_countries"`
+	ExternalIDs         *ExternalIDs    `json:"external_ids,omitempty"`
+	ContentRatings      *ContentRatings `json:"content_ratings,omitempty"`
+	Videos              *Videos         `json:"videos,omitempty"`
 }
 
 // SeasonSummary is the lightweight season info from the show detail.
@@ -374,4 +392,206 @@ type Certification struct {
 	Certification string `json:"certification"`
 	Meaning       string `json:"meaning"`
 	Order         int    `json:"order"`
+}
+
+// --- Appended sub-resources (append_to_response) ---
+
+// appendParams is the append_to_response list GetMovie/GetShow ask for. One
+// detail call then carries everything a Trakt-shaped card and its detail page
+// need; without it a title costs three extra requests (external ids,
+// certifications, videos) and a TMDB rate budget.
+const (
+	appendMovie = "external_ids,release_dates,videos"
+	appendShow  = "external_ids,content_ratings,videos"
+)
+
+// ExternalIDs is TMDB's external_ids payload.
+//
+// The MOVIE payload carries no tvdb_id — measured against the live API: GET
+// /movie/603/external_ids returns imdb_id and the social handles only, while
+// GET /tv/1396/external_ids returns tvdb_id 81189. So a movie's TMDB→TVDB link
+// is recovered through TVDB's own remote-id search instead.
+type ExternalIDs struct {
+	IMDBID      string `json:"imdb_id"`
+	TVDBID      int    `json:"tvdb_id"`
+	TVRageID    int    `json:"tvrage_id"`
+	WikidataID  string `json:"wikidata_id"`
+	FacebookID  string `json:"facebook_id"`
+	InstagramID string `json:"instagram_id"`
+	TwitterID   string `json:"twitter_id"`
+}
+
+// Videos is TMDB's videos payload.
+type Videos struct {
+	Results []Video `json:"results"`
+}
+
+// Video is one trailer/teaser/clip.
+type Video struct {
+	Key      string `json:"key"`
+	Site     string `json:"site"`
+	Type     string `json:"type"`
+	Name     string `json:"name"`
+	Official bool   `json:"official"`
+}
+
+// TrailerURL returns a YouTube URL for the best trailer TMDB has, or "".
+//
+// Preference order: an official "Trailer" beats an unofficial one, which beats
+// a "Teaser". Non-YouTube entries are skipped — the field is a URL a client
+// embeds, and every other site TMDB lists would need a different embed.
+func (v *Videos) TrailerURL() string {
+	if v == nil {
+		return ""
+	}
+	pick := ""
+	pickRank := 0
+	for _, video := range v.Results {
+		if video.Site != "YouTube" || video.Key == "" {
+			continue
+		}
+		rank := 0
+		switch video.Type {
+		case "Trailer":
+			rank = 2
+		case "Teaser":
+			rank = 1
+		default:
+			continue
+		}
+		if video.Official {
+			rank++
+		}
+		if rank > pickRank {
+			pick, pickRank = video.Key, rank
+		}
+	}
+	if pick == "" {
+		return ""
+	}
+	return "https://www.youtube.com/watch?v=" + pick
+}
+
+// ReleaseDates is TMDB's release_dates payload for a movie.
+type ReleaseDates struct {
+	Results []CountryReleaseDates `json:"results"`
+}
+
+// CountryReleaseDates holds one country's dated releases.
+type CountryReleaseDates struct {
+	ISO3166      string        `json:"iso_3166_1"`
+	ReleaseDates []ReleaseDate `json:"release_dates"`
+}
+
+// ReleaseDate is a single dated release with its certification.
+type ReleaseDate struct {
+	Certification string `json:"certification"`
+	Type          int    `json:"type"`
+	ReleaseDate   string `json:"release_date"`
+}
+
+// Certification returns a movie certification, preferring the US rating (the
+// one a Trakt-shaped client shows as the title's rating) and falling back to
+// the first country that has one, so a non-US title is not left blank.
+func (r *ReleaseDates) Certification() string {
+	if r == nil {
+		return ""
+	}
+	fallback := ""
+	for _, country := range r.Results {
+		for _, release := range country.ReleaseDates {
+			if release.Certification == "" {
+				continue
+			}
+			if country.ISO3166 == "US" {
+				return release.Certification
+			}
+			if fallback == "" {
+				fallback = release.Certification
+			}
+		}
+	}
+	return fallback
+}
+
+// ContentRatings is TMDB's content_ratings payload for a TV show.
+type ContentRatings struct {
+	Results []ContentRating `json:"results"`
+}
+
+// ContentRating is one country's TV rating.
+type ContentRating struct {
+	ISO3166 string `json:"iso_3166_1"`
+	Rating  string `json:"rating"`
+}
+
+// Certification returns a show's content rating, preferring the US one.
+func (c *ContentRatings) Certification() string {
+	if c == nil {
+		return ""
+	}
+	fallback := ""
+	for _, rating := range c.Results {
+		if rating.Rating == "" {
+			continue
+		}
+		if rating.ISO3166 == "US" {
+			return rating.Rating
+		}
+		if fallback == "" {
+			fallback = rating.Rating
+		}
+	}
+	return fallback
+}
+
+// TVDBID returns the TVDB id TMDB names for this movie, or 0. TMDB's movie
+// external-ids payload does not carry one, so this is almost always 0 — the
+// link is recovered through TVDB's remote-id search instead.
+func (m *Movie) TVDBID() int {
+	if m == nil || m.ExternalIDs == nil {
+		return 0
+	}
+	return m.ExternalIDs.TVDBID
+}
+
+// TVDBID returns the TVDB id TMDB names for this show, or 0. The TV external-ids
+// payload does carry one, which is the cheap half of the supplementary link.
+func (s *Show) TVDBID() int {
+	if s == nil || s.ExternalIDs == nil {
+		return 0
+	}
+	return s.ExternalIDs.TVDBID
+}
+
+// Certification returns the movie's country certification, or "".
+func (m *Movie) Certification() string {
+	if m == nil {
+		return ""
+	}
+	return m.ReleaseDates.Certification()
+}
+
+// Certification is Certification for a show's content ratings.
+func (s *Show) Certification() string {
+	if s == nil {
+		return ""
+	}
+	return s.ContentRatings.Certification()
+}
+
+// TrailerURL returns the movie's best YouTube trailer URL, or "".
+func (m *Movie) TrailerURL() string {
+	if m == nil {
+		return ""
+	}
+	return m.Videos.TrailerURL()
+}
+
+// TrailerURL is TrailerURL for a show.
+func (s *Show) TrailerURL() string {
+	if s == nil {
+		return ""
+	}
+	return s.Videos.TrailerURL()
 }

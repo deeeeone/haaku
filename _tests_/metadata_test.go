@@ -12,7 +12,8 @@ import (
 )
 
 // setupTestDB creates an in-memory SQLite database with the media schema
-// for unit testing the ingest functions.
+// for unit testing the record-level ingest functions (season, episode, person,
+// credit). The composite movie/show ingest's own suite is provider_ingest_test.go.
 func setupTestDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
@@ -53,7 +54,7 @@ func TestIngestMovie_InsertNew(t *testing.T) {
 		Adult:        false,
 	}
 
-	result, err := metadata.IngestMovie(db, movie)
+	result, err := metadata.IngestMovie(db, movie, nil)
 	if err != nil {
 		t.Fatalf("IngestMovie failed: %v", err)
 	}
@@ -105,7 +106,7 @@ func TestIngestMovie_UpdateExisting(t *testing.T) {
 		Language:    "en",
 		PosterPath:  "/old.jpg",
 	}
-	result1, err := metadata.IngestMovie(db, movie1)
+	result1, err := metadata.IngestMovie(db, movie1, nil)
 	if err != nil {
 		t.Fatalf("first IngestMovie failed: %v", err)
 	}
@@ -125,7 +126,7 @@ func TestIngestMovie_UpdateExisting(t *testing.T) {
 		Language:    "en",
 		PosterPath:  "/new.jpg",
 	}
-	result2, err := metadata.IngestMovie(db, movie2)
+	result2, err := metadata.IngestMovie(db, movie2, nil)
 	if err != nil {
 		t.Fatalf("second IngestMovie failed: %v", err)
 	}
@@ -163,12 +164,12 @@ func TestIngestMovie_UnchangedNoOp(t *testing.T) {
 		PosterPath:  "/same.jpg",
 	}
 
-	result1, err := metadata.IngestMovie(db, movie)
+	result1, err := metadata.IngestMovie(db, movie, nil)
 	if err != nil {
 		t.Fatalf("first IngestMovie failed: %v", err)
 	}
 
-	result2, err := metadata.IngestMovie(db, movie)
+	result2, err := metadata.IngestMovie(db, movie, nil)
 	if err != nil {
 		t.Fatalf("second IngestMovie failed: %v", err)
 	}
@@ -214,7 +215,7 @@ func TestIngestShow_InsertNew(t *testing.T) {
 		},
 	}
 
-	result, err := metadata.IngestShow(db, show)
+	result, err := metadata.IngestShow(db, show, nil, nil)
 	if err != nil {
 		t.Fatalf("IngestShow failed: %v", err)
 	}
@@ -257,7 +258,7 @@ func TestIngestShow_UpdateExisting(t *testing.T) {
 		Networks:      []tmdb.Network{{Name: "NBC"}},
 	}
 
-	result1, err := metadata.IngestShow(db, show1)
+	result1, err := metadata.IngestShow(db, show1, nil, nil)
 	if err != nil {
 		t.Fatalf("first IngestShow failed: %v", err)
 	}
@@ -277,7 +278,7 @@ func TestIngestShow_UpdateExisting(t *testing.T) {
 		Networks:      []tmdb.Network{{Name: "Netflix"}},
 	}
 
-	result2, err := metadata.IngestShow(db, show2)
+	result2, err := metadata.IngestShow(db, show2, nil, nil)
 	if err != nil {
 		t.Fatalf("second IngestShow failed: %v", err)
 	}
@@ -317,12 +318,12 @@ func TestIngestShow_UnchangedNoOp(t *testing.T) {
 		Networks:      []tmdb.Network{},
 	}
 
-	result1, err := metadata.IngestShow(db, show)
+	result1, err := metadata.IngestShow(db, show, nil, nil)
 	if err != nil {
 		t.Fatalf("first IngestShow failed: %v", err)
 	}
 
-	result2, err := metadata.IngestShow(db, show)
+	result2, err := metadata.IngestShow(db, show, nil, nil)
 	if err != nil {
 		t.Fatalf("second IngestShow failed: %v", err)
 	}
@@ -359,7 +360,7 @@ func TestIngestSeason_InsertNew(t *testing.T) {
 			{SeasonNumber: 1, EpisodeCount: 10, AirDate: "2026-01-01"},
 		},
 	}
-	dbShow, err := metadata.IngestShow(db, show)
+	dbShow, err := metadata.IngestShow(db, show, nil, nil)
 	if err != nil {
 		t.Fatalf("IngestShow failed: %v", err)
 	}
@@ -408,7 +409,7 @@ func TestIngestSeason_UpdateExisting(t *testing.T) {
 		Genres:        []tmdb.Genre{},
 		Language:      "en",
 	}
-	dbShow, err := metadata.IngestShow(db, show)
+	dbShow, err := metadata.IngestShow(db, show, nil, nil)
 	if err != nil {
 		t.Fatalf("IngestShow failed: %v", err)
 	}
@@ -458,7 +459,7 @@ func TestIngestEpisode_InsertNew(t *testing.T) {
 		Genres:        []tmdb.Genre{},
 		Language:      "en",
 	}
-	dbShow, err := metadata.IngestShow(db, show)
+	dbShow, err := metadata.IngestShow(db, show, nil, nil)
 	if err != nil {
 		t.Fatalf("IngestShow failed: %v", err)
 	}
@@ -515,7 +516,7 @@ func TestIngestEpisode_UpdateExisting(t *testing.T) {
 		Genres:        []tmdb.Genre{},
 		Language:      "en",
 	}
-	dbShow, _ := metadata.IngestShow(db, show)
+	dbShow, _ := metadata.IngestShow(db, show, nil, nil)
 	summary := tmdb.SeasonSummary{SeasonNumber: 1, EpisodeCount: 1}
 	dbSeason, _ := metadata.IngestSeason(db, dbShow.ID, 401, summary)
 
@@ -554,7 +555,7 @@ func TestIngestEpisode_UnchangedNoOp(t *testing.T) {
 		SeasonsCount: 1, EpisodesCount: 1, Popularity: 40.0, VoteAverage: 5.0, VoteCount: 100,
 		Genres: []tmdb.Genre{}, Language: "en",
 	}
-	dbShow, _ := metadata.IngestShow(db, show)
+	dbShow, _ := metadata.IngestShow(db, show, nil, nil)
 	summary := tmdb.SeasonSummary{SeasonNumber: 1, EpisodeCount: 1}
 	dbSeason, _ := metadata.IngestSeason(db, dbShow.ID, 402, summary)
 

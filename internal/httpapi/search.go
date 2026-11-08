@@ -99,14 +99,14 @@ func parseCSV(s string) []string {
 // handleSearch handles GET /v1/search.
 //
 // It answers from the local catalogue FIRST and fills the rest of the page from
-// TVDB's live name search. The catalogue is a cache of the titles this instance
-// has actually ingested, so on a fresh install it is empty — which is exactly
-// why the page used to look broken: it was querying a database that had never
-// been populated. Live results carry their TVDB id and in_catalog=false; a
-// client resolves one through GET /v1/media/resolve, which ingests it.
+// TMDB's live search. The catalogue is a cache of the titles this instance has
+// actually ingested, so on a fresh install it is empty — which is exactly why
+// the page used to look broken: it was querying a database that had never been
+// populated. Live results carry their TMDB id and in_catalog=false; a client
+// resolves one through GET /v1/media/resolve, which ingests it.
 //
-// The provider is optional at runtime: with no TVDB client configured, or when
-// TVDB is unreachable, the endpoint still answers with catalogue results.
+// The provider is optional at runtime: with no TMDB client configured, or when
+// TMDB is unreachable, the endpoint still answers with catalogue results.
 func handleSearch(c *fiber.Ctx) error {
 	params, err := parseSearchParams(c)
 	if err != nil {

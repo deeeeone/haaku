@@ -12,7 +12,7 @@ import (
 // searchItem is one card in a search response.
 //
 // Both sources render into this ONE shape: a catalogue hit (Source "catalog",
-// built from the local row) and a live TVDB hit (Source "tvdb") differ only in
+// built from the local row) and a live TMDB hit (Source "tmdb") differ only in
 // whether the ids include a local one and whether in_catalog is set. The web
 // app therefore has a single card component and a single decision — link
 // straight there, or resolve first.
@@ -44,11 +44,11 @@ type searchMedia struct {
 // Sources a search card can come from.
 const (
 	searchSourceCatalog = "catalog"
-	searchSourceTVDB    = "tvdb"
+	searchSourceTMDB    = "tmdb"
 )
 
 // catalogSearchItems renders local hits as cards, using the same builders the
-// media endpoints use so ids (including the TVDB one) are complete.
+// media endpoints use so ids (including the TVDB link) are complete.
 func catalogSearchItems(results []database.SearchResult) []searchItem {
 	items := make([]searchItem, 0, len(results))
 	for _, result := range results {
@@ -106,7 +106,7 @@ func catalogSearchItems(results []database.SearchResult) []searchItem {
 // appendProviderItems adds live provider hits that the catalogue does not
 // already have, up to the page limit.
 //
-// A hit is a duplicate when its TVDB id is already on the page, or when the
+// A hit is a duplicate when its TMDB id is already on the page, or when the
 // same title and year are already there — the catalogue row and the provider
 // record are the same work, and showing it twice looks like two entries.
 func appendProviderItems(items []searchItem, hits []metadata.ProviderHit, limit int) []searchItem {
@@ -114,7 +114,7 @@ func appendProviderItems(items []searchItem, hits []metadata.ProviderHit, limit 
 		limit = 25
 	}
 
-	seenTVDB := map[string]bool{}
+	seenTMDB := map[string]bool{}
 	seenTitle := map[string]bool{}
 	for _, item := range items {
 		card := item.Movie
@@ -126,8 +126,8 @@ func appendProviderItems(items []searchItem, hits []metadata.ProviderHit, limit 
 		if card == nil {
 			continue
 		}
-		if card.IDs.TVDB != "" {
-			seenTVDB[mediaType+":"+card.IDs.TVDB] = true
+		if card.IDs.TMDB != 0 {
+			seenTMDB[mediaType+":"+itoa(card.IDs.TMDB)] = true
 		}
 		seenTitle[titleKey(mediaType, card.Title, card.Year)] = true
 	}
@@ -136,17 +136,18 @@ func appendProviderItems(items []searchItem, hits []metadata.ProviderHit, limit 
 		if len(items) >= limit {
 			break
 		}
-		if seenTVDB[hit.MediaType+":"+itoa(hit.TVDBID)] {
+		if seenTMDB[hit.MediaType+":"+itoa(hit.TMDBID)] {
 			continue
 		}
 		if seenTitle[titleKey(hit.MediaType, hit.Title, hit.Year)] {
 			continue
 		}
+		seenTMDB[hit.MediaType+":"+itoa(hit.TMDBID)] = true
+		seenTitle[titleKey(hit.MediaType, hit.Title, hit.Year)] = true
 
 		card := &searchMedia{
 			IDs: media.IDs{
-				TVDB: itoa(hit.TVDBID),
-				Slug: hit.Slug,
+				TMDB: hit.TMDBID,
 			},
 			Title:     hit.Title,
 			Year:      hit.Year,
@@ -154,19 +155,13 @@ func appendProviderItems(items []searchItem, hits []metadata.ProviderHit, limit 
 			Images:    map[string]any{"poster": hit.PosterURL},
 			InCatalog: hit.InCatalog,
 		}
-		if hit.TMDBID > 0 {
-			card.IDs.TMDB = hit.TMDBID
-		}
-		if hit.IMDBID != "" {
-			card.IDs.IMDB = hit.IMDBID
-		}
 		if hit.InCatalog && hit.MediaID > 0 {
 			// A title the catalogue already holds gets its local id, so the
 			// card links straight to it (no resolve round trip).
 			card.IDs.ID = hit.MediaID
 		}
 
-		item := searchItem{Type: hit.MediaType, Source: searchSourceTVDB}
+		item := searchItem{Type: hit.MediaType, Source: searchSourceTMDB}
 		if hit.MediaType == "movie" {
 			item.Movie = card
 		} else {

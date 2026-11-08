@@ -103,11 +103,11 @@ func (s StringSlice) Values() []string {
 
 // Movie mirrors TMDB movie detail with our community fields.
 //
-// TVDB is the primary source (TvdbID is the identity the TVDB ingest is keyed
-// on); TmdbID is a supplementary link that is 0 when TMDB does not carry the
-// title. Uniqueness lives in a PARTIAL unique index (WHERE ... > 0) created by
-// the tvdb-primary-identity migration, not in a GORM tag, so that any number of
-// rows may carry an unknown id.
+// TMDB is the primary source (TmdbID is the identity the ingest is keyed on);
+// TvdbID is a supplementary link that is 0 when TVDB does not carry the title.
+// Uniqueness lives in PARTIAL unique indexes (WHERE ... > 0) created by the
+// media-identity migration, not in GORM tags, so that any number of rows may
+// carry an unknown id.
 type Movie struct {
 	ID            int64       `gorm:"primaryKey" json:"id"`
 	TmdbID        int         `gorm:"index" json:"tmdb_id"`
@@ -140,7 +140,7 @@ func (Movie) TableName() string { return "movies" }
 
 // Show mirrors TMDB TV show detail.
 //
-// TVDB is the primary source; see Movie for the identity/uniqueness rules.
+// TMDB is the primary source; see Movie for the identity/uniqueness rules.
 type Show struct {
 	ID            int64       `gorm:"primaryKey" json:"id"`
 	TmdbID        int         `gorm:"index" json:"tmdb_id"`

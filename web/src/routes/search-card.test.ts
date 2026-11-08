@@ -3,17 +3,17 @@ import { describe, expect, it } from 'vitest'
 import type { SearchResult } from '@/api/types'
 import { cardOf } from '@/lib/search-card'
 
-// A live TVDB hit as the server sends it: `in_catalog: false`, a tvdb id and a
-// slug, and NO local row id. `normalizeIDs` turns the missing id into trakt: 0.
+// A live TMDB hit as the server sends it: `in_catalog: false`, a tmdb id and NO
+// local row id. `normalizeIDs` turns the missing id into trakt: 0.
 function providerHit(): SearchResult {
   return {
     type: 'show',
     score: 0,
-    source: 'tvdb',
+    source: 'tmdb',
     show: {
       title: 'Breaking Bad',
       year: 2008,
-      ids: { trakt: 0, id: 0, slug: 'breaking-bad', tvdb: '81189' },
+      ids: { trakt: 0, id: 0, slug: '', tmdb: 1396 },
     },
   } as unknown as SearchResult
 }
@@ -26,7 +26,7 @@ function catalogHit(): SearchResult {
     show: {
       title: 'Severance',
       year: 2022,
-      ids: { trakt: 1, id: 1, slug: 'severance', tvdb: '371980' },
+      ids: { trakt: 1, id: 1, slug: 'severance', tmdb: 95396, tvdb: '371980' },
       in_catalog: true,
     },
   } as unknown as SearchResult
@@ -41,8 +41,8 @@ describe('cardOf — navigate only into rows that exist', () => {
     expect(card).not.toBeNull()
     expect(card?.inCatalog).toBe(false)
     expect(card?.navigateTo).toBeUndefined()
-    // The TVDB id is still carried, which is what resolve needs.
-    expect(card?.tvdbId).toBe('81189')
+    // The TMDB id is still carried, which is what resolve needs.
+    expect(card?.tmdbId).toBe(1396)
   })
 
   it('navigates a catalogue hit by its local id', () => {

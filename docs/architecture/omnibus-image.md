@@ -123,8 +123,10 @@ misconfiguration is one line instead of a crash loop:
 
 - `HAAKU_SECRET_KEY` (`openssl rand -base64 48`) — the root key for
   everything stored encrypted at rest. Back it up separately from the database.
-- `TMDB_API_KEY` — a TMDB v4 read access token. `TVDB_API_KEY` is optional;
-  without it TVDB-backed search and resolve degrade to the local catalogue.
+- `TMDB_API_KEY` — a TMDB v4 read access token. TMDB is the primary metadata
+  provider, so this is the one the catalogue cannot be filled without.
+  `TVDB_API_KEY` is optional; without it the tvdb id link and the supplement's
+  fallbacks are absent, and every resolve still succeeds on TMDB alone.
 
 Useful, and optional: `HAAKU_PORT` (host port; the container always listens on
 8080), `HAAKU_CONFIG` (host directory for `/config`), `PUID`/`PGID`, `TZ`,

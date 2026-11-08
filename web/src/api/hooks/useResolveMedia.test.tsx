@@ -53,7 +53,7 @@ describe('useResolveMedia', () => {
     const { result } = renderHook(() => useResolveMedia(), { wrapper })
 
     await expect(
-      result.current.mutateAsync({ type: 'show', id: '81189' })
+      result.current.mutateAsync({ type: 'show', id: '1396' })
     ).rejects.toThrow()
   })
 
@@ -61,7 +61,13 @@ describe('useResolveMedia', () => {
     GET.mockResolvedValue({
       data: {
         title: 'Severance',
-        ids: { id: 1, trakt: 1, slug: 'severance', tvdb: '371980' },
+        ids: {
+          id: 1,
+          trakt: 1,
+          slug: 'severance',
+          tmdb: 95396,
+          tvdb: '371980',
+        },
       },
     })
 
@@ -69,9 +75,53 @@ describe('useResolveMedia', () => {
 
     const resolved = await result.current.mutateAsync({
       type: 'show',
-      id: '371980',
+      id: '95396',
     })
     expect(resolved.ids.trakt).toBe(1)
     expect(resolved.title).toBe('Severance')
+  })
+
+  // The default id_type follows the provider that is primary. A live search hit
+  // carries a TMDB id, so a caller that does not pass idType must resolve by
+  // TMDB — sending the id under the wrong id_type would ingest a DIFFERENT
+  // title (the two providers number their records in unrelated spaces).
+  it('defaults id_type to tmdb', async () => {
+    GET.mockResolvedValue({
+      data: {
+        title: 'Severance',
+        ids: { id: 1, trakt: 1, slug: 'severance' },
+      },
+    })
+
+    const { result } = renderHook(() => useResolveMedia(), { wrapper })
+    await result.current.mutateAsync({ type: 'show', id: '95396' })
+
+    expect(GET).toHaveBeenCalledWith(
+      '/v1/media/resolve',
+      expect.objectContaining({
+        params: { query: { type: 'show', id: '95396', id_type: 'tmdb' } },
+      })
+    )
+  })
+
+  // A TVDB-keyed caller (a media server, or an older client) can still say so.
+  it('still accepts an explicit idType', async () => {
+    GET.mockResolvedValue({
+      data: { title: 'Severance', ids: { id: 1, trakt: 1, slug: 'severance' } },
+    })
+
+    const { result } = renderHook(() => useResolveMedia(), { wrapper })
+    await result.current.mutateAsync({
+      type: 'show',
+      id: '371980',
+      idType: 'tvdb',
+    })
+
+    expect(GET).toHaveBeenCalledWith(
+      '/v1/media/resolve',
+      expect.objectContaining({
+        params: { query: { type: 'show', id: '371980', id_type: 'tvdb' } },
+      })
+    )
   })
 })

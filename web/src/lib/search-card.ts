@@ -13,8 +13,8 @@ export interface CardModel {
   rating?: string
   aspect: '16:9' | '2:3'
   ids: Ids
-  /** tvdbId is the external id /v1/media/resolve ingests from, when needed. */
-  tvdbId?: string
+  /** tmdbId is the external id /v1/media/resolve ingests from, when needed. */
+  tmdbId?: number
   /** inCatalog means the row exists locally: link straight to it. */
   inCatalog: boolean
   navigateTo?: { to: string; id: string }
@@ -37,7 +37,7 @@ export function cardOf(result: SearchResult): CardModel | null {
         rating: m.rating ? (Number(m.rating) / 2).toFixed(1) : undefined,
         aspect: '2:3',
         ids: m.ids,
-        tvdbId: m.ids.tvdb,
+        tmdbId: m.ids.tmdb,
         inCatalog: m.in_catalog !== false && localId > 0,
         navigateTo:
           localId > 0 ? { to: '/movies/$id', id: String(localId) } : undefined,
@@ -55,7 +55,7 @@ export function cardOf(result: SearchResult): CardModel | null {
         rating: s.rating ? (Number(s.rating) / 2).toFixed(1) : undefined,
         aspect: '2:3',
         ids: s.ids,
-        tvdbId: s.ids.tvdb,
+        tmdbId: s.ids.tmdb,
         inCatalog: s.in_catalog !== false && localId > 0,
         navigateTo:
           localId > 0 ? { to: '/shows/$id', id: String(localId) } : undefined,

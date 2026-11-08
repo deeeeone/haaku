@@ -233,15 +233,17 @@ function SearchResultCard({ result }: { result: SearchResult }) {
   const card = useMemo(() => cardOf(result), [result])
 
   // ensureLocalIds returns ids that address a local row, ingesting the title
-  // first when the result came from TVDB and is not in the catalogue yet.
+  // first when the result came from a live provider search and is not in the
+  // catalogue yet. A live hit carries a TMDB id, which is the identity the
+  // resolve endpoint keys on.
   const ensureLocalIds = useCallback(async (): Promise<Ids | null> => {
     if (!card) return null
     if (card.ids.trakt > 0) return card.ids
-    if (!card.tvdbId) return null
+    if (!card.tmdbId) return null
     const resolved = await resolveMedia.mutateAsync({
       type: card.mediaType === 'movie' ? 'movie' : 'show',
-      id: card.tvdbId,
-      idType: 'tvdb',
+      id: String(card.tmdbId),
+      idType: 'tmdb',
     })
     return resolved.ids
   }, [card, resolveMedia])
@@ -261,7 +263,7 @@ function SearchResultCard({ result }: { result: SearchResult }) {
     try {
       const local = await ensureLocalIds()
       if (!local) {
-        toast.error('This title has no TVDB id to open')
+        toast.error('This title has no TMDB id to open')
         return
       }
       navigate({

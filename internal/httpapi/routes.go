@@ -164,7 +164,7 @@ func RegisterRoutes(app *fiber.App) {
 	openapi.Register(openapi.RouteDef{
 		Method:  "GET",
 		Path:    "/v1/media/resolve",
-		Summary: "Resolve an external id (tvdb/tmdb/imdb) to canonical media, ingesting it from TVDB when it is not in the catalogue yet",
+		Summary: "Resolve an external id (tmdb/tvdb/imdb) to canonical media, ingesting it from TMDB when it is not in the catalogue yet",
 		Tags:    []string{"Search"},
 		Auth:    "required",
 		StatusCodes: map[int]string{
