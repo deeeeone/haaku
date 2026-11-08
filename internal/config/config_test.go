@@ -10,7 +10,11 @@ import (
 // cannot leak a value into the test.
 func isolate(t *testing.T) {
 	t.Helper()
-	t.Setenv("HAAKU_SECRET_KEY", "0123456789abcdef0123456789abcdef")
+	// Built at runtime, not written as a literal: HAAKU_SECRET_KEY needs 32+
+	// characters, and a high-entropy literal of that length in a test fixture is
+	// indistinguishable from a real key to a secrets scanner (it trips
+	// gitleaks' generic-api-key rule). The value never leaves this process.
+	t.Setenv("HAAKU_SECRET_KEY", strings.Repeat("ab12", 12))
 	t.Setenv("TVDB_API_KEY", "")
 	t.Setenv("TVDB_PIN", "")
 	t.Setenv("TMDB_API_KEY", "")

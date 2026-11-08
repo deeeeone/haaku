@@ -23,3 +23,19 @@ paths = [
   '''^_tests_/oauth_test\.go$''',
 ]
 targetRules = ['generic-api-key']
+
+# One historical fixture, matched by VALUE rather than by file.
+#
+# internal/config's config_test.go used to set HAAKU_SECRET_KEY to the 32-character
+# hex string below, to satisfy the boot-time length check. It is a fixture, not a
+# secret, but `make secrets` scans commits, so fixing the file forward cannot clear
+# it: the commit that introduced it keeps matching until the history is rewritten.
+# The fixture now builds its value at runtime (strings.Repeat), so this entry is
+# scoped to that one value — `condition = "AND"` keeps the rule and the value both
+# required, so a different literal of the same shape, in any file, is still
+# reported. Delete this entry when main is next rewritten.
+[[allowlists]]
+description = '''Historical synthetic HAAKU_SECRET_KEY fixture in internal/config (now runtime-built)'''
+condition = "AND"
+regexes = ['0123456789abcdef0123456789abcdef']
+targetRules = ['generic-api-key']
