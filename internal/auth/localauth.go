@@ -1,11 +1,11 @@
 package auth
 
 import (
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/mail"
 	"strings"
 	"time"
@@ -16,7 +16,6 @@ import (
 	projredis "github.com/haaku-tv/haaku/redis"
 
 	"github.com/gofiber/fiber/v2"
-	goredis "github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
@@ -627,45 +626,35 @@ func isUniqueViolation(err error) bool {
 // loginRateLimited counts this attempt against the IP and the email, and
 // answers 429 when either window is over. It reports whether it wrote the
 // response. Redis failures fail OPEN, like every other limiter here.
+//
+// Both counters are namespaced by redis.RateLimitKey, so every limiter in the
+// tree builds its keys the same way.
 func loginRateLimited(c *fiber.Ctx, email string) (bool, error) {
-	if over, err := slidingWindowExceeded(c, "ratelimit:login:ip:"+c.IP(), loginRateMaxPerIP); err != nil {
+	if over, err := slidingWindowExceeded(c, projredis.RateLimitKey("login:ip", c.IP()), loginRateMaxPerIP); err != nil {
 		return false, err
 	} else if over {
 		return true, nil
 	}
 	sum := sha256.Sum256([]byte(email))
-	return slidingWindowExceeded(c, "ratelimit:login:email:"+hex.EncodeToString(sum[:8]), loginRateMaxPerEmail)
+	return slidingWindowExceeded(c, projredis.RateLimitKey("login:email", hex.EncodeToString(sum[:8])), loginRateMaxPerEmail)
 }
 
 // slidingWindowExceeded applies the repo's Redis ZSET sliding-window limit
 // under key. It writes the 429 itself and returns true when the caller must
 // stop. A missing or broken Redis fails open.
+//
+// The window itself lives in redis.SlidingWindow — the same implementation the
+// request limiter uses (internal/ratelimit), so the two cannot drift.
 func slidingWindowExceeded(c *fiber.Ctx, key string, max int64) (bool, error) {
-	rdb := projredis.GetClient()
-	if rdb == nil {
-		return false, nil
-	}
-	now := time.Now()
-	member := fmt.Sprintf("%d:%d", now.UnixNano(), now.UnixNano()%100000)
-
-	ctx, cancel := context.WithTimeout(c.Context(), 100*time.Millisecond)
-	defer cancel()
-
-	pipe := rdb.Pipeline()
-	pipe.ZAdd(ctx, key, goredis.Z{Score: float64(now.UnixMilli()), Member: member})
-	pipe.ZRemRangeByScore(ctx, key, "0", fmt.Sprintf("%.0f", float64(now.Add(-loginRateWindow).UnixMilli())))
-	countCmd := pipe.ZCard(ctx, key)
-	pipe.Expire(ctx, key, loginRateWindow)
-
-	if _, err := pipe.Exec(ctx); err != nil {
-		return false, nil
-	}
-	count, err := countCmd.Result()
+	window, err := projredis.SlidingWindow(key, loginRateWindow, max, time.Now())
 	if err != nil {
+		if !errors.Is(err, projredis.ErrClientUnavailable) {
+			slog.Warn("login limiter unavailable — failing open", "error", err)
+		}
 		return false, nil
 	}
-	if count > max {
-		c.Set("Retry-After", fmt.Sprintf("%d", int(loginRateWindow.Seconds())))
+	if window.Count > max {
+		c.Set("Retry-After", fmt.Sprintf("%d", int(window.Reset.Seconds())))
 		return true, writeError(c, fiber.StatusTooManyRequests, "rate_limited", "too many login attempts — try again later")
 	}
 	return false, nil

@@ -1,11 +1,13 @@
 package tests
 
 import (
+	"context"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/haaku-tv/haaku/redis"
+	goredis "github.com/redis/go-redis/v9"
 )
 
 // ---------------------------------------------------------------------------
@@ -286,3 +288,135 @@ func TestSingleFlightGroup_Deduplicates(t *testing.T) {
 }
 
 func intPtr(i int) *int { return &i }
+
+// ---------------------------------------------------------------------------
+// The limiter's two counters (redis/limit.go) against a real Redis
+// ---------------------------------------------------------------------------
+
+// TestSlidingWindowCountsTwoRequestsAtTheSameInstant pins the member's
+// uniqueness. The members are ZSET members scored by the request time: if two
+// requests in the same nanosecond hashed to the same member, the second ZADD
+// would overwrite the first and the window would under-count — exactly the kind
+// of bug that makes a limiter quietly stop working under load.
+func TestSlidingWindowCountsTwoRequestsAtTheSameInstant(t *testing.T) {
+	client := requireRedisHarness(t)
+	ctx := context.Background()
+	key := redis.RateLimitKey("test", "same-instant")
+	if err := client.Del(ctx, key).Err(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = client.Del(ctx, key).Err() })
+
+	now := time.Now()
+	first, err := redis.SlidingWindow(key, time.Minute, 10, now)
+	if err != nil {
+		t.Fatalf("first: %v", err)
+	}
+	second, err := redis.SlidingWindow(key, time.Minute, 10, now)
+	if err != nil {
+		t.Fatalf("second: %v", err)
+	}
+
+	if first.Count != 1 || second.Count != 2 {
+		t.Errorf("counts = (%d, %d), want (1, 2) — two requests at the same instant must both be counted", first.Count, second.Count)
+	}
+	if second.Remaining != 8 {
+		t.Errorf("remaining = %d, want 8", second.Remaining)
+	}
+}
+
+// TestSlidingWindowForgetsWhatLeftTheWindow: the window is a real window, not a
+// bucket, so a request older than the window is not counted against this one.
+func TestSlidingWindowForgetsWhatLeftTheWindow(t *testing.T) {
+	client := requireRedisHarness(t)
+	ctx := context.Background()
+	key := redis.RateLimitKey("test", "window")
+	if err := client.Del(ctx, key).Err(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = client.Del(ctx, key).Err() })
+
+	now := time.Now()
+	if _, err := redis.SlidingWindow(key, time.Minute, 1, now.Add(-2*time.Minute)); err != nil {
+		t.Fatalf("old request: %v", err)
+	}
+	got, err := redis.SlidingWindow(key, time.Minute, 1, now)
+	if err != nil {
+		t.Fatalf("current request: %v", err)
+	}
+	if got.Count != 1 {
+		t.Errorf("count = %d, want 1 — a request from two windows ago is still being counted", got.Count)
+	}
+}
+
+// TestUsageCheckManyChargesEveryCounterBeforeJudging: a request one ceiling
+// refuses still happened, so it is charged to the others. The intro's
+// per-media ceiling and the endpoint's daily budget both count it.
+func TestUsageCheckManyChargesEveryCounterBeforeJudging(t *testing.T) {
+	client := requireRedisHarness(t)
+	ctx := context.Background()
+	now := time.Now()
+	keys := []string{
+		redis.UsageKey("test-a", "acct", now),
+		redis.UsageKey("test-b", "acct", now),
+	}
+	for _, key := range keys {
+		if err := client.Del(ctx, key).Err(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Cleanup(func() {
+		for _, key := range keys {
+			_ = client.Del(ctx, key).Err()
+		}
+	})
+
+	reqs := []redis.UsageCheckRequest{{Key: keys[0], Limit: 0}, {Key: keys[1], Limit: 1}}
+	results, err := redis.UsageCheckMany(reqs, now)
+	if err != nil {
+		t.Fatalf("UsageCheckMany: %v", err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("results = %d, want 2 (one per counter, in request order)", len(results))
+	}
+	if !results[0].Allowed {
+		t.Error("limit 0 means \"no budget for this tier\" and must be allowed")
+	}
+	if !results[1].Allowed || results[1].Count != 1 {
+		t.Errorf("second counter = %+v, want allowed with count 1", results[1])
+	}
+
+	// Over the budget: refused, but still counted (that is the accurate account).
+	over, err := redis.UsageCheckMany([]redis.UsageCheckRequest{{Key: keys[1], Limit: 1}}, now)
+	if err != nil {
+		t.Fatalf("over budget: %v", err)
+	}
+	if over[0].Allowed {
+		t.Error("count 2 > limit 1 must be refused")
+	}
+	if over[0].Remaining != 0 {
+		t.Errorf("remaining = %d, want 0 (floored, never negative)", over[0].Remaining)
+	}
+	if over[0].Reset <= 0 || over[0].Reset > 24*time.Hour {
+		t.Errorf("reset = %v, want the time to the instance's next local midnight", over[0].Reset)
+	}
+}
+
+// requireRedisHarness returns a live client, or skips. The harness has no
+// TestMain, so each Redis-backed test initialises the client itself; without
+// REDIS_URL there is nothing to test against and the test skips rather than
+// pretending to pass.
+func requireRedisHarness(t *testing.T) *goredis.Client {
+	t.Helper()
+	if os.Getenv("REDIS_URL") == "" {
+		t.Skip("REDIS_URL not set — this test needs a real Redis")
+	}
+	if err := redis.InitRedis(); err != nil {
+		t.Fatalf("redis: %v", err)
+	}
+	client := redis.GetClient()
+	if client == nil {
+		t.Fatal("redis client is nil after a successful InitRedis")
+	}
+	return client
+}

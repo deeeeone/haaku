@@ -1,7 +1,6 @@
 package reports
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -15,7 +14,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/haaku-tv/haaku/internal/auth"
 	"github.com/haaku-tv/haaku/internal/response"
-	goredis "github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
@@ -411,35 +409,19 @@ func handleActOnReport(c *fiber.Ctx, newStatus string) error {
 // reportRateWindow, and nil otherwise. Redis failures fail OPEN: the request
 // is allowed through so an unavailable cache never blocks legitimate use.
 func reportRateAllowed(c *fiber.Ctx, userID string) error {
-	rdb := projredis.GetClient()
-	if rdb == nil {
-		return nil
-	}
-
-	key := "ratelimit:report:" + userID
-	now := time.Now()
-	nowMs := float64(now.UnixMilli())
-	windowStart := float64(now.Add(-reportRateWindow).UnixMilli())
-	member := fmt.Sprintf("%d:%d", now.UnixNano(), now.UnixNano()%100000)
-
-	ctx, cancel := context.WithTimeout(c.Context(), 100*time.Millisecond)
-	defer cancel()
-
-	pipe := rdb.Pipeline()
-	pipe.ZAdd(ctx, key, goredis.Z{Score: nowMs, Member: member})
-	pipe.ZRemRangeByScore(ctx, key, "0", fmt.Sprintf("%.0f", windowStart))
-	countCmd := pipe.ZCard(ctx, key)
-	pipe.Expire(ctx, key, reportRateWindow)
-
-	if _, err := pipe.Exec(ctx); err != nil {
-		return nil
-	}
-	count, err := countCmd.Result()
-	if err != nil {
-		return nil
-	}
-	if count > reportRateMax {
-		c.Set("Retry-After", fmt.Sprintf("%d", int(reportRateWindow.Seconds())))
+	window, err := projredis.SlidingWindow(
+		projredis.RateLimitKey("report", userID),
+		reportRateWindow,
+		reportRateMax,
+		time.Now(),
+	)
+	// err != nil means Redis is unavailable. Fail OPEN with no further branch:
+	// an unavailable limiter must never be what blocks a legitimate report, and
+	// a nil return from this helper is what says "allowed through"
+	// (internal/ratelimit/ratelimit.md documents the same rule for the request
+	// limiter).
+	if err == nil && window.Count > reportRateMax {
+		c.Set("Retry-After", fmt.Sprintf("%d", int(window.Reset.Seconds())))
 		return response.WriteError(c, fiber.StatusTooManyRequests, "rate_limited", "too many reports — slow down")
 	}
 	return nil

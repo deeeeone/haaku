@@ -3,7 +3,6 @@ package tests
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/haaku-tv/haaku/internal/httpapi"
+	"github.com/haaku-tv/haaku/redis"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -64,63 +64,50 @@ func newMiddlewareTestApp() *fiber.App {
 }
 
 // ---------------------------------------------------------------------------
-// Rate limit key format tests
+// Rate limit and usage counter key format (internal/ratelimit)
+//
+// These keys are the whole contract between the limiter and the counters in
+// Redis: group first (so a colon in an IPv6 identifier cannot shift the fields),
+// and for the daily budget a trailing date so the counter rotates by itself.
 // ---------------------------------------------------------------------------
 
 func TestRateLimitKeyFormat(t *testing.T) {
 	tests := []struct {
 		name       string
-		identifier string
 		group      string
-		wantKey    string
+		identifier string
+		want       string
 	}{
-		{
-			name:       "authenticated user",
-			identifier: "user_abc123",
-			group:      "auth",
-			wantKey:    "ratelimit:user_abc123:auth",
-		},
-		{
-			name:       "public IP",
-			identifier: "192.168.1.1",
-			group:      "public",
-			wantKey:    "ratelimit:192.168.1.1:public",
-		},
-		{
-			name:       "IPv6 public",
-			identifier: "::1",
-			group:      "public",
-			wantKey:    "ratelimit:::1:public",
-		},
+		{"account", "read", "local_abc123", "rate_limit:read:local_abc123"},
+		{"IPv4 client", "media", "198.51.100.7", "rate_limit:media:198.51.100.7"},
+		{"IPv6 client keeps its colons", "sync", "2001:db8::1", "rate_limit:sync:2001:db8::1"},
 	}
-
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			key := fmt.Sprintf("ratelimit:%s:%s", tt.identifier, tt.group)
-			if key != tt.wantKey {
-				t.Errorf("key = %q, want %q", key, tt.wantKey)
+			if got := redis.RateLimitKey(tt.group, tt.identifier); got != tt.want {
+				t.Errorf("RateLimitKey(%q, %q) = %q, want %q", tt.group, tt.identifier, got, tt.want)
+			}
+			// The group must be the second field: anything reading the key splits
+			// from the left.
+			parts := strings.SplitN(redis.RateLimitKey(tt.group, tt.identifier), ":", 3)
+			if len(parts) != 3 || parts[0] != "rate_limit" || parts[1] != tt.group {
+				t.Errorf("key %q does not carry the group in its second field", tt.group)
 			}
 		})
 	}
 }
 
-func TestRateLimitKeyNotMalformed(t *testing.T) {
-	identifier := "192.168.0.1"
-	group := "public"
-	key := fmt.Sprintf("ratelimit:%s:%s", identifier, group)
-
-	parts := strings.SplitN(key, ":", 3)
-	if len(parts) != 3 {
-		t.Fatalf("expected 3 colon-separated parts, got %d in key %q", len(parts), key)
+func TestUsageKeyFormat(t *testing.T) {
+	day := time.Date(2026, 11, 7, 15, 4, 5, 0, time.UTC)
+	got := redis.UsageKey("read", "local_abc123", day)
+	want := "usage:read:local_abc123:2026-11-07"
+	if got != want {
+		t.Errorf("UsageKey = %q, want %q", got, want)
 	}
-	if parts[0] != "ratelimit" {
-		t.Errorf("prefix = %q, want ratelimit", parts[0])
-	}
-	if parts[1] != identifier {
-		t.Errorf("identifier part = %q, want %q", parts[1], identifier)
-	}
-	if parts[2] != group {
-		t.Errorf("group part = %q, want %q", parts[2], group)
+	// A different day is a different counter — that is how the budget resets
+	// without a sweeper.
+	if redis.UsageKey("read", "local_abc123", day.AddDate(0, 0, 1)) == got {
+		t.Error("the usage key does not change with the day")
 	}
 }
 
@@ -423,51 +410,5 @@ func TestErrorEnvelope_Format(t *testing.T) {
 	// Verify it's a body-size related error.
 	if testErr != nil && !strings.Contains(strings.ToLower(testErr.Error()), "body") {
 		t.Logf("unexpected error type: %v", testErr)
-	}
-}
-
-// ---------------------------------------------------------------------------
-// Sliding-window logic tests (unit-level, no Redis)
-// ---------------------------------------------------------------------------
-
-func TestSlidingWindow_KeyGeneration(t *testing.T) {
-	tests := []struct {
-		name       string
-		identifier string
-		group      string
-	}{
-		{"user auth", "usr_abc", "auth"},
-		{"IP public", "10.0.0.1", "public"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			key := fmt.Sprintf("ratelimit:%s:%s", tt.identifier, tt.group)
-			if !strings.Contains(key, "ratelimit:") {
-				t.Errorf("key %q missing ratelimit: prefix", key)
-			}
-			if !strings.Contains(key, tt.identifier) {
-				t.Errorf("key %q missing identifier %q", key, tt.identifier)
-			}
-			if !strings.HasSuffix(key, ":"+tt.group) {
-				t.Errorf("key %q missing suffix :%s", key, tt.group)
-			}
-		})
-	}
-}
-
-func TestSlidingWindow_MemberUniqueness(t *testing.T) {
-	members := make(map[string]bool)
-	for i := 0; i < 1000; i++ {
-		now := time.Now().UnixNano()
-		member := fmt.Sprintf("%d:%d", now, now%100000)
-		if members[member] {
-			t.Logf("collision: %s (note: expected under extreme load or on fast CPUs)", member)
-		}
-		members[member] = true
-		time.Sleep(1 * time.Microsecond)
-	}
-	if len(members) < 10 {
-		t.Errorf("only %d unique members out of 1000 — member generation may be broken", len(members))
 	}
 }

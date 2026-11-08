@@ -6,6 +6,7 @@ import (
 
 	"github.com/haaku-tv/haaku/internal/auth"
 	"github.com/haaku-tv/haaku/internal/config"
+	"github.com/haaku-tv/haaku/internal/ratelimit"
 	"github.com/haaku-tv/haaku/internal/webui"
 
 	"github.com/gofiber/fiber/v2"
@@ -37,8 +38,11 @@ func NewServer(cfg *config.Config) *fiber.App {
 	// 4. Request logger — structured slog logging + metrics counters.
 	app.Use(RequestLogger())
 
-	// 5. Rate limiting — sliding window via Redis (fail-open if Redis unavailable).
-	app.Use(RateLimit())
+	// 5. Rate limiting — per-group burst window + daily budget, both in Redis
+	//    (internal/ratelimit). Runs before the routes and resolves identity
+	//    itself, so signed-in traffic is metered by account and anonymous traffic
+	//    by real client IP. Fails OPEN if Redis is unavailable.
+	app.Use(ratelimit.Middleware(cfg.RateLimit))
 
 	// 6. CORS — configurable origin allowlist.
 	app.Use(CORS(cfg.CORSOrigins))

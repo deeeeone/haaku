@@ -17,7 +17,12 @@ const (
 	RedisMediaNotFoundPrefix = "not_found:"
 	RedisLeaderboardPrefix   = "leaderboard:"
 	RedisSearchResultsPrefix = "search_results:"
-	RedisRateLimitPrefix     = "rate_limit:"
+	// RedisRateLimitPrefix namespaces the sliding-window counters
+	// (rate_limit:<group>:<identifier>) — see redis/limit.go.
+	RedisRateLimitPrefix = "rate_limit:"
+	// RedisUsagePrefix namespaces the daily budget counters
+	// (usage:<group>:<identifier>:<date>) — see redis/limit.go.
+	RedisUsagePrefix = "usage:"
 )
 
 // Cache TTLs — tuned for freshness-vs-hit-rate trade-offs.
