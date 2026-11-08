@@ -30,7 +30,9 @@ INSTALL_STAMP := web/node_modules/.install-stamp
 # in the gitignored `.env.local`, sourced second so it wins. In particular the
 # DATABASE_URL/REDIS_URL that `make dev-db` provides must stay out of `.env`:
 # a non-empty value there makes the image skip its bundled PostgreSQL/Redis.
-ENV_SOURCE = set -a; . ./.env; [ ! -f .env.local ] || . ./.env.local; set +a
+# Either file may be absent — a checkout that keeps everything in `.env.local`
+# needs no `.env` — and sourcing a missing file would abort the recipe.
+ENV_SOURCE = set -a; [ ! -f .env ] || . ./.env; [ ! -f .env.local ] || . ./.env.local; set +a
 
 # Minimum total statement coverage for `make coverage` (merged profile from both
 # Go suites). Measured on main at ~24.6%; the floor sits below that so ordinary
@@ -86,7 +88,7 @@ bin: frontend ## Build the real single binary with the frontend embedded
 # it redirects UI requests to Vite (HAAKU_DEV_FRONTEND_URL, internal/webui) —
 # because web/dist is a build output that only `make frontend` refreshes: serving
 # it means serving the frontend as it was at that build, next to a current API.
-dev-backend: embed-stub ## Run the API from source (needs .env; .env.local for a DB)
+dev-backend: embed-stub ## Run the API from source (reads .env, then .env.local)
 	$(ENV_SOURCE); \
 		export HAAKU_DEV_FRONTEND_URL="$${HAAKU_DEV_FRONTEND_URL:-http://localhost:$(VITE_PORT)}"; \
 		go run ./cmd/api
