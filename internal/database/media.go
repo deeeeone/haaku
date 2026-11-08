@@ -102,9 +102,17 @@ func (s StringSlice) Values() []string {
 // See ../haaku-plan/02-architecture/data-model.md §2.
 
 // Movie mirrors TMDB movie detail with our community fields.
+//
+// TVDB is the primary source (TvdbID is the identity the TVDB ingest is keyed
+// on); TmdbID is a supplementary link that is 0 when TMDB does not carry the
+// title. Uniqueness lives in a PARTIAL unique index (WHERE ... > 0) created by
+// the tvdb-primary-identity migration, not in a GORM tag, so that any number of
+// rows may carry an unknown id.
 type Movie struct {
 	ID            int64       `gorm:"primaryKey" json:"id"`
-	TmdbID        int         `gorm:"uniqueIndex" json:"tmdb_id"`
+	TmdbID        int         `gorm:"index" json:"tmdb_id"`
+	TvdbID        int         `gorm:"index" json:"tvdb_id"`
+	Slug          string      `gorm:"index" json:"slug,omitempty"`
 	ImdbID        string      `json:"imdb_id,omitempty"`
 	Title         string      `json:"title"`
 	OriginalTitle string      `json:"original_title"`
@@ -131,9 +139,13 @@ type Movie struct {
 func (Movie) TableName() string { return "movies" }
 
 // Show mirrors TMDB TV show detail.
+//
+// TVDB is the primary source; see Movie for the identity/uniqueness rules.
 type Show struct {
 	ID            int64       `gorm:"primaryKey" json:"id"`
-	TmdbID        int         `gorm:"uniqueIndex" json:"tmdb_id"`
+	TmdbID        int         `gorm:"index" json:"tmdb_id"`
+	TvdbID        int         `gorm:"index" json:"tvdb_id"`
+	Slug          string      `gorm:"index" json:"slug,omitempty"`
 	ImdbID        string      `json:"imdb_id,omitempty"`
 	Title         string      `json:"title"`
 	OriginalTitle string      `json:"original_title"`
@@ -238,12 +250,17 @@ func (Credit) TableName() string { return "credits" }
 // ExternalID maps an external identifier (IMDB, TVDB, TVRage, Trakt, slug) to
 // one of our canonical media rows. See data-model.md §2 for the full intent.
 // The media_type/media_id pattern mirrors Trakt's polymorphic id lookups.
+//
+// (media_type, source, external_id) is unique — the constraint 0002 created and
+// the key the TVDB ingest upserts on. The tag here names the SAME constraint so
+// the sqlite-backed test suites, which build their schema with AutoMigrate,
+// enforce it too.
 type ExternalID struct {
 	ID         int64  `gorm:"primaryKey" json:"id"`
-	MediaType  string `gorm:"index" json:"media_type"`
-	MediaID    int64  `gorm:"index" json:"media_id"`
-	Source     string `gorm:"index" json:"source"` // imdb / tvdb / tmdb / tvrage / trakt / slug
-	ExternalID string `json:"external_id"`
+	MediaType  string `gorm:"index;uniqueIndex:external_ids_media_type_source_external_id_key,priority:1" json:"media_type"`
+	MediaID    int64  `gorm:"index;index:idx_external_ids_media,priority:2" json:"media_id"`
+	Source     string `gorm:"index;uniqueIndex:external_ids_media_type_source_external_id_key,priority:2" json:"source"` // imdb / tvdb / tmdb / tvrage / trakt / slug
+	ExternalID string `gorm:"uniqueIndex:external_ids_media_type_source_external_id_key,priority:3" json:"external_id"`
 }
 
 func (ExternalID) TableName() string { return "external_ids" }

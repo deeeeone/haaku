@@ -158,96 +158,41 @@ func findMediaTypeByID(id int64) (string, bool, error) {
 }
 
 // ResolvedMedia is the canonical identity of a resolved media entity.
-type ResolvedMedia struct {
-	MediaType string
-	MediaID   int64
+type ResolvedMedia = database.MediaRef
+
+// IDRef is one item's external-id set as a client sent it; see
+// database.ResolveIDRefs for the resolution rules (TVDB first, then TMDB, then
+// IMDb, reading both the media columns and the external_ids table).
+type IDRef = database.IDRef
+
+// ResolveIDsBatch resolves a batch of external-id sets to canonical media refs.
+// The implementation lives in internal/database so the metadata resolver can
+// apply the same rules without importing a handler package.
+func ResolveIDsBatch(db *gorm.DB, refs []IDRef) (map[IDRef]ResolvedMedia, error) {
+	return database.ResolveIDRefs(db, refs)
 }
 
-// ResolveTMDBBatch resolves a set of TMDB ids to canonical media refs using a
-// bounded number of queries (one external_ids lookup plus at most one existence
-// check per media type), avoiding the per-item N+1 that a loop of single
-// resolutions would incur. Unresolvable or missing ids are simply absent from
-// the returned map; callers treat an absent key as "not found".
+// ResolveTMDBBatch resolves a set of TMDB ids to canonical media refs, keyed by
+// TMDB id. It is ResolveIDsBatch restricted to one id source, kept for the
+// callers that only ever have TMDB ids.
 func ResolveTMDBBatch(db *gorm.DB, tmdbIDs []int) (map[int]ResolvedMedia, error) {
 	result := make(map[int]ResolvedMedia, len(tmdbIDs))
 	if len(tmdbIDs) == 0 {
 		return result, nil
 	}
 
-	// Deduplicate and drop zero ids.
-	seen := make(map[int]bool, len(tmdbIDs))
-	keys := make([]string, 0, len(tmdbIDs))
+	refs := make([]IDRef, 0, len(tmdbIDs))
 	for _, id := range tmdbIDs {
-		if id != 0 && !seen[id] {
-			seen[id] = true
-			keys = append(keys, strconv.Itoa(id))
-		}
+		refs = append(refs, IDRef{TMDB: id})
 	}
-	if len(keys) == 0 {
-		return result, nil
-	}
-
-	var exts []database.ExternalID
-	if err := db.Where("source = ? AND external_id IN ?", "tmdb", keys).Find(&exts).Error; err != nil {
+	resolved, err := ResolveIDsBatch(db, refs)
+	if err != nil {
 		return nil, err
 	}
-
-	type row struct {
-		key       int
-		mediaType string
-		mediaID   int64
-	}
-	rows := make([]row, 0, len(exts))
-	var movies, shows, seasons, episodes []int64
-	for _, e := range exts {
-		key, _ := strconv.Atoi(e.ExternalID)
-		rows = append(rows, row{key: key, mediaType: e.MediaType, mediaID: e.MediaID})
-		switch e.MediaType {
-		case "movie":
-			movies = append(movies, e.MediaID)
-		case "show":
-			shows = append(shows, e.MediaID)
-		case "season":
-			seasons = append(seasons, e.MediaID)
-		case "episode":
-			episodes = append(episodes, e.MediaID)
-		}
-	}
-
-	existing := verifyMediaBatch(db, movies, shows, seasons, episodes)
-	for _, r := range rows {
-		if existing[r.mediaType][r.mediaID] {
-			result[r.key] = ResolvedMedia{MediaType: r.mediaType, MediaID: r.mediaID}
+	for _, ref := range refs {
+		if mediaID, ok := resolved[ref]; ok {
+			result[ref.TMDB] = mediaID
 		}
 	}
 	return result, nil
 }
-
-// verifyMediaBatch reports which of the given media ids actually exist, grouped
-// by media type. Each media type is checked with at most one query.
-func verifyMediaBatch(db *gorm.DB, movies, shows, seasons, episodes []int64) map[string]map[int64]bool {
-	existing := make(map[string]map[int64]bool, 4)
-	check := func(table interface{}, name string, ids []int64) {
-		if len(ids) == 0 {
-			existing[name] = map[int64]bool{}
-			return
-		}
-		var found []int64
-		if err := db.Model(table).Where("id IN ?", ids).Distinct("id").Pluck("id", &found).Error; err != nil {
-			existing[name] = map[int64]bool{}
-			return
-		}
-		set := make(map[int64]bool, len(found))
-		for _, id := range found {
-			set[id] = true
-		}
-		existing[name] = set
-	}
-	check(&database.Movie{}, "movie", movies)
-	check(&database.Show{}, "show", shows)
-	check(&database.Season{}, "season", seasons)
-	check(&database.Episode{}, "episode", episodes)
-	return existing
-}
-
-// --- Error helpers (thin wrappers around httpapi) ---

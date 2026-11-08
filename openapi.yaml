@@ -3781,6 +3781,52 @@ paths:
             summary: Get anticipated upcoming media weighted by watchlist interest
             tags:
                 - Media
+    /v1/media/resolve:
+        get:
+            operationId: _v1_media_resolve_GET
+            responses:
+                "200":
+                    description: The canonical media record
+                "400":
+                    description: Invalid query parameters
+                "401":
+                    description: Unauthorized
+                "404":
+                    description: The provider has no such record
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+                "502":
+                    description: The metadata provider could not be reached
+                "503":
+                    description: The metadata provider is not configured
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Resolve an external id (tvdb/tmdb/imdb) to canonical media, ingesting it from TVDB when it is not in the catalogue yet
+            tags:
+                - Search
     /v1/movies/{id}:
         get:
             operationId: _v1_movies_id_GET

@@ -59,7 +59,9 @@ func RegisterRoutes(api fiber.Router) {
 	// addition to the is_private/block gate. A block in either direction and an
 	// unknown user are 404, a private profile is 403 to a stranger and 200 to
 	// self/admins/followers; profile="friends"/"private" tightens the same way.
-	api.Get("/users/:id/stats", auth.PrivacyFilterSection("id", "profile"), handleGetUserStats)
+	// OptionalAuth runs first so PrivacyFilterSection can see WHO is asking
+	// (self/follower/admin vs stranger) and so "me" resolves to the caller.
+	api.Get("/users/:id/stats", auth.OptionalAuth(), auth.PrivacyFilterSection("id", "profile"), handleGetUserStats)
 }
 
 // ---------------------------------------------------------------------------
@@ -69,8 +71,14 @@ func RegisterRoutes(api fiber.Router) {
 // handleGetUserStats returns computed user statistics.
 // Cached via user_version keying; recomputed on demand if stale > 1h.
 func handleGetUserStats(c *fiber.Ctx) error {
-	userID := c.Params("id")
+	// "me" is the caller's own id. The middleware already resolved it for the
+	// privacy gate and answered 401 when nobody is signed in; the handler has
+	// to resolve it too, or it looks up a user literally named "me" and 404s.
+	userID := auth.ResolveTargetID(c, "id")
 	if userID == "" {
+		if c.Params("id") == "me" {
+			return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+		}
 		return response.BadRequest(c, "user id is required")
 	}
 

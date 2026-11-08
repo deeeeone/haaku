@@ -27,12 +27,25 @@ func ComputeUserStats(db *gorm.DB, userID string) error {
 		Minutes int64
 	}
 	var watch watchAgg
+	// user_history has no play_count/runtime_minutes columns — this used to
+	// select them and fail on every real database (which then aborted the
+	// surrounding request transaction, so every later query in the stats
+	// computation returned 25P02). A watch event is one history row, and the
+	// runtime comes from the media row it points at: a movie's own runtime, or
+	// the episode's when the row is an episode. A whole-show watch has no
+	// single runtime and therefore contributes no minutes.
 	err := db.Raw(`
 		SELECT
-			COALESCE(SUM(play_count), 0) AS plays,
-			COALESCE(SUM(runtime_minutes * play_count), 0) AS minutes
-		FROM user_history
-		WHERE user_id = ?
+			COUNT(*) AS plays,
+			COALESCE(SUM(CASE h.media_type
+				WHEN 'movie' THEN COALESCE(m.runtime, 0)
+				WHEN 'episode' THEN COALESCE(e.runtime, 0)
+				ELSE 0
+			END), 0) AS minutes
+		FROM user_history h
+		LEFT JOIN movies m ON h.media_type = 'movie' AND m.id = h.media_id
+		LEFT JOIN episodes e ON h.media_type = 'episode' AND e.id = h.episode_id
+		WHERE h.user_id = ?
 	`, userID).Scan(&watch).Error
 	if err != nil {
 		log.Printf("[stats] failed to aggregate user_history for %s: %v", userID, err)

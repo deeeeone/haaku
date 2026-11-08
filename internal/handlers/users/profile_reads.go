@@ -83,7 +83,11 @@ func registerProfileReadOpenAPIRoutes() {
 // would swallow "me" as an id. internal/httpapi's TestNoStaticRouteIsShadowed
 // guards this.
 func RegisterProfileReadRoutes(api fiber.Router) {
-	users := api.Group("/users")
+	// OptionalAuth runs on the whole surface so PrivacyFilter can see WHO is
+	// asking. Without it every caller looked anonymous, and a signed-in owner
+	// was refused their own private sections. It also gives "me" something to
+	// resolve to in the :id routes below.
+	users := api.Group("/users", auth.OptionalAuth())
 
 	// Caller's own likes: static "me" paths, registered before :id/likes below.
 	users.Get("/me/likes/comments", auth.AuthRequired(), handleMyLikedComments)
@@ -143,8 +147,16 @@ func profileTarget(c *fiber.Ctx) (user *database.User, db *gorm.DB, ok bool) {
 		return nil, nil, false
 	}
 
+	// "me" means the caller: /v1/users/me/watchlist is the same page as the
+	// caller's own id. The privacy middleware resolves it the same way.
+	targetID := auth.ResolveTargetID(c, "id")
+	if targetID == "" {
+		_ = response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
+		return nil, nil, false
+	}
+
 	var target database.User
-	if err := handle.First(&target, "id = ?", c.Params("id")).Error; err != nil {
+	if err := handle.First(&target, "id = ?", targetID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			_ = response.WriteError(c, fiber.StatusNotFound, "not_found", "user not found")
 			return nil, nil, false

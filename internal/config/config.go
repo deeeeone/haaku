@@ -56,7 +56,17 @@ type Config struct {
 	RedisURL    string
 
 	// External services
-	TMDBAPIToken string // TMDB v4 read-access token; sent as Authorization Bearer to api.themoviedb.org/4
+	//
+	// TVDB is the PRIMARY media source (identity, titles, seasons/episodes,
+	// artwork); TMDB is SUPPLEMENTARY (the link back to TMDB, ratings,
+	// popularity, tagline, and a poster fallback). TVDB therefore carries the
+	// hard requirement: without its key no title can be ingested at all,
+	// while a missing TMDB token only leaves the enrichment empty.
+	TVDBAPIKey string // TheTVDB v4 API key (thetvdb.com → dashboard)
+	TVDBPIN    string // optional subscriber PIN, for projects that require one
+	// TMDBAPIToken is a TMDB v4 read-access token; sent as Authorization
+	// Bearer to api.themoviedb.org/4.
+	TMDBAPIToken string
 	ClerkBaseURL string // Clerk API base URL (clerk-emulator in dev)
 	ClerkSecret  string // Clerk secret key (*** in dev)
 	// ClerkWebhookSecret is the Svix signing secret for webhook payloads.
@@ -110,6 +120,8 @@ func Load() (*Config, error) {
 		Port:               getEnv("PORT", "8080"),
 		DatabaseURL:        os.Getenv("DATABASE_URL"),
 		RedisURL:           getEnv("REDIS_URL", "redis://localhost:6379"),
+		TVDBAPIKey:         strings.TrimSpace(os.Getenv("TVDB_API_KEY")),
+		TVDBPIN:            strings.TrimSpace(os.Getenv("TVDB_PIN")),
 		TMDBAPIToken:       os.Getenv("TMDB_API_TOKEN"),
 		ClerkBaseURL:       getEnv("CLERK_API_BASE_URL", "http://localhost:4000"),
 		ClerkSecret:        os.Getenv("CLERK_SECRET_KEY"),
@@ -136,6 +148,13 @@ func Load() (*Config, error) {
 
 	if cfg.TMDBAPIToken == "" {
 		return nil, fmt.Errorf("TMDB_API_TOKEN environment variable is required (TMDB v4 read token)")
+	}
+
+	// TVDB is the primary media source, so it carries the same hard
+	// requirement: without its key the catalogue cannot be populated at all,
+	// and a server that starts without it would answer empty searches.
+	if cfg.TVDBAPIKey == "" {
+		return nil, fmt.Errorf("TVDB_API_KEY environment variable is required (TheTVDB v4 API key)")
 	}
 
 	// At-rest encryption root (issue #16 §2). The server must not run without a
