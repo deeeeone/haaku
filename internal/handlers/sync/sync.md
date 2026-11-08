@@ -14,6 +14,19 @@ The sync workhorse — 30 endpoints over five collections plus the last-activiti
 
 Writes use `cache.WithCacheTransaction` with version-counter invalidation (`queueUserInvalidation`/`queueMediaInvalidation`/`queueEpisodeInvalidations`) and outbox events (`EventHistoryAdded`, `EventCollectionAdded`, `EventWatchlistAdded`, `EventRatingAdded`, `EventFavoriteAdded`). Batch responses follow the Trakt `added/not_found/duplicates` shape.
 
+## Request ids (`idsObj`)
+
+Every write endpoint addresses its media through the same `idsObj`
+(`{"tmdb":…,"tvdb":…,"imdb":…}`). Both id forms decode, and that is a contract
+requirement rather than tolerance: haaku **serves** `tvdb` as a JSON string
+(`media.IDs.TVDB`; `external_ids.external_id` is `TEXT`), so a client that keeps
+the ids it was handed and posts them back — `/v1/media/resolve` → detail page →
+watchlist add is exactly that path — must not be rejected, while a
+Trakt-shaped client sends the same id as a number. `idsObj.UnmarshalJSON` accepts
+either; absent, `null` and `""` all mean "not supplied" (`0`), and a non-numeric
+string is still an error that names the field. The struct keeps `int` fields, so
+the `not_found` echo of a dropped id is unchanged. Issue #87.
+
 ## Per-type reads (`GET /v1/sync/<kind>/<segment>`)
 
 Trakt exposes each sync collection a second time, filtered by media type. Those
@@ -134,6 +147,8 @@ transaction) is the natural next step — none exists today.
 
 ## Oversights
 
+- **Sync writes rejected the `ids` block the API itself served (RESOLVED, issue #87)** — `idsObj` declared `tvdb` (and `tmdb`) as `int` while every media response serialises tvdb as a **string** (`media.IDs.TVDB`; `external_ids.external_id` is `TEXT`). A client that echoed back the ids it was served — the web UI's search → watchlist path, via `/v1/media/resolve` — got `400 invalid JSON body` on all ten write endpoints, with the message blaming the JSON syntax, which was valid. `idsObj.UnmarshalJSON` now accepts a number or a numeric string; a non-numeric string is still refused, naming the field. Regression tests: `ids_test.go` (`TestIDsObjAcceptsStringOrNumericIDs`, `TestSyncWriteBodiesAcceptTheIDsBlockTheAPIServes`, `TestAddRatingResolvesAStringTVDBID`). Related and NOT fixed here: the blanket `invalid JSON body` message for every decode failure, and the same int-only `ids.tmdb` in checkin/scrobble/list items — issue #88.
+
 - **WRONG OUTBOX EVENT NAMES on removals/reorder (RESOLVED)** — copy-paste bugs:
   - `handleRemoveCollection` publishes `EventCollectionAdded` with `{"deleted": ...}` (sync.go:737) — **kept as-is**: the webhook catalog defines `collection.updated` as the add+remove event, so this is the correct constant (comment added).
   - `handleRemoveRatings` published `EventRatingAdded`, `handleRemoveFavorites` published `EventFavoriteAdded`, `handleReorderWatchlist` published `EventWatchlistAdded` (sync.go) — **fixed**: the webhook catalog (`haaku-plan/03-api/webhooks.md`) defines no rating/favorite removal or watchlist-reorder events, so these handlers now emit nothing.
@@ -168,4 +183,5 @@ transaction) is the natural next step — none exists today.
 - [x] Use shared `internal/response` error helpers (Batch 0); per-handler `authRequired` is tracked at the route-attachment item above.
 - [x] Implement `GET /v1/sync/last_activities` (issue #6, first slice) — Trakt-shaped per-collection timestamps from real aggregates; unsupported fields null, empty sections null. Handler + sqlite tests in `last_activities.go`/`last_activities_test.go`.
 - [x] Per-type read variants (issue #4) — 12 GET routes pinning `media_type` over the existing list handlers (`per_type_reads.go`, `per_type_reads_test.go`); unbacked variants (history shows/seasons, watchlist/collection seasons/episodes) left unregistered and documented; `?extended=` narrowing decided against (nothing to narrow). See "Per-type reads".
+- [x] Accept the `ids` forms the API serves and the forms Trakt clients send on every sync write (issue #87) — `idsObj.UnmarshalJSON` takes a number or a numeric string; `ids_test.go` covers the decoder, a full serve→echo payload, and a handler-level round trip.
 - [ ] Verify module test coverage (`make test`).
