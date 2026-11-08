@@ -3,7 +3,6 @@ package sync
 import (
 	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/haaku-tv/haaku/internal/cache"
@@ -264,13 +263,13 @@ func handleAddHistory(c *fiber.Ctx) error {
 	// N+1).
 	var idRefs []media.IDRef
 	for _, m := range req.Movies {
-		idRefs = append(idRefs, idRefFor(m.IDs))
+		idRefs = append(idRefs, idRefFor(m.IDs).WithType("movie"))
 	}
 	for _, s := range req.Shows {
-		idRefs = append(idRefs, idRefFor(s.IDs))
+		idRefs = append(idRefs, idRefFor(s.IDs).WithType("show"))
 	}
 	for _, e := range req.Episodes {
-		idRefs = append(idRefs, idRefFor(e.IDs))
+		idRefs = append(idRefs, idRefFor(e.IDs).WithType("show"))
 	}
 
 	dbErr := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
@@ -283,7 +282,7 @@ func handleAddHistory(c *fiber.Ctx) error {
 
 		// Process movies
 		for _, m := range req.Movies {
-			ref, ok := refs[idRefFor(m.IDs)]
+			ref, ok := refs[idRefFor(m.IDs).WithType("movie")]
 			if !ok || ref.MediaType != "movie" {
 				resp.NotFound.Movies = append(resp.NotFound.Movies, map[string]interface{}{"ids": m.IDs})
 				continue
@@ -307,7 +306,7 @@ func handleAddHistory(c *fiber.Ctx) error {
 
 		// Process shows — expand to episodes
 		for _, s := range req.Shows {
-			ref, ok := refs[idRefFor(s.IDs)]
+			ref, ok := refs[idRefFor(s.IDs).WithType("show")]
 			if !ok || ref.MediaType != "show" {
 				resp.NotFound.Shows = append(resp.NotFound.Shows, map[string]interface{}{"ids": s.IDs})
 				continue
@@ -377,7 +376,7 @@ func handleAddHistory(c *fiber.Ctx) error {
 
 		// Process standalone episodes (with show TMDB ID, season, and episode number)
 		for _, ep := range req.Episodes {
-			ref, ok := refs[idRefFor(ep.IDs)]
+			ref, ok := refs[idRefFor(ep.IDs).WithType("show")]
 			if !ok || ref.MediaType != "show" {
 				resp.NotFound.Episodes = append(resp.NotFound.Episodes, map[string]interface{}{
 					"ids": ep.IDs, "season": ep.Season, "number": ep.Number,
@@ -474,7 +473,7 @@ func handleRemoveHistory(c *fiber.Ctx) error {
 
 		// Remove by media objects (delete all history for those items)
 		for _, m := range req.Movies {
-			_, mediaID, err := resolveRefs(c, tx, m.IDs)
+			_, mediaID, err := resolveRefs(c, tx, m.IDs, "movie")
 			if err != nil {
 				continue
 			}
@@ -486,7 +485,7 @@ func handleRemoveHistory(c *fiber.Ctx) error {
 			}
 		}
 		for _, s := range req.Shows {
-			_, showID, err := resolveRefs(c, tx, s.IDs)
+			_, showID, err := resolveRefs(c, tx, s.IDs, "show")
 			if err != nil {
 				continue
 			}
@@ -543,7 +542,7 @@ func handleRemoveHistory(c *fiber.Ctx) error {
 			}
 		}
 		for _, ep := range req.Episodes {
-			_, showID, err := resolveRefs(c, tx, ep.IDs)
+			_, showID, err := resolveRefs(c, tx, ep.IDs, "show")
 			if err != nil {
 				continue
 			}
@@ -644,10 +643,10 @@ func handleAddCollection(c *fiber.Ctx) error {
 	// media.ResolveIDsBatch for the precedence.
 	var idRefs []media.IDRef
 	for _, m := range req.Movies {
-		idRefs = append(idRefs, idRefFor(m.IDs))
+		idRefs = append(idRefs, idRefFor(m.IDs).WithType("movie"))
 	}
 	for _, s := range req.Shows {
-		idRefs = append(idRefs, idRefFor(s.IDs))
+		idRefs = append(idRefs, idRefFor(s.IDs).WithType("show"))
 	}
 
 	dbErr := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
@@ -659,7 +658,7 @@ func handleAddCollection(c *fiber.Ctx) error {
 		}
 
 		for _, m := range req.Movies {
-			ref, ok := refs[idRefFor(m.IDs)]
+			ref, ok := refs[idRefFor(m.IDs).WithType("movie")]
 			if !ok || ref.MediaType != "movie" {
 				notFound.movie(m.IDs)
 				continue
@@ -676,7 +675,7 @@ func handleAddCollection(c *fiber.Ctx) error {
 			}
 		}
 		for _, s := range req.Shows {
-			ref, ok := refs[idRefFor(s.IDs)]
+			ref, ok := refs[idRefFor(s.IDs).WithType("show")]
 			if !ok || ref.MediaType != "show" {
 				notFound.show(s.IDs)
 				continue
@@ -741,7 +740,7 @@ func handleRemoveCollection(c *fiber.Ctx) error {
 		cacheTx := cache.NewCacheTransaction()
 
 		for _, m := range req.Movies {
-			_, mediaID, err := resolveRefs(c, tx, m.IDs)
+			_, mediaID, err := resolveRefs(c, tx, m.IDs, "movie")
 			if err != nil {
 				continue
 			}
@@ -753,7 +752,7 @@ func handleRemoveCollection(c *fiber.Ctx) error {
 			}
 		}
 		for _, s := range req.Shows {
-			_, showID, err := resolveRefs(c, tx, s.IDs)
+			_, showID, err := resolveRefs(c, tx, s.IDs, "show")
 			if err != nil {
 				continue
 			}
@@ -881,10 +880,10 @@ func handleAddWatchlist(c *fiber.Ctx) error {
 	// media.ResolveIDsBatch for the precedence.
 	var idRefs []media.IDRef
 	for _, m := range req.Movies {
-		idRefs = append(idRefs, idRefFor(m.IDs))
+		idRefs = append(idRefs, idRefFor(m.IDs).WithType("movie"))
 	}
 	for _, s := range req.Shows {
-		idRefs = append(idRefs, idRefFor(s.IDs))
+		idRefs = append(idRefs, idRefFor(s.IDs).WithType("show"))
 	}
 
 	dbErr := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
@@ -907,7 +906,7 @@ func handleAddWatchlist(c *fiber.Ctx) error {
 		}
 
 		for _, m := range req.Movies {
-			ref, ok := refs[idRefFor(m.IDs)]
+			ref, ok := refs[idRefFor(m.IDs).WithType("movie")]
 			if !ok || ref.MediaType != "movie" {
 				notFound.movie(m.IDs)
 				continue
@@ -927,7 +926,7 @@ func handleAddWatchlist(c *fiber.Ctx) error {
 			}
 		}
 		for _, s := range req.Shows {
-			ref, ok := refs[idRefFor(s.IDs)]
+			ref, ok := refs[idRefFor(s.IDs).WithType("show")]
 			if !ok || ref.MediaType != "show" {
 				notFound.show(s.IDs)
 				continue
@@ -995,7 +994,7 @@ func handleRemoveWatchlist(c *fiber.Ctx) error {
 		cacheTx := cache.NewCacheTransaction()
 
 		for _, m := range req.Movies {
-			_, mediaID, err := resolveRefs(c, tx, m.IDs)
+			_, mediaID, err := resolveRefs(c, tx, m.IDs, "movie")
 			if err != nil {
 				continue
 			}
@@ -1007,7 +1006,7 @@ func handleRemoveWatchlist(c *fiber.Ctx) error {
 			}
 		}
 		for _, s := range req.Shows {
-			_, mediaID, err := resolveRefs(c, tx, s.IDs)
+			_, mediaID, err := resolveRefs(c, tx, s.IDs, "show")
 			if err != nil {
 				continue
 			}
@@ -1189,16 +1188,16 @@ func handleAddRatings(c *fiber.Ctx) error {
 	// media.ResolveIDsBatch for the precedence.
 	var idRefs []media.IDRef
 	for _, m := range req.Movies {
-		idRefs = append(idRefs, idRefFor(m.IDs))
+		idRefs = append(idRefs, idRefFor(m.IDs).WithType("movie"))
 	}
 	for _, s := range req.Shows {
-		idRefs = append(idRefs, idRefFor(s.IDs))
+		idRefs = append(idRefs, idRefFor(s.IDs).WithType("show"))
 	}
 	for _, s := range req.Seasons {
-		idRefs = append(idRefs, idRefFor(s.IDs))
+		idRefs = append(idRefs, idRefFor(s.IDs).WithType("season"))
 	}
 	for _, e := range req.Episodes {
-		idRefs = append(idRefs, idRefFor(e.IDs))
+		idRefs = append(idRefs, idRefFor(e.IDs).WithType("show"))
 	}
 
 	dbErr := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
@@ -1235,12 +1234,12 @@ func handleAddRatings(c *fiber.Ctx) error {
 		// upsertRating rates a media row whose own TMDB id identifies it:
 		// movies, shows and seasons. Episodes are handled separately below
 		// because their TMDB id identifies the series, not the episode.
-		upsertRating := func(ids idsObj, rating int) {
+		upsertRating := func(ids idsObj, rating int, wantType string) {
 			if rating < 1 || rating > 10 {
 				notFound++
 				return
 			}
-			ref, ok := refs[idRefFor(ids)]
+			ref, ok := refs[idRefFor(ids).WithType(wantType)]
 			if !ok {
 				notFound++
 				return
@@ -1249,13 +1248,13 @@ func handleAddRatings(c *fiber.Ctx) error {
 		}
 
 		for _, m := range req.Movies {
-			upsertRating(m.IDs, m.Rating)
+			upsertRating(m.IDs, m.Rating, "movie")
 		}
 		for _, s := range req.Shows {
-			upsertRating(s.IDs, s.Rating)
+			upsertRating(s.IDs, s.Rating, "show")
 		}
 		for _, s := range req.Seasons {
-			upsertRating(s.IDs, s.Rating)
+			upsertRating(s.IDs, s.Rating, "season")
 		}
 
 		// Episodes: the payload's TMDB id is the SERIES id, so resolve
@@ -1267,7 +1266,7 @@ func handleAddRatings(c *fiber.Ctx) error {
 				notFound++
 				continue
 			}
-			ref, ok := refs[idRefFor(e.IDs)]
+			ref, ok := refs[idRefFor(e.IDs).WithType("show")]
 			if !ok || ref.MediaType != "show" {
 				notFound++
 				continue
@@ -1329,7 +1328,7 @@ func handleRemoveRatings(c *fiber.Ctx) error {
 		cacheTx := cache.NewCacheTransaction()
 
 		removeByMovie := func(ids idsObj, mediaType string) {
-			_, mediaID, err := resolveRefs(c, tx, ids)
+			_, mediaID, err := resolveRefs(c, tx, ids, mediaType)
 			if err != nil {
 				return
 			}
@@ -1351,7 +1350,7 @@ func handleRemoveRatings(c *fiber.Ctx) error {
 			removeByMovie(s.IDs, "season")
 		}
 		for _, e := range req.Episodes {
-			_, showID, err := resolveRefs(c, tx, e.IDs)
+			_, showID, err := resolveRefs(c, tx, e.IDs, "show")
 			if err != nil {
 				continue
 			}
@@ -1447,10 +1446,10 @@ func handleAddFavorites(c *fiber.Ctx) error {
 	// media.ResolveIDsBatch for the precedence.
 	var idRefs []media.IDRef
 	for _, m := range req.Movies {
-		idRefs = append(idRefs, idRefFor(m.IDs))
+		idRefs = append(idRefs, idRefFor(m.IDs).WithType("movie"))
 	}
 	for _, s := range req.Shows {
-		idRefs = append(idRefs, idRefFor(s.IDs))
+		idRefs = append(idRefs, idRefFor(s.IDs).WithType("show"))
 	}
 
 	dbErr := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
@@ -1473,7 +1472,7 @@ func handleAddFavorites(c *fiber.Ctx) error {
 		}
 
 		addFavorite := func(ids idsObj, mediaType string) {
-			ref, ok := refs[idRefFor(ids)]
+			ref, ok := refs[idRefFor(ids).WithType(mediaType)]
 			if !ok || ref.MediaType != mediaType {
 				notFound++
 				return
@@ -1556,7 +1555,7 @@ func handleRemoveFavorites(c *fiber.Ctx) error {
 		cacheTx := cache.NewCacheTransaction()
 
 		for _, m := range req.Movies {
-			_, mediaID, err := resolveRefs(c, tx, m.IDs)
+			_, mediaID, err := resolveRefs(c, tx, m.IDs, "movie")
 			if err != nil {
 				continue
 			}
@@ -1568,7 +1567,7 @@ func handleRemoveFavorites(c *fiber.Ctx) error {
 			}
 		}
 		for _, s := range req.Shows {
-			_, mediaID, err := resolveRefs(c, tx, s.IDs)
+			_, mediaID, err := resolveRefs(c, tx, s.IDs, "show")
 			if err != nil {
 				continue
 			}
@@ -1727,35 +1726,6 @@ func buildFavoriteResponses(items []database.UserFavorite) []favoriteResponse {
 // and is tried first by media.ResolveIDsBatch.
 func idRefFor(ids idsObj) media.IDRef {
 	return media.IDRef{TMDB: ids.TMDB, TVDB: ids.TVDB, IMDB: ids.IMDB}
-}
-
-// resolveRefs resolves one request item's external ids to a canonical media
-// row. It accepts whatever ids the client sent — tvdb is the primary one, tmdb
-// and imdb work too — and records which id was used in response headers, for
-// the same reason the TMDB-only version did.
-func resolveRefs(c *fiber.Ctx, db *gorm.DB, ids idsObj) (string, int64, error) {
-	ref := idRefFor(ids)
-	switch {
-	case ids.TVDB > 0:
-		c.Set("id_type", "tvdb")
-		c.Set("id_type_param", strconv.Itoa(ids.TVDB))
-	case ids.TMDB > 0:
-		c.Set("id_type", "tmdb")
-		c.Set("id_type_param", strconv.Itoa(ids.TMDB))
-	case ids.IMDB != "":
-		c.Set("id_type", "imdb")
-		c.Set("id_type_param", ids.IMDB)
-	}
-
-	resolved, err := media.ResolveIDsBatch(db, []media.IDRef{ref})
-	if err != nil {
-		return "", 0, err
-	}
-	found, ok := resolved[ref]
-	if !ok {
-		return "", 0, fmt.Errorf("not found")
-	}
-	return found.MediaType, found.MediaID, nil
 }
 
 func parseWatchedAt(val string, now time.Time, airedAt *database.Date) (time.Time, error) {

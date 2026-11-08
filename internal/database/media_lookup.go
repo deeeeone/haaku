@@ -20,6 +20,24 @@ type IDRef struct {
 	TMDB int
 	TVDB int
 	IMDB string
+
+	// MediaType is the type the caller expects this id to name ("movie",
+	// "show", "season"), or "" when the caller does not know. It matters
+	// because the SAME numeric id is routinely reused across tables: TVDB's
+	// 1396 is both a movie and a show, so a bare-int index answered a show
+	// lookup with the movie row and the request was reported as not found.
+	// With MediaType set, an id that only exists as another type is a miss,
+	// which is the truthful answer.
+	MediaType string
+}
+
+// WithType returns a copy of the ref carrying the media type the caller
+// expects. Resolution uses it to disambiguate an id that names more than one
+// row; the returned map is keyed by the ref, so the caller must look the
+// result up with the same typed ref it built.
+func (r IDRef) WithType(mediaType string) IDRef {
+	r.MediaType = mediaType
+	return r
 }
 
 // Empty reports whether the ref carries nothing to resolve on.
@@ -155,17 +173,17 @@ func collectIDKeys(refs []IDRef) (tmdb, tvdb []int, imdb []string) {
 // idIndex maps each kind of external id to the media it names.
 type idIndex struct {
 	db   *gorm.DB
-	tmdb map[int]MediaRef
-	tvdb map[int]MediaRef
-	imdb map[string]MediaRef
+	tmdb map[int][]MediaRef
+	tvdb map[int][]MediaRef
+	imdb map[string][]MediaRef
 }
 
 func newIDIndex(db *gorm.DB) *idIndex {
 	return &idIndex{
 		db:   db,
-		tmdb: map[int]MediaRef{},
-		tvdb: map[int]MediaRef{},
-		imdb: map[string]MediaRef{},
+		tmdb: map[int][]MediaRef{},
+		tvdb: map[int][]MediaRef{},
+		imdb: map[string][]MediaRef{},
 	}
 }
 
@@ -242,43 +260,65 @@ func (i *idIndex) add(tmdbID, tvdbID int, imdbID string, media MediaRef) {
 	}
 }
 
-// setTMDB/setTVDB/setIMDB record a mapping, keeping the FIRST writer: a
-// duplicate id is either the same media reached twice (harmless) or dirty data,
-// and the media-column pass runs before the external_ids pass, so the row's own
-// id wins.
+// setTMDB/setTVDB/setIMDB record a mapping. An id can name more than one row
+// (a movie and a show sharing a TMDB id), so every distinct row is kept and the
+// type-aware lookup below picks the one the caller asked for. Recording only
+// the first writer is what made a show request resolve to a movie row.
 func (i *idIndex) setTMDB(id int, media MediaRef) {
-	if _, exists := i.tmdb[id]; !exists {
-		i.tmdb[id] = media
-	}
+	i.tmdb[id] = appendRef(i.tmdb[id], media)
 }
 
 func (i *idIndex) setTVDB(id int, media MediaRef) {
-	if _, exists := i.tvdb[id]; !exists {
-		i.tvdb[id] = media
-	}
+	i.tvdb[id] = appendRef(i.tvdb[id], media)
 }
 
 func (i *idIndex) setIMDB(id string, media MediaRef) {
-	if _, exists := i.imdb[id]; !exists {
-		i.imdb[id] = media
+	i.imdb[id] = appendRef(i.imdb[id], media)
+}
+
+// appendRef adds media to refs unless the same row is already recorded.
+func appendRef(refs []MediaRef, media MediaRef) []MediaRef {
+	for _, existing := range refs {
+		if existing == media {
+			return refs
+		}
 	}
+	return append(refs, media)
 }
 
 // lookup resolves one ref, preferring the TVDB id, then TMDB, then IMDb.
 func (i *idIndex) lookup(ref IDRef) (MediaRef, bool) {
 	if ref.TVDB > 0 {
-		if media, ok := i.tvdb[ref.TVDB]; ok {
+		if media, ok := pickRef(i.tvdb[ref.TVDB], ref.MediaType); ok {
 			return media, true
 		}
 	}
 	if ref.TMDB > 0 {
-		if media, ok := i.tmdb[ref.TMDB]; ok {
+		if media, ok := pickRef(i.tmdb[ref.TMDB], ref.MediaType); ok {
 			return media, true
 		}
 	}
 	if ref.IMDB != "" {
-		if media, ok := i.imdb[ref.IMDB]; ok {
+		if media, ok := pickRef(i.imdb[ref.IMDB], ref.MediaType); ok {
 			return media, true
+		}
+	}
+	return MediaRef{}, false
+}
+
+// pickRef chooses the candidate the caller asked for. When the ref names a
+// type and no candidate has it, the id belongs to some other kind of media and
+// is reported as a miss rather than silently resolving to the wrong table.
+func pickRef(candidates []MediaRef, wantType string) (MediaRef, bool) {
+	if len(candidates) == 0 {
+		return MediaRef{}, false
+	}
+	if wantType == "" {
+		return candidates[0], true
+	}
+	for _, candidate := range candidates {
+		if candidate.MediaType == wantType {
+			return candidate, true
 		}
 	}
 	return MediaRef{}, false
@@ -295,49 +335,89 @@ func (i *idIndex) verify() error {
 	keep := func(media MediaRef) bool {
 		return existing[media.MediaType][media.MediaID]
 	}
-	for key, media := range i.tmdb {
-		if !keep(media) {
-			delete(i.tmdb, key)
-		}
-	}
-	for key, media := range i.tvdb {
-		if !keep(media) {
-			delete(i.tvdb, key)
-		}
-	}
-	for key, media := range i.imdb {
-		if !keep(media) {
-			delete(i.imdb, key)
-		}
-	}
+	i.tmdb = pruneRefs(i.tmdb, keep)
+	i.tvdb = pruneRefs(i.tvdb, keep)
+	i.imdb = pruneRefs(i.imdb, keep)
 	return nil
 }
 
-// existingMedia collects the media ids that are still present, grouped by type.
+// pruneRefs drops candidates whose row is gone and forgets ids with none left.
+func pruneRefs[K comparable](m map[K][]MediaRef, keep func(MediaRef) bool) map[K][]MediaRef {
+	for key, refs := range m {
+		kept := make([]MediaRef, 0, len(refs))
+		for _, ref := range refs {
+			if keep(ref) {
+				kept = append(kept, ref)
+			}
+		}
+		if len(kept) == 0 {
+			delete(m, key)
+			continue
+		}
+		m[key] = kept
+	}
+	return m
+}
+
+// existingMedia reports which candidate rows are still present. It looks up
+// only the ids this batch resolved, not every row in the table: the earlier
+// version Plucked every id from movies, shows and seasons on every resolve
+// call, so the cost of adding one title grew with the size of the catalogue.
 func (i *idIndex) existingMedia() (map[string]map[int64]bool, error) {
 	present := map[string]map[int64]bool{}
-	check := func(table any, mediaType string) error {
-		var ids []int64
-		if err := i.db.Model(table).Distinct("id").Pluck("id", &ids).Error; err != nil {
-			return fmt.Errorf("verify %s rows: %w", mediaType, err)
+	candidates := map[string]map[int64]bool{}
+	collect := func(refs []MediaRef) {
+		for _, ref := range refs {
+			if candidates[ref.MediaType] == nil {
+				candidates[ref.MediaType] = map[int64]bool{}
+			}
+			candidates[ref.MediaType][ref.MediaID] = true
 		}
-		set := make(map[int64]bool, len(ids))
-		for _, id := range ids {
+	}
+	for _, refs := range i.tmdb {
+		collect(refs)
+	}
+	for _, refs := range i.tvdb {
+		collect(refs)
+	}
+	for _, refs := range i.imdb {
+		collect(refs)
+	}
+
+	for mediaType, ids := range candidates {
+		table := tableForMediaType(mediaType)
+		if table == nil {
+			// An unknown type has no table to check, so nothing is dropped on
+			// its account; the resolver simply cannot return it.
+			continue
+		}
+		list := make([]int64, 0, len(ids))
+		for id := range ids {
+			list = append(list, id)
+		}
+		var found []int64
+		if err := i.db.Model(table).Where("id IN ?", list).Pluck("id", &found).Error; err != nil {
+			return nil, fmt.Errorf("verify %s rows: %w", mediaType, err)
+		}
+		set := make(map[int64]bool, len(found))
+		for _, id := range found {
 			set[id] = true
 		}
 		present[mediaType] = set
-		return nil
-	}
-	if err := check(&Movie{}, "movie"); err != nil {
-		return nil, err
-	}
-	if err := check(&Show{}, "show"); err != nil {
-		return nil, err
-	}
-	// Seasons are addressed through the same lookup table (a season id can
-	// resolve through a sync payload), so they are verified too.
-	if err := check(&Season{}, "season"); err != nil {
-		return nil, err
 	}
 	return present, nil
+}
+
+// tableForMediaType maps a media type to the model whose rows it identifies.
+func tableForMediaType(mediaType string) any {
+	switch mediaType {
+	case "movie":
+		return &Movie{}
+	case "show":
+		return &Show{}
+	case "season":
+		return &Season{}
+	default:
+		return nil
+	}
 }

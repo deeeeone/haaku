@@ -185,3 +185,46 @@ func TestLookupMediaByTVDBIDs(t *testing.T) {
 		t.Fatalf("unsupported type: got %v, err %v", got, err)
 	}
 }
+
+// TestResolveIDRefs_DisambiguatesByIdMediaType pins the type-aware lookup. TMDB
+// and TVDB number movies and series in overlapping spaces, so the same numeric
+// id can name both a film and a show. A ref that states its expected type must
+// get the row of THAT type; answering with the other table is how a watchlist
+// add for a show used to fail with "not found" while the film sat in the
+// catalogue.
+func TestResolveIDRefs_DisambiguatesByIdMediaType(t *testing.T) {
+	db := setupLookupDB(t)
+
+	movie := Movie{TmdbID: 1396, Title: "A film sharing the id"}
+	if err := db.Create(&movie).Error; err != nil {
+		t.Fatalf("seed movie: %v", err)
+	}
+	show := Show{TmdbID: 1396, TvdbID: 81189, Title: "Breaking Bad"}
+	if err := db.Create(&show).Error; err != nil {
+		t.Fatalf("seed show: %v", err)
+	}
+
+	showRef := IDRef{TMDB: 1396}.WithType("show")
+	movieRef := IDRef{TMDB: 1396}.WithType("movie")
+	got, err := ResolveIDRefs(db, []IDRef{showRef, movieRef})
+	if err != nil {
+		t.Fatalf("ResolveIDRefs: %v", err)
+	}
+	if resolved, ok := got[showRef]; !ok || resolved.MediaType != "show" || resolved.MediaID != show.ID {
+		t.Errorf("typed show ref resolved to %+v (ok=%v), want show/%d", resolved, ok, show.ID)
+	}
+	if resolved, ok := got[movieRef]; !ok || resolved.MediaType != "movie" || resolved.MediaID != movie.ID {
+		t.Errorf("typed movie ref resolved to %+v (ok=%v), want movie/%d", resolved, ok, movie.ID)
+	}
+
+	// A type that does not own the id is a miss, not a fallback to another
+	// table: the caller asked for a season and there is no season 1396.
+	missRef := IDRef{TMDB: 1396}.WithType("season")
+	miss, err := ResolveIDRefs(db, []IDRef{missRef})
+	if err != nil {
+		t.Fatalf("ResolveIDRefs: %v", err)
+	}
+	if resolved, ok := miss[missRef]; ok {
+		t.Errorf("a season ref must not resolve to %+v", resolved)
+	}
+}
