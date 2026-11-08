@@ -145,7 +145,7 @@ func advisoryListLock(tx *gorm.DB, listID int64) error {
 
 // handleGetUserLists returns lists for a user, respecting privacy.
 func handleGetUserLists(c *fiber.Ctx) error {
-	targetUserID := c.Params("id")
+	targetUserID := auth.ResolveTargetID(c, "id") // ":id" accepts the "me" alias
 	currentUserID := userID(c)
 
 	db, err := database.GetDB()

@@ -334,19 +334,24 @@ func handleUpdateSettings(c *fiber.Ctx) error {
 	return c.JSON(current)
 }
 
-// handleDeleteAccount deletes the user's Clerk account (identity source of
-// truth) and wipes the local mirror + all owned data in one transaction.
-// The user.deleted webhook would do the same if it fires later — idempotent.
+// handleDeleteAccount deletes the account that owns the request and wipes its
+// data. In clerk mode the Clerk account is the identity source of truth, so it
+// goes first (the user.deleted webhook would run the same wipe if it fires
+// later — idempotent). In local mode this server owns identity and never calls
+// a third-party identity service (issue #53), so there is nothing upstream to
+// delete: the local account's rows are part of the wipe below.
 func handleDeleteAccount(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 
-	clerk := auth.GetClerk()
-	if clerk == nil {
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "account deletion unavailable")
-	}
-	if err := clerk.DeleteUser(userID); err != nil {
-		slog.Error("delete account: Clerk delete failed", "user_id", userID, "error", err)
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to delete account")
+	if !auth.LocalAuthEnabled() {
+		clerk := auth.GetClerk()
+		if clerk == nil {
+			return response.WriteError(c, fiber.StatusInternalServerError, "internal", "account deletion unavailable")
+		}
+		if err := clerk.DeleteUser(userID); err != nil {
+			slog.Error("delete account: Clerk delete failed", "user_id", userID, "error", err)
+			return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to delete account")
+		}
 	}
 
 	// Wipe the local mirror + all owned data, then emit the catalog's
@@ -375,7 +380,7 @@ func handleDeleteAccount(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to delete account data")
 	}
 
-	slog.Info("account deleted (Clerk + local wipe)", "user_id", userID)
+	slog.Info("account deleted", "user_id", userID, "auth_mode", auth.AuthMode())
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
@@ -386,7 +391,7 @@ func handleBlockUser(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
 	}
 
-	targetID := c.Params("id")
+	targetID := auth.ResolveTargetID(c, "id")
 	if targetID == "" || targetID == userID {
 		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid target user id")
 	}
@@ -473,8 +478,8 @@ func handleUnblockUser(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
 	}
 
-	targetID := c.Params("id")
-	if targetID == "" {
+	targetID := auth.ResolveTargetID(c, "id")
+	if targetID == "" || targetID == userID {
 		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid target user id")
 	}
 

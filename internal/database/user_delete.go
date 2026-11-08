@@ -37,12 +37,21 @@ var userScopedTables = []struct{ table, column string }{
 	{"integration_tokens", "user_id"},
 	{"user_notes", "user_id"},
 	{"saved_filters", "user_id"},
+	// Local-account rows (issue #53). All three cascade from users in
+	// PostgreSQL, but the wipe is explicit per table rather than relying on a
+	// cascade — and a deleted account must never leave its password hash (or a
+	// live session row) behind on any backend, including sqlite where foreign
+	// keys are off by default.
+	{"local_credentials", "user_id"},
+	{"local_sessions", "user_id"},
+	{"local_auth_tokens", "user_id"},
 }
 
 // DeleteUserData hard-deletes a user and every row they own, in one
-// transaction. Identity lives in Clerk; when the Clerk account is deleted
-// (user.deleted webhook) or the user deletes their account in-app, the local
-// mirror and all user-owned content are wiped.
+// transaction. Identity is Clerk's in clerk mode and this server's in local
+// mode (issue #53); either way, when the account is deleted — the user.deleted
+// webhook, or the owner of the account deleting it in-app — every local row
+// for it is wiped.
 //
 // The wipe is explicit per table rather than relying on FK cascades — most
 // content tables (lists, comments, activity, tokens, ...) have no

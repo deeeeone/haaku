@@ -20,8 +20,14 @@ Account/profile management:
 - `GET|PUT /v1/users/me/settings` — settings as JSON on the user row (privacy + notification prefs, defaulted/backfilled). The `privacy.{profile,history,ratings,activity}` flags are **enforced** on the reads they name — see "Per-section privacy flags (enforced)".
 - `GET /v1/users/me/export` — owner-scoped, **streamed** JSON archive of everything the caller owns (`export.go`, issue #10 §1). See "Data export" below.
 - ~~`POST /v1/users/me/avatar`~~ — **removed (2026-08)**. Avatars are Clerk-managed (mirrored via webhook/lazy sync); there is no upload route, so a placeholder `avatar_url` can never be persisted.
-- `DELETE /v1/users/me` — soft-delete (`status = pending_deletion`; async cleanup is a stub).
+- `DELETE /v1/users/me` — delete the account and wipe its data (204). The Clerk account is deleted first **in clerk mode** (Clerk owns identity there; the `user.deleted` webhook runs the same wipe, idempotently). **In local mode there is nothing upstream to delete** — this server issued the account, so the local rows (credential, sessions, one-time tokens) are removed with the rest of the wipe and no third-party service is called. See `internal/database/user_delete.go`.
 - `POST|DELETE /v1/users/:id/block` — block (removes follows both directions, outbox `user.blocked`) / unblock.
+
+Every `/v1/users/{id}/...` route accepts `me` as `{id}` (`auth.ResolveTargetID`), so a client that
+knows only its own session never has to thread its own id through the UI. Both sides of that
+contract are guarded: `internal/httpapi/user_me_alias_test.go` sweeps the real route table (a
+`me` request must never answer "user not found", and a route pointed at the caller answers 400),
+and a signed-out `me` is 401 rather than 404.
 
 Uses shared `auth.PrivacyFilter` for the public route; shared `auth.AuthRequired()` elsewhere. OpenAPI registered.
 
