@@ -633,7 +633,8 @@ func handleAddCollection(c *fiber.Ctx) error {
 		return response.BadRequest(c, "invalid JSON body")
 	}
 
-	added, notFound, duplicates := 0, 0, 0
+	added, duplicates := 0, 0
+	var notFound notFoundList
 	var movieIDs []int64
 	var showIDs []int64
 	now := time.Now()
@@ -660,7 +661,7 @@ func handleAddCollection(c *fiber.Ctx) error {
 		for _, m := range req.Movies {
 			ref, ok := refs[idRefFor(m.IDs)]
 			if !ok || ref.MediaType != "movie" {
-				notFound++
+				notFound.movie(m.IDs)
 				continue
 			}
 			mediaID := ref.MediaID
@@ -677,7 +678,7 @@ func handleAddCollection(c *fiber.Ctx) error {
 		for _, s := range req.Shows {
 			ref, ok := refs[idRefFor(s.IDs)]
 			if !ok || ref.MediaType != "show" {
-				notFound++
+				notFound.show(s.IDs)
 				continue
 			}
 			mediaID := ref.MediaID
@@ -716,7 +717,7 @@ func handleAddCollection(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{
 		"added":      fiber.Map{"movies": added, "episodes": 0},
-		"not_found":  fiber.Map{"movies": make([]interface{}, 0, notFound), "shows": make([]interface{}, 0)},
+		"not_found":  notFound.payload(),
 		"duplicates": fiber.Map{"movies": duplicates, "episodes": 0},
 	})
 }
@@ -870,7 +871,7 @@ func handleAddWatchlist(c *fiber.Ctx) error {
 
 	addedMovies, addedShows := 0, 0
 	dupMovies, dupShows := 0, 0
-	notFound := 0
+	var notFound notFoundList
 	var movieIDs []int64
 	var showIDs []int64
 	now := time.Now()
@@ -908,7 +909,7 @@ func handleAddWatchlist(c *fiber.Ctx) error {
 		for _, m := range req.Movies {
 			ref, ok := refs[idRefFor(m.IDs)]
 			if !ok || ref.MediaType != "movie" {
-				notFound++
+				notFound.movie(m.IDs)
 				continue
 			}
 			mediaID := ref.MediaID
@@ -928,7 +929,7 @@ func handleAddWatchlist(c *fiber.Ctx) error {
 		for _, s := range req.Shows {
 			ref, ok := refs[idRefFor(s.IDs)]
 			if !ok || ref.MediaType != "show" {
-				notFound++
+				notFound.show(s.IDs)
 				continue
 			}
 			mediaID := ref.MediaID
@@ -970,7 +971,7 @@ func handleAddWatchlist(c *fiber.Ctx) error {
 
 	return c.JSON(fiber.Map{
 		"added":      fiber.Map{"movies": addedMovies, "shows": addedShows},
-		"not_found":  fiber.Map{"movies": make([]interface{}, 0), "shows": make([]interface{}, 0)},
+		"not_found":  notFound.payload(),
 		"duplicates": fiber.Map{"movies": dupMovies, "shows": dupShows},
 	})
 }
