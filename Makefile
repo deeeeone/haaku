@@ -199,6 +199,7 @@ check: lint-go vuln secrets workflow-lint check-size check-bidi api-check parity
 
 parity-check: embed-stub ## Grade docs/parity/parity.yaml against the route registry
 	go run ./cmd/parity -check
+	python3 scripts/parity-scope.py --check
 	go test ./internal/parity/ -run 'TestCommittedManifestMatchesTheRegistry|TestManifestFileIsWhereTheDocsSay' -count=1
 
 # --- Public contract diff (issue #15) ---

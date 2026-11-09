@@ -18,6 +18,24 @@ make parity-check          # gate: fails when the manifest and the registry disa
 go run ./cmd/parity        # same report, exit 0 (for reading during development)
 ```
 
+## The frozen scope
+
+`SCOPE.md` is the other half of the measurement: one row per operation in the
+vendored contract, naming the group that owns it and the issue that group is
+tracked on, and whether it is **in** the 100%-parity goal or **out** by an owner
+decision. It is generated from `parity.yaml` and the contract, never hand-edited,
+and `make parity-check` fails when it goes stale:
+
+```bash
+python3 scripts/parity-scope.py           # rewrite docs/parity/SCOPE.md
+python3 scripts/parity-scope.py --check   # what the gate runs
+```
+
+Ownership itself is a path rule, not a list — `scripts/parity-owners.py` maps
+each row to its group by the contract's **templates**, so a reshape cannot
+strand a row the way an exact-path dict did. `--tables` emits the per-issue row
+tables, `--unowned` must print zero.
+
 ## Grading
 
 Every row is one Trakt endpoint with four columns: `trakt`, `ours`, `status`,
