@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"regexp"
@@ -130,12 +129,12 @@ func generateCase(doc *contract.Document, op contract.Operation, row parity.Row,
 		return c
 	}
 
-	c.Path = resolvePath(c.Path, fx)
+	c.Path = resolvePath(op, c.Method, c.Path, fx)
 	c.Query = queryDefaults(op, fx)
 	if body := op.RequestBodySchema(); body != nil {
 		c.Body = sampleBody(body, op.Path, fx)
 	}
-	c.Variant = defaultVariant(op.Path, c.Auth)
+	c.Variant = defaultVariant(op.Path, c.Auth, fx)
 	return c
 }
 
@@ -156,83 +155,198 @@ func successCodes(op contract.Operation) ([]string, map[string]map[string]any) {
 	return codes, schemas
 }
 
-// resolvePath substitutes fixture-backed values for every path parameter. The
-// four Trakt id flavours (slug / numeric / imdb / tmdb / tvdb) are exercised by
-// choosing a value the seeded rows actually carry.
-func resolvePath(tmpl string, fx Fixtures) string {
+// resolvePath substitutes fixture-backed values for every path parameter of the
+// route we serve, using the contract's own declaration for that parameter where
+// it has one (an enum, an integer) and the fixture catalogue otherwise.
+//
+// The values are read from the fixture set, never pinned: changing a seeded id
+// changes the request (TestCasesFollowFixtureIDs proves it).
+func resolvePath(op contract.Operation, method, tmpl string, fx Fixtures) string {
 	out := tmpl
+	declared := map[string]contract.Parameter{}
+	for _, p := range op.Parameters() {
+		if p.In == "path" {
+			declared[p.Name] = p
+		}
+	}
 	for _, ph := range paramRe.FindAllString(tmpl, -1) {
 		name := strings.Trim(ph, "{}")
-		out = strings.ReplaceAll(out, ph, paramValue(name, tmpl, fx))
+		out = strings.ReplaceAll(out, ph, paramValue(name, method, tmpl, declared[name], fx))
 	}
 	return out
 }
 
-func paramValue(name, path string, fx Fixtures) string {
-	// Context: the path segment immediately before the placeholder.
-	seg := segmentBefore(path, name)
+// paramValue returns one path segment.
+//
+// Precedence: an enum the contract publishes (that is the only value the
+// contract itself admits), then a fixture id for the parameter's meaning, then
+// a documented non-empty default. A literal "1" is never used for media: local
+// sequences are separate per table, so 1 is a movie and a show and a person at
+// once, and a handler resolving it type-agnostically measures the collision.
+func paramValue(name, method, path string, p contract.Parameter, fx Fixtures) string {
+	if v := firstEnumValue(p.Schema); v != "" {
+		// id_type is not enum-constrained but the id beside it must match the
+		// flavour, so it is handled below rather than by this shortcut.
+		if name != "id" && name != "item_id" && name != "list_item_id" {
+			return v
+		}
+	}
 	switch name {
 	case "start_date":
 		return time.Now().UTC().Format("2006-01-02")
-	case "days", "page", "limit":
+	case "days", "page", "limit", "month":
 		return "10"
+	case "year", "year_end":
+		return "2024"
 	case "target":
 		return "all"
-	case "media_id", "item_id":
-		return "1"
+	case "media_id":
+		if strings.Contains(path, "episodes") {
+			return fmt.Sprintf("%d", fx.EpisodeID)
+		}
+		return fmt.Sprintf("%d", fx.MovieID)
+	case "item_id":
+		switch {
+		case strings.Contains(path, "/episodes"):
+			return fmt.Sprintf("%d", fx.EpisodeID)
+		case strings.Contains(path, "/shows"):
+			return fmt.Sprintf("%d", fx.ShowID)
+		case strings.Contains(path, "/seasons"):
+			return fmt.Sprintf("%d", fx.SeasonID)
+		default:
+			return fmt.Sprintf("%d", fx.MovieID)
+		}
 	case "media_type":
+		if strings.Contains(path, "episodes") {
+			return "episodes"
+		}
 		return "movies"
 	case "comment_type":
-		return "shows"
-	case "sort", "sort_by", "sort_how":
-		return "newest"
+		if v := firstEnumValue(p.Schema); v != "" {
+			return v
+		}
+		return "all"
 	case "section":
-		return "progress_watched"
-	case "country":
+		return "calendar"
+	case "country", "countryCode":
 		return "us"
-	case "season", "number", "episode":
-		return "1"
 	case "lang":
 		return "en"
+	case "season", "number":
+		return fmt.Sprintf("%d", fx.SeasonNum)
+	case "episode":
+		return fmt.Sprintf("%d", fx.EpisodeNum)
 	case "list_id":
+		if strings.Contains(path, "/smart-lists") {
+			return fmt.Sprintf("%d", fx.SmartListID)
+		}
 		return fmt.Sprintf("%d", fx.ListID)
+	case "list_item_id":
+		return fmt.Sprintf("%d", fx.ListItemID)
 	case "rating":
 		return "9"
-	case "id":
-		switch seg {
-		case "movies":
-			return fmt.Sprintf("%d", fx.MovieID)
-		case "shows":
-			return fmt.Sprintf("%d", fx.ShowID)
-		case "seasons":
-			return fmt.Sprintf("%d", fx.SeasonID)
-		case "episodes":
-			return fmt.Sprintf("%d", fx.EpisodeID)
-		case "people":
-			return fmt.Sprintf("%d", fx.PersonID)
-		case "users":
-			return fx.UserID
-		case "comments":
-			return fmt.Sprintf("%d", fx.CommentID)
-		case "lists", "smart-lists":
-			return fmt.Sprintf("%d", fx.ListID)
+	case "sort":
+		if v := firstEnumValue(p.Schema); v != "" {
+			return v
 		}
-		return "1"
+		if strings.Contains(path, "/comments/") {
+			return "newest"
+		}
+		return "newest"
+	case "sort_by":
+		return "rank"
+	case "sort_how":
+		return "asc"
+	case "id_type":
+		return "tmdb"
 	case "type":
 		switch {
-		case strings.Contains(path, "/genres/"), strings.Contains(path, "/countries/"),
-			strings.Contains(path, "/languages/"), strings.Contains(path, "/certifications/"):
-			return "movies"
-		case strings.Contains(path, "/likes/"):
-			return "comments"
-		case strings.Contains(path, "/notes/"):
-			return "movies"
-		case strings.Contains(path, "/collection/"), strings.Contains(path, "/history/"):
+		case strings.Contains(path, "/search/"):
+			return "movie"
+		case strings.Contains(path, "/comments/"):
 			return "movies"
 		}
 		return "movies"
+	case "reaction_type":
+		return "like"
+	case "all_data":
+		return "true"
+	case "server_id", "service_id":
+		return "1"
+	case "id":
+		return idValue(method, path, fx)
 	}
-	return "1"
+	return "conformance"
+}
+
+// idValue picks the id flavour the route's leading segment names.
+func idValue(method, path string, fx Fixtures) string {
+	seg := segmentBefore(path, "id")
+	switch seg {
+	case "movies":
+		return fmt.Sprintf("%d", fx.MovieID)
+	case "shows":
+		return fmt.Sprintf("%d", fx.ShowID)
+	case "seasons":
+		return fmt.Sprintf("%d", fx.SeasonID)
+	case "episodes":
+		return fmt.Sprintf("%d", fx.EpisodeID)
+	case "people":
+		return fmt.Sprintf("%d", fx.PersonID)
+	case "users":
+		// Follow/block cannot target the caller, and the destructive cases use
+		// their own accounts so the seeded read graph survives them.
+		switch {
+		case strings.HasSuffix(path, "/follow"):
+			return fx.FollowUserID
+		case strings.HasSuffix(path, "/block"):
+			return fx.BlockUserID
+		}
+		return fx.UserID
+	case "comments":
+		// The reply/like assertions need a comment with rows; the plain comment
+		// GET keeps the reply-free row so DELETE is not a 409, and DELETE uses a
+		// third row so it cannot consume the GET fixture.
+		if strings.Contains(path, "/replies") || strings.Contains(path, "/likes") {
+			return fmt.Sprintf("%d", fx.ThreadCommentID)
+		}
+		if method == "DELETE" {
+			return fmt.Sprintf("%d", fx.DeleteCommentID)
+		}
+		return fmt.Sprintf("%d", fx.CommentID)
+	case "notes":
+		if method == "DELETE" {
+			return fmt.Sprintf("%d", fx.DeleteNoteID)
+		}
+		return fmt.Sprintf("%d", fx.NoteID)
+	case "lists":
+		return fmt.Sprintf("%d", fx.ListID)
+	case "smart-lists":
+		return fmt.Sprintf("%d", fx.SmartListID)
+	case "{id_type}":
+		return externalIDFor(path, fx)
+	}
+	// /search/{id_type}/{id}: the preceding segment decides the flavour.
+	if strings.Contains(path, "/search/") {
+		return externalIDFor(path, fx)
+	}
+	return fmt.Sprintf("%d", fx.MovieID)
+}
+
+// externalIDFor returns the id in the flavour named by the /search/{id_type}
+// segment immediately before it.
+func externalIDFor(path string, fx Fixtures) string {
+	switch {
+	case strings.Contains(path, "/search/tmdb/"):
+		return fmt.Sprintf("%d", fx.MovieTMDB)
+	case strings.Contains(path, "/search/imdb/"):
+		return fx.MovieIMDB
+	case strings.Contains(path, "/search/tvdb/"):
+		return fmt.Sprintf("%d", fx.MovieTVDB)
+	case strings.Contains(path, "/search/trakt/"):
+		return fmt.Sprintf("%d", fx.MovieID)
+	}
+	return fmt.Sprintf("%d", fx.MovieTMDB)
 }
 
 // segmentBefore returns the path segment that precedes a "{name}" placeholder.
@@ -265,15 +379,19 @@ func queryDefaults(op contract.Operation, fx Fixtures) url.Values {
 		case "id_type":
 			q.Set("id_type", "tmdb")
 		case "query", "q":
-			q.Set(p.Name, "breaking")
+			q.Set(p.Name, "fight")
 		case "response_type":
 			q.Set("response_type", "code")
 		case "client_id":
-			q.Set("client_id", "conformance")
+			q.Set("client_id", fx.AppClientID)
 		case "redirect_uri":
-			q.Set("redirect_uri", "https://example.test/callback")
+			q.Set("redirect_uri", fx.RedirectURI)
 		case "state":
 			q.Set("state", "conformance")
+		case "code_challenge":
+			q.Set("code_challenge", fx.CodeChallenge)
+		case "code_challenge_method":
+			q.Set("code_challenge_method", "S256")
 		default:
 			if v := firstEnumValue(p.Schema); v != "" {
 				q.Set(p.Name, v)
@@ -292,160 +410,9 @@ func firstEnumValue(schema map[string]any) string {
 	return ""
 }
 
-func defaultVariant(path, auth string) string {
+func defaultVariant(path, auth string, fx Fixtures) string {
 	if auth == "required" {
 		return "authenticated"
 	}
 	return "public"
-}
-
-// sampleBody synthesises a minimal body that conforms to the contract's request
-// schema, using the seeded fixture ids so the items resolve to real rows.
-func sampleBody(schema map[string]any, opPath string, fx Fixtures) []byte {
-	v := sampleValue(schema, opPath, fx, "")
-	b, err := json.Marshal(v)
-	if err != nil {
-		return nil
-	}
-	return b
-}
-
-func sampleValue(schema map[string]any, opPath string, fx Fixtures, prop string) any {
-	if schema == nil {
-		return nil
-	}
-	if all, ok := schema["allOf"].([]any); ok {
-		merged := map[string]any{}
-		for _, sub := range all {
-			if m := asMap(sub); m != nil {
-				for k, v := range m {
-					merged[k] = v
-				}
-			}
-		}
-		if len(merged) > 0 {
-			return sampleValue(merged, opPath, fx, prop)
-		}
-	}
-	// The contract's request bodies express "one of movie/episode/show" as
-	// oneOf. Send the first alternative so the body is a valid instance.
-	for _, key := range []string{"oneOf", "anyOf"} {
-		if subs, ok := schema[key].([]any); ok && len(subs) > 0 {
-			return sampleValue(asMap(subs[0]), opPath, fx, prop)
-		}
-	}
-	// A string with a documented enum must carry one of its own values.
-	if enum, ok := schema["enum"].([]any); ok && len(enum) > 0 {
-		for _, e := range enum {
-			if e != nil {
-				return e
-			}
-		}
-	}
-	types := schemaTypesOf(schema)
-	// Prefer a concrete type over null.
-	use := ""
-	for _, t := range types {
-		if t != "null" {
-			use = t
-			break
-		}
-	}
-	switch use {
-	case "object":
-		out := map[string]any{}
-		props := asMap(schema["properties"])
-		for name, ps := range props {
-			out[name] = sampleValue(asMap(ps), opPath, fx, name)
-		}
-		if len(out) == 0 {
-			return map[string]any{}
-		}
-		return out
-	case "array":
-		items := asMap(schema["items"])
-		if items == nil {
-			return []any{}
-		}
-		return []any{sampleValue(items, opPath, fx, prop)}
-	case "integer", "number":
-		return sampleInt(prop, fx)
-	case "boolean":
-		return true
-	case "string":
-		return sampleString(prop, opPath)
-	}
-	if props := asMap(schema["properties"]); len(props) > 0 {
-		out := map[string]any{}
-		for name, ps := range props {
-			out[name] = sampleValue(asMap(ps), opPath, fx, name)
-		}
-		return out
-	}
-	return nil
-}
-
-// sampleInt fills an integer leaf with the seeded id the field names, so a
-// request that addresses media by tmdb/trakt id resolves to a real row.
-func sampleInt(prop string, fx Fixtures) int {
-	switch prop {
-	case "tmdb":
-		return fx.MovieTMDB
-	case "tvdb":
-		return 1022
-	case "trakt", "id":
-		return 1
-	case "rating":
-		return 9
-	case "progress":
-		return 50
-	}
-	return 1
-}
-
-// sampleString fills a string leaf with a value the API will accept: an id set
-// resolves to the seeded tmdb id, and a date field gets a real timestamp.
-func sampleString(prop, opPath string) string {
-	switch prop {
-	case "ids", "tmdb":
-		return "550"
-	case "imdb":
-		return "tt0137523"
-	case "tvdb":
-		return "1022"
-	case "slug":
-		return "fight-club"
-	case "watched_at", "collected_at", "rated_at", "listed_at", "favorited_at", "paused_at":
-		return time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
-	case "comment", "body", "note", "notes", "message", "name", "title":
-		return "conformance"
-	case "email":
-		return "conformance@example.test"
-	case "username":
-		return "conformance"
-	case "password":
-		return "conformance-password-123"
-	case "type":
-		return "movies"
-	}
-	if strings.HasSuffix(prop, "_at") {
-		return time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
-	}
-	return "conformance"
-}
-
-func schemaTypesOf(schema map[string]any) []string {
-	switch t := schema["type"].(type) {
-	case string:
-		return []string{t}
-	case []any:
-		var out []string
-		for _, v := range t {
-			if s, ok := v.(string); ok {
-				out = append(out, s)
-			}
-		}
-		return out
-	}
-	return nil
 }
