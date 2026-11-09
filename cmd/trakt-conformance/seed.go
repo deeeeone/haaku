@@ -82,6 +82,10 @@ type Fixtures struct {
 	TargetUsername string `json:"target_username"`
 	FollowUserID   string `json:"follow_user_id"`
 	BlockUserID    string `json:"block_user_id"`
+	// BlockedReadUserID exists only so GET /users/blocked has a row to return.
+	// It is deliberately a different account from BlockUserID, whose block the
+	// destructive block/unblock cases consume.
+	BlockedReadUserID string `json:"blocked_read_user_id"`
 
 	// OAuth application, seeded in the database. DeviceCode cannot be persisted
 	// by the seed: the device grant store is process-local, so the harness
@@ -579,6 +583,60 @@ func seedFixtures(db *gorm.DB, fx *Fixtures) error {
 		if err := db.Exec("UPDATE oauth_grants SET expires_at = ?, used = false WHERE id = ?",
 			now.Add(24*time.Hour), grantID).Error; err != nil {
 			return fmt.Errorf("seed oauth grant refresh: %w", err)
+		}
+	}
+
+	// --- rows the profile list assertions need --------------------------------
+	//
+	// Five operations failed conformance with cause "empty" rather than a real
+	// field diff: the seed never created the rows their list assertions read, so
+	// an empty array validated against the schema and proved nothing (#123).
+	// These are real rows for real reads, like the fixtures above.
+	blockedRead := database.User{ID: "local_conformance_blocked_read",
+		Username: "conformance-blocked-read", Email: "conformance-blocked-read@example.test",
+		Name: "Conformance Blocked Read", Status: database.UserStatusActive, Plan: "free"}
+	if err := db.Clauses(clause.OnConflict{UpdateAll: true}).Create(&blockedRead).Error; err != nil {
+		return fmt.Errorf("seed blocked-read user: %w", err)
+	}
+	fx.BlockedReadUserID = blockedRead.ID
+	// The block the viewer owns, so GET /users/blocked is non-empty. BlockUserID
+	// is a different account because the block/unblock cases consume that one.
+	block := database.UserBlock{BlockerID: uid, BlockedID: blockedRead.ID, CreatedAt: now}
+	if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&block).Error; err != nil {
+		return fmt.Errorf("seed user block: %w", err)
+	}
+	reaction := database.CommentReaction{CommentID: comment.ID, UserID: uid,
+		ReactionType: "like", CreatedAt: now}
+	if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&reaction).Error; err != nil {
+		return fmt.Errorf("seed comment reaction: %w", err)
+	}
+	// One saved filter per section the handler accepts, so whichever section the
+	// generated case asks for there is a real row to assert on.
+	for _, section := range []string{"movies", "shows", "calendars", "search"} {
+		sf := database.SavedFilter{UserID: uid, Section: section, Name: "conformance-" + section,
+			Filter: database.JSONMap{"genres": "drama"}, CreatedAt: now}
+		if err := firstOrCreate(db, &sf, "user_id = ? AND section = ? AND name = ?",
+			uid, section, sf.Name); err != nil {
+			return fmt.Errorf("seed saved filter %s: %w", section, err)
+		}
+	}
+	// The ratings slice above holds no episode row, so /users/{id}/ratings/episodes
+	// had an empty list.
+	episodeRating := database.UserRating{UserID: uid, MediaType: "episode",
+		MediaID: episodes[0].ID, Rating: 8, RatedAt: now.Add(-30 * time.Hour)}
+	if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&episodeRating).Error; err != nil {
+		return fmt.Errorf("seed episode rating: %w", err)
+	}
+	// /users/{id}/{type}/activities reads history inside a window starting at the
+	// requested start_date, which the case sends as today, while every history row
+	// above sits in the past - so the feed was legitimately empty rather than
+	// wrong. One row watched today, for the viewer and for the followed target,
+	// gives both the own feed and the friends feed something real.
+	for _, actor := range []string{uid, fx.TargetUserID} {
+		h := database.UserHistory{UserID: actor, MediaType: "movie", MediaID: movie.ID,
+			WatchedAt: now, Source: "api"}
+		if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&h).Error; err != nil {
+			return fmt.Errorf("seed today history for %s: %w", actor, err)
 		}
 	}
 
