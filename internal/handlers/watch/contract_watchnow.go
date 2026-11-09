@@ -28,6 +28,14 @@ import (
 func init() {
 	openapi.Register(openapi.RouteDef{
 		Method:      "GET",
+		Path:        "/v1/episodes/{id}/watchnow/{country}",
+		Summary:     "Episode watch-now providers for one country (contract path)",
+		Tags:        []string{"Episodes"},
+		Auth:        "none",
+		StatusCodes: map[int]string{200: "Provider availability by category", 503: "Provider data temporarily unavailable"},
+	})
+	openapi.Register(openapi.RouteDef{
+		Method:      "GET",
 		Path:        "/v1/shows/{id}/seasons/{season}/episodes/{episode}/watchnow/{country}",
 		Summary:     "Episode watch-now providers for one country (contract path)",
 		Tags:        []string{"Shows"},
@@ -77,6 +85,7 @@ func registerContractWatchRoutes(api fiber.Router) {
 	api.Get("/movies/:id/watchnow/justwatch_links/:country", handleMovieJustWatchLinks)
 	api.Get("/movies/:id/watchnow/:country", handleContractMovieWatch)
 	api.Get("/shows/:id/watchnow/:country", handleContractShowWatch)
+	api.Get("/episodes/:id/watchnow/:country", handleContractFlatEpisodeWatch)
 	api.Get("/shows/:id/seasons/:season/episodes/:episode/watchnow/:country", handleContractEpisodeWatch)
 }
 
@@ -155,12 +164,54 @@ func handleContractEpisodeWatch(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
+	return serveEpisodeWatch(c, show, season, episode, db)
+}
+
+// handleContractFlatEpisodeWatch serves
+// GET /v1/episodes/{id}/watchnow/{country} — the flat episode path reusing the
+// nested handler's builder. The path id is always numeric, so a non-integer is
+// a client error (400), unlike the slug-capable show lookup.
+func handleContractFlatEpisodeWatch(c *fiber.Ctx) error {
+	id, err := response.ParseIDParam(c, "episode")
+	if err != nil {
+		return err
+	}
+	db, dbErr := database.GetDB()
+	if dbErr != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "database unavailable")
+	}
+	var episode database.Episode
+	if err := db.First(&episode, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return stopWatch(response.NotFound(c, "episode not found"))
+		}
+		return stopWatch(response.InternalError(c, "database query error"))
+	}
+	var season database.Season
+	if err := db.First(&season, episode.SeasonID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return stopWatch(response.NotFound(c, "season not found"))
+		}
+		return stopWatch(response.InternalError(c, "database query error"))
+	}
+	var show database.Show
+	if err := db.First(&show, episode.ShowID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return stopWatch(response.NotFound(c, "show not found"))
+		}
+		return stopWatch(response.InternalError(c, "database query error"))
+	}
+	return serveEpisodeWatch(c, &show, &season, &episode, db)
+}
+
+// serveEpisodeWatch is the shared tail of both episode watch-now routes.
+func serveEpisodeWatch(c *fiber.Ctx, show *database.Show, season *database.Season, episode *database.Episode, db *gorm.DB) error {
 	country, cerr := contractCountry(c)
 	if cerr != nil {
 		return cerr
 	}
 	if show.TmdbID == 0 {
-		return response.NotFound(c, "show has no TMDB ID")
+		return stopWatch(response.NotFound(c, "show has no TMDB ID"))
 	}
 	client, clientErr := getTMDBClient()
 	if clientErr != nil {

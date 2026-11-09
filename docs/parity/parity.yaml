@@ -776,9 +776,9 @@ sections:
         status: implemented
         rationale: "Served at GET /v1/countries/{type}; the path shape matches the contract."
       - trakt: "GET /episodes/{id}/watchnow/{country}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: episode-level sub-resources blocked on ingest (#68)"
+        ours: "GET /v1/episodes/{id}/watchnow/{country}"
+        status: implemented
+        rationale: "Served at Trakt's path: the flat episode id resolves the row and reuses the nested episode watch-now builder, hydrating TMDB providers once into episode metadata."
       - trakt: "GET /genres/{type}"
         ours: "GET /v1/genres/{type}"
         status: implemented

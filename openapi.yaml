@@ -3023,6 +3023,60 @@ paths:
             summary: Episode stats (watchers, plays, ratings)
             tags:
                 - Episodes
+    /v1/episodes/{id}/watchnow/{country}:
+        get:
+            operationId: _v1_episodes_id_watchnow_country_GET
+            responses:
+                "200":
+                    description: Provider availability by category
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+                "503":
+                    description: Provider data temporarily unavailable
+            security: []
+            summary: Episode watch-now providers for one country (contract path)
+            tags:
+                - Episodes
     /v1/genres/{type}:
         get:
             operationId: _v1_genres_type_GET

@@ -11,7 +11,7 @@ path (modulo our `/v1` prefix), with a real 2xx — except the recommendation/re
 engine, which stays an honest `501 not_implemented` and graded `blocked-engine` by
 the owner's carve-out. Done is `go run ./cmd/parity`, not a PR count.
 
-Contract operations: **336**. Not yet served (**in scope**): **142**. Out by owner decision: **31**. Served today: **162**.
+Contract operations: **336**. Not yet served (**in scope**): **141**. Out by owner decision: **31**. Served today: **163**.
 
 ## Out of scope (owner decisions, re-affirmed)
 
@@ -81,7 +81,6 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /comments/updates/{comment_type}/{type}` | out-of-scope | comment moderation, reactions and the note item read | #107 |
 | `GET /comments/{id}/reactions/` | out-of-scope | comment moderation, reactions and the note item read | #107 |
 | `GET /comments/{id}/reactions/summary` | out-of-scope | comment moderation, reactions and the note item read | #107 |
-| `GET /episodes/{id}/watchnow/{country}` | out-of-scope | TMDB metadata ingest | #68 |
 | `GET /lists/{id}/comments/{sort}` | out-of-scope | list management — writes, items, smart lists | #105 |
 | `GET /lists/{id}/items/movie` | out-of-scope | list management — writes, items, smart lists | #105 |
 | `GET /lists/{id}/items/movie,show` | out-of-scope | list management — writes, items, smart lists | #105 |
@@ -221,6 +220,7 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /comments/{id}/likes` | `GET /v1/comments/{id}/likes` |
 | `GET /comments/{id}/replies` | `GET /v1/comments/{id}/replies` |
 | `GET /countries/{type}` | `GET /v1/countries/{type}` |
+| `GET /episodes/{id}/watchnow/{country}` | `GET /v1/episodes/{id}/watchnow/{country}` |
 | `GET /genres/{type}` | `GET /v1/genres/{type}` |
 | `GET /languages/{type}` | `GET /v1/languages/{type}` |
 | `GET /lists/popular` | `GET /v1/lists/popular` |
