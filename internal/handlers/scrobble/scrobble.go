@@ -78,7 +78,7 @@ type scrobbleItem struct {
 }
 
 type mediaItemIDs struct {
-	TMDB int `json:"tmdb"`
+	TMDB response.FlexibleID `json:"tmdb"`
 }
 
 type scrobbleResponse struct {
@@ -131,7 +131,7 @@ func resolveScrobbleItem(c *fiber.Ctx, req *scrobbleRequest) (string, int64, *in
 	if req.Episode != nil {
 		// Episode scrobble — resolve the show first from episode IDs
 		// The episode IDs contain the TMDB show ID, season number, and episode number
-		mt, id, err := media.ResolveID(c, fmt.Sprintf("%d", req.Episode.IDs.TMDB))
+		mt, id, err := media.ResolveID(c, fmt.Sprintf("%d", req.Episode.IDs.TMDB.Int()))
 		if err != nil {
 			return "", 0, nil, nil, err
 		}
@@ -169,7 +169,7 @@ func resolveScrobbleItem(c *fiber.Ctx, req *scrobbleRequest) (string, int64, *in
 	}
 
 	if req.Movie != nil {
-		mt, id, err := media.ResolveID(c, fmt.Sprintf("%d", req.Movie.IDs.TMDB))
+		mt, id, err := media.ResolveID(c, fmt.Sprintf("%d", req.Movie.IDs.TMDB.Int()))
 		if err != nil {
 			return "", 0, nil, nil, err
 		}
@@ -180,7 +180,7 @@ func resolveScrobbleItem(c *fiber.Ctx, req *scrobbleRequest) (string, int64, *in
 	}
 
 	if req.Show != nil {
-		mt, id, err := media.ResolveID(c, fmt.Sprintf("%d", req.Show.IDs.TMDB))
+		mt, id, err := media.ResolveID(c, fmt.Sprintf("%d", req.Show.IDs.TMDB.Int()))
 		if err != nil {
 			return "", 0, nil, nil, err
 		}

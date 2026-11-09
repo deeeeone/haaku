@@ -1,7 +1,7 @@
 .PHONY: help build bin frontend api-client embed-stub dev dev-backend dev-frontend fmt vet test test-go test-web lint lint-web \
 	tidy run compose-up compose-down pg-up pg-down pg-status test-db test-db-pins \
 	backup backup-list migrate-create migrate-validate migrate-status migrate-up \
-	api-spec api-check clean docker-base docker-omnibus docker-lint lint-go vuln secrets workflow-lint check-size check-bidi coverage check parity-check contract-diff check-migration-ledger format-web
+	api-spec api-check clean docker-base docker-omnibus docker-lint lint-go vuln secrets workflow-lint check-size check-bidi coverage check parity-check contract-diff check-migration-ledger format-web conformance
 
 # pnpm is expected on PATH (the frontend is a pnpm workspace). Override for a
 # checkout that keeps its own toolchain, e.g. make frontend PNPM=/opt/node/bin/pnpm
@@ -235,6 +235,17 @@ test-web: $(INSTALL_STAMP) ## Run the frontend test suite
 test-db: embed-stub ## Run the postgres-tagged suite against a real PostgreSQL (see scripts/test-db.sh)
 	@test -n "$$DATABASE_URL" || { echo 'DATABASE_URL is not set — run: make pg-up' >&2; exit 1; }
 	./scripts/test-db.sh
+
+# --- Trakt conformance (issue #102) ---
+#
+# Boots a seeded, migrated server on a throwaway PostgreSQL and checks every
+# operation docs/parity/parity.yaml grades implemented or divergent against the
+# vendored Trakt contract, in both directions (see cmd/trakt-conformance). It is
+# a gate, not yet part of `make check`: main would go red on day one because
+# conformance finds real response-shape defects on the rows already graded
+# implemented. Flip it into `check` once those are fixed; see the PR body.
+conformance: embed-stub ## Run the Trakt conformance harness against a seeded server
+	./scripts/conformance.sh
 
 # The query budget pins (scripts/ci/db-pins.txt): the hot queries must still be
 # served by their dedicated index. Needs a real PostgreSQL because there is no

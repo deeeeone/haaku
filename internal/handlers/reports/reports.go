@@ -191,8 +191,8 @@ func handleReportContent(c *fiber.Ctx, mediaType string) error {
 	}
 
 	var req reportRequest
-	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	reason := strings.ToLower(strings.TrimSpace(req.Reason))

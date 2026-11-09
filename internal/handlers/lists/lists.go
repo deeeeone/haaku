@@ -206,8 +206,8 @@ func handleCreateList(c *fiber.Ctx) error {
 	uid := userID(c)
 
 	var req createListRequest
-	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 	if strings.TrimSpace(req.Name) == "" {
 		return response.BadRequest(c, "name is required")
@@ -364,8 +364,8 @@ func handleUpdateList(c *fiber.Ctx) error {
 	}
 
 	var req updateListRequest
-	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	updates := map[string]interface{}{}
@@ -519,7 +519,7 @@ func buildListItemResponse(item *database.ListItem) listItemResponse {
 // mediaRef is a reference to a media item by TMDB ID.
 type mediaRef struct {
 	IDs struct {
-		TMDB int `json:"tmdb"`
+		TMDB response.FlexibleID `json:"tmdb"`
 	} `json:"ids"`
 	Rank  *int   `json:"rank,omitempty"`
 	Notes string `json:"notes,omitempty"`
@@ -689,8 +689,8 @@ func handleAddListItems(c *fiber.Ctx) error {
 	}
 
 	var req addItemsRequest
-	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	result := addItemsResponse{
@@ -708,11 +708,11 @@ func handleAddListItems(c *fiber.Ctx) error {
 
 		processMediaItems := func(items []mediaRef, mediaType string) {
 			for _, ref := range items {
-				mediaID, err := resolveItemByTMDB(tx, mediaType, ref.IDs.TMDB)
+				mediaID, err := resolveItemByTMDB(tx, mediaType, ref.IDs.TMDB.Int())
 				if err != nil {
 					result.NotFound = append(result.NotFound, map[string]interface{}{
 						"type":    mediaType,
-						"tmdb_id": ref.IDs.TMDB,
+						"tmdb_id": ref.IDs.TMDB.Int(),
 					})
 					continue
 				}
@@ -794,8 +794,8 @@ func handleRemoveListItems(c *fiber.Ctx) error {
 	}
 
 	var req removeItemsRequest
-	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	removed := 0
@@ -816,7 +816,7 @@ func handleRemoveListItems(c *fiber.Ctx) error {
 		// Remove by media references
 		removeByMedia := func(items []mediaRef, mediaType string) {
 			for _, ref := range items {
-				mediaID, err := resolveItemByTMDB(tx, mediaType, ref.IDs.TMDB)
+				mediaID, err := resolveItemByTMDB(tx, mediaType, ref.IDs.TMDB.Int())
 				if err != nil {
 					continue
 				}
@@ -872,8 +872,8 @@ func handleReorderListItems(c *fiber.Ctx) error {
 	}
 
 	var req reorderRequest
-	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	if len(req.Order) == 0 {
@@ -1191,8 +1191,8 @@ func handleCreateSmartList(c *fiber.Ctx) error {
 	uid := userID(c)
 
 	var req smartListRequest
-	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 	if strings.TrimSpace(req.Name) == "" {
 		return response.BadRequest(c, "name is required")
@@ -1281,8 +1281,8 @@ func handleUpdateSmartList(c *fiber.Ctx) error {
 	}
 
 	var req smartListRequest
-	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	updates := map[string]interface{}{}

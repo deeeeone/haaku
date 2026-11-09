@@ -242,8 +242,8 @@ func handleAddHistory(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 
 	var req historyAddRequest
-	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid JSON body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	resp := historyAddResponse{}
@@ -452,8 +452,8 @@ func handleRemoveHistory(c *fiber.Ctx) error {
 		Shows    []historyShow    `json:"shows,omitempty"`
 		Episodes []historyEpisode `json:"episodes,omitempty"`
 	}
-	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid JSON body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	deleted := 0
@@ -626,8 +626,8 @@ func handleAddCollection(c *fiber.Ctx) error {
 		Movies []historyMovie `json:"movies,omitempty"`
 		Shows  []historyShow  `json:"shows,omitempty"`
 	}
-	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid JSON body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	added, duplicates := 0, 0
@@ -726,8 +726,8 @@ func handleRemoveCollection(c *fiber.Ctx) error {
 		Movies []historyMovie `json:"movies,omitempty"`
 		Shows  []historyShow  `json:"shows,omitempty"`
 	}
-	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid JSON body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	deleted := 0
@@ -862,8 +862,8 @@ func handleAddWatchlist(c *fiber.Ctx) error {
 			Notes *string `json:"notes,omitempty"`
 		} `json:"shows,omitempty"`
 	}
-	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid JSON body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	addedMovies, addedShows := 0, 0
@@ -980,8 +980,8 @@ func handleRemoveWatchlist(c *fiber.Ctx) error {
 		Movies []historyMovie `json:"movies,omitempty"`
 		Shows  []historyShow  `json:"shows,omitempty"`
 	}
-	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid JSON body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	deleted := 0
@@ -1046,8 +1046,8 @@ func handleReorderWatchlist(c *fiber.Ctx) error {
 	var req struct {
 		Rank []int64 `json:"rank"`
 	}
-	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid JSON body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	dbErr := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
@@ -1163,8 +1163,8 @@ func handleAddRatings(c *fiber.Ctx) error {
 		} `json:"seasons,omitempty"`
 		Episodes []ratingEpisode `json:"episodes,omitempty"`
 	}
-	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid JSON body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	// An episode reference without season/number cannot be resolved to a row.
@@ -1315,8 +1315,8 @@ func handleRemoveRatings(c *fiber.Ctx) error {
 		Seasons  []historyMovie   `json:"seasons,omitempty"`
 		Episodes []historyEpisode `json:"episodes,omitempty"`
 	}
-	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid JSON body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	deleted := 0
@@ -1428,8 +1428,8 @@ func handleAddFavorites(c *fiber.Ctx) error {
 		Movies []historyMovie `json:"movies,omitempty"`
 		Shows  []historyShow  `json:"shows,omitempty"`
 	}
-	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid JSON body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	addedMovies, addedShows := 0, 0
@@ -1541,8 +1541,8 @@ func handleRemoveFavorites(c *fiber.Ctx) error {
 		Movies []historyMovie `json:"movies,omitempty"`
 		Shows  []historyShow  `json:"shows,omitempty"`
 	}
-	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid JSON body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	deleted := 0

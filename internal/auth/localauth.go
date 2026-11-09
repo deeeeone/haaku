@@ -13,6 +13,7 @@ import (
 	"github.com/haaku-tv/haaku/internal/config"
 	"github.com/haaku-tv/haaku/internal/database"
 	"github.com/haaku-tv/haaku/internal/openapi"
+	"github.com/haaku-tv/haaku/internal/response"
 	projredis "github.com/haaku-tv/haaku/redis"
 
 	"github.com/gofiber/fiber/v2"
@@ -233,8 +234,8 @@ func handleLocalSignup(c *fiber.Ctx) error {
 		return localNotFound(c)
 	}
 	var req localSignupRequest
-	if err := c.BodyParser(&req); err != nil {
-		return apiBadRequest(c, "invalid JSON body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 	email, err := normalizeEmail(req.Email)
 	if err != nil {
@@ -404,8 +405,8 @@ func handleLocalLogin(c *fiber.Ctx) error {
 		return localNotFound(c)
 	}
 	var req localLoginRequest
-	if err := c.BodyParser(&req); err != nil {
-		return apiBadRequest(c, "invalid JSON body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 	email, err := normalizeEmail(req.Email)
 	if err != nil {
@@ -504,8 +505,8 @@ func handleLocalPasswordReset(c *fiber.Ctx) error {
 		return localNotFound(c)
 	}
 	var req localPasswordResetRequest
-	if err := c.BodyParser(&req); err != nil {
-		return apiBadRequest(c, "invalid JSON body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 	if err := ValidatePassword(req.NewPassword); err != nil {
 		return apiBadRequest(c, err.Error())

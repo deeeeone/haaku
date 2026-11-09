@@ -189,8 +189,8 @@ func handleUpdateMe(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 
 	var req UpdateProfileRequest
-	if err := c.BodyParser(&req); err != nil {
-		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	db, err := database.GetDB()
@@ -296,8 +296,8 @@ func handleUpdateSettings(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 
 	var req UpdateSettingsRequest
-	if err := c.BodyParser(&req); err != nil {
-		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	db, err := database.GetDB()

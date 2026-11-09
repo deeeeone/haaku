@@ -112,8 +112,8 @@ func handleCreateNote(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 
 	var req noteCreateRequest
-	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 	if req.MediaType == "" || req.MediaID == 0 || req.Note == "" {
 		return response.BadRequest(c, "media_type, media_id, and note are required")
@@ -220,8 +220,8 @@ func handleUpdateNote(c *fiber.Ctx) error {
 	}
 
 	var req noteUpdateRequest
-	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 	if req.Note == "" {
 		return response.BadRequest(c, "note is required")

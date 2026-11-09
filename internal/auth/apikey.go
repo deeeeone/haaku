@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/haaku-tv/haaku/internal/openapi"
+	"github.com/haaku-tv/haaku/internal/response"
 	tredis "github.com/haaku-tv/haaku/redis"
 	"io"
 	"log"
@@ -119,8 +120,8 @@ func handleCreateAPIKey(c *fiber.Ctx) error {
 	}
 
 	var req createAPIKeyRequest
-	if err := c.BodyParser(&req); err != nil {
-		return apiBadRequest(c, "invalid JSON body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	// Generate tk_ prefix + 32 random bytes hex

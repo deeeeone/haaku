@@ -132,8 +132,8 @@ func handleCreateSync(c *fiber.Ctx) error {
 	}
 
 	var req SyncCreateRequest
-	if err := c.BodyParser(&req); err != nil {
-		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	if req.Kind != "history" && req.Kind != "ratings" {
