@@ -24,7 +24,7 @@ func registerOpenAPIRoutes() {
 		{Method: "GET", Path: "/v1/movies/{id}", Summary: "Get a movie", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "Movie"}},
 		{Method: "GET", Path: "/v1/movies/{id}/people", Summary: "Get cast and crew for a movie", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "People"}},
 		{Method: "GET", Path: "/v1/movies/{id}/ratings", Summary: "Get ratings for a movie", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "Rating summary"}},
-		{Method: "GET", Path: "/v1/movies/{id}/stats", Summary: "Get stats for a movie", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "Stats", 501: "Not implemented (requires stats engine)"}},
+		{Method: "GET", Path: "/v1/movies/{id}/stats", Summary: "Get stats for a movie", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "Stats"}},
 		{Method: "GET", Path: "/v1/movies/{id}/lists", Summary: "Get lists containing a movie", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "Lists", 501: "Not implemented (requires lists engine)"}},
 		{Method: "GET", Path: "/v1/movies/{id}/watching", Summary: "Users watching a movie right now", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "Watching", 501: "Not implemented (requires activity engine)"}},
 		{Method: "GET", Path: "/v1/movies/{id}/comments/{sort}", Summary: "Get comments for a movie, sorted (newest, oldest, likes, replies, trending)", Tags: []string{"Movies"}, Auth: "optional", StatusCodes: map[int]string{200: "Comments", 400: "Invalid sort", 404: "Movie not found"}},
@@ -37,7 +37,7 @@ func registerOpenAPIRoutes() {
 		{Method: "GET", Path: "/v1/shows/{id}/seasons/{season}/episodes/{episode}", Summary: "Get a single episode", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Episode"}},
 		{Method: "GET", Path: "/v1/shows/{id}/people", Summary: "Get cast and crew for a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "People"}},
 		{Method: "GET", Path: "/v1/shows/{id}/ratings", Summary: "Get ratings for a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Rating summary"}},
-		{Method: "GET", Path: "/v1/shows/{id}/stats", Summary: "Get stats for a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Stats", 501: "Not implemented (requires stats engine)"}},
+		{Method: "GET", Path: "/v1/shows/{id}/stats", Summary: "Get stats for a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Stats"}},
 		{Method: "GET", Path: "/v1/shows/{id}/lists", Summary: "Get lists containing a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Lists", 501: "Not implemented (requires lists engine)"}},
 		{Method: "GET", Path: "/v1/shows/{id}/watching", Summary: "Users watching a show right now", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Watching", 501: "Not implemented (requires activity engine)"}},
 		{Method: "GET", Path: "/v1/shows/{id}/next_episode", Summary: "Get the next scheduled episode for a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Next episode", 204: "No next episode", 404: "Show not found"}},
@@ -169,14 +169,39 @@ func handleGetMovieRatingSummary(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
 
-	return c.JSON(buildRatingSummary(movie.RatingAvg, movie.RatingCount))
+	distribution, err := queryRatingDistribution(db, "movie", movie.ID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
+	}
+	summary := buildRatingSummary(movie.RatingAvg, movie.RatingCount)
+	summary.Distribution = distribution
+	return c.JSON(summary)
 }
 
 func handleGetMovieStats(c *fiber.Ctx) error {
-	// Stats (watchers/plays/collectors/lists) require user activity tables the
-	// stats engine hasn't landed. Fails closed with 501 rather than return
-	// fabricated zero counts.
-	return response.NotImplemented(c, "stats require the stats engine, which is not implemented")
+	id, err := response.ParseIDParam(c, "movie")
+	if err != nil {
+		return err
+	}
+
+	db, dbErr := database.GetDB()
+	if dbErr != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "database unavailable")
+	}
+
+	var movie database.Movie
+	if err := db.First(&movie, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return response.NotFound(c, "movie not found")
+		}
+		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
+	}
+
+	stats, err := queryMovieStats(db, movie.ID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
+	}
+	return c.JSON(stats)
 }
 
 func handleGetMovieLists(c *fiber.Ctx) error {
@@ -430,14 +455,39 @@ func handleGetShowRatingSummary(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
 
-	return c.JSON(buildRatingSummary(show.RatingAvg, show.RatingCount))
+	distribution, err := queryRatingDistribution(db, "show", show.ID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
+	}
+	summary := buildRatingSummary(show.RatingAvg, show.RatingCount)
+	summary.Distribution = distribution
+	return c.JSON(summary)
 }
 
 func handleGetShowStats(c *fiber.Ctx) error {
-	// Stats (watchers/plays/collectors/lists) require user activity tables the
-	// stats engine hasn't landed. Fails closed with 501 rather than return
-	// fabricated zero counts.
-	return response.NotImplemented(c, "stats require the stats engine, which is not implemented")
+	id, err := response.ParseIDParam(c, "show")
+	if err != nil {
+		return err
+	}
+
+	db, dbErr := database.GetDB()
+	if dbErr != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "database unavailable")
+	}
+
+	var show database.Show
+	if err := db.First(&show, id).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return response.NotFound(c, "show not found")
+		}
+		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
+	}
+
+	stats, err := queryShowStats(db, show.ID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
+	}
+	return c.JSON(stats)
 }
 
 func handleGetShowLists(c *fiber.Ctx) error {

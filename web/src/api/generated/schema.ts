@@ -14559,14 +14559,12 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description invalid request */
+            /** @description Invalid id */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
+                content?: never;
             };
             /** @description unauthorized */
             401: {
@@ -14577,14 +14575,12 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description not found */
+            /** @description Movie not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
+                content?: never;
             };
             /** @description conflict */
             409: {
@@ -14621,13 +14617,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
-            };
-            /** @description Not implemented (requires stats engine) */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -21391,14 +21380,12 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description invalid request */
+            /** @description Invalid id */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
+                content?: never;
             };
             /** @description unauthorized */
             401: {
@@ -21409,14 +21396,12 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description not found */
+            /** @description Show not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
+                content?: never;
             };
             /** @description conflict */
             409: {
@@ -21453,13 +21438,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
-            };
-            /** @description Not implemented (requires stats engine) */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };

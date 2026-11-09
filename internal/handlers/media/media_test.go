@@ -52,8 +52,13 @@ func TestBuildRatingSummary(t *testing.T) {
 	if rs.Distribution == nil {
 		t.Error("Distribution must never be nil (MarshalJSON contract)")
 	}
-	if len(rs.Distribution) != 0 {
-		t.Errorf("Distribution should start empty, got %v", rs.Distribution)
+	if len(rs.Distribution) != 10 {
+		t.Errorf("Distribution should carry all 10 Trakt buckets, got %v", rs.Distribution)
+	}
+	for _, bucket := range []string{"1", "5", "10"} {
+		if votes, ok := rs.Distribution[bucket]; !ok || votes != 0 {
+			t.Errorf("Distribution[%q] = %d (present=%v), want a present zero", bucket, votes, ok)
+		}
 	}
 }
 

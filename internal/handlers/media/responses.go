@@ -2,6 +2,7 @@ package media
 
 import (
 	"encoding/json"
+	"strconv"
 
 	"github.com/haaku-tv/haaku/internal/database"
 
@@ -156,12 +157,18 @@ type CrewMemberResponse struct {
 	Department string         `json:"department"`
 }
 
-// StatsResponse is the stats response for a media item.
+// StatsResponse is the Trakt stats response shape. collected_episodes is only
+// set for shows (movies omit the key entirely).
 type StatsResponse struct {
-	Watchers   int64 `json:"watchers"`
-	Plays      int64 `json:"plays"`
-	Collectors int64 `json:"collectors"`
-	Lists      int64 `json:"lists"`
+	Watchers          int64  `json:"watchers"`
+	Plays             int64  `json:"plays"`
+	Collectors        int64  `json:"collectors"`
+	CollectedEpisodes *int64 `json:"collected_episodes,omitempty"`
+	Comments          int64  `json:"comments"`
+	Lists             int64  `json:"lists"`
+	Votes             int64  `json:"votes"`
+	Favorited         int64  `json:"favorited"`
+	Recommended       int64  `json:"recommended"`
 }
 
 // WatchingResponse is a stub — returns empty array for now.
@@ -462,12 +469,22 @@ func buildPersonResponse(lookup map[mediaRef][]database.ExternalID, p *database.
 	return resp
 }
 
+// emptyRatingDistribution is Trakt's histogram: every bucket 1..10 is present,
+// including the ones with no votes.
+func emptyRatingDistribution() map[string]int64 {
+	distribution := make(map[string]int64, 10)
+	for i := 1; i <= 10; i++ {
+		distribution[strconv.Itoa(i)] = 0
+	}
+	return distribution
+}
+
 // buildRatingSummary builds a RatingSummary from avg and count.
 func buildRatingSummary(avg float64, count int64) *RatingSummary {
 	return &RatingSummary{
 		Rating:       avg,
 		Votes:        count,
-		Distribution: make(map[string]int64),
+		Distribution: emptyRatingDistribution(),
 	}
 }
 

@@ -156,9 +156,8 @@ sections:
         engine: "lists engine (issue #67)"
       - trakt: "GET /movies/{id}/stats"
         ours: "GET /v1/movies/{id}/stats"
-        status: blocked-engine
-        rationale: "Registered but responds 501 not_implemented by design - it must not be counted as parity."
-        engine: "stats engine (issue #86)"
+        status: implemented
+        rationale: "Direct aggregates over user_history, user_collection, user_ratings, comments, list_items and user_favorites - no engine or materialised table needed. recommended is 0 because nothing stores a recommendation."
       - trakt: "GET /movies/{id}/watching"
         ours: "GET /v1/movies/{id}/watching"
         status: blocked-engine
@@ -259,9 +258,8 @@ sections:
         rationale: "Served at Trakt's path: the cached TMDB provider sets, shaped to the contract's category object."
       - trakt: "GET /shows/{id}/stats"
         ours: "GET /v1/shows/{id}/stats"
-        status: blocked-engine
-        rationale: "Registered but responds 501 not_implemented; not parity."
-        engine: "stats engine (issue #86)"
+        status: implemented
+        rationale: "Direct aggregates over the show's episode history plus user_collection, user_ratings, comments, list_items and user_favorites; includes collected_episodes. recommended is 0 because nothing stores a recommendation."
       - trakt: "GET /shows/{id}/watching"
         ours: "GET /v1/shows/{id}/watching"
         status: blocked-engine

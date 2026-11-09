@@ -27,6 +27,7 @@ func setupShowsDB(t *testing.T) *gorm.DB {
 	models := []interface{}{
 		&database.Movie{}, &database.Show{}, &database.Season{},
 		&database.Episode{}, &database.Person{}, &database.ExternalID{},
+		&database.UserRating{},
 	}
 	if err := db.AutoMigrate(models...); err != nil {
 		t.Fatalf("migrate test DB: %v", err)
