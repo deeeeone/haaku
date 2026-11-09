@@ -521,12 +521,12 @@ sections:
         rationale: "Served at Trakt's path: resolves the external id from external_ids and returns the contract's search-item array."
       - trakt: "POST /search/recent/"
         ours: "POST /v1/search/recent"
-        status: blocked-data
-        rationale: "Persisting a recent search needs a recent-searches table, which does not exist (search is stateless today)."
+        status: implemented
+        rationale: "Served at POST /v1/search/recent; upserts a global recent-search counter keyed by (type, id, query)."
       - trakt: "GET /search/recent_by_id/global/{type}"
         ours: "GET /v1/search/recent_by_id/global/{type}"
-        status: blocked-data
-        rationale: "Same missing store; the Trakt id-keyed variant too."
+        status: implemented
+        rationale: "Served at GET /v1/search/recent_by_id/global/{type}; groups stored searches by item with SUM(count) and MAX(last_searched_at)."
   - name: "Comments"
     rows:
       - trakt: "GET /comments/trending/{comment_type}/{type}"
@@ -922,9 +922,9 @@ sections:
         status: out-of-scope
         rationale: "deferred: the item-to-item recommendations engine tracked by #49"
       - trakt: "GET /search/{type}/exact"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: recent-search persistence tracked by #70"
+        ours: "GET /v1/search/{type}/exact"
+        status: implemented
+        rationale: "Served at GET /v1/search/{type}/exact; case-insensitive exact title match for movies and shows."
       - trakt: "GET /shows/favorited/{period}"
         ours: ""
         status: out-of-scope

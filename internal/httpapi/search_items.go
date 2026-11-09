@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/haaku-tv/haaku/internal/contractshape"
 	"github.com/haaku-tv/haaku/internal/database"
 	"github.com/haaku-tv/haaku/internal/handlers/media"
 	"github.com/haaku-tv/haaku/internal/metadata"
@@ -46,6 +47,25 @@ const (
 	searchSourceCatalog = "catalog"
 	searchSourceTMDB    = "tmdb"
 )
+
+// contractSearchItems renders database search hits in the contract's search-item
+// shape ({score, type, movie|show}), using contractshape for the media objects.
+// Both the type search and the exact-title search return this shape.
+func contractSearchItems(results []database.SearchResult) []contractSearchItem {
+	out := make([]contractSearchItem, 0, len(results))
+	for i := range results {
+		result := &results[i]
+		item := contractSearchItem{Type: result.Type}
+		if result.Movie != nil {
+			item.Movie = contractshape.Movie(result.Movie)
+		}
+		if result.Show != nil {
+			item.Show = contractshape.Show(result.Show)
+		}
+		out = append(out, item)
+	}
+	return out
+}
 
 // catalogSearchItems renders local hits as cards, using the same builders the
 // media endpoints use so ids (including the TVDB link) are complete.

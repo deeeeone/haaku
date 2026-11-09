@@ -166,8 +166,15 @@ func RegisterRoutes(app *fiber.App) {
 		},
 	})
 
+	// Recent-search persistence and the exact-title contract route (issue #70).
+	api.Post("/search/recent", auth.AuthRequired(), handlePostRecentSearch)
+	api.Get("/search/recent_by_id/global/:type", handleRecentSearchesByID)
+
 	// Contract-shaped search paths (static /search/exact and /search/lookup
 	// are registered above, so the parameterised routes cannot swallow them).
+	// The exact route must precede the two-segment id lookup: both three-segment
+	// forms would otherwise match "/search/movie/exact" as an id lookup.
+	api.Get("/search/:type/exact", handleContractSearchExact)
 	api.Get("/search/:type", handleContractSearchType)
 	api.Get("/search/:id_type/:id", handleContractSearchLookup)
 

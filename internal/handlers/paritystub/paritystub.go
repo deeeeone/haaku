@@ -41,7 +41,6 @@ func RegisterRoutes(api fiber.Router) {
 	registerStub67(api)
 	registerStub68(api)
 	registerStub69(api)
-	registerStub70(api)
 	registerStub106(api)
 }
 
@@ -53,7 +52,6 @@ func routeDefs() []openapi.RouteDef {
 	all = append(all, defsStub67()...)
 	all = append(all, defsStub68()...)
 	all = append(all, defsStub69()...)
-	all = append(all, defsStub70()...)
 	all = append(all, defsStub106()...)
 	return all
 }

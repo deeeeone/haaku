@@ -108,6 +108,23 @@ func EpisodeIDs(e *database.Episode) map[string]any {
 	return idsMap(e.ID, "", "", 0, 0)
 }
 
+// PersonIDs builds the contract ids object for a person. The contract requires
+// slug and trakt; the row has no slug column, so the same stable local fallback
+// the movie/show helpers use is derived from the row id.
+func PersonIDs(p *database.Person) map[string]any {
+	ids := map[string]any{
+		"trakt": p.ID,
+		"slug":  "person-" + strconv.FormatInt(p.ID, 10),
+	}
+	if p.ImdbID != "" {
+		ids["imdb"] = p.ImdbID
+	}
+	if p.TmdbID != 0 {
+		ids["tmdb"] = p.TmdbID
+	}
+	return ids
+}
+
 // SeasonIDs builds the contract ids object for a season. The seasons table
 // stores no external ids, so those keys are null; the contract requires only
 // `trakt`.
@@ -237,6 +254,37 @@ func Episode(e *database.Episode, seasonNumber int) map[string]any {
 		"after_credits":          nil,
 		"during_credits":         nil,
 		"images":                 map[string]any{"screenshot": []string{}},
+	}
+}
+
+// Person renders a person in the contract's person object shape. The contract
+// requires name and ids; fields it types as null are emitted as null rather
+// than inventing a value the store does not hold.
+func Person(p *database.Person) map[string]any {
+	images := map[string]any{"headshot": []string{}, "fanart": []string{}}
+	if p.Images != nil {
+		if v, ok := p.Images["headshot"]; ok {
+			images["headshot"] = v
+		}
+		if v, ok := p.Images["fanart"]; ok {
+			images["fanart"] = v
+		}
+	}
+	return map[string]any{
+		"name":                 p.Name,
+		"ids":                  PersonIDs(p),
+		"social_ids":           nil,
+		"biography":            NullableString(p.Biography),
+		"summary":              nil,
+		"birthday":             Date(p.Birthday),
+		"height":               nil,
+		"death":                Date(p.Deathday),
+		"birthplace":           nil,
+		"homepage":             nil,
+		"gender":               nil,
+		"known_for_department": nil,
+		"updated_at":           Timestamp(p.UpdatedAt),
+		"images":               images,
 	}
 }
 

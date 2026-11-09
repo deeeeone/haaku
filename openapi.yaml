@@ -7451,6 +7451,54 @@ paths:
             summary: Search one media type (contract path)
             tags:
                 - Search
+    /v1/search/{type}/exact:
+        get:
+            operationId: _v1_search_type_exact_GET
+            responses:
+                "200":
+                    description: Search results
+                "400":
+                    description: Invalid type or query
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Exact title match for one media type (contract path)
+            tags:
+                - Search
     /v1/search/exact:
         get:
             operationId: _v1_search_exact_GET
@@ -7543,24 +7591,14 @@ paths:
         post:
             operationId: _v1_search_recent_POST
             responses:
+                "201":
+                    description: Recent search recorded
                 "400":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
+                    description: Invalid type or body
                 "401":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: unauthorized
+                    description: Unauthorized
                 "404":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Search item not found
                 "409":
                     content:
                         application/json:
@@ -7585,24 +7623,20 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented — Persisting a recent search needs a recent-searches table, which does not exist (search is stateless  (#70)
             security:
                 - apiKey: []
                 - oauth: []
-            summary: Parity stub — not implemented (search engine)
+            summary: Record a recent search (contract path)
             tags:
                 - Search
     /v1/search/recent_by_id/global/{type}:
         get:
             operationId: _v1_search_recent_by_id_global_type_GET
             responses:
+                "200":
+                    description: Trending search items
                 "400":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
+                    description: Invalid type
                 "401":
                     content:
                         application/json:
@@ -7639,12 +7673,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented — Same missing store; the Trakt id-keyed variant too. (#70)
-            security:
-                - apiKey: []
-                - oauth: []
-            summary: Parity stub — not implemented (search engine)
+            security: []
+            summary: Trending recent searches for one media type (contract path)
             tags:
                 - Search
     /v1/seasons/{id}:

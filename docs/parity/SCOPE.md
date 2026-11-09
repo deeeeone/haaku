@@ -11,7 +11,7 @@ path (modulo our `/v1` prefix), with a real 2xx — except the recommendation/re
 engine, which stays an honest `501 not_implemented` and graded `blocked-engine` by
 the owner's carve-out. Done is `go run ./cmd/parity`, not a PR count.
 
-Contract operations: **336**. Not yet served (**in scope**): **168**. Out by owner decision: **31**. Served today: **136**.
+Contract operations: **336**. Not yet served (**in scope**): **165**. Out by owner decision: **31**. Served today: **139**.
 
 ## Out of scope (owner decisions, re-affirmed)
 
@@ -110,9 +110,7 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /people/{id}/lists/{type}/{sort}` | blocked-engine | lists engine — per-item lists | #67 |
 | `GET /recommendations/movies/` | out-of-scope | related / recommendations (owner carve-out: stays 501) | #49 |
 | `GET /recommendations/shows/` | out-of-scope | related / recommendations (owner carve-out: stays 501) | #49 |
-| `GET /search/recent_by_id/global/{type}` | blocked-data | search engine | #70 |
 | `GET /search/{type}` | divergent | search engine | #70 |
-| `GET /search/{type}/exact` | out-of-scope | search engine | #70 |
 | `GET /shows/collected/{period}` | blocked-engine | stats and rankings | #66 |
 | `GET /shows/favorited/{period}` | out-of-scope | stats and rankings | #66 |
 | `GET /shows/hot` | blocked-engine | stats and rankings | #66 |
@@ -198,7 +196,6 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `POST /lists/{id}/report` | out-of-scope | list management — writes, items, smart lists | #105 |
 | `POST /movies/{id}/refresh/justwatch` | out-of-scope | TMDB metadata ingest | #68 |
 | `POST /people/{id}/report` | out-of-scope | TMDB metadata ingest | #68 |
-| `POST /search/recent/` | blocked-data | search engine | #70 |
 | `POST /shows/{id}/refresh/justwatch` | out-of-scope | TMDB metadata ingest | #68 |
 | `POST /shows/{id}/seasons/{season}/episodes/{episode}/report` | out-of-scope | TMDB metadata ingest | #68 |
 | `POST /shows/{id}/seasons/{season}/report` | out-of-scope | TMDB metadata ingest | #68 |
@@ -274,7 +271,9 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /people/updates/{start_date}` | `GET /v1/people/updates/{start_date}` |
 | `GET /people/{id}/movies` | `GET /v1/people/{id}/movies` |
 | `GET /people/{id}/shows` | `GET /v1/people/{id}/shows` |
+| `GET /search/recent_by_id/global/{type}` | `GET /v1/search/recent_by_id/global/{type}` |
 | `GET /search/{id_type}/{id}` | `GET /v1/search/{id_type}/{id}` |
+| `GET /search/{type}/exact` | `GET /v1/search/{type}/exact` |
 | `GET /shows/anticipated` | `GET /v1/shows/anticipated` |
 | `GET /shows/popular` | `GET /v1/shows/popular` |
 | `GET /shows/trending` | `GET /v1/shows/trending` |
@@ -347,6 +346,7 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `POST /scrobble/pause` | `POST /v1/scrobble/pause` |
 | `POST /scrobble/start` | `POST /v1/scrobble/start` |
 | `POST /scrobble/stop` | `POST /v1/scrobble/stop` |
+| `POST /search/recent/` | `POST /v1/search/recent` |
 | `POST /seasons/{id}/report` | `POST /v1/seasons/{id}/report` |
 | `POST /shows/{id}/progress/watched/reset` | `POST /v1/shows/{id}/progress/watched/reset` |
 | `POST /shows/{id}/report` | `POST /v1/shows/{id}/report` |

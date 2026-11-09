@@ -8,6 +8,7 @@ import (
 	"github.com/haaku-tv/haaku/internal/contractshape"
 	"github.com/haaku-tv/haaku/internal/database"
 	"github.com/haaku-tv/haaku/internal/openapi"
+	"github.com/haaku-tv/haaku/internal/response"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -40,6 +41,17 @@ func init() {
 		StatusCodes: map[int]string{
 			200: "Media found",
 			404: "No media found",
+		},
+	})
+	openapi.Register(openapi.RouteDef{
+		Method:  "GET",
+		Path:    "/v1/search/{type}/exact",
+		Summary: "Exact title match for one media type (contract path)",
+		Tags:    []string{"Search"},
+		Auth:    "none",
+		StatusCodes: map[int]string{
+			200: "Search results",
+			400: "Invalid type or query",
 		},
 	})
 }
@@ -97,19 +109,58 @@ func handleContractSearchType(c *fiber.Ctx) error {
 		return writeError(c, fiber.StatusInternalServerError, "internal", "search failed")
 	}
 
-	out := make([]contractSearchItem, 0, len(local.Results))
-	for i := range local.Results {
-		r := &local.Results[i]
-		item := contractSearchItem{Score: 0, Type: r.Type}
-		if r.Movie != nil {
-			item.Movie = contractshape.Movie(r.Movie)
-		}
-		if r.Show != nil {
-			item.Show = contractshape.Show(r.Show)
-		}
-		out = append(out, item)
-	}
+	out := contractSearchItems(local.Results)
 	setSearchPagination(c, page.page, page.limit, local.TotalItems, len(out))
+	return c.JSON(out)
+}
+
+// handleContractSearchExact serves GET /v1/search/{type}/exact: a case-insensitive
+// exact title match, paginated, in the same contract search-item shape as
+// GET /v1/search/{type}.
+func handleContractSearchExact(c *fiber.Ctx) error {
+	mediaType := strings.ToLower(strings.TrimSpace(c.Params("type")))
+	if !contractSearchTypes[mediaType] {
+		return badRequest(c, "type must be one of: movie, show")
+	}
+
+	query := strings.TrimSpace(c.Query("query"))
+	if query == "" {
+		return badRequest(c, "query parameter is required")
+	}
+
+	page, limit := response.ParsePagination(c, 25)
+
+	db, dbErr := database.GetDB()
+	if dbErr != nil {
+		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+	}
+
+	offset := (page - 1) * limit
+	var results []database.SearchResult
+	var total int64
+	switch mediaType {
+	case "movie":
+		movies, count, err := database.ExactTitleMovies(db, query, offset, limit)
+		if err != nil {
+			return writeError(c, fiber.StatusInternalServerError, "internal", "search failed")
+		}
+		total = count
+		for i := range movies {
+			results = append(results, database.SearchResult{Type: "movie", Movie: &movies[i]})
+		}
+	case "show":
+		shows, count, err := database.ExactTitleShows(db, query, offset, limit)
+		if err != nil {
+			return writeError(c, fiber.StatusInternalServerError, "internal", "search failed")
+		}
+		total = count
+		for i := range shows {
+			results = append(results, database.SearchResult{Type: "show", Show: &shows[i]})
+		}
+	}
+
+	out := contractSearchItems(results)
+	response.SetPaginationHeaders(c, page, limit, total, len(out))
 	return c.JSON(out)
 }
 
