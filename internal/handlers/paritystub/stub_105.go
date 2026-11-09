@@ -24,11 +24,11 @@ func registerStub105(api fiber.Router) {
 func defsStub105() []openapi.RouteDef {
 	return []openapi.RouteDef{
 		{
-			Method:      "GET",
-			Path:        "/v1/smart-lists/templates",
-			Summary:     "Parity stub — not implemented (parity tracker)",
-			Tags:        []string{"Contractsurfacemissingfromtheoriginalinventory"},
-			Auth:        "none",
+			Method:  "GET",
+			Path:    "/v1/smart-lists/templates",
+			Summary: "Parity stub — not implemented (parity tracker)",
+			Tags:    []string{"Contractsurfacemissingfromtheoriginalinventory"},
+			Auth:    "none",
 			StatusCodes: map[int]string{501: "Not implemented — No smart-list template catalog exists in our store; the contract's template set is Trakt-authored re (#105)"},
 		},
 	}
