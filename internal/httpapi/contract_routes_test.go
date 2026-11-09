@@ -71,6 +71,15 @@ func TestContractRoutesSmoke(t *testing.T) {
 		"/v1/sync/watchlist/movies/rank/asc",
 		"/v1/sync/history/movies/1",
 		"/v1/users/user_test/watchlist/movies/rank/asc",
+		// issue #106 contract-shaped sync reads
+		"/v1/sync/collection/media",
+		"/v1/sync/progress/up_next",
+		"/v1/sync/progress/up_next_nitro",
+		"/v1/sync/progress/watched",
+		"/v1/sync/watched/movies",
+		"/v1/sync/watched/shows",
+		"/v1/sync/watched/seasons",
+		"/v1/sync/watched/episodes",
 	}
 	for _, path := range arrayRoutes {
 		raw := doContractRequest(t, app, path)
@@ -86,6 +95,10 @@ func TestContractRoutesSmoke(t *testing.T) {
 		"/v1/shows/1/seasons/1/ratings",
 		"/v1/shows/1/seasons/1/stats",
 		"/v1/users/settings",
+		// issue #106 minimal collection reads (objects / maps)
+		"/v1/sync/collection/minimal/movies",
+		"/v1/sync/collection/minimal/shows",
+		"/v1/sync/collection/minimal/episodes",
 	}
 	for _, path := range objectRoutes {
 		raw := doContractRequest(t, app, path)

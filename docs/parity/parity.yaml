@@ -625,9 +625,9 @@ sections:
         status: implemented
         rationale: "Served at DELETE /v1/notes/{id}; the path shape matches the contract."
       - trakt: "DELETE /sync/playback/{id}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+        ours: "DELETE /v1/sync/playback/{id}"
+        status: implemented
+        rationale: "Serves the caller's playback entry by the media id the playback read returns; deletes the matching user_playback row and answers 204, or 404 when the caller owns no such entry. The path carries no media_type, so an id matching rows of more than one media_type is rejected with 400 rather than deleting several kinds."
       - trakt: "DELETE /users/requests/{id}"
         ours: ""
         status: out-of-scope
@@ -969,21 +969,25 @@ sections:
         status: out-of-scope
         rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
       - trakt: "GET /sync/collection/media"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+        ours: "GET /v1/sync/collection/media"
+        status: divergent
+        compat: "serves the full collection (movie, show and episode rows) with their media objects, page/limit honoured; available_on (streaming-availability narrowing) is not stored and is rejected with 400 rather than ignored"
+        rationale: "Serves real user_collection rows as the contract's media array."
       - trakt: "GET /sync/collection/minimal/episodes"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+        ours: "GET /v1/sync/collection/minimal/episodes"
+        status: divergent
+        compat: "serves episode collection rows as an id -> collected_at map; available_on (streaming-availability narrowing) is not stored and is rejected with 400 rather than ignored"
+        rationale: "Serves real user_collection episode rows in the contract's minimal map shape."
       - trakt: "GET /sync/collection/minimal/movies"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+        ours: "GET /v1/sync/collection/minimal/movies"
+        status: divergent
+        compat: "serves movie collection rows as an id -> collected_at map; available_on (streaming-availability narrowing) is not stored and is rejected with 400 rather than ignored"
+        rationale: "Serves real user_collection movie rows in the contract's minimal map shape."
       - trakt: "GET /sync/collection/minimal/shows"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+        ours: "GET /v1/sync/collection/minimal/shows"
+        status: divergent
+        compat: "serves episode collection rows nested as show -> season -> episode -> collected_at; available_on is not stored (rejected with 400) and show-level collection rows carry no per-episode date, so they are not representable here (episode collection writes are #71)"
+        rationale: "Serves real user_collection episode rows nested per show/season/episode."
       - trakt: "GET /sync/playback"
         ours: "GET /v1/sync/playback"
         status: implemented
@@ -997,21 +1001,24 @@ sections:
         status: implemented
         rationale: "Served at GET /v1/sync/playback/movies; the path shape matches the contract."
       - trakt: "GET /sync/progress/up_next"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+        ours: "GET /v1/sync/progress/up_next"
+        status: divergent
+        compat: "serves the caller's in-progress shows with aired/completed, next_episode, last_episode and last_watched_at, ordered by last_watched_at/title/aired; other sort_by values are rejected and reset_at is always null (resets are not stored)"
+        rationale: "Computed from user_history + episodes; a caught-up show is excluded."
       - trakt: "GET /sync/progress/up_next_nitro"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+        ours: "GET /v1/sync/progress/up_next_nitro"
+        status: divergent
+        compat: "serves intent=all|continue|start|completed (start draws from the watchlist's unwatched shows) with the same progress object as up_next; the watchnow/genres/ratings/date/parental narrowing filters are not stored and are rejected with 400 rather than ignored"
+        rationale: "A distinct intent-filtered variant, not an alias of up_next."
       - trakt: "GET /sync/progress/watched"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+        ours: "GET /v1/sync/progress/watched"
+        status: divergent
+        compat: "serves watched progress for the caller's shows with hide_completed/hide_not_completed honoured; only_rewatching is rejected (rewatch counts are not stored) and only last_watched_at/title/aired sorts are supported"
+        rationale: "Computed from user_history + episodes."
       - trakt: "GET /sync/watched/{type}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+        ours: "GET /v1/sync/watched/{type}"
+        status: implemented
+        rationale: "Serves movies, shows, seasons and episodes from user_history (episode rows folded into their show/season); plays and last_watched_at are real counts, and extended maps to the full stored object shape."
       - trakt: "GET /users/blocked"
         ours: "GET /v1/users/blocked"
         status: implemented
@@ -1399,9 +1406,9 @@ sections:
         status: implemented
         rationale: "Served at POST /v1/sync/favorites/remove; the path shape matches the contract."
       - trakt: "POST /sync/favorites/reorder"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+        ours: "POST /v1/sync/favorites/reorder"
+        status: implemented
+        rationale: "Writes 1-based ranks onto the caller's favorite rows in the order given; returns updated/skipped_ids/list with a real item_count, and ids the caller does not own are reported in skipped_ids rather than ranked."
       - trakt: "POST /sync/history"
         ours: "POST /v1/sync/history"
         status: implemented
@@ -1427,9 +1434,9 @@ sections:
         status: implemented
         rationale: "Served at POST /v1/sync/watchlist/remove; the path shape matches the contract."
       - trakt: "POST /sync/watchlist/reorder"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+        ours: "POST /v1/sync/watchlist/reorder"
+        status: implemented
+        rationale: "Writes 1-based ranks onto the caller's watchlist rows in the order given (the GET /sync/watchlist read reflects the new order); returns updated/skipped_ids/list, reporting unowned ids in skipped_ids."
       - trakt: "POST /users/hidden/calendar/remove"
         ours: ""
         status: out-of-scope
@@ -1535,17 +1542,19 @@ sections:
         status: implemented
         rationale: "Served at PUT /v1/notes/{id}; the path shape matches the contract."
       - trakt: "PUT /sync/favorites/{list_item_id}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+        ours: "PUT /v1/sync/favorites/{list_item_id}"
+        status: divergent
+        compat: "serves rank updates on the caller's favorite row (204/404); favorites carry no notes column, so a notes field is rejected with 400 rather than silently dropped"
+        rationale: "Updates the favorite row addressable by the id the favorites read returns."
       - trakt: "PUT /sync/watchlist"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+        ours: "PUT /v1/sync/watchlist"
+        status: divergent
+        compat: "adds missing movie/show items and reports added/existing/not_found with real counts; user_watchlist stores movie and show rows only, so seasons/episodes are rejected with 400 rather than dropped (#71)"
+        rationale: "Upserts the caller's watchlist from stored media rows."
       - trakt: "PUT /sync/watchlist/{list_item_id}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+        ours: "PUT /v1/sync/watchlist/{list_item_id}"
+        status: implemented
+        rationale: "Updates notes and rank on the caller's watchlist row addressable by the id the watchlist read returns; answers 204, or 404 when the caller owns no such row."
       - trakt: "PUT /users/settings"
         ours: "PUT /v1/users/settings"
         status: implemented

@@ -227,6 +227,11 @@ func RegisterRoutes(app *fiber.App) {
 
 	// Sync history/collection/watchlist/ratings/favorites (T3.1 + T3.2)
 	sync.RegisterRoutes(api)
+	// Remaining contract-shaped sync reads/writes (issue #106). Registered
+	// after RegisterRoutes (so /watchlist/reorder precedes /watchlist/:id) and
+	// before RegisterContractRoutes (so static /collection/media precedes
+	// /collection/:type).
+	sync.RegisterRemainingRoutes(api)
 	// Contract-shaped sync reads (Trakt's /sync/{collection}/{type}[/...]).
 	sync.RegisterContractRoutes(api)
 

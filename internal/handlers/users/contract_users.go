@@ -136,7 +136,7 @@ func handleContractUserWatchlist(c *fiber.Ctx) error {
 		r := &rows[i]
 		item := map[string]any{
 			"rank":      r.Rank,
-			"id":        r.MediaID,
+			"id":        r.ID,
 			"listed_at": contractshape.Timestamp(r.ListedAt),
 			"type":      r.MediaType,
 		}

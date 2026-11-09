@@ -10473,6 +10473,190 @@ paths:
             summary: Parity stub — not implemented (season/episode-level sync)
             tags:
                 - Sync
+    /v1/sync/collection/media:
+        get:
+            operationId: _v1_sync_collection_media_GET
+            responses:
+                "200":
+                    description: Collection items
+                "400":
+                    description: Unsupported filter
+                "401":
+                    description: Unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Collection media (movies, shows, episodes) with media objects
+            tags:
+                - Sync
+    /v1/sync/collection/minimal/episodes:
+        get:
+            operationId: _v1_sync_collection_minimal_episodes_GET
+            responses:
+                "200":
+                    description: Minimal episode collection
+                "400":
+                    description: Unsupported filter
+                "401":
+                    description: Unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Minimal episode collection (id -> collected_at)
+            tags:
+                - Sync
+    /v1/sync/collection/minimal/movies:
+        get:
+            operationId: _v1_sync_collection_minimal_movies_GET
+            responses:
+                "200":
+                    description: Minimal movie collection
+                "400":
+                    description: Unsupported filter
+                "401":
+                    description: Unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Minimal movie collection (id -> collected_at)
+            tags:
+                - Sync
+    /v1/sync/collection/minimal/shows:
+        get:
+            operationId: _v1_sync_collection_minimal_shows_GET
+            responses:
+                "200":
+                    description: Minimal show collection
+                "400":
+                    description: Unsupported filter
+                "401":
+                    description: Unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Minimal show collection (show -> season -> episode -> collected_at)
+            tags:
+                - Sync
     /v1/sync/collection/movies:
         get:
             operationId: _v1_sync_collection_movies_GET
@@ -10722,6 +10906,48 @@ paths:
             summary: Add favorites
             tags:
                 - Sync
+    /v1/sync/favorites/{list_item_id}:
+        put:
+            operationId: _v1_sync_favorites_list_item_id_PUT
+            responses:
+                "204":
+                    description: Updated
+                "400":
+                    description: Unsupported field
+                "401":
+                    description: Unauthorized
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Update a favorite item
+            tags:
+                - Sync
     /v1/sync/favorites/{type}/{sort_by}/{sort_how}:
         get:
             operationId: _v1_sync_favorites_type_sort_by_sort_how_GET
@@ -10866,6 +11092,56 @@ paths:
                 - apiKey: []
                 - oauth: []
             summary: Remove favorites
+            tags:
+                - Sync
+    /v1/sync/favorites/reorder:
+        post:
+            operationId: _v1_sync_favorites_reorder_POST
+            responses:
+                "200":
+                    description: Reorder result
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    description: Unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Reorder favorite items
             tags:
                 - Sync
     /v1/sync/favorites/shows:
@@ -11321,6 +11597,52 @@ paths:
             summary: Get all saved playback positions
             tags:
                 - Sync
+    /v1/sync/playback/{id}:
+        delete:
+            operationId: _v1_sync_playback_id_DELETE
+            responses:
+                "204":
+                    description: Removed
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    description: Unauthorized
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Remove a playback item (contract path)
+            tags:
+                - Sync
     /v1/sync/playback/{media_type}/{media_id}:
         delete:
             operationId: _v1_sync_playback_media_type_media_id_DELETE
@@ -11469,6 +11791,144 @@ paths:
                 - apiKey: []
                 - oauth: []
             summary: Get paused/resumed movie playback positions for current user
+            tags:
+                - Sync
+    /v1/sync/progress/up_next:
+        get:
+            operationId: _v1_sync_progress_up_next_GET
+            responses:
+                "200":
+                    description: Up next progress
+                "400":
+                    description: Unsupported sort
+                "401":
+                    description: Unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Up next progress across the caller's history
+            tags:
+                - Sync
+    /v1/sync/progress/up_next_nitro:
+        get:
+            operationId: _v1_sync_progress_up_next_nitro_GET
+            responses:
+                "200":
+                    description: Up next progress (nitro)
+                "400":
+                    description: Unsupported filter
+                "401":
+                    description: Unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Up next progress with intent filtering
+            tags:
+                - Sync
+    /v1/sync/progress/watched:
+        get:
+            operationId: _v1_sync_progress_watched_GET
+            responses:
+                "200":
+                    description: Watched progress
+                "400":
+                    description: Unsupported filter
+                "401":
+                    description: Unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Watched progress across the caller's shows
             tags:
                 - Sync
     /v1/sync/ratings:
@@ -11866,6 +12326,52 @@ paths:
             summary: Get show ratings
             tags:
                 - Sync
+    /v1/sync/watched/{type}:
+        get:
+            operationId: _v1_sync_watched_type_GET
+            responses:
+                "200":
+                    description: Watched items
+                "400":
+                    description: Invalid type
+                "401":
+                    description: Unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Watched list for one media type
+            tags:
+                - Sync
     /v1/sync/watchlist:
         get:
             operationId: _v1_sync_watchlist_GET
@@ -11963,6 +12469,97 @@ paths:
                 - apiKey: []
                 - oauth: []
             summary: Add watchlist items
+            tags:
+                - Sync
+        put:
+            operationId: _v1_sync_watchlist_PUT
+            responses:
+                "200":
+                    description: Update result
+                "400":
+                    description: Unsupported media type
+                "401":
+                    description: Unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Update watchlist (add missing items)
+            tags:
+                - Sync
+    /v1/sync/watchlist/{list_item_id}:
+        put:
+            operationId: _v1_sync_watchlist_list_item_id_PUT
+            responses:
+                "204":
+                    description: Updated
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    description: Unauthorized
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Update a watchlist item
             tags:
                 - Sync
     /v1/sync/watchlist/{type}/{sort_by}/{sort_how}:
@@ -12112,6 +12709,55 @@ paths:
             tags:
                 - Sync
     /v1/sync/watchlist/reorder:
+        post:
+            operationId: _v1_sync_watchlist_reorder_POST
+            responses:
+                "200":
+                    description: Reorder result
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    description: Unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Reorder watchlist items
+            tags:
+                - Sync
         put:
             operationId: _v1_sync_watchlist_reorder_PUT
             responses:

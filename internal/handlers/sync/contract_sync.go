@@ -153,7 +153,7 @@ func handleContractFavorites(c *fiber.Ctx) error {
 	for i := range rows {
 		out = append(out, map[string]any{
 			"rank":      rows[i].Rank,
-			"id":        rows[i].MediaID,
+			"id":        rows[i].ID,
 			"listed_at": contractshape.Timestamp(rows[i].FavoritedAt),
 			"type":      rows[i].MediaType,
 		})
@@ -192,7 +192,7 @@ func handleContractWatchlist(c *fiber.Ctx) error {
 	for i := range rows {
 		out = append(out, map[string]any{
 			"rank":      rows[i].Rank,
-			"id":        rows[i].MediaID,
+			"id":        rows[i].ID,
 			"listed_at": contractshape.Timestamp(rows[i].ListedAt),
 			"type":      rows[i].MediaType,
 		})
