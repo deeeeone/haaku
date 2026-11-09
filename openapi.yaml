@@ -5079,6 +5079,54 @@ paths:
             summary: Get ratings for a movie
             tags:
                 - Movies
+    /v1/movies/{id}/refresh/justwatch:
+        post:
+            operationId: _v1_movies_id_refresh_justwatch_POST
+            responses:
+                "201":
+                    description: Refresh queued
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    description: Unauthorized
+                "404":
+                    description: Media not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+                "503":
+                    description: Provider data temporarily unavailable
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Re-fetch a title's watch providers (contract path)
+            tags:
+                - Watch Now
     /v1/movies/{id}/related:
         get:
             operationId: _v1_movies_id_related_GET
@@ -5135,12 +5183,10 @@ paths:
         get:
             operationId: _v1_movies_id_releases_country_GET
             responses:
+                "200":
+                    description: Releases
                 "400":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
+                    description: Invalid country code
                 "401":
                     content:
                         application/json:
@@ -5148,11 +5194,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: unauthorized
                 "404":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Movie not found
                 "409":
                     content:
                         application/json:
@@ -5177,10 +5219,10 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented — movies has one released DATE; per-country release types (theatrical/digital/physical) are not modell (#68)
+                "503":
+                    description: Provider data temporarily unavailable
             security: []
-            summary: Parity stub — not implemented (TMDB metadata ingest)
+            summary: Get per-country releases for a movie (contract path)
             tags:
                 - Movies
     /v1/movies/{id}/report:
@@ -5283,6 +5325,8 @@ paths:
         get:
             operationId: _v1_movies_id_studios_GET
             responses:
+                "200":
+                    description: Studios
                 "400":
                     content:
                         application/json:
@@ -5296,11 +5340,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: unauthorized
                 "404":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Movie not found
                 "409":
                     content:
                         application/json:
@@ -5325,10 +5365,60 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented — No production-company table; TMDB company ids are not ingested. (#68)
+                "503":
+                    description: Provider data temporarily unavailable
             security: []
-            summary: Parity stub — not implemented (TMDB metadata ingest)
+            summary: Get studios for a movie (contract path)
+            tags:
+                - Movies
+    /v1/movies/{id}/translations:
+        get:
+            operationId: _v1_movies_id_translations_GET
+            responses:
+                "200":
+                    description: Translations
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    description: Movie not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+                "503":
+                    description: Provider data temporarily unavailable
+            security: []
+            summary: Get translations for a movie (contract path)
             tags:
                 - Movies
     /v1/movies/{id}/translations/{lang}:
@@ -5383,6 +5473,8 @@ paths:
         get:
             operationId: _v1_movies_id_videos_GET
             responses:
+                "200":
+                    description: Videos
                 "400":
                     content:
                         application/json:
@@ -5396,11 +5488,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: unauthorized
                 "404":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Movie not found
                 "409":
                     content:
                         application/json:
@@ -5425,10 +5513,10 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented — No videos table and no TMDB video ingest, so there is nothing to serve. (#68)
+                "503":
+                    description: Provider data temporarily unavailable
             security: []
-            summary: Parity stub — not implemented (TMDB metadata ingest)
+            summary: Get videos for a movie (contract path)
             tags:
                 - Movies
     /v1/movies/{id}/watch:
@@ -6741,6 +6829,44 @@ paths:
             summary: Get movie credits for a person
             tags:
                 - People
+    /v1/people/{id}/report:
+        post:
+            operationId: _v1_people_id_report_POST
+            responses:
+                "201":
+                    description: Reported
+                "400":
+                    description: Invalid request
+                "401":
+                    description: Unauthorized
+                "404":
+                    description: Person not found
+                "409":
+                    description: Already reported
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Report a person (contract path)
+            tags:
+                - Reports
     /v1/people/{id}/shows:
         get:
             operationId: _v1_people_id_shows_GET
@@ -7939,6 +8065,8 @@ paths:
         get:
             operationId: _v1_shows_id_certifications_GET
             responses:
+                "200":
+                    description: Certification
                 "400":
                     content:
                         application/json:
@@ -7952,11 +8080,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: unauthorized
                 "404":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Show not found
                 "409":
                     content:
                         application/json:
@@ -7981,10 +8105,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented — shows.certification is a single value; Trakt returns certifications keyed by country, which is not m (#68)
             security: []
-            summary: Parity stub — not implemented (TMDB metadata ingest)
+            summary: Get content certifications for a show (contract path)
             tags:
                 - Shows
     /v1/shows/{id}/comments/{sort}:
@@ -8534,6 +8656,54 @@ paths:
             summary: Get ratings for a show
             tags:
                 - Shows
+    /v1/shows/{id}/refresh/justwatch:
+        post:
+            operationId: _v1_shows_id_refresh_justwatch_POST
+            responses:
+                "201":
+                    description: Refresh queued
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    description: Unauthorized
+                "404":
+                    description: Media not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+                "503":
+                    description: Provider data temporarily unavailable
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Re-fetch a title's watch providers (contract path)
+            tags:
+                - Watch Now
     /v1/shows/{id}/related:
         get:
             operationId: _v1_shows_id_related_GET
@@ -9070,6 +9240,44 @@ paths:
             summary: Episode rating distribution (contract path)
             tags:
                 - Shows
+    /v1/shows/{id}/seasons/{season}/episodes/{episode}/report:
+        post:
+            operationId: _v1_shows_id_seasons_season_episodes_episode_report_POST
+            responses:
+                "201":
+                    description: Reported
+                "400":
+                    description: Invalid request
+                "401":
+                    description: Unauthorized
+                "404":
+                    description: Show, season or episode not found
+                "409":
+                    description: Already reported
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Report an episode (contract path)
+            tags:
+                - Reports
     /v1/shows/{id}/seasons/{season}/episodes/{episode}/stats:
         get:
             operationId: _v1_shows_id_seasons_season_episodes_episode_stats_GET
@@ -9112,6 +9320,52 @@ paths:
                     description: internal server error
             security: []
             summary: Episode stats (contract path)
+            tags:
+                - Shows
+    /v1/shows/{id}/seasons/{season}/episodes/{episode}/translations:
+        get:
+            operationId: _v1_shows_id_seasons_season_episodes_episode_translations_GET
+            responses:
+                "200":
+                    description: Translations
+                "400":
+                    description: Invalid season or episode number
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    description: Show, season or episode not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+                "503":
+                    description: Provider data temporarily unavailable
+            security: []
+            summary: Get translations for an episode (contract path)
             tags:
                 - Shows
     /v1/shows/{id}/seasons/{season}/episodes/{episode}/translations/{lang}:
@@ -9166,12 +9420,10 @@ paths:
         get:
             operationId: _v1_shows_id_seasons_season_episodes_episode_videos_GET
             responses:
+                "200":
+                    description: Videos
                 "400":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
+                    description: Invalid season or episode number
                 "401":
                     content:
                         application/json:
@@ -9179,11 +9431,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: unauthorized
                 "404":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Show, season or episode not found
                 "409":
                     content:
                         application/json:
@@ -9208,10 +9456,100 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented — No videos table and no TMDB video ingest. (#68)
+                "503":
+                    description: Provider data temporarily unavailable
             security: []
-            summary: Parity stub — not implemented (TMDB metadata ingest)
+            summary: Get videos for an episode (contract path)
+            tags:
+                - Shows
+    /v1/shows/{id}/seasons/{season}/episodes/{episode}/watching:
+        get:
+            operationId: _v1_shows_id_seasons_season_episodes_episode_watching_GET
+            responses:
+                "200":
+                    description: Watching users
+                "400":
+                    description: Invalid season or episode number
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    description: Show, season or episode not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Users watching an episode right now (contract path)
+            tags:
+                - Shows
+    /v1/shows/{id}/seasons/{season}/info:
+        get:
+            operationId: _v1_shows_id_seasons_season_info_GET
+            responses:
+                "200":
+                    description: Season
+                "400":
+                    description: Invalid season number
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    description: Show or season not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+                "503":
+                    description: Provider data temporarily unavailable
+            security: []
+            summary: Get a single season for a show (contract path)
             tags:
                 - Shows
     /v1/shows/{id}/seasons/{season}/people:
@@ -9310,6 +9648,44 @@ paths:
             summary: Season rating distribution (contract path)
             tags:
                 - Seasons
+    /v1/shows/{id}/seasons/{season}/report:
+        post:
+            operationId: _v1_shows_id_seasons_season_report_POST
+            responses:
+                "201":
+                    description: Reported
+                "400":
+                    description: Invalid request
+                "401":
+                    description: Unauthorized
+                "404":
+                    description: Show or season not found
+                "409":
+                    description: Already reported
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Report a season (contract path)
+            tags:
+                - Reports
     /v1/shows/{id}/seasons/{season}/stats:
         get:
             operationId: _v1_shows_id_seasons_season_stats_GET
@@ -9452,12 +9828,10 @@ paths:
         get:
             operationId: _v1_shows_id_seasons_season_videos_GET
             responses:
+                "200":
+                    description: Videos
                 "400":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
+                    description: Invalid season number
                 "401":
                     content:
                         application/json:
@@ -9465,11 +9839,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: unauthorized
                 "404":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Show or season not found
                 "409":
                     content:
                         application/json:
@@ -9494,10 +9864,54 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented — No videos table and no TMDB video ingest. (#68)
+                "503":
+                    description: Provider data temporarily unavailable
             security: []
-            summary: Parity stub — not implemented (TMDB metadata ingest)
+            summary: Get videos for a season (contract path)
+            tags:
+                - Shows
+    /v1/shows/{id}/seasons/{season}/watching:
+        get:
+            operationId: _v1_shows_id_seasons_season_watching_GET
+            responses:
+                "200":
+                    description: Watching users
+                "400":
+                    description: Invalid season number
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    description: Show or season not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Users watching a season right now (contract path)
             tags:
                 - Shows
     /v1/shows/{id}/stats:
@@ -9556,6 +9970,8 @@ paths:
         get:
             operationId: _v1_shows_id_studios_GET
             responses:
+                "200":
+                    description: Studios
                 "400":
                     content:
                         application/json:
@@ -9569,11 +9985,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: unauthorized
                 "404":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Show not found
                 "409":
                     content:
                         application/json:
@@ -9598,10 +10010,60 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented — No production-company table; shows.network is a network, not the studio list Trakt returns. (#68)
+                "503":
+                    description: Provider data temporarily unavailable
             security: []
-            summary: Parity stub — not implemented (TMDB metadata ingest)
+            summary: Get studios for a show (contract path)
+            tags:
+                - Shows
+    /v1/shows/{id}/translations:
+        get:
+            operationId: _v1_shows_id_translations_GET
+            responses:
+                "200":
+                    description: Translations
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    description: Show not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+                "503":
+                    description: Provider data temporarily unavailable
+            security: []
+            summary: Get translations for a show (contract path)
             tags:
                 - Shows
     /v1/shows/{id}/translations/{lang}:
@@ -9656,6 +10118,8 @@ paths:
         get:
             operationId: _v1_shows_id_videos_GET
             responses:
+                "200":
+                    description: Videos
                 "400":
                     content:
                         application/json:
@@ -9669,11 +10133,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: unauthorized
                 "404":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Show not found
                 "409":
                     content:
                         application/json:
@@ -9698,10 +10158,10 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented — No videos table and no TMDB video ingest. (#68)
+                "503":
+                    description: Provider data temporarily unavailable
             security: []
-            summary: Parity stub — not implemented (TMDB metadata ingest)
+            summary: Get videos for a show (contract path)
             tags:
                 - Shows
     /v1/shows/{id}/watch:
