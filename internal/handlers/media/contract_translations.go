@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/haaku-tv/haaku/internal/openapi"
+	"github.com/haaku-tv/haaku/internal/response"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -36,6 +37,11 @@ func handleContractSeasonTranslations(c *fiber.Ctx) error {
 	tmdbID, err := resolveShowTmdbID(c)
 	if err != nil {
 		return err
+	}
+	if tmdbID == 0 {
+		// resolveShowTmdbID reports the 404 itself; calling TMDB with id 0 would
+		// replace that honest answer with an upstream error.
+		return response.ErrHandled
 	}
 	seasonNum := c.Params("season")
 	lang := strings.ToLower(strings.TrimSpace(c.Query("language")))

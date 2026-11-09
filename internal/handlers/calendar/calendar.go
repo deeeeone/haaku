@@ -309,9 +309,13 @@ func handleCalendarShows(c *fiber.Ctx) error {
 	}
 
 	// A contract-shaped request returns the contract's bare array of release
-	// entries; our own calendar routes keep the paginated envelope.
+	// entries; our own calendar routes keep the paginated envelope. The headers go
+	// on either way — a client pages a bare array exactly as it pages an envelope,
+	// and this is the only place it can learn the total.
 	if contract, _ := c.Locals("calendar_contract").(bool); contract {
-		return c.JSON(contractReleaseEntries(episodes, showMap, seasonMap))
+		entries := contractReleaseEntries(episodes, showMap, seasonMap)
+		response.SetPaginationHeaders(c, page, limit, total, len(entries))
+		return c.JSON(entries)
 	}
 
 	// Return with pagination envelope.

@@ -79,11 +79,13 @@ func handleContractSeasonRatings(c *fiber.Ctx) error {
 		Rating int
 		Count  int64
 	}
-	db.Model(&database.UserRating{}).
+	if err := db.Model(&database.UserRating{}).
 		Select("rating, count(*) as count").
 		Where("media_type = ? AND media_id = ?", "season", season.ID).
 		Group("rating").
-		Scan(&rows)
+		Scan(&rows).Error; err != nil {
+		return response.InternalError(c)
+	}
 
 	var total int64
 	for _, r := range rows {
@@ -114,13 +116,28 @@ func handleContractSeasonStats(c *fiber.Ctx) error {
 	}
 
 	var watchers, plays int64
-	db.Model(&database.UserHistory{}).Where("season_id = ?", season.ID).Distinct("user_id").Count(&watchers)
-	db.Model(&database.UserHistory{}).Where("season_id = ?", season.ID).Count(&plays)
+	if err := db.Model(&database.UserHistory{}).Where("season_id = ?", season.ID).
+		Distinct("user_id").Count(&watchers).Error; err != nil {
+		return response.InternalError(c)
+	}
+	if err := db.Model(&database.UserHistory{}).Where("season_id = ?", season.ID).
+		Count(&plays).Error; err != nil {
+		return response.InternalError(c)
+	}
 
 	var comments, lists, votes int64
-	db.Model(&database.Comment{}).Where("media_type = ? AND media_id = ?", "season", season.ID).Count(&comments)
-	db.Model(&database.ListItem{}).Where("media_type = ? AND media_id = ?", "season", season.ID).Count(&lists)
-	db.Model(&database.UserRating{}).Where("media_type = ? AND media_id = ?", "season", season.ID).Count(&votes)
+	if err := db.Model(&database.Comment{}).Where("media_type = ? AND media_id = ?", "season", season.ID).
+		Count(&comments).Error; err != nil {
+		return response.InternalError(c)
+	}
+	if err := db.Model(&database.ListItem{}).Where("media_type = ? AND media_id = ?", "season", season.ID).
+		Count(&lists).Error; err != nil {
+		return response.InternalError(c)
+	}
+	if err := db.Model(&database.UserRating{}).Where("media_type = ? AND media_id = ?", "season", season.ID).
+		Count(&votes).Error; err != nil {
+		return response.InternalError(c)
+	}
 
 	return c.JSON(map[string]any{
 		"watchers":   watchers,

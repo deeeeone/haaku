@@ -102,7 +102,9 @@ func handleContractUserWatchlist(c *fiber.Ctx) error {
 	page, limit := response.ParsePagination(c, 25)
 	query := db.Where("user_id = ? AND media_type = ?", target.ID, mt)
 	var total int64
-	query.Model(&database.UserWatchlist{}).Count(&total)
+	if err := query.Model(&database.UserWatchlist{}).Count(&total).Error; err != nil {
+		return response.InternalError(c)
+	}
 
 	var rows []database.UserWatchlist
 	if err := query.Order(order).Offset(pageOffset(page, limit)).Limit(limit).Find(&rows).Error; err != nil {

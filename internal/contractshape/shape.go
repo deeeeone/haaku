@@ -9,6 +9,7 @@
 package contractshape
 
 import (
+	"hash/fnv"
 	"strconv"
 	"time"
 
@@ -220,7 +221,7 @@ func User(u *database.User) map[string]any {
 	if u == nil {
 		return map[string]any{
 			"username": "", "private": false, "deleted": true,
-			"ids": map[string]any{"trakt": 0, "slug": nil, "uuid": ""},
+			"ids": map[string]any{"trakt": int64(0), "slug": nil},
 		}
 	}
 	return map[string]any{
@@ -229,9 +230,31 @@ func User(u *database.User) map[string]any {
 		"deleted":  false,
 		"name":     NullableString(u.Name),
 		"ids": map[string]any{
-			"trakt": nil, "slug": NullableString(u.Username), "uuid": u.ID,
+			"trakt": LocalUserNum(u.ID),
+			"slug":  NullableString(u.Username),
 		},
 	}
+}
+
+// LocalUserNum derives the numeric id the contract's user object requires.
+//
+// The embedded user object has exactly two id properties, `slug` and `trakt`,
+// and requires `trakt` to be an *integer*. A self-hosted account's primary key is
+// a string (a Clerk-style "user_..." id, or "local_..."), so there is no number to
+// emit — and a null in a required integer field makes a conforming client reject
+// the whole feed.
+//
+// The number is therefore derived from the primary key rather than invented per
+// response: it is stable across requests and restarts, and the same account has
+// the same number everywhere it is embedded. It is haaku's local numeric id for
+// the account, NOT Trakt's, and it is never used as a lookup key — routes address
+// a user by slug or by uuid. 31 bits keeps it inside every JSON/JS integer range
+// a client might use; with a self-hosted instance's account count, a collision is
+// not a practical concern (and the slug remains the unique handle).
+func LocalUserNum(id string) int64 {
+	h := fnv.New32a()
+	_, _ = h.Write([]byte(id))
+	return int64(h.Sum32() & 0x7fffffff)
 }
 
 // SettingsUser renders the fuller user object used by /users/settings. The
@@ -288,10 +311,15 @@ func List(l *database.List, user *database.User) map[string]any {
 
 // UserByIDBatch resolves a set of user ids in one query, keyed by id. The
 // returned map omits ids with no row; callers render User(nil) for those.
-func UserByIDBatch(db *gorm.DB, ids []string) map[string]*database.User {
+//
+// The query error is returned rather than swallowed: a transient database failure
+// used to come back as an empty map, and every owner rendered as User(nil) —
+// which says "deleted": true. A 2xx that marks every list owner deleted is worse
+// than a 500.
+func UserByIDBatch(db *gorm.DB, ids []string) (map[string]*database.User, error) {
 	out := make(map[string]*database.User, len(ids))
 	if len(ids) == 0 {
-		return out
+		return out, nil
 	}
 	unique := make([]string, 0, len(ids))
 	seen := map[string]bool{}
@@ -303,10 +331,10 @@ func UserByIDBatch(db *gorm.DB, ids []string) map[string]*database.User {
 	}
 	var rows []database.User
 	if err := db.Where("id IN ?", unique).Find(&rows).Error; err != nil {
-		return out
+		return out, err
 	}
 	for i := range rows {
 		out[rows[i].ID] = &rows[i]
 	}
-	return out
+	return out, nil
 }

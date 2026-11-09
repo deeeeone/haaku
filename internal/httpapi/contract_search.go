@@ -1,6 +1,8 @@
 package httpapi
 
 import (
+	"errors"
+	"strconv"
 	"strings"
 
 	"github.com/haaku-tv/haaku/internal/contractshape"
@@ -8,6 +10,7 @@ import (
 	"github.com/haaku-tv/haaku/internal/openapi"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 )
 
 // Contract-shaped search routes.
@@ -49,11 +52,27 @@ type contractSearchItem struct {
 	Show  map[string]any `json:"show,omitempty"`
 }
 
+// contractSearchTypes is the set the contract path actually serves.
+//
+// It is deliberately narrower than validSearchTypes, which our own /v1/search
+// route also uses and must keep accepting: the store has no episode, person or
+// list search index, so those values answer 400 here rather than a silently
+// empty array that a client reads as "no matches".
+var contractSearchTypes = map[string]bool{"movie": true, "show": true}
+
+// knownExternalIDTypes is the set of id_type segments the contract documents and
+// external_ids can actually be keyed by. Anything else is a bad request: the
+// lookup would find nothing and answer 404, which reads as "this title does not
+// exist" rather than "you asked the wrong question".
+var knownExternalIDTypes = map[string]bool{
+	"trakt": true, "imdb": true, "tmdb": true, "tvdb": true,
+}
+
 // handleContractSearchType serves GET /v1/search/{type}.
 func handleContractSearchType(c *fiber.Ctx) error {
 	mediaType := strings.ToLower(strings.TrimSpace(c.Params("type")))
-	if !validSearchTypes[mediaType] {
-		return badRequest(c, "type must be one of: movie, show, episode, person, list")
+	if !contractSearchTypes[mediaType] {
+		return badRequest(c, "type must be one of: movie, show (no episode, person or list search index exists)")
 	}
 
 	query := strings.TrimSpace(c.Query("query"))
@@ -107,9 +126,19 @@ func handleContractSearchLookup(c *fiber.Ctx) error {
 		return writeError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
+	if !knownExternalIDTypes[idType] {
+		return badRequest(c, "id_type must be one of: trakt, imdb, tmdb, tvdb")
+	}
+
 	result, err := database.LookupByExternal(db, idType, externalID)
 	if err != nil {
-		return notFound(c, "no media found for "+idType+":"+externalID)
+		// Only a genuine miss is a 404. A database failure used to be reported as
+		// "no media found", which tells a client to stop looking when the truth is
+		// that we could not look.
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return notFound(c, "no media found for "+idType+":"+externalID)
+		}
+		return writeError(c, fiber.StatusInternalServerError, "internal", "lookup failed")
 	}
 
 	// The contract's optional ?type narrows the lookup to one media kind.
@@ -137,6 +166,9 @@ func parsePageLimit(c *fiber.Ctx) (pageLimit, error) {
 		if err != nil || n < 1 {
 			return p, errBadPage
 		}
+		if n > maxSearchPage {
+			return p, errBadPage
+		}
 		p.page = n
 	}
 	if v := c.Query("limit"); v != "" {
@@ -161,13 +193,17 @@ type errString string
 
 func (e errString) Error() string { return string(e) }
 
+// maxSearchPage bounds page so the offset arithmetic cannot overflow. It is far
+// beyond any real result set; a larger page is a bad request, not a 500.
+const maxSearchPage = 1_000_000
+
+// atoi parses a base-10 page/limit. The hand-rolled accumulation it replaces
+// accepted "99999999999999999999" and wrapped, and it reported every failure with
+// the page message even when the limit was the problem.
 func atoi(s string) (int, error) {
-	n := 0
-	for _, r := range s {
-		if r < '0' || r > '9' {
-			return 0, errBadPage
-		}
-		n = n*10 + int(r-'0')
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, errBadPage
 	}
 	return n, nil
 }

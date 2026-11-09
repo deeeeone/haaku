@@ -194,12 +194,30 @@ func contractWatchResponse(cp cachedCountryResult) map[string]any {
 		"free":         []any{},
 		"cinema":       []any{},
 		"subscription": providersToContract(cp.Flatrate, cp.Link),
-		"purchase":     providersToContract(append(append([]tmdb.Provider{}, cp.Buy...), cp.Rent...), cp.Link),
+		"purchase":     providersToContract(mergePurchaseProviders(cp.Buy, cp.Rent), cp.Link),
 	}
 }
 
 func emptyContractWatch() map[string]any {
 	return contractWatchResponse(cachedCountryResult{})
+}
+
+// mergePurchaseProviders concatenates the buy and rent sets, keeping the first
+// occurrence of each provider. A provider that both sells and rents a title is
+// one row in the contract's purchase list, not two.
+func mergePurchaseProviders(buy, rent []tmdb.Provider) []tmdb.Provider {
+	out := make([]tmdb.Provider, 0, len(buy)+len(rent))
+	seen := make(map[int]bool, len(buy)+len(rent))
+	for _, set := range [][]tmdb.Provider{buy, rent} {
+		for _, p := range set {
+			if seen[p.ProviderID] {
+				continue
+			}
+			seen[p.ProviderID] = true
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 func providersToContract(providers []tmdb.Provider, countryLink string) []map[string]any {

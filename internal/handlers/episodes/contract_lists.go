@@ -106,7 +106,9 @@ func handleContractEpisodeLists(c *fiber.Ctx) error {
 	}
 
 	var total int64
-	build().Distinct("lists.id").Count(&total)
+	if err := build().Distinct("lists.id").Count(&total).Error; err != nil {
+		return response.InternalError(c)
+	}
 
 	var lists []database.List
 	if err := build().Select("lists.*").Group("lists.id").Order(order).
@@ -114,7 +116,10 @@ func handleContractEpisodeLists(c *fiber.Ctx) error {
 		return response.InternalError(c)
 	}
 
-	users := contractshape.UserByIDBatch(db, listOwnerIDs(lists))
+	users, err := contractshape.UserByIDBatch(db, listOwnerIDs(lists))
+	if err != nil {
+		return response.InternalError(c)
+	}
 	out := make([]map[string]any, 0, len(lists))
 	for i := range lists {
 		out = append(out, contractshape.List(&lists[i], users[lists[i].UserID]))

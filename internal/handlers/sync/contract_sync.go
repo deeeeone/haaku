@@ -220,7 +220,9 @@ func handleContractRatings(c *fiber.Ctx) error {
 	page, limit := response.ParsePagination(c, 25)
 	query := db.Where("user_id = ? AND media_type = ? AND rating = ?", userID, mt, rating)
 	var total int64
-	query.Model(&database.UserRating{}).Count(&total)
+	if err := query.Model(&database.UserRating{}).Count(&total).Error; err != nil {
+		return response.InternalError(c)
+	}
 
 	var rows []database.UserRating
 	if err := query.Order("rated_at DESC").Offset((page - 1) * limit).Limit(limit).Find(&rows).Error; err != nil {
@@ -233,6 +235,7 @@ func handleContractRatings(c *fiber.Ctx) error {
 			"rated_at": contractshape.Timestamp(rows[i].RatedAt),
 			"rating":   rows[i].Rating,
 			"type":     rows[i].MediaType,
+			"id":       rows[i].MediaID,
 		})
 	}
 	response.SetPaginationHeaders(c, page, limit, total, len(out))

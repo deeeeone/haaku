@@ -73,17 +73,24 @@ func handleContractTrending(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
 	}
 
+	// Clamp the page: a page of 0 (or negative) makes the offset negative, which
+	// PostgreSQL rejects — a bad query parameter must not become a 500.
 	page := response.QueryInt(c, "page", 1)
+	if page < 1 {
+		page = 1
+	}
 	limit := response.ClampLimit(response.QueryInt(c, "limit", 20), 1, 100)
 
 	var comments []database.Comment
-	db.Model(&database.Comment{}).
+	if err := db.Model(&database.Comment{}).
 		Where("comment_type IN ? AND media_type = ?", commentTypes, mediaType).
 		Where("created_at >= ?", time.Now().Add(-7*24*time.Hour)).
 		Order("like_count + reply_count DESC, created_at DESC").
 		Offset((page - 1) * limit).
 		Limit(limit).
-		Find(&comments)
+		Find(&comments).Error; err != nil {
+		return response.InternalError(c)
+	}
 
 	return c.JSON(contractCommentItems(db, comments))
 }
