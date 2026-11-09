@@ -53,6 +53,30 @@ An out-of-scope rationale must say *which* kind it is. "We are not doing this"
 and "nobody has got to it yet" are different facts, and a manifest that cannot
 tell them apart is not a measurement.
 
+### What `implemented` currently means
+
+`implemented` means **a real handler is registered at the path the row's `ours`
+field names** — which need not be the contract's path. It does not mean the
+response satisfies the contract: this gate grades a row against the **route
+registry**, and cannot see a body.
+
+That distinction is live, not theoretical. Three OAuth operations are graded
+`implemented` and fail conformance (#119): two answer a non-2xx to the contract's
+own request body, and `/oauth/device/code` answers 200 without the required
+`verification_url`. So quote the number as "N of 336 routes implemented".
+
+`make conformance` (`cmd/trakt-conformance`, #102) is the other measurement, and
+its count is narrower than "contract-shaped": it is the number of graded
+operations whose **generated case** passes. Each operation gets one case, built
+from the contract but addressed at the path the manifest's `ours` field names — so
+a `divergent` row is exercised at our path, not the contract's.
+
+The fix is to make the grade conditional on a passing conformance case — a row may
+be `implemented` only when `make conformance` has a case for it and the case
+passes. That flip is deliberately last: it is blocked on the genuine failure count
+reaching zero, and wiring it in before then would make every PR red for reasons
+unrelated to the change. Until it lands, do not read `implemented` as "parity".
+
 ## What the gate refuses
 
 `make parity-check` (and `TestCommittedManifestMatchesTheRegistry`) fail when:
