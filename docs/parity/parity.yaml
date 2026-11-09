@@ -1164,8 +1164,9 @@ sections:
         rationale: "Served at GET /v1/users/{id}/lists; the path shape matches the contract."
       - trakt: "GET /users/{id}/lists/collaborations"
         ours: "GET /v1/users/{id}/lists/collaborations"
-        status: implemented
-        rationale: "Returns contract list objects for lists the caller collaborates on, from list_collaborators rows (handleContractCollaborations)."
+        status: divergent
+        rationale: "Returns contract list objects for lists the caller collaborates on, from list_collaborators rows (handleContractCollaborations) when {id} is a real user id. The contract allows {id} to be \"me\", and /v1/users/me/lists/collaborations is registered earlier by the collab module, so the me form resolves to handleMyCollaborations and returns collaborator records carrying list_id and role instead."
+        compat: "the me form is served by the native handler for our own UI; a Trakt client must pass a real user id to get the contract shape."
       - trakt: "GET /users/{id}/lists/{list_id}/"
         ours: "GET /v1/users/{id}/lists/{list_id}/"
         status: implemented
@@ -1486,8 +1487,9 @@ sections:
         rationale: "Served at POST /v1/users/{id}/follow; the path shape matches the contract."
       - trakt: "POST /users/{id}/lists"
         ours: "POST /v1/users/{id}/lists"
-        status: implemented
-        rationale: "Creates a lists row for the caller and returns the contract list object with 201 (handleContractCreateList)."
+        status: divergent
+        rationale: "Creates a lists row and returns the contract list object with 201 (handleContractCreateList) when {id} is a real user id. The contract allows {id} to be \"me\", and /v1/users/me/lists is registered earlier by the lists module, so the me form resolves to handleCreateList, which returns our app's shape and does not honour display_numbers."
+        compat: "the me form is served by the native handler for our own UI; a Trakt client must pass a real user id to get the contract shape."
       - trakt: "POST /users/{id}/lists/reorder"
         ours: "POST /v1/users/{id}/lists/reorder"
         status: implemented
@@ -1526,8 +1528,9 @@ sections:
         rationale: "Landed: writes a user_reports row (reason spam|adult|language|other + message); PrivacyFilter-gated, self-report is 400."
       - trakt: "POST /users/{id}/smart-lists"
         ours: "POST /v1/users/{id}/smart-lists"
-        status: implemented
-        rationale: "Creates a smart_lists row and returns 201 with the new ids (handleContractCreateSmartList)."
+        status: divergent
+        rationale: "Creates a smart_lists row and returns 201 with the new ids (handleContractCreateSmartList) when {id} is a real user id. The contract allows {id} to be \"me\", and /v1/users/me/smart-lists is registered earlier by the lists module, so the me form resolves to handleCreateSmartList, which returns neither the contract ids envelope nor the stored source and media_type."
+        compat: "the me form is served by the native handler for our own UI; a Trakt client must pass a real user id to get the contract shape."
       - trakt: "POST /younify/connect"
         ours: ""
         status: out-of-scope

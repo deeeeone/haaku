@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -130,6 +131,12 @@ func TestContractItemReadReturnsListItemIDs(t *testing.T) {
 // not answer 204 as though it worked. Dropping the table is a store failure the
 // sqlite handler suite can produce deterministically.
 func TestContractSetLikeSurfacesStoreErrors(t *testing.T) {
+	// Dropping a table is only safe against the throwaway sqlite database. When
+	// DATABASE_URL points at a real cluster this test would destroy list_likes
+	// for whoever owns that database, so it skips rather than gambling.
+	if os.Getenv("DATABASE_URL") != "" {
+		t.Skip("drops a table; sqlite-only")
+	}
 	db := contractTestDB(t)
 	seedContractUser(t, db, "owner")
 	app := contractTestApp()

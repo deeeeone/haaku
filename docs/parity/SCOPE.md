@@ -11,7 +11,7 @@ path (modulo our `/v1` prefix), with a real 2xx — except the recommendation/re
 engine, which stays an honest `501 not_implemented` and graded `blocked-engine` by
 the owner's carve-out. Done is `go run ./cmd/parity`, not a PR count.
 
-Contract operations: **336**. Not yet served (**in scope**): **138**. Out by owner decision: **31**. Served today: **167**.
+Contract operations: **336**. Not yet served (**in scope**): **141**. Out by owner decision: **31**. Served today: **164**.
 
 ## Out of scope (owner decisions, re-affirmed)
 
@@ -167,6 +167,7 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /users/{id}/history/movies/{item_id}` | divergent | public-profile read surface | #103 |
 | `GET /users/{id}/history/shows` | divergent | public-profile read surface | #103 |
 | `GET /users/{id}/history/shows/{item_id}` | divergent | public-profile read surface | #103 |
+| `GET /users/{id}/lists/collaborations` | divergent | list management — writes, items, smart lists | #105 |
 | `GET /users/{id}/lists/{list_id}/comments/{sort}` | divergent | list management — writes, items, smart lists | #105 |
 | `GET /users/{id}/lists/{list_id}/items/{type}/{sort_by}/{sort_how}` | divergent | list management — writes, items, smart lists | #105 |
 | `GET /users/{id}/lists/{list_id}/smart-list-draft` | divergent | list management — writes, items, smart lists | #105 |
@@ -192,6 +193,8 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `POST /users/hidden/progress_watched/remove` | out-of-scope | per-section hidden item lists | #108 |
 | `POST /users/hidden/{section}/remove` | out-of-scope | per-section hidden item lists | #108 |
 | `POST /users/requests/{id}` | out-of-scope | follow requests (blocked on #54) | #110 |
+| `POST /users/{id}/lists` | divergent | list management — writes, items, smart lists | #105 |
+| `POST /users/{id}/smart-lists` | divergent | list management — writes, items, smart lists | #105 |
 | `PUT /comments/{id}/` | out-of-scope | comment moderation, reactions and the note item read | #107 |
 | `PUT /sync/favorites/{list_item_id}` | divergent | remaining sync reads and writes | #106 |
 | `PUT /sync/watchlist` | divergent | remaining sync reads and writes | #106 |
@@ -297,7 +300,6 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /users/{id}/history/{type}/{item_id}` | `GET /v1/users/{id}/history/{media_type}/{media_id}` |
 | `GET /users/{id}/likes/{type}` | `GET /v1/users/{id}/likes/comments` |
 | `GET /users/{id}/lists` | `GET /v1/users/{id}/lists` |
-| `GET /users/{id}/lists/collaborations` | `GET /v1/users/{id}/lists/collaborations` |
 | `GET /users/{id}/lists/{list_id}/` | `GET /v1/users/{id}/lists/{list_id}/` |
 | `GET /users/{id}/lists/{list_id}/items/movie` | `GET /v1/users/{id}/lists/{list_id}/items/movie` |
 | `GET /users/{id}/lists/{list_id}/items/movie,show` | `GET /v1/users/{id}/lists/{list_id}/items/movie,show` |
@@ -350,7 +352,6 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `POST /users/hidden/{section}` | `POST /v1/users/hidden/{section}` |
 | `POST /users/{id}/block` | `POST /v1/users/{id}/block` |
 | `POST /users/{id}/follow` | `POST /v1/users/{id}/follow` |
-| `POST /users/{id}/lists` | `POST /v1/users/{id}/lists` |
 | `POST /users/{id}/lists/reorder` | `POST /v1/users/{id}/lists/reorder` |
 | `POST /users/{id}/lists/{list_id}/items` | `POST /v1/users/{id}/lists/{list_id}/items` |
 | `POST /users/{id}/lists/{list_id}/items/remove` | `POST /v1/users/{id}/lists/{list_id}/items/remove` |
@@ -360,7 +361,6 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `POST /users/{id}/lists/{list_id}/report` | `POST /v1/users/{id}/lists/{list_id}/report` |
 | `POST /users/{id}/lists/{list_id}/smart-list-draft/convert` | `POST /v1/users/{id}/lists/{list_id}/smart-list-draft/convert` |
 | `POST /users/{id}/report` | `POST /v1/users/{id}/report` |
-| `POST /users/{id}/smart-lists` | `POST /v1/users/{id}/smart-lists` |
 | `PUT /notes/{id}` | `PUT /v1/notes/{id}` |
 | `PUT /sync/watchlist/{list_item_id}` | `PUT /v1/sync/watchlist/{list_item_id}` |
 | `PUT /users/settings` | `PUT /v1/users/settings` |
