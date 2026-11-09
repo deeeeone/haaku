@@ -117,9 +117,9 @@ sections:
         status: blocked-data
         rationale: "Trakt's streaming list is driven by streaming release dates, which we do not store (see /calendars/all/streaming)."
       - trakt: "GET /movies/boxoffice"
-        ours: "GET /v1/movies/boxoffice"
-        status: blocked-data
-        rationale: "No revenue/box-office columns exist and the TMDB ingest does not fetch them."
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: Trakt's /movies/boxoffice is a weekend box-office chart; TMDB dropped box-office figures and carries only a lifetime `revenue` number, which is a different measurement. No honest source, so it is declined rather than filled with a number that is not the one the contract names."
       - trakt: "GET /movies/updates/id/{start_date}"
         ours: "GET /v1/movies/updates/id/{start_date}"
         status: implemented
@@ -144,7 +144,7 @@ sections:
       - trakt: "GET /movies/{id}/sentiments"
         ours: ""
         status: out-of-scope
-        rationale: "deferred: we store likes and reactions per comment but have no sentiment scorer, and no issue tracks building one."
+        rationale: "decision: Trakt derives sentiments from a per-episode sentiment model over its whole comment corpus; nothing in a self-hosted instance produces that signal, and inventing a score is exactly the fabricated payload this manifest forbids. Declined, tracked here so it can be revisited if a scorer is ever built."
       - trakt: "GET /movies/{id}/studios"
         ours: "GET /v1/movies/{id}/studios"
         status: blocked-data
@@ -220,7 +220,7 @@ sections:
       - trakt: "GET /shows/{id}/sentiments"
         ours: ""
         status: out-of-scope
-        rationale: "deferred: no sentiment scorer exists and none is planned."
+        rationale: "decision: same as /movies/{id}/sentiments — no sentiment scorer exists and none is planned, and a fabricated score is worse than an honest absence."
       - trakt: "GET /shows/{id}/studios"
         ours: "GET /v1/shows/{id}/studios"
         status: blocked-data
