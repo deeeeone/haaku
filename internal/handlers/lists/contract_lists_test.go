@@ -127,7 +127,7 @@ func contractDo(t *testing.T, app *fiber.App, caller, method, path string, body 
 	if err != nil {
 		t.Fatalf("request %s %s: %v", method, path, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	raw, _ := io.ReadAll(resp.Body)
 	return resp.StatusCode, raw
 }
