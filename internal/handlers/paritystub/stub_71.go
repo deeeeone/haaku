@@ -16,14 +16,6 @@ func registerStub71(api fiber.Router) {
 	// Upstream getepisodes; 200: array of {available_on,collected_at,episode,show,type,updated_at}; +4 query
 	// Tracked in #71: https://github.com/haaku-tv/haaku/issues/71
 	api.Get("/v1/sync/collection/episodes", stubHandler(71, "GET /sync/collection/episodes", "user_collection.media_type is 'movie' or 'show' only; an episode collection row cannot be stored."))
-	// GET /sync/watchlist/seasons — blocked-data: user_watchlist.media_type is 'movie' or 'show' only.
-	// Upstream: no exact path match — see docs/parity/reconciliation.md
-	// Tracked in #71: https://github.com/haaku-tv/haaku/issues/71
-	api.Get("/v1/sync/watchlist/seasons", stubHandler(71, "GET /sync/watchlist/seasons", "user_watchlist.media_type is 'movie' or 'show' only."))
-	// GET /sync/watchlist/episodes — blocked-data: user_watchlist.media_type is 'movie' or 'show' only.
-	// Upstream: no exact path match — see docs/parity/reconciliation.md
-	// Tracked in #71: https://github.com/haaku-tv/haaku/issues/71
-	api.Get("/v1/sync/watchlist/episodes", stubHandler(71, "GET /sync/watchlist/episodes", "user_watchlist.media_type is 'movie' or 'show' only."))
 }
 
 // defsStub71 is the registry entry for each stub above. The 501 in
@@ -38,22 +30,6 @@ func defsStub71() []openapi.RouteDef {
 			Tags:        []string{"Sync"},
 			Auth:        "required",
 			StatusCodes: map[int]string{501: "Not implemented — user_collection.media_type is 'movie' or 'show' only; an episode collection row cannot be stored. (#71)"},
-		},
-		{
-			Method:      "GET",
-			Path:        "/v1/sync/watchlist/seasons",
-			Summary:     "Parity stub — not implemented (season/episode-level sync)",
-			Tags:        []string{"Sync"},
-			Auth:        "required",
-			StatusCodes: map[int]string{501: "Not implemented — user_watchlist.media_type is 'movie' or 'show' only. (#71)"},
-		},
-		{
-			Method:      "GET",
-			Path:        "/v1/sync/watchlist/episodes",
-			Summary:     "Parity stub — not implemented (season/episode-level sync)",
-			Tags:        []string{"Sync"},
-			Auth:        "required",
-			StatusCodes: map[int]string{501: "Not implemented — user_watchlist.media_type is 'movie' or 'show' only. (#71)"},
 		},
 	}
 }

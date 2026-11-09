@@ -60,6 +60,18 @@ GROUP_NAME = {
     49: "item-to-item related/recommendation engine",
 }
 
+def ours_path(trakt):
+    """Our mount path for a contract path: /v1 prefix, no trailing slash.
+
+    Trakt documents a few paths with a trailing slash (`/team/`,
+    `/search/recent/`, `/users/{id}/history/`). Fiber treats `/x` and `/x/` as the
+    same route, so registering both shadows one of them
+    (TestNoStaticRouteIsShadowed) — we normalise to the unslashed form.
+    """
+    p = "/v1" + trakt.split(" ", 1)[1]
+    return p[:-1] if len(p) > 5 and p.endswith("/") else p
+
+
 doc = yaml.safe_load(MANIFEST.read_text())
 
 # ---- owner mapping ----------------------------------------------------------
@@ -78,7 +90,7 @@ for sec in doc["sections"]:
         o = owner.get(r["trakt"])
         if o is None:
             unowned.append(r["trakt"])
-        targets.append((r["trakt"], "/v1" + r["trakt"].split(" ", 1)[1], r["status"], reason, o, sec["name"]))
+        targets.append((r["trakt"], ours_path(r["trakt"]), r["status"], reason, o, sec["name"]))
 
 if not targets:
     # The manifest is the source of truth: no empty `ours` + blocked row means

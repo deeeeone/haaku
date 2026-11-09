@@ -12,14 +12,6 @@ import (
 // that haaku does not serve yet. Each answers an honest 501 naming the blocker and the
 // tracking issue, so a Trakt client gets a real answer instead of a 404.
 func registerStub69(api fiber.Router) {
-	// GET /calendars/all/dvd/{start_date}/{days} — blocked-data: movies carries a single released DATE; there is no dvd/digital/physical date column, so a DVD calendar cannot be answered without inventing dates.
-	// Upstream: no exact path match — see docs/parity/reconciliation.md
-	// Tracked in #69: https://github.com/haaku-tv/haaku/issues/69
-	api.Get("/v1/calendars/all/dvd/:start_date/:days", stubHandler(69, "GET /calendars/all/dvd/{start_date}/{days}", "movies carries a single released DATE; there is no dvd/digital/physical date column, so a DVD calendar cannot be answered without inventing dates."))
-	// GET /calendars/all/streaming/{start_date}/{days} — blocked-data: No streaming-release date is stored; watch providers live in movies.metadata per title (TMDB), not as dated releases.
-	// Upstream: no exact path match — see docs/parity/reconciliation.md
-	// Tracked in #69: https://github.com/haaku-tv/haaku/issues/69
-	api.Get("/v1/calendars/all/streaming/:start_date/:days", stubHandler(69, "GET /calendars/all/streaming/{start_date}/{days}", "No streaming-release date is stored; watch providers live in movies.metadata per title (TMDB), not as dated releases."))
 	// GET /calendars/releases/hot/{start_date}/{days} — blocked-data: No unified release feed: 'hot' mixes theatrical, streaming and episode releases in one ranked list; we store only movies.released and episodes.aired_at, with no cross-medium ranking.
 	// Upstream getreleasesHot; 200: array of {episode,first_aired,movie,released,show}; path: start_date,days; +20 query
 	// Tracked in #69: https://github.com/haaku-tv/haaku/issues/69
@@ -55,22 +47,6 @@ func registerStub69(api fiber.Router) {
 // appear as a 501 in the generated spec.
 func defsStub69() []openapi.RouteDef {
 	return []openapi.RouteDef{
-		{
-			Method:      "GET",
-			Path:        "/v1/calendars/all/dvd/{start_date}/{days}",
-			Summary:     "Parity stub — not implemented (calendars & Watch Now data)",
-			Tags:        []string{"Calendars"},
-			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — movies carries a single released DATE; there is no dvd/digital/physical date column, so a DVD calend (#69)"},
-		},
-		{
-			Method:      "GET",
-			Path:        "/v1/calendars/all/streaming/{start_date}/{days}",
-			Summary:     "Parity stub — not implemented (calendars & Watch Now data)",
-			Tags:        []string{"Calendars"},
-			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — No streaming-release date is stored; watch providers live in movies.metadata per title (TMDB), not a (#69)"},
-		},
 		{
 			Method:      "GET",
 			Path:        "/v1/calendars/releases/hot/{start_date}/{days}",

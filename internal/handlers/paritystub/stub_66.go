@@ -52,10 +52,6 @@ func registerStub66(api fiber.Router) {
 	// Upstream gethot; 200: array of {list_count,show}; +23 query
 	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
 	api.Get("/v1/shows/hot", stubHandler(66, "GET /shows/hot", "stats/rankings engine (issue #5)"))
-	// GET /shows/{id}/progress/watched/reset — blocked-engine: stats/rankings engine (issue #5)
-	// Upstream: no exact path match — see docs/parity/reconciliation.md
-	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
-	api.Get("/v1/shows/:id/progress/watched/reset", stubHandler(66, "GET /shows/{id}/progress/watched/reset", "stats/rankings engine (issue #5)"))
 }
 
 // defsStub66 is the registry entry for each stub above. The 501 in
@@ -141,14 +137,6 @@ func defsStub66() []openapi.RouteDef {
 			Summary:     "Parity stub — not implemented (stats & rankings engine)",
 			Tags:        []string{"Shows"},
 			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #5) (#66)"},
-		},
-		{
-			Method:      "GET",
-			Path:        "/v1/shows/{id}/progress/watched/reset",
-			Summary:     "Parity stub — not implemented (stats & rankings engine)",
-			Tags:        []string{"Shows"},
-			Auth:        "required",
 			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #5) (#66)"},
 		},
 	}

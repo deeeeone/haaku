@@ -20,10 +20,6 @@ func registerStub70(api fiber.Router) {
 	// Upstream: no exact path match — see docs/parity/reconciliation.md
 	// Tracked in #70: https://github.com/haaku-tv/haaku/issues/70
 	api.Get("/v1/search/recent", stubHandler(70, "GET /search/recent", "No recent-searches store exists to read back."))
-	// GET /search/recent_by_id/{type} — blocked-data: Same missing store; the Trakt id-keyed variant too.
-	// Upstream: no exact path match — see docs/parity/reconciliation.md
-	// Tracked in #70: https://github.com/haaku-tv/haaku/issues/70
-	api.Get("/v1/search/recent_by_id/:type", stubHandler(70, "GET /search/recent_by_id/{type}", "Same missing store; the Trakt id-keyed variant too."))
 }
 
 // defsStub70 is the registry entry for each stub above. The 501 in
@@ -46,14 +42,6 @@ func defsStub70() []openapi.RouteDef {
 			Tags:        []string{"Search"},
 			Auth:        "required",
 			StatusCodes: map[int]string{501: "Not implemented — No recent-searches store exists to read back. (#70)"},
-		},
-		{
-			Method:      "GET",
-			Path:        "/v1/search/recent_by_id/{type}",
-			Summary:     "Parity stub — not implemented (search engine)",
-			Tags:        []string{"Search"},
-			Auth:        "required",
-			StatusCodes: map[int]string{501: "Not implemented — Same missing store; the Trakt id-keyed variant too. (#70)"},
 		},
 	}
 }

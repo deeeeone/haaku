@@ -933,9 +933,9 @@ paths:
             summary: Create a local account (subject to the HAAKU_SIGNUP policy; the owner comes from HAAKU_ADMIN_*)
             tags:
                 - Local Auth
-    /v1/calendars/all/dvd/{start_date}/{days}:
+    /v1/calendars/{target}/dvd/{start_date}/{days}:
         get:
-            operationId: _v1_calendars_all_dvd_start_date_days_GET
+            operationId: _v1_calendars_target_dvd_start_date_days_GET
             responses:
                 "400":
                     content:
@@ -980,9 +980,61 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: Not implemented — movies carries a single released DATE; there is no dvd/digital/physical date column, so a DVD calend (#69)
+                    description: Not implemented — movies carries a single released DATE; there is no dvd/digital/physical date column, so a DVD calend (#4)
             security: []
-            summary: Parity stub — not implemented (calendars & Watch Now data)
+            summary: Parity stub — not implemented (parity tracker)
+            tags:
+                - Calendars
+    /v1/calendars/{target}/streaming/{start_date}/{days}:
+        get:
+            operationId: _v1_calendars_target_streaming_start_date_days_GET
+            responses:
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+                "501":
+                    description: Not implemented — No streaming-release date is stored; watch providers live in movies.metadata per title (TMDB), not a (#4)
+            security: []
+            summary: Parity stub — not implemented (parity tracker)
             tags:
                 - Calendars
     /v1/calendars/all/movies/{start_date}/{days}:
@@ -1079,58 +1131,6 @@ paths:
                     description: internal server error
             security: []
             summary: Get all upcoming episodes airing within a date range
-            tags:
-                - Calendars
-    /v1/calendars/all/streaming/{start_date}/{days}:
-        get:
-            operationId: _v1_calendars_all_streaming_start_date_days_GET
-            responses:
-                "400":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
-                "401":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: unauthorized
-                "404":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
-                "409":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: conflict
-                "422":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: unprocessable
-                "429":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: rate limited
-                "500":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: internal server error
-                "501":
-                    description: Not implemented — No streaming-release date is stored; watch providers live in movies.metadata per title (TMDB), not a (#69)
-            security: []
-            summary: Parity stub — not implemented (calendars & Watch Now data)
             tags:
                 - Calendars
     /v1/calendars/favorites/shows/{start_date}/{days}:
@@ -6816,9 +6816,9 @@ paths:
             summary: Parity stub — not implemented (search engine)
             tags:
                 - Search
-    /v1/search/recent_by_id/{type}:
+    /v1/search/recent_by_id/global/{type}:
         get:
-            operationId: _v1_search_recent_by_id_type_GET
+            operationId: _v1_search_recent_by_id_global_type_GET
             responses:
                 "400":
                     content:
@@ -6863,11 +6863,11 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: Not implemented — Same missing store; the Trakt id-keyed variant too. (#70)
+                    description: Not implemented — Same missing store; the Trakt id-keyed variant too. (#4)
             security:
                 - apiKey: []
                 - oauth: []
-            summary: Parity stub — not implemented (search engine)
+            summary: Parity stub — not implemented (parity tracker)
             tags:
                 - Search
     /v1/seasons/{id}:
@@ -7555,8 +7555,8 @@ paths:
             tags:
                 - Shows
     /v1/shows/{id}/progress/watched/reset:
-        get:
-            operationId: _v1_shows_id_progress_watched_reset_GET
+        delete:
+            operationId: _v1_shows_id_progress_watched_reset_DELETE
             responses:
                 "400":
                     content:
@@ -7601,11 +7601,11 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: 'Not implemented — stats/rankings engine (issue #5) (#66)'
+                    description: 'Not implemented — stats/rankings engine (issue #5) (#4)'
             security:
                 - apiKey: []
                 - oauth: []
-            summary: Parity stub — not implemented (stats & rankings engine)
+            summary: Parity stub — not implemented (parity tracker)
             tags:
                 - Shows
         post:
@@ -7851,110 +7851,6 @@ paths:
                     description: internal server error
             security: []
             summary: Get seasons for a show
-            tags:
-                - Shows
-    /v1/shows/{id}/seasons/{s}/episodes/{e}/people:
-        get:
-            operationId: _v1_shows_id_seasons_s_episodes_e_people_GET
-            responses:
-                "400":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
-                "401":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: unauthorized
-                "404":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
-                "409":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: conflict
-                "422":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: unprocessable
-                "429":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: rate limited
-                "500":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: internal server error
-                "501":
-                    description: Not implemented — Episode credits are not ingested (credits table is written for movie/show only). (#68)
-            security: []
-            summary: Parity stub — not implemented (TMDB metadata ingest)
-            tags:
-                - Shows
-    /v1/shows/{id}/seasons/{s}/episodes/{e}/videos:
-        get:
-            operationId: _v1_shows_id_seasons_s_episodes_e_videos_GET
-            responses:
-                "400":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
-                "401":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: unauthorized
-                "404":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
-                "409":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: conflict
-                "422":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: unprocessable
-                "429":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: rate limited
-                "500":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: internal server error
-                "501":
-                    description: Not implemented — No videos table and no TMDB video ingest. (#68)
-            security: []
-            summary: Parity stub — not implemented (TMDB metadata ingest)
             tags:
                 - Shows
     /v1/shows/{id}/seasons/{season}:
@@ -8205,6 +8101,58 @@ paths:
             summary: Get comments for an episode, sorted (newest, oldest, likes, replies, trending)
             tags:
                 - Shows
+    /v1/shows/{id}/seasons/{season}/episodes/{episode}/people:
+        get:
+            operationId: _v1_shows_id_seasons_season_episodes_episode_people_GET
+            responses:
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+                "501":
+                    description: Not implemented — Episode credits are not ingested (credits table is written for movie/show only). (#4)
+            security: []
+            summary: Parity stub — not implemented (parity tracker)
+            tags:
+                - Shows
     /v1/shows/{id}/seasons/{season}/episodes/{episode}/translations/{lang}:
         get:
             operationId: _v1_shows_id_seasons_season_episodes_episode_translations_lang_GET
@@ -8251,6 +8199,58 @@ paths:
                     description: internal server error
             security: []
             summary: Episode translations for a language
+            tags:
+                - Shows
+    /v1/shows/{id}/seasons/{season}/episodes/{episode}/videos:
+        get:
+            operationId: _v1_shows_id_seasons_season_episodes_episode_videos_GET
+            responses:
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+                "501":
+                    description: Not implemented — No videos table and no TMDB video ingest. (#4)
+            security: []
+            summary: Parity stub — not implemented (parity tracker)
             tags:
                 - Shows
     /v1/shows/{id}/seasons/{season}/people:
@@ -11062,60 +11062,6 @@ paths:
             summary: Add watchlist items
             tags:
                 - Sync
-    /v1/sync/watchlist/episodes:
-        get:
-            operationId: _v1_sync_watchlist_episodes_GET
-            responses:
-                "400":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
-                "401":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: unauthorized
-                "404":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
-                "409":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: conflict
-                "422":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: unprocessable
-                "429":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: rate limited
-                "500":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: internal server error
-                "501":
-                    description: Not implemented — user_watchlist.media_type is 'movie' or 'show' only. (#71)
-            security:
-                - apiKey: []
-                - oauth: []
-            summary: Parity stub — not implemented (season/episode-level sync)
-            tags:
-                - Sync
     /v1/sync/watchlist/movies:
         get:
             operationId: _v1_sync_watchlist_movies_GET
@@ -11264,60 +11210,6 @@ paths:
                 - apiKey: []
                 - oauth: []
             summary: Reorder watchlist
-            tags:
-                - Sync
-    /v1/sync/watchlist/seasons:
-        get:
-            operationId: _v1_sync_watchlist_seasons_GET
-            responses:
-                "400":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
-                "401":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: unauthorized
-                "404":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
-                "409":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: conflict
-                "422":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: unprocessable
-                "429":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: rate limited
-                "500":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: internal server error
-                "501":
-                    description: Not implemented — user_watchlist.media_type is 'movie' or 'show' only. (#71)
-            security:
-                - apiKey: []
-                - oauth: []
-            summary: Parity stub — not implemented (season/episode-level sync)
             tags:
                 - Sync
     /v1/sync/watchlist/shows:

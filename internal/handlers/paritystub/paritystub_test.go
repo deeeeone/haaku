@@ -29,13 +29,12 @@ func newStubApp() *fiber.App {
 func TestStubsAnswer501NamingTheTracker(t *testing.T) {
 	app := newStubApp()
 	for _, path := range []string{
-		"/v1/media/trending",                 // #66
-		"/v1/movies/watched/30d",             // #66 — a static segment over /movies/:id
-		"/v1/shows/1/related",                // #49
-		"/v1/shows/2/videos",                 // #68
-		"/v1/calendars/all/dvd/2026-11-01/7", // #69
-		"/v1/search/recent",                  // #70
-		"/v1/sync/watchlist/episodes",        // #71
+		"/v1/media/trending",                       // #66
+		"/v1/movies/watched/30d",                   // #66 — static segment over /movies/:id
+		"/v1/shows/1/related",                      // #49
+		"/v1/shows/2/videos",                       // #68
+		"/v1/calendars/all/dvd/2026-11-01/7",       // #69, {target} template
+		"/v1/calendars/all/streaming/2026-11-01/7", // #69
 	} {
 		resp, err := app.Test(httptest.NewRequest(http.MethodGet, path, nil))
 		if err != nil {
