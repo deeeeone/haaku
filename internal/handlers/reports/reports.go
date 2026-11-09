@@ -49,6 +49,10 @@ func RegisterRoutes(api fiber.Router) {
 	api.Get("/reports", auth.AuthRequired(), auth.RequireModerator(), handleListReports)
 	api.Post("/reports/:id/resolve", auth.AuthRequired(), auth.RequireModerator(), handleResolveReport)
 	api.Post("/reports/:id/dismiss", auth.AuthRequired(), auth.RequireModerator(), handleDismissReport)
+
+	// Contract-shaped report submissions (issue #68): the nested
+	// show/season/episode paths and the person report.
+	registerContractReportRoutes(api)
 }
 
 // ---------------------------------------------------------------------------
@@ -440,6 +444,8 @@ func reportTargetExists(db *gorm.DB, mediaType string, mediaID int64) (bool, err
 		model = &database.Season{}
 	case "episode":
 		model = &database.Episode{}
+	case "person":
+		model = &database.Person{}
 	default:
 		return false, nil
 	}

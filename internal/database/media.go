@@ -357,6 +357,6 @@ func MediaModels() []interface{} {
 	return []interface{}{
 		&Movie{}, &Show{}, &Season{}, &Episode{},
 		&Person{}, &Credit{}, &ExternalID{},
-		&Genre{}, &Network{},
+		&Genre{}, &Network{}, &MediaMetadata{},
 	}
 }

@@ -29,6 +29,7 @@ import (
 	"github.com/haaku-tv/haaku/internal/handlers/stats"
 	"github.com/haaku-tv/haaku/internal/handlers/sync"
 	"github.com/haaku-tv/haaku/internal/handlers/syncs"
+	"github.com/haaku-tv/haaku/internal/handlers/tmdbmeta"
 	"github.com/haaku-tv/haaku/internal/handlers/updates"
 	"github.com/haaku-tv/haaku/internal/handlers/users"
 	"github.com/haaku-tv/haaku/internal/handlers/watch"
@@ -206,6 +207,10 @@ func RegisterRoutes(app *fiber.App) {
 
 	// Watch providers endpoints (Phase 1: T1.10)
 	watch.RegisterRoutes(api)
+
+	// Contract-shaped per-item metadata (issue #68): videos, releases,
+	// translations, studios, season info, watching and reports.
+	tmdbmeta.RegisterRoutes(api)
 
 	// Calendars (Phase 1: T1.8)
 	calendar.RegisterRoutes(api)
