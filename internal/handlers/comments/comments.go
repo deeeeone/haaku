@@ -299,19 +299,6 @@ func handleUpdates(c *fiber.Ctx) error {
 	})
 }
 
-// validateCommentBody rejects an empty body and one over the length cap,
-// matching the 5000-char comment limit.
-func validateCommentBody(c *fiber.Ctx, body string) error {
-	if body == "" {
-		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "comment body is required")
-	}
-	if len(body) > maxCommentLength {
-		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request",
-			fmt.Sprintf("comment body exceeds maximum length of %d characters", maxCommentLength))
-	}
-	return nil
-}
-
 // GET /v1/comments/:id
 func handleGetComment(c *fiber.Ctx) error {
 	db, err := database.GetDB()

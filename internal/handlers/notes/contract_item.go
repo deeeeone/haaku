@@ -111,8 +111,13 @@ func noteSubjectItem(db *gorm.DB, note *database.UserNote) (map[string]any, erro
 		}
 		seasonNumber := 0
 		var season database.Season
+		// Season 0 legitimately has no row, so a not-found is tolerated and
+		// renders as 0. Any other database error is real and must surface, not
+		// be silently flattened into "this episode has no season".
 		if err := db.First(&season, e.SeasonID).Error; err == nil {
 			seasonNumber = season.SeasonNumber
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, err
 		}
 		return map[string]any{"type": "episode", "episode": contractshape.Episode(&e, seasonNumber)}, nil
 	}

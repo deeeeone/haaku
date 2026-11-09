@@ -229,6 +229,21 @@ func handleCreateComment(c *fiber.Ctx) error {
 	if mediaID == nil && listID == nil {
 		return response.BadRequest(c, "item is required: one of movie, show, season, episode, list")
 	}
+
+	db, err := database.GetDB()
+	if err != nil {
+		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
+	}
+	// A list target must name a list the caller is allowed to comment on. The
+	// list id is not trusted from the body: load the row and apply the same
+	// privacy rule the list read paths apply (a private list is its owner's
+	// alone) plus the list's own AllowComments setting, before any insert.
+	if listID != nil {
+		if err := validateCommentListTarget(c, db, *listID, userID); err != nil {
+			return err
+		}
+	}
+
 	gifURL, gifSlug, _, err := parseCommentGif(req.Gif)
 	if err != nil {
 		return response.BadRequest(c, err.Error())
@@ -264,10 +279,6 @@ func handleCreateComment(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to create comment")
 	}
 
-	db, err := database.GetDB()
-	if err != nil {
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
-	}
 	return c.Status(fiber.StatusCreated).JSON(contractComment(&comment, loadCommentAuthor(comment.UserID), playCount(db, &comment)))
 }
 
@@ -301,7 +312,7 @@ func handleEditComment(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
-	allowed, err := commentWriteAllowed(c, db, &comment, userID)
+	allowed, err := commentWriteAllowed(db, &comment, userID)
 	if err != nil {
 		return err
 	}
@@ -362,7 +373,7 @@ func handleDeleteComment(c *fiber.Ctx) error {
 		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
 	}
 
-	allowed, err := commentWriteAllowed(c, db, &comment, userID)
+	allowed, err := commentWriteAllowed(db, &comment, userID)
 	if err != nil {
 		return err
 	}
@@ -392,8 +403,10 @@ func handleDeleteComment(c *fiber.Ctx) error {
 
 // commentWriteAllowed reports whether the caller may edit or delete the comment:
 // the author, or a moderator/admin. A caller with no user row is denied rather
-// than treated as a non-moderator silently.
-func commentWriteAllowed(c *fiber.Ctx, db *gorm.DB, comment *database.Comment, userID string) (bool, error) {
+// than treated as a non-moderator silently. A database failure is returned as a
+// real error so the caller's error handler answers 500 — returning the writer's
+// nil would let the caller read it as a plain denial and overwrite with 403.
+func commentWriteAllowed(db *gorm.DB, comment *database.Comment, userID string) (bool, error) {
 	if comment.UserID == userID {
 		return true, nil
 	}
@@ -402,9 +415,35 @@ func commentWriteAllowed(c *fiber.Ctx, db *gorm.DB, comment *database.Comment, u
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return false, nil
 		}
-		return false, response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
+		return false, fmt.Errorf("load caller %s: %w", userID, err)
 	}
 	return user.IsModerator || user.IsAdmin, nil
+}
+
+// validateCommentListTarget enforces the rules a comment write against a list
+// target must satisfy before any insert: the list exists, the caller may see it
+// (the same privacy rule the list read paths apply — a private list is visible
+// only to its owner), and the list has not disabled comments. A refusal writes
+// its response and returns response.ErrHandled; a real database failure is
+// returned for the caller's error handler to render as a 500.
+func validateCommentListTarget(c *fiber.Ctx, db *gorm.DB, listID int64, userID string) error {
+	var list database.List
+	if err := db.First(&list, listID).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			_ = response.NotFound(c, "list not found")
+			return response.ErrHandled
+		}
+		return fmt.Errorf("load list %d: %w", listID, err)
+	}
+	if list.Privacy == "private" && list.UserID != userID {
+		_ = response.Forbidden(c, "this list is private")
+		return response.ErrHandled
+	}
+	if !list.AllowComments {
+		_ = response.Forbidden(c, "comments are disabled on this list")
+		return response.ErrHandled
+	}
+	return nil
 }
 
 // loadCommentAuthor reads the author row for the contract comment envelope.

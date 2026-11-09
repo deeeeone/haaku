@@ -13,6 +13,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // Contract-shaped comment reactions.
@@ -226,8 +227,7 @@ func writeContractReaction(c *fiber.Ctx, add bool) error {
 				ReactionType: reactionType,
 				CreatedAt:    time.Now(),
 			}
-			if err := tx.Where("comment_id = ? AND user_id = ? AND reaction_type = ?",
-				comment.ID, userID, reactionType).FirstOrCreate(&reaction).Error; err != nil {
+			if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&reaction).Error; err != nil {
 				return nil, fmt.Errorf("add reaction: %w", err)
 			}
 		} else if err := tx.Where("comment_id = ? AND user_id = ? AND reaction_type = ?",
