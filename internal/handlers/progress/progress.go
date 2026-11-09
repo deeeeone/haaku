@@ -65,13 +65,23 @@ func registerOpenAPIRoutes() {
 		{
 			Method:  "POST",
 			Path:    "/v1/shows/{id}/progress/watched/reset",
-			Summary: "Reset the caller's watched-episode history for one show (ratings/collection untouched)",
+			Summary: "Record a watched-progress reset point for one show (history is kept)",
 			Tags:    []string{"Shows"},
 			Auth:    "required",
 			StatusCodes: map[int]string{
-				200: "Progress after reset",
+				200: "The reset point",
 				401: "Unauthorized",
-				404: "Show not found",
+			},
+		},
+		{
+			Method:  "DELETE",
+			Path:    "/v1/shows/{id}/progress/watched/reset",
+			Summary: "Undo a watched-progress reset for one show",
+			Tags:    []string{"Shows"},
+			Auth:    "required",
+			StatusCodes: map[int]string{
+				204: "Reset removed",
+				401: "Unauthorized",
 			},
 		},
 	}
@@ -93,6 +103,7 @@ func RegisterRoutes(api fiber.Router) {
 	shows.Get("/:id/progress/watched", auth.AuthRequired(), handleShowProgressWatched)
 	shows.Get("/:id/progress/collection", auth.AuthRequired(), handleShowProgressCollection)
 	shows.Post("/:id/progress/watched/reset", auth.AuthRequired(), handleShowProgressReset)
+	shows.Delete("/:id/progress/watched/reset", auth.AuthRequired(), handleShowProgressResetUndo)
 }
 
 // ---------------------------------------------------------------------------

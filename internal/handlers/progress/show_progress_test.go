@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/haaku-tv/haaku/internal/database"
-	"github.com/haaku-tv/haaku/internal/outbox"
 	"github.com/haaku-tv/haaku/internal/response"
 
 	"github.com/gofiber/fiber/v2"
@@ -29,7 +28,7 @@ func setupShowProgressDB(t *testing.T) *gorm.DB {
 		&database.Movie{}, &database.Show{}, &database.Season{}, &database.Episode{},
 		&database.Person{}, &database.ExternalID{},
 		&database.UserHistory{}, &database.UserCollection{}, &database.UserRating{},
-		&database.EventsOutbox{},
+		&database.UserShowProgressReset{}, &database.EventsOutbox{},
 	}
 	if err := db.AutoMigrate(models...); err != nil {
 		t.Fatalf("migrate test DB: %v", err)
@@ -53,6 +52,7 @@ func showProgressApp(userID string) *fiber.App {
 	shows.Get("/:id/progress/watched", stub, handleShowProgressWatched)
 	shows.Get("/:id/progress/collection", stub, handleShowProgressCollection)
 	shows.Post("/:id/progress/watched/reset", stub, handleShowProgressReset)
+	shows.Delete("/:id/progress/watched/reset", stub, handleShowProgressResetUndo)
 	return app
 }
 
@@ -308,94 +308,6 @@ func TestShowProgressCollection(t *testing.T) {
 		if e.CollectedAt == nil {
 			t.Errorf("episode %d missing collected_at", e.Number)
 		}
-	}
-}
-
-func TestShowProgressResetScoping(t *testing.T) {
-	db := setupShowProgressDB(t)
-
-	// Substitute the outbox hook (Postgres-only SQL) with a recorder so the
-	// reset's production code path runs on sqlite, and assert the event fires.
-	var published []string
-	restore := publishHistoryRemoved
-	publishHistoryRemoved = func(_ *gorm.DB, eventType, _ string, _ map[string]any) error {
-		published = append(published, eventType)
-		return nil
-	}
-	t.Cleanup(func() { publishHistoryRemoved = restore })
-
-	target := seedShow(t, db, 7006, "Target Show")
-	other := seedShow(t, db, 7007, "Other Show")
-
-	targetEps := seedSeasonWithEpisodes(t, db, target, 1, []epSeed{{1, airedDaysAgo(6)}, {2, airedDaysAgo(5)}})
-	otherEps := seedSeasonWithEpisodes(t, db, other, 1, []epSeed{{1, airedDaysAgo(4)}})
-
-	// History on both shows (target: 2 rows, other: 1 row).
-	for _, id := range targetEps {
-		if err := db.Create(&database.UserHistory{UserID: "user-1", MediaType: "episode", MediaID: id, WatchedAt: time.Now().UTC(), Source: "api"}).Error; err != nil {
-			t.Fatalf("seed history: %v", err)
-		}
-	}
-	if err := db.Create(&database.UserHistory{UserID: "user-1", MediaType: "episode", MediaID: otherEps[0], WatchedAt: time.Now().UTC(), Source: "api"}).Error; err != nil {
-		t.Fatalf("seed history: %v", err)
-	}
-	// A show-level history row must survive (reset is episode-scoped).
-	if err := db.Create(&database.UserHistory{UserID: "user-1", MediaType: "show", MediaID: target, WatchedAt: time.Now().UTC(), Source: "api"}).Error; err != nil {
-		t.Fatalf("seed show history: %v", err)
-	}
-	// Ratings and collection for the target show must survive.
-	if err := db.Create(&database.UserRating{UserID: "user-1", MediaType: "episode", MediaID: targetEps[0], Rating: 9, RatedAt: time.Now().UTC()}).Error; err != nil {
-		t.Fatalf("seed rating: %v", err)
-	}
-	if err := db.Create(&database.UserCollection{UserID: "user-1", MediaType: "episode", MediaID: targetEps[0], CollectedAt: time.Now().UTC()}).Error; err != nil {
-		t.Fatalf("seed collection: %v", err)
-	}
-	// Another user's history on the target show must survive.
-	if err := db.Create(&database.UserHistory{UserID: "other", MediaType: "episode", MediaID: targetEps[0], WatchedAt: time.Now().UTC(), Source: "api"}).Error; err != nil {
-		t.Fatalf("seed other history: %v", err)
-	}
-
-	resp := doProgressReq(t, showProgressApp("user-1"), http.MethodPost,
-		"/shows/"+strconv.FormatInt(target, 10)+"/progress/watched/reset")
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("status = %d, want 200", resp.StatusCode)
-	}
-	got := decodeShowProgress(t, resp)
-	if got.Completed != 0 {
-		t.Errorf("completed after reset = %d, want 0", got.Completed)
-	}
-	if got.Aired != 2 {
-		t.Errorf("aired after reset = %d, want 2 (reset must not change episodes)", got.Aired)
-	}
-
-	count := func(query *gorm.DB) int64 {
-		var n int64
-		if err := query.Count(&n).Error; err != nil {
-			t.Fatalf("count: %v", err)
-		}
-		return n
-	}
-
-	if n := count(db.Model(&database.UserHistory{}).Where("user_id = ? AND media_type = ? AND media_id IN ?", "user-1", "episode", targetEps)); n != 0 {
-		t.Errorf("target episode history rows = %d, want 0", n)
-	}
-	if n := count(db.Model(&database.UserHistory{}).Where("user_id = ? AND media_type = ?", "user-1", "show")); n != 1 {
-		t.Errorf("show-level history rows = %d, want 1 (must survive)", n)
-	}
-	if n := count(db.Model(&database.UserHistory{}).Where("user_id = ? AND media_id = ?", "user-1", otherEps[0])); n != 1 {
-		t.Errorf("other-show history rows = %d, want 1 (must survive)", n)
-	}
-	if n := count(db.Model(&database.UserHistory{}).Where("user_id = ?", "other")); n != 1 {
-		t.Errorf("other user's history rows = %d, want 1 (must survive)", n)
-	}
-	if n := count(db.Model(&database.UserRating{}).Where("user_id = ? AND media_id = ?", "user-1", targetEps[0])); n != 1 {
-		t.Errorf("rating rows = %d, want 1 (must survive)", n)
-	}
-	if n := count(db.Model(&database.UserCollection{}).Where("user_id = ? AND media_id = ?", "user-1", targetEps[0])); n != 1 {
-		t.Errorf("collection rows = %d, want 1 (must survive)", n)
-	}
-	if len(published) != 1 || published[0] != outbox.EventHistoryRemoved {
-		t.Errorf("outbox events = %v, want exactly one %s", published, outbox.EventHistoryRemoved)
 	}
 }
 

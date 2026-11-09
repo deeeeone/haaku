@@ -1,18 +1,20 @@
 package progress
 
 import (
+	"encoding/json"
+	"errors"
 	"sort"
 	"time"
 
 	"github.com/haaku-tv/haaku/internal/cache"
 	"github.com/haaku-tv/haaku/internal/database"
 	"github.com/haaku-tv/haaku/internal/handlers/media"
-	"github.com/haaku-tv/haaku/internal/outbox"
 	"github.com/haaku-tv/haaku/internal/response"
 	"github.com/haaku-tv/haaku/redis"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // ---------------------------------------------------------------------------
@@ -46,10 +48,10 @@ type ShowSeasonProgress struct {
 // collected. Episodes with no aired_at are treated as not aired — the schema
 // cannot prove they aired, so counting them would be fabrication.
 //
-// Deliberately absent: Trakt's `reset_at`. Nothing stores when a reset
-// happened, so the field is omitted rather than invented; a client that needs
-// it can track the reset call itself. Show-level rank/plays/watchers would
-// need the stats engine (issue #5) and are not part of this payload.
+// The contract types `reset_at` as null, so it is not emitted. A reset point
+// is stored per user and show (user_show_progress_resets); watched progress
+// ignores plays older than it while the history rows themselves stay intact.
+// Show-level rank/plays/watchers are not part of this payload.
 type ShowProgressResponse struct {
 	Aired           int                    `json:"aired"`
 	Completed       int                    `json:"completed"`
@@ -118,7 +120,20 @@ func buildShowProgress(db *gorm.DB, userID string, showID int64, collection bool
 		ids = append(ids, e.ID)
 	}
 
-	markers, err := loadMarkers(db, userID, ids, collection)
+	var resetAt *time.Time
+	if !collection {
+		var reset database.UserShowProgressReset
+		err := db.Where("user_id = ? AND show_id = ?", userID, showID).First(&reset).Error
+		switch {
+		case err == nil:
+			at := reset.ResetAt
+			resetAt = &at
+		case !errors.Is(err, gorm.ErrRecordNotFound):
+			return nil, err
+		}
+	}
+
+	markers, err := loadMarkers(db, userID, ids, collection, resetAt)
 	if err != nil {
 		return nil, err
 	}
@@ -231,7 +246,10 @@ func buildShowProgress(db *gorm.DB, userID string, showID int64, collection bool
 // includes source/source_id), so the newest marker per episode wins; the fold
 // happens in Go because MAX() over a timestamp loses the column's declared
 // type and sqlite returns it as an unparseable string.
-func loadMarkers(db *gorm.DB, userID string, episodeIDs []int64, collection bool) (map[int64]time.Time, error) {
+//
+// For watched progress, a resetAt point hides plays before it: the row is
+// skipped here, never deleted, so undoing the reset restores the progress.
+func loadMarkers(db *gorm.DB, userID string, episodeIDs []int64, collection bool, resetAt *time.Time) (map[int64]time.Time, error) {
 	markers := make(map[int64]time.Time, len(episodeIDs))
 	if len(episodeIDs) == 0 {
 		return markers, nil
@@ -267,6 +285,9 @@ func loadMarkers(db *gorm.DB, userID string, episodeIDs []int64, collection bool
 		return nil, err
 	}
 	for _, r := range rows {
+		if resetAt != nil && r.WatchedAt.Before(*resetAt) {
+			continue
+		}
 		if prev, ok := markers[r.MediaID]; !ok || r.WatchedAt.After(prev) {
 			markers[r.MediaID] = r.WatchedAt
 		}
@@ -274,27 +295,22 @@ func loadMarkers(db *gorm.DB, userID string, episodeIDs []int64, collection bool
 	return markers, nil
 }
 
-// publishHistoryRemoved is the outbox hook the reset handler calls. It is a
-// variable so the sqlite-backed handler tests can substitute a recorder: the
-// real outbox insert uses Postgres-only `?::jsonb` SQL that sqlite cannot
-// execute. Production always uses outbox.PublishEvent.
-var publishHistoryRemoved = outbox.PublishEvent
+// ShowProgressResetResponse is the contract's reset acknowledgement.
+type ShowProgressResetResponse struct {
+	ResetAt string `json:"reset_at"`
+}
 
 // POST /v1/shows/{id}/progress/watched/reset
 //
-// Deletes this caller's episode watch-history rows for this show only:
+// Records a reset point for the caller and this show. This is Trakt's
+// semantics: history is NOT deleted. Watched progress counts only plays at or
+// after reset_at, so the caller can re-watch from here while the old rows stay
+// in their history. The optional body accepts the contract's reset_at (defaults
+// to now, may not be in the future).
 //
-//	DELETE FROM user_history
-//	 WHERE user_id = <caller>
-//	   AND media_type = 'episode'
-//	   AND media_id IN (SELECT id FROM episodes WHERE show_id = <show>)
-//
-// It must not — and does not — touch the caller's ratings, collection,
-// playback/resume positions, comments, or history for any other show/movie.
-// The show-level history row (media_type='show'), if one exists, is also left
-// alone: this is an episode-progress reset, not "forget the show".
-//
-// Returns the recomputed watched progress after the delete (Trakt's shape).
+// Ratings, collection, playback positions and every other show's history are
+// untouched. The status stays 200 because that is the status this route has
+// always advertised; the body is the contract's {reset_at}.
 func handleShowProgressReset(c *fiber.Ctx) error {
 	userID, ok := c.Locals("user_id").(string)
 	if !ok || userID == "" {
@@ -306,52 +322,81 @@ func handleShowProgressReset(c *fiber.Ctx) error {
 		return err
 	}
 
-	db, dbErr := database.GetDB()
-	if dbErr != nil {
+	if _, dbErr := database.GetDB(); dbErr != nil {
 		return response.InternalError(c, "database unavailable")
 	}
 
-	var episodeIDs []int64
-	if err := db.Model(&database.Episode{}).Where("show_id = ?", showID).Pluck("id", &episodeIDs).Error; err != nil {
-		return response.InternalError(c, "database query error")
+	resetAt := time.Now().UTC()
+	if len(c.Body()) > 0 {
+		var body struct {
+			ResetAt *time.Time `json:"reset_at"`
+		}
+		if err := json.Unmarshal(c.Body(), &body); err != nil {
+			return response.BadRequest(c, "invalid reset body")
+		}
+		if body.ResetAt != nil {
+			if body.ResetAt.After(time.Now()) {
+				return response.BadRequest(c, "reset_at cannot be in the future")
+			}
+			resetAt = body.ResetAt.UTC()
+		}
 	}
 
-	deleted := 0
 	txErr := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
 		cacheTx := cache.NewCacheTransaction()
-
-		if len(episodeIDs) > 0 {
-			result := tx.Where("user_id = ? AND media_type = ? AND media_id IN ?", userID, "episode", episodeIDs).
-				Delete(&database.UserHistory{})
-			if result.Error != nil {
-				return nil, result.Error
-			}
-			deleted = int(result.RowsAffected)
+		row := database.UserShowProgressReset{UserID: userID, ShowID: showID, ResetAt: resetAt}
+		if err := tx.Clauses(clause.OnConflict{
+			Columns:   []clause.Column{{Name: "user_id"}, {Name: "show_id"}},
+			DoUpdates: clause.AssignmentColumns([]string{"reset_at"}),
+		}).Create(&row).Error; err != nil {
+			return nil, err
 		}
-
-		if deleted > 0 {
-			queueUserInvalidation(cacheTx, userID)
-			queueShowInvalidation(cacheTx, showID)
-			if err := publishHistoryRemoved(tx, outbox.EventHistoryRemoved, userID, map[string]any{
-				"show_id": showID,
-				"deleted": deleted,
-			}); err != nil {
-				return nil, err
-			}
-		}
-
+		queueUserInvalidation(cacheTx, userID)
+		queueShowInvalidation(cacheTx, showID)
 		return cacheTx, nil
 	})
 	if txErr != nil {
 		return response.InternalError(c, "failed to reset progress")
 	}
 
-	resp, err := buildShowProgress(db, userID, showID, false)
-	if err != nil {
-		return response.InternalError(c, "database query error")
+	return c.JSON(ShowProgressResetResponse{ResetAt: response.FormatTime(resetAt)})
+}
+
+// DELETE /v1/shows/{id}/progress/watched/reset
+//
+// Undo a reset: deleting the row restores the progress the caller had before
+// it. The contract answers 204, and deleting nothing is still 204 (the call is
+// idempotent).
+func handleShowProgressResetUndo(c *fiber.Ctx) error {
+	userID, ok := c.Locals("user_id").(string)
+	if !ok || userID == "" {
+		return response.Unauthorized(c)
 	}
 
-	return c.JSON(resp)
+	_, showID, err := media.ResolveIDAs(c, c.Params("id"), "show")
+	if err != nil {
+		return err
+	}
+
+	if _, dbErr := database.GetDB(); dbErr != nil {
+		return response.InternalError(c, "database unavailable")
+	}
+
+	txErr := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
+		cacheTx := cache.NewCacheTransaction()
+		if err := tx.Where("user_id = ? AND show_id = ?", userID, showID).
+			Delete(&database.UserShowProgressReset{}).Error; err != nil {
+			return nil, err
+		}
+		queueUserInvalidation(cacheTx, userID)
+		queueShowInvalidation(cacheTx, showID)
+		return cacheTx, nil
+	})
+	if txErr != nil {
+		return response.InternalError(c, "failed to undo progress reset")
+	}
+
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 // queueUserInvalidation bumps the caller's user version key so cached
