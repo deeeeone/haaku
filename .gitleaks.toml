@@ -30,12 +30,26 @@ targetRules = ['generic-api-key']
 # hex string below, to satisfy the boot-time length check. It is a fixture, not a
 # secret, but `make secrets` scans commits, so fixing the file forward cannot clear
 # it: the commit that introduced it keeps matching until the history is rewritten.
-# The fixture now builds its value at runtime (strings.Repeat), so this entry is
-# scoped to that one value — `condition = "AND"` keeps the rule and the value both
-# required, so a different literal of the same shape, in any file, is still
-# reported. Delete this entry when main is next rewritten.
+# The fixture now builds its value at runtime (strings.Repeat), so this literal
+# exists nowhere in the tree and this entry grandfathers the one finding on main.
+#
+# The pattern is anchored to the whole secret on purpose. Gitleaks matches an
+# allowlist regex against the finding's secret, so an unanchored copy would also
+# suppress a LONGER key that merely contains this one as a substring — a real
+# credential pasted next to the fixture would be silenced. Proved both ways with
+# `gitleaks dir` over two fixtures:
+#
+#   apiKey = "0123456789abcdef0123456789abcdefZq7x9Kd2Lm4Np6Rt"  # 48 chars
+#   apiKey = "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678"           # 40 chars, unrelated
+#
+# unanchored: the 48-char key was NOT reported (only the unrelated one).
+# anchored:   both are reported, and this exact fixture is not.
+#
+# condition = "AND" keeps the rule and the value both required, so a different
+# literal of the same shape, in any file, is still reported. Delete this entry
+# when main is next rewritten.
 [[allowlists]]
 description = '''Historical synthetic HAAKU_SECRET_KEY fixture in internal/config (now runtime-built)'''
 condition = "AND"
-regexes = ['0123456789abcdef0123456789abcdef']
+regexes = ['^0123456789abcdef0123456789abcdef$']
 targetRules = ['generic-api-key']

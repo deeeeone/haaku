@@ -187,6 +187,12 @@ func TestDeleteAccountLocalModeDeletesWithoutClerk(t *testing.T) {
 // from users in PostgreSQL but not under every backend, and a deleted account
 // must not leave its credential behind on any of them.
 func TestDeleteAccountWipeRemovesLocalRows(t *testing.T) {
+	// CreateSession derives its token from the root key, so this test needs one
+	// the same way the endpoint does. It is set here rather than inherited: CI's
+	// Go job runs with no HAAKU_SECRET_KEY in the environment (only the postgres
+	// job sets one), and a shell that happens to export it must not be what
+	// decides whether this test passes.
+	t.Setenv("HAAKU_SECRET_KEY", strings.Repeat("ab12", 12))
 	db := deleteTestDB(t)
 
 	token, _, err := auth.CreateSession(db, deleteTestUserID, "", "")
