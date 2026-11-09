@@ -1,0 +1,133 @@
+// Code generated from docs/parity/parity.yaml by gen.py — do not edit by hand;
+// re-run the generator after the manifest changes.
+package paritystub
+
+import (
+	"github.com/gofiber/fiber/v2"
+
+	"github.com/haaku-tv/haaku/internal/openapi"
+)
+
+// registerStub68 wires the Trakt endpoints owned by #68 (TMDB metadata ingest)
+// that haaku does not serve yet. Each answers an honest 501 naming the blocker and the
+// tracking issue, so a Trakt client gets a real answer instead of a 404.
+func registerStub68(api fiber.Router) {
+	// GET /movies/{id}/releases/{country} — blocked-data: movies has one released DATE; per-country release types (theatrical/digital/physical) are not modelled.
+	// Tracked in #68: https://github.com/haaku-tv/haaku/issues/68
+	api.Get("/v1/movies/:id/releases/:country", stubHandler(68, "GET /movies/{id}/releases/{country}", "movies has one released DATE; per-country release types (theatrical/digital/physical) are not modelled."))
+	// GET /movies/{id}/videos — blocked-data: No videos table and no TMDB video ingest, so there is nothing to serve.
+	// Tracked in #68: https://github.com/haaku-tv/haaku/issues/68
+	api.Get("/v1/movies/:id/videos", stubHandler(68, "GET /movies/{id}/videos", "No videos table and no TMDB video ingest, so there is nothing to serve."))
+	// GET /movies/{id}/studios — blocked-data: No production-company table; TMDB company ids are not ingested.
+	// Tracked in #68: https://github.com/haaku-tv/haaku/issues/68
+	api.Get("/v1/movies/:id/studios", stubHandler(68, "GET /movies/{id}/studios", "No production-company table; TMDB company ids are not ingested."))
+	// GET /shows/{id}/videos — blocked-data: No videos table and no TMDB video ingest.
+	// Tracked in #68: https://github.com/haaku-tv/haaku/issues/68
+	api.Get("/v1/shows/:id/videos", stubHandler(68, "GET /shows/{id}/videos", "No videos table and no TMDB video ingest."))
+	// GET /shows/{id}/studios — blocked-data: No production-company table; shows.network is a network, not the studio list Trakt returns.
+	// Tracked in #68: https://github.com/haaku-tv/haaku/issues/68
+	api.Get("/v1/shows/:id/studios", stubHandler(68, "GET /shows/{id}/studios", "No production-company table; shows.network is a network, not the studio list Trakt returns."))
+	// GET /shows/{id}/certifications — blocked-data: shows.certification is a single value; Trakt returns certifications keyed by country, which is not modelled.
+	// Tracked in #68: https://github.com/haaku-tv/haaku/issues/68
+	api.Get("/v1/shows/:id/certifications", stubHandler(68, "GET /shows/{id}/certifications", "shows.certification is a single value; Trakt returns certifications keyed by country, which is not modelled."))
+	// GET /shows/{id}/seasons/{season}/people — blocked-data: Season credits are not ingested: the credits table takes a media_type, but only movie/show credits are written today.
+	// Tracked in #68: https://github.com/haaku-tv/haaku/issues/68
+	api.Get("/v1/shows/:id/seasons/:season/people", stubHandler(68, "GET /shows/{id}/seasons/{season}/people", "Season credits are not ingested: the credits table takes a media_type, but only movie/show credits are written today."))
+	// GET /shows/{id}/seasons/{season}/videos — blocked-data: No videos table and no TMDB video ingest.
+	// Tracked in #68: https://github.com/haaku-tv/haaku/issues/68
+	api.Get("/v1/shows/:id/seasons/:season/videos", stubHandler(68, "GET /shows/{id}/seasons/{season}/videos", "No videos table and no TMDB video ingest."))
+	// GET /shows/{id}/seasons/{s}/episodes/{e}/people — blocked-data: Episode credits are not ingested (credits table is written for movie/show only).
+	// Tracked in #68: https://github.com/haaku-tv/haaku/issues/68
+	api.Get("/v1/shows/:id/seasons/:s/episodes/:e/people", stubHandler(68, "GET /shows/{id}/seasons/{s}/episodes/{e}/people", "Episode credits are not ingested (credits table is written for movie/show only)."))
+	// GET /shows/{id}/seasons/{s}/episodes/{e}/videos — blocked-data: No videos table and no TMDB video ingest.
+	// Tracked in #68: https://github.com/haaku-tv/haaku/issues/68
+	api.Get("/v1/shows/:id/seasons/:s/episodes/:e/videos", stubHandler(68, "GET /shows/{id}/seasons/{s}/episodes/{e}/videos", "No videos table and no TMDB video ingest."))
+}
+
+// defsStub68 is the registry entry for each stub above. The 501 in
+// StatusCodes is what makes the route grade as blocked-* in the parity manifest and
+// appear as a 501 in the generated spec.
+func defsStub68() []openapi.RouteDef {
+	return []openapi.RouteDef{
+		{
+			Method:      "GET",
+			Path:        "/v1/movies/{id}/releases/{country}",
+			Summary:     "Parity stub — not implemented (TMDB metadata ingest)",
+			Tags:        []string{"Movies"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — movies has one released DATE; per-country release types (theatrical/digital/physical) are not modell (#68)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/movies/{id}/videos",
+			Summary:     "Parity stub — not implemented (TMDB metadata ingest)",
+			Tags:        []string{"Movies"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — No videos table and no TMDB video ingest, so there is nothing to serve. (#68)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/movies/{id}/studios",
+			Summary:     "Parity stub — not implemented (TMDB metadata ingest)",
+			Tags:        []string{"Movies"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — No production-company table; TMDB company ids are not ingested. (#68)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/shows/{id}/videos",
+			Summary:     "Parity stub — not implemented (TMDB metadata ingest)",
+			Tags:        []string{"Shows"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — No videos table and no TMDB video ingest. (#68)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/shows/{id}/studios",
+			Summary:     "Parity stub — not implemented (TMDB metadata ingest)",
+			Tags:        []string{"Shows"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — No production-company table; shows.network is a network, not the studio list Trakt returns. (#68)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/shows/{id}/certifications",
+			Summary:     "Parity stub — not implemented (TMDB metadata ingest)",
+			Tags:        []string{"Shows"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — shows.certification is a single value; Trakt returns certifications keyed by country, which is not m (#68)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/shows/{id}/seasons/{season}/people",
+			Summary:     "Parity stub — not implemented (TMDB metadata ingest)",
+			Tags:        []string{"Shows"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — Season credits are not ingested: the credits table takes a media_type, but only movie/show credits a (#68)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/shows/{id}/seasons/{season}/videos",
+			Summary:     "Parity stub — not implemented (TMDB metadata ingest)",
+			Tags:        []string{"Shows"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — No videos table and no TMDB video ingest. (#68)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/shows/{id}/seasons/{s}/episodes/{e}/people",
+			Summary:     "Parity stub — not implemented (TMDB metadata ingest)",
+			Tags:        []string{"Shows"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — Episode credits are not ingested (credits table is written for movie/show only). (#68)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/shows/{id}/seasons/{s}/episodes/{e}/videos",
+			Summary:     "Parity stub — not implemented (TMDB metadata ingest)",
+			Tags:        []string{"Shows"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — No videos table and no TMDB video ingest. (#68)"},
+		},
+	}
+}

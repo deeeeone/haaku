@@ -47,15 +47,15 @@ sections:
         status: implemented
         rationale: "Serves real rows from movies.released inside the window (calendar.handleCalendarMovies), paginated; the Trakt-shaped path and params are identical."
       - trakt: "GET /calendars/all/dvd/{start_date}/{days}"
-        ours: ""
+        ours: "GET /v1/calendars/all/dvd/{start_date}/{days}"
         status: blocked-data
         rationale: "movies carries a single released DATE; there is no dvd/digital/physical date column, so a DVD calendar cannot be answered without inventing dates."
       - trakt: "GET /calendars/all/streaming/{start_date}/{days}"
-        ours: ""
+        ours: "GET /v1/calendars/all/streaming/{start_date}/{days}"
         status: blocked-data
         rationale: "No streaming-release date is stored; watch providers live in movies.metadata per title (TMDB), not as dated releases."
       - trakt: "GET /calendars/releases/hot/{start_date}/{days}"
-        ours: ""
+        ours: "GET /v1/calendars/releases/hot/{start_date}/{days}"
         status: blocked-data
         rationale: "No unified release feed: 'hot' mixes theatrical, streaming and episode releases in one ranked list; we store only movies.released and episodes.aired_at, with no cross-medium ranking."
       - trakt: "GET /calendars/releases/hot/new/{start_date}/{days}"
@@ -76,29 +76,29 @@ sections:
   - name: "Media"
     rows:
       - trakt: "GET /media/trending"
-        ours: ""
+        ours: "GET /v1/media/trending"
         status: blocked-engine
         rationale: "Per-type feeds exist (/v1/movies/trending, /v1/shows/trending) but a single cross-type ranked feed needs the rankings engine."
         engine: "rankings/stats engine (issue #5)"
       - trakt: "GET /media/popular"
-        ours: ""
+        ours: "GET /v1/media/popular"
         status: blocked-engine
         rationale: "Our popularity is movies/shows.popularity; one feed ranked across both media types is the rankings engine's job."
         engine: "rankings/stats engine (issue #5)"
   - name: "Movies"
     rows:
       - trakt: "GET /movies/watched/{period}"
-        ours: ""
+        ours: "GET /v1/movies/watched/{period}"
         status: blocked-engine
         rationale: "Distinct watchers per period is a period-activity aggregate we do not compute yet."
         engine: "stats/rankings engine (issue #5)"
       - trakt: "GET /movies/played/{period}"
-        ours: ""
+        ours: "GET /v1/movies/played/{period}"
         status: blocked-engine
         rationale: "Play counts per period need the same aggregate as watched/{period}."
         engine: "stats/rankings engine (issue #5)"
       - trakt: "GET /movies/collected/{period}"
-        ours: ""
+        ours: "GET /v1/movies/collected/{period}"
         status: blocked-engine
         rationale: "Collector counts per period require the rankings engine's period rollups."
         engine: "stats/rankings engine (issue #5)"
@@ -108,16 +108,16 @@ sections:
         rationale: "The watchlist-weighted anticipation score is served by the media-wide anticipated feed, which already filters by type."
         compat: "ours takes ?type=movie; the compat listener maps /movies/anticipated onto it. Auth is required here (Trakt allows optional auth)."
       - trakt: "GET /movies/hot"
-        ours: ""
+        ours: "GET /v1/movies/hot"
         status: blocked-engine
         rationale: "hot is watchers in the last 24 hours; we store no windowed watcher counts (movies/trending is popularity-ordered, not play-ordered)."
         engine: "stats/rankings engine (issue #5)"
       - trakt: "GET /movies/streaming/{period}"
-        ours: ""
+        ours: "GET /v1/movies/streaming/{period}"
         status: blocked-data
         rationale: "Trakt's streaming list is driven by streaming release dates, which we do not store (see /calendars/all/streaming)."
       - trakt: "GET /movies/boxoffice"
-        ours: ""
+        ours: "GET /v1/movies/boxoffice"
         status: blocked-data
         rationale: "No revenue/box-office columns exist and the TMDB ingest does not fetch them."
       - trakt: "GET /movies/updates/id/{start_date}"
@@ -125,16 +125,16 @@ sections:
         status: implemented
         rationale: "Trakt-ID-keyed update feed, landed with the rest of issue #4's read work; same path and params."
       - trakt: "GET /movies/{id}/related"
-        ours: ""
+        ours: "GET /v1/movies/{id}/related"
         status: blocked-engine
         rationale: "Needs the recommendation graph. Our own route GET /v1/movies/recommendations/{id} is the nearest surface but answers 501 not_implemented (its custom-surface row is in the last section), and Trakt's /movies/{id}/related is a distinct surface, so neither is parity here."
         engine: "recommendations engine (issue #5)"
       - trakt: "GET /movies/{id}/releases/{country}"
-        ours: ""
+        ours: "GET /v1/movies/{id}/releases/{country}"
         status: blocked-data
         rationale: "movies has one released DATE; per-country release types (theatrical/digital/physical) are not modelled."
       - trakt: "GET /movies/{id}/videos"
-        ours: ""
+        ours: "GET /v1/movies/{id}/videos"
         status: blocked-data
         rationale: "No videos table and no TMDB video ingest, so there is nothing to serve."
       - trakt: "GET /movies/{id}/comments/{sort}"
@@ -146,7 +146,7 @@ sections:
         status: out-of-scope
         rationale: "deferred: we store likes and reactions per comment but have no sentiment scorer, and no issue tracks building one."
       - trakt: "GET /movies/{id}/studios"
-        ours: ""
+        ours: "GET /v1/movies/{id}/studios"
         status: blocked-data
         rationale: "No production-company table; TMDB company ids are not ingested."
       - trakt: "GET /movies/{id}/watchnow/{country}"
@@ -172,17 +172,17 @@ sections:
   - name: "Shows"
     rows:
       - trakt: "GET /shows/watched/{period}"
-        ours: ""
+        ours: "GET /v1/shows/watched/{period}"
         status: blocked-engine
         rationale: "Period distinct watchers for shows need the period-activity aggregate."
         engine: "stats/rankings engine (issue #5)"
       - trakt: "GET /shows/played/{period}"
-        ours: ""
+        ours: "GET /v1/shows/played/{period}"
         status: blocked-engine
         rationale: "Period play counts for shows need the same aggregate."
         engine: "stats/rankings engine (issue #5)"
       - trakt: "GET /shows/collected/{period}"
-        ours: ""
+        ours: "GET /v1/shows/collected/{period}"
         status: blocked-engine
         rationale: "Period collector counts need the rankings engine rollups."
         engine: "stats/rankings engine (issue #5)"
@@ -192,12 +192,12 @@ sections:
         rationale: "Watchlist-weighted anticipation, already filtered by type on the media-wide feed."
         compat: "ours takes ?type=show; the compat listener maps /shows/anticipated onto it."
       - trakt: "GET /shows/hot"
-        ours: ""
+        ours: "GET /v1/shows/hot"
         status: blocked-engine
         rationale: "hot needs windowed watcher counts we do not compute (shows/trending is popularity-ordered)."
         engine: "stats/rankings engine (issue #5)"
       - trakt: "GET /shows/streaming/{period}"
-        ours: ""
+        ours: "GET /v1/shows/streaming/{period}"
         status: blocked-data
         rationale: "Driven by streaming release dates, which are not stored (see /calendars/all/streaming)."
       - trakt: "GET /shows/updates/id/{start_date}"
@@ -205,12 +205,12 @@ sections:
         status: implemented
         rationale: "Trakt-ID-keyed update feed; same path and params."
       - trakt: "GET /shows/{id}/related"
-        ours: ""
+        ours: "GET /v1/shows/{id}/related"
         status: blocked-engine
         rationale: "Needs the recommendation graph; our own route GET /v1/shows/recommendations/{id} is the nearest surface but answers 501 not_implemented (see the custom-surface row in the last section)."
         engine: "recommendations engine (issue #5)"
       - trakt: "GET /shows/{id}/videos"
-        ours: ""
+        ours: "GET /v1/shows/{id}/videos"
         status: blocked-data
         rationale: "No videos table and no TMDB video ingest."
       - trakt: "GET /shows/{id}/comments/{sort}"
@@ -222,11 +222,11 @@ sections:
         status: out-of-scope
         rationale: "deferred: no sentiment scorer exists and none is planned."
       - trakt: "GET /shows/{id}/studios"
-        ours: ""
+        ours: "GET /v1/shows/{id}/studios"
         status: blocked-data
         rationale: "No production-company table; shows.network is a network, not the studio list Trakt returns."
       - trakt: "GET /shows/{id}/certifications"
-        ours: ""
+        ours: "GET /v1/shows/{id}/certifications"
         status: blocked-data
         rationale: "shows.certification is a single value; Trakt returns certifications keyed by country, which is not modelled."
       - trakt: "GET /shows/{id}/next_episode"
@@ -246,7 +246,7 @@ sections:
         status: implemented
         rationale: "Landed: same per-season breakdown pinned to the caller's user_collection rows (aired vs collected episodes)."
       - trakt: "GET /shows/{id}/progress/watched/reset"
-        ours: ""
+        ours: "GET /v1/shows/{id}/progress/watched/reset"
         status: blocked-engine
         rationale: "Resetting progress can only exist once progress is computed and stored."
         engine: "stats/rankings engine (issue #5)"
@@ -308,11 +308,11 @@ sections:
         status: out-of-scope
         rationale: "deferred: list items can reference a season, but no per-season list route exists."
       - trakt: "GET /shows/{id}/seasons/{season}/people"
-        ours: ""
+        ours: "GET /v1/shows/{id}/seasons/{season}/people"
         status: blocked-data
         rationale: "Season credits are not ingested: the credits table takes a media_type, but only movie/show credits are written today."
       - trakt: "GET /shows/{id}/seasons/{season}/videos"
-        ours: ""
+        ours: "GET /v1/shows/{id}/seasons/{season}/videos"
         status: blocked-data
         rationale: "No videos table and no TMDB video ingest."
       - trakt: "GET /shows/{id}/seasons/{s}/episodes/{e}/comments"
@@ -326,29 +326,29 @@ sections:
         rationale: "Lists containing the episode exist, served flat by episode id."
         compat: "listener resolves the nested episode to our id and delegates to the flat route."
       - trakt: "GET /shows/{id}/seasons/{s}/episodes/{e}/people"
-        ours: ""
+        ours: "GET /v1/shows/{id}/seasons/{s}/episodes/{e}/people"
         status: blocked-data
         rationale: "Episode credits are not ingested (credits table is written for movie/show only)."
       - trakt: "GET /shows/{id}/seasons/{s}/episodes/{e}/videos"
-        ours: ""
+        ours: "GET /v1/shows/{id}/seasons/{s}/episodes/{e}/videos"
         status: blocked-data
         rationale: "No videos table and no TMDB video ingest."
   - name: "People"
     rows:
       - trakt: "GET /people/{id}/lists/{type}/{sort}"
-        ours: ""
+        ours: "GET /v1/people/{id}/lists/{type}/{sort}"
         status: blocked-engine
         rationale: "Lists containing a person need the lists engine; no per-person list route exists."
         engine: "lists engine (issue #5)"
   - name: "Recommendations"
     rows:
       - trakt: "DELETE /recommendations/movies/{id}"
-        ours: ""
+        ours: "DELETE /v1/recommendations/movies/{id}"
         status: blocked-engine
         rationale: "Hiding a recommendation is a decision the recommendations engine does not model yet (the user_hidden table is not wired to it)."
         engine: "recommendations engine (issue #5)"
       - trakt: "DELETE /recommendations/shows/{id}"
-        ours: ""
+        ours: "DELETE /v1/recommendations/shows/{id}"
         status: blocked-engine
         rationale: "Same as the movie dismissal: no per-item hide decision is modelled."
         engine: "recommendations engine (issue #5)"
@@ -367,7 +367,7 @@ sections:
         status: implemented
         rationale: "Landed as a per-type read pinned to media_type='show'."
       - trakt: "GET /sync/collection/episodes"
-        ours: ""
+        ours: "GET /v1/sync/collection/episodes"
         status: blocked-data
         rationale: "user_collection.media_type is 'movie' or 'show' only; an episode collection row cannot be stored."
       - trakt: "GET /sync/watchlist/movies"
@@ -379,11 +379,11 @@ sections:
         status: implemented
         rationale: "Landed as a per-type read pinned to media_type='show'."
       - trakt: "GET /sync/watchlist/seasons"
-        ours: ""
+        ours: "GET /v1/sync/watchlist/seasons"
         status: blocked-data
         rationale: "user_watchlist.media_type is 'movie' or 'show' only."
       - trakt: "GET /sync/watchlist/episodes"
-        ours: ""
+        ours: "GET /v1/sync/watchlist/episodes"
         status: blocked-data
         rationale: "user_watchlist.media_type is 'movie' or 'show' only."
       - trakt: "GET /sync/ratings/movies"
@@ -511,15 +511,15 @@ sections:
   - name: "Watch Now"
     rows:
       - trakt: "GET /watchnow/sources"
-        ours: ""
+        ours: "GET /v1/watchnow/sources"
         status: blocked-data
         rationale: "There is no provider catalogue table: providers are TMDB per-title metadata (metadata JSONB), with no stable id list or country mapping to serve."
       - trakt: "GET /watchnow/sources/{countryCode}"
-        ours: ""
+        ours: "GET /v1/watchnow/sources/{countryCode}"
         status: blocked-data
         rationale: "Same gap: no catalogue to filter by country."
       - trakt: "GET /watchnow/justwatch_links/{country}"
-        ours: ""
+        ours: "GET /v1/watchnow/justwatch_links/{country}"
         status: blocked-data
         rationale: "No JustWatch link/deeplink data is stored anywhere."
   - name: "Team"
@@ -541,15 +541,15 @@ sections:
         rationale: "Lookup by external id is served with id_type/id as query params."
         compat: "listener maps /search/tmdb/{id} -> /v1/search/lookup?id_type=tmdb&id={id}."
       - trakt: "POST /search"
-        ours: ""
+        ours: "POST /v1/search"
         status: blocked-data
         rationale: "Persisting a recent search needs a recent-searches table, which does not exist (search is stateless today)."
       - trakt: "GET /search/recent"
-        ours: ""
+        ours: "GET /v1/search/recent"
         status: blocked-data
         rationale: "No recent-searches store exists to read back."
       - trakt: "GET /search/recent_by_id/{type}"
-        ours: ""
+        ours: "GET /v1/search/recent_by_id/{type}"
         status: blocked-data
         rationale: "Same missing store; the Trakt id-keyed variant too."
   - name: "Comments"

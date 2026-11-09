@@ -1,0 +1,56 @@
+// Code generated from docs/parity/parity.yaml by gen.py — do not edit by hand;
+// re-run the generator after the manifest changes.
+package paritystub
+
+import (
+	"github.com/gofiber/fiber/v2"
+
+	"github.com/haaku-tv/haaku/internal/openapi"
+)
+
+// registerStub70 wires the Trakt endpoints owned by #70 (search engine)
+// that haaku does not serve yet. Each answers an honest 501 naming the blocker and the
+// tracking issue, so a Trakt client gets a real answer instead of a 404.
+func registerStub70(api fiber.Router) {
+	// POST /search — blocked-data: Persisting a recent search needs a recent-searches table, which does not exist (search is stateless today).
+	// Tracked in #70: https://github.com/haaku-tv/haaku/issues/70
+	api.Get("/v1/search", stubHandler(70, "POST /search", "Persisting a recent search needs a recent-searches table, which does not exist (search is stateless today)."))
+	// GET /search/recent — blocked-data: No recent-searches store exists to read back.
+	// Tracked in #70: https://github.com/haaku-tv/haaku/issues/70
+	api.Get("/v1/search/recent", stubHandler(70, "GET /search/recent", "No recent-searches store exists to read back."))
+	// GET /search/recent_by_id/{type} — blocked-data: Same missing store; the Trakt id-keyed variant too.
+	// Tracked in #70: https://github.com/haaku-tv/haaku/issues/70
+	api.Get("/v1/search/recent_by_id/:type", stubHandler(70, "GET /search/recent_by_id/{type}", "Same missing store; the Trakt id-keyed variant too."))
+}
+
+// defsStub70 is the registry entry for each stub above. The 501 in
+// StatusCodes is what makes the route grade as blocked-* in the parity manifest and
+// appear as a 501 in the generated spec.
+func defsStub70() []openapi.RouteDef {
+	return []openapi.RouteDef{
+		{
+			Method:      "POST",
+			Path:        "/v1/search",
+			Summary:     "Parity stub — not implemented (search engine)",
+			Tags:        []string{"Search"},
+			Auth:        "required",
+			StatusCodes: map[int]string{501: "Not implemented — Persisting a recent search needs a recent-searches table, which does not exist (search is stateless  (#70)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/search/recent",
+			Summary:     "Parity stub — not implemented (search engine)",
+			Tags:        []string{"Search"},
+			Auth:        "required",
+			StatusCodes: map[int]string{501: "Not implemented — No recent-searches store exists to read back. (#70)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/search/recent_by_id/{type}",
+			Summary:     "Parity stub — not implemented (search engine)",
+			Tags:        []string{"Search"},
+			Auth:        "required",
+			StatusCodes: map[int]string{501: "Not implemented — Same missing store; the Trakt id-keyed variant too. (#70)"},
+		},
+	}
+}

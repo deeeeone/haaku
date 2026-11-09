@@ -1,0 +1,144 @@
+// Code generated from docs/parity/parity.yaml by gen.py — do not edit by hand;
+// re-run the generator after the manifest changes.
+package paritystub
+
+import (
+	"github.com/gofiber/fiber/v2"
+
+	"github.com/haaku-tv/haaku/internal/openapi"
+)
+
+// registerStub66 wires the Trakt endpoints owned by #66 (stats & rankings engine)
+// that haaku does not serve yet. Each answers an honest 501 naming the blocker and the
+// tracking issue, so a Trakt client gets a real answer instead of a 404.
+func registerStub66(api fiber.Router) {
+	// GET /media/trending — blocked-engine: rankings/stats engine (issue #5)
+	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
+	api.Get("/v1/media/trending", stubHandler(66, "GET /media/trending", "rankings/stats engine (issue #5)"))
+	// GET /media/popular — blocked-engine: rankings/stats engine (issue #5)
+	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
+	api.Get("/v1/media/popular", stubHandler(66, "GET /media/popular", "rankings/stats engine (issue #5)"))
+	// GET /movies/watched/{period} — blocked-engine: stats/rankings engine (issue #5)
+	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
+	api.Get("/v1/movies/watched/:period", stubHandler(66, "GET /movies/watched/{period}", "stats/rankings engine (issue #5)"))
+	// GET /movies/played/{period} — blocked-engine: stats/rankings engine (issue #5)
+	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
+	api.Get("/v1/movies/played/:period", stubHandler(66, "GET /movies/played/{period}", "stats/rankings engine (issue #5)"))
+	// GET /movies/collected/{period} — blocked-engine: stats/rankings engine (issue #5)
+	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
+	api.Get("/v1/movies/collected/:period", stubHandler(66, "GET /movies/collected/{period}", "stats/rankings engine (issue #5)"))
+	// GET /movies/hot — blocked-engine: stats/rankings engine (issue #5)
+	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
+	api.Get("/v1/movies/hot", stubHandler(66, "GET /movies/hot", "stats/rankings engine (issue #5)"))
+	// GET /shows/watched/{period} — blocked-engine: stats/rankings engine (issue #5)
+	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
+	api.Get("/v1/shows/watched/:period", stubHandler(66, "GET /shows/watched/{period}", "stats/rankings engine (issue #5)"))
+	// GET /shows/played/{period} — blocked-engine: stats/rankings engine (issue #5)
+	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
+	api.Get("/v1/shows/played/:period", stubHandler(66, "GET /shows/played/{period}", "stats/rankings engine (issue #5)"))
+	// GET /shows/collected/{period} — blocked-engine: stats/rankings engine (issue #5)
+	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
+	api.Get("/v1/shows/collected/:period", stubHandler(66, "GET /shows/collected/{period}", "stats/rankings engine (issue #5)"))
+	// GET /shows/hot — blocked-engine: stats/rankings engine (issue #5)
+	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
+	api.Get("/v1/shows/hot", stubHandler(66, "GET /shows/hot", "stats/rankings engine (issue #5)"))
+	// GET /shows/{id}/progress/watched/reset — blocked-engine: stats/rankings engine (issue #5)
+	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
+	api.Get("/v1/shows/:id/progress/watched/reset", stubHandler(66, "GET /shows/{id}/progress/watched/reset", "stats/rankings engine (issue #5)"))
+}
+
+// defsStub66 is the registry entry for each stub above. The 501 in
+// StatusCodes is what makes the route grade as blocked-* in the parity manifest and
+// appear as a 501 in the generated spec.
+func defsStub66() []openapi.RouteDef {
+	return []openapi.RouteDef{
+		{
+			Method:      "GET",
+			Path:        "/v1/media/trending",
+			Summary:     "Parity stub — not implemented (stats & rankings engine)",
+			Tags:        []string{"Media"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — rankings/stats engine (issue #5) (#66)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/media/popular",
+			Summary:     "Parity stub — not implemented (stats & rankings engine)",
+			Tags:        []string{"Media"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — rankings/stats engine (issue #5) (#66)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/movies/watched/{period}",
+			Summary:     "Parity stub — not implemented (stats & rankings engine)",
+			Tags:        []string{"Movies"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #5) (#66)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/movies/played/{period}",
+			Summary:     "Parity stub — not implemented (stats & rankings engine)",
+			Tags:        []string{"Movies"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #5) (#66)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/movies/collected/{period}",
+			Summary:     "Parity stub — not implemented (stats & rankings engine)",
+			Tags:        []string{"Movies"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #5) (#66)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/movies/hot",
+			Summary:     "Parity stub — not implemented (stats & rankings engine)",
+			Tags:        []string{"Movies"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #5) (#66)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/shows/watched/{period}",
+			Summary:     "Parity stub — not implemented (stats & rankings engine)",
+			Tags:        []string{"Shows"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #5) (#66)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/shows/played/{period}",
+			Summary:     "Parity stub — not implemented (stats & rankings engine)",
+			Tags:        []string{"Shows"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #5) (#66)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/shows/collected/{period}",
+			Summary:     "Parity stub — not implemented (stats & rankings engine)",
+			Tags:        []string{"Shows"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #5) (#66)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/shows/hot",
+			Summary:     "Parity stub — not implemented (stats & rankings engine)",
+			Tags:        []string{"Shows"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #5) (#66)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/shows/{id}/progress/watched/reset",
+			Summary:     "Parity stub — not implemented (stats & rankings engine)",
+			Tags:        []string{"Shows"},
+			Auth:        "required",
+			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #5) (#66)"},
+		},
+	}
+}
