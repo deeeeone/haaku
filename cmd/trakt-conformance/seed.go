@@ -63,14 +63,17 @@ type Fixtures struct {
 	// than a vacuous empty array. CommentID itself stays reply-free so GET is
 	// not affected by reply state, and DeleteCommentID is a third row so the
 	// destructive DELETE case cannot consume the GET fixture.
-	ThreadCommentID int64  `json:"thread_comment_id"`
-	DeleteCommentID int64  `json:"delete_comment_id"`
-	NoteID          int64  `json:"note_id"`
-	DeleteNoteID    int64  `json:"delete_note_id"`
-	UserID          string `json:"user_id"`
-	Username        string `json:"username"`
-	Email           string `json:"email"`
-	Password        string `json:"password"`
+	ThreadCommentID int64 `json:"thread_comment_id"`
+	DeleteCommentID int64 `json:"delete_comment_id"`
+	// ReactionCommentID is a fourth row, so the reaction DELETE case (also a
+	// destructive call) cannot consume the row the comment DELETE case uses.
+	ReactionCommentID int64  `json:"reaction_comment_id"`
+	NoteID            int64  `json:"note_id"`
+	DeleteNoteID      int64  `json:"delete_note_id"`
+	UserID            string `json:"user_id"`
+	Username          string `json:"username"`
+	Email             string `json:"email"`
+	Password          string `json:"password"`
 	// TargetUserID is a second account, mutually followed by the viewer so the
 	// follower/following/friends lists are non-empty. Follow/block cases use
 	// FollowUserID/BlockUserID instead, so their destructive calls cannot empty
@@ -434,6 +437,27 @@ func seedFixtures(db *gorm.DB, fx *Fixtures) error {
 		uid, "movie", movie2.ID); err != nil {
 		return fmt.Errorf("seed delete comment: %w", err)
 	}
+	// A fourth comment for the reaction DELETE case. That case and the comment
+	// DELETE are both destructive and both resolve their {id} from the seed;
+	// sharing one row meant whichever ran first consumed it and the other
+	// measured a 404 against an already-deleted comment, not a handler.
+	reactionComment := database.Comment{UserID: fx.TargetUserID, MediaType: "movie", MediaID: &movie.ID,
+		CommentType: "shout", Body: "A conformance comment the reaction delete consumes."}
+	if err := firstOrCreate(db, &reactionComment, "user_id = ? AND media_type = ? AND media_id = ?",
+		fx.TargetUserID, "movie", movie.ID); err != nil {
+		return fmt.Errorf("seed reaction comment: %w", err)
+	}
+	// An edited comment inside the updates feed's window: /comments/updates
+	// returns the edited stream, so without an edit the assertion had nothing
+	// to validate (an empty array is not a pass).
+	editedAt := now.Add(-time.Hour)
+	editedComment := database.Comment{UserID: fx.TargetUserID, MediaType: "movie", MediaID: &movie2.ID,
+		CommentType: "shout", Body: "A conformance comment that was edited.",
+		EditedAt: &editedAt, UpdatedAt: editedAt}
+	if err := firstOrCreate(db, &editedComment, "user_id = ? AND media_type = ? AND media_id = ?",
+		fx.TargetUserID, "movie", movie2.ID); err != nil {
+		return fmt.Errorf("seed edited comment: %w", err)
+	}
 	for _, like := range []database.CommentLike{
 		{CommentID: thread.ID, UserID: uid, CreatedAt: now},
 		{CommentID: comment.ID, UserID: fx.TargetUserID, CreatedAt: now},
@@ -441,6 +465,13 @@ func seedFixtures(db *gorm.DB, fx *Fixtures) error {
 		if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&like).Error; err != nil {
 			return fmt.Errorf("seed comment like: %w", err)
 		}
+	}
+	// A stored reaction, so GET /comments/{id}/reactions/ has a real row to
+	// render instead of an empty array (which validates nothing).
+	reaction := database.CommentReaction{CommentID: comment.ID, UserID: fx.TargetUserID,
+		ReactionType: "like", CreatedAt: now}
+	if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&reaction).Error; err != nil {
+		return fmt.Errorf("seed comment reaction: %w", err)
 	}
 
 	list := database.List{UserID: uid, Name: "Conformance list", Slug: "conformance-list",
@@ -568,6 +599,7 @@ func seedFixtures(db *gorm.DB, fx *Fixtures) error {
 	fx.CommentID = comment.ID
 	fx.ThreadCommentID = thread.ID
 	fx.DeleteCommentID = deleteComment.ID
+	fx.ReactionCommentID = reactionComment.ID
 	fx.NoteID = note.ID
 	fx.DeleteNoteID = deleteNote.ID
 	return nil

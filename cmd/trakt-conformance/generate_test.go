@@ -19,7 +19,7 @@ func fixturePair() (Fixtures, Fixtures) {
 		SeasonID: 31, SeasonNum: 1, EpisodeID: 41, Episode2ID: 42, EpisodeNum: 1,
 		PersonID: 51, PersonTMDB: 17419, PersonIMDB: "nm17419", PersonSlug: "person-a",
 		ListID: 61, ListSlug: "list-a", ListItemID: 62, SmartListID: 63,
-		CommentID: 71, ThreadCommentID: 72, NoteID: 73,
+		CommentID: 71, ThreadCommentID: 72, DeleteCommentID: 75, ReactionCommentID: 76, NoteID: 73,
 		UserID: "viewer-a", Username: "viewer-a", Email: "a@example.test", Password: "pw",
 		TargetUserID: "target-a", TargetUsername: "target-a",
 		AppClientID: "11111111-1111-1111-1111-111111111111", AppClientSecret: "secret-a",
@@ -38,6 +38,7 @@ func fixturePair() (Fixtures, Fixtures) {
 	other.UserID, other.TargetUserID = "viewer-b", "target-b"
 	other.FollowUserID, other.BlockUserID = "follow-b", "block-b"
 	other.CommentID, other.ThreadCommentID, other.DeleteCommentID = 971, 972, 974
+	other.ReactionCommentID = 976
 	other.NoteID, other.DeleteNoteID = 973, 975
 	other.AppClientID, other.GrantCode, other.CodeVerifier, other.CodeChallenge, other.DeviceCode =
 		"22222222-2222-2222-2222-222222222222", "grant-b", "verifier-b", "challenge-b", "device-b"
@@ -65,6 +66,7 @@ func TestCasesFollowFixtureIDs(t *testing.T) {
 		{"GET /lists/{id}", "GET /v1/lists/{id}"},
 		{"GET /smart-lists/{list_id}", "GET /v1/smart-lists/{list_id}"},
 		{"GET /comments/{id}/replies", "GET /v1/comments/{id}/replies"},
+		{"DELETE /comments/{id}/reactions/{reaction_type}", "DELETE /v1/comments/{id}/reactions/{reaction_type}"},
 		{"DELETE /users/{id}/follow", "DELETE /v1/users/{id}/follow"},
 		{"POST /users/{id}/block", "POST /v1/users/{id}/block"},
 		{"GET /search/{id_type}/{id}", "GET /v1/search/{id_type}/{id}"},

@@ -3,7 +3,7 @@
 # Regenerate deliberately: scripts/check-size.sh --update
 1870	internal/handlers/sync/sync.go
 1672	internal/handlers/lists/lists.go
-1067	internal/handlers/comments/comments.go
 858	internal/handlers/recommendations/recommendations.go
+847	internal/handlers/comments/comments.go
 825	_tests_/metadata_test.go
 801	internal/handlers/users/export.go
