@@ -1,11 +1,10 @@
 package users
 
 import (
-	"errors"
-
 	"github.com/haaku-tv/haaku/internal/auth"
 	"github.com/haaku-tv/haaku/internal/contractshape"
 	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/handlers/shared"
 	"github.com/haaku-tv/haaku/internal/openapi"
 	"github.com/haaku-tv/haaku/internal/response"
 
@@ -53,35 +52,26 @@ func init() {
 }
 
 // mediaListOrder maps a favorites/watchlist sort onto SQL. timeCol is the
-// collection's own timestamp column (favorited_at / listed_at). Only the values
-// we can actually order by are accepted; anything else is a 400 rather than a
-// silently ignored sort.
+// collection's own timestamp column (favorited_at / listed_at). The accepted
+// set is the one this collection can actually order by; anything else is a 400
+// naming those values rather than a silent default.
 func mediaListOrder(sortBy, how, timeCol string) (string, error) {
-	if how == "" {
-		how = "asc"
-	}
-	if how != "asc" && how != "desc" {
-		return "", errInvalidSort
-	}
 	title := `COALESCE(
 		(SELECT m.title FROM movies m WHERE m.id = media_id AND media_type = 'movie'),
 		(SELECT s.title FROM shows s WHERE s.id = media_id AND media_type = 'show')
 	)`
-	switch sortBy {
-	case "rank":
-		return "rank " + how + ", id " + how, nil
-	case "added", "listed":
-		return timeCol + " " + how + ", id " + how, nil
-	case "title":
-		return title + " " + how + ", media_type " + how + ", media_id " + how, nil
-	case "released":
-		return `COALESCE(
-			(SELECT m.released FROM movies m WHERE m.id = media_id AND media_type = 'movie'),
-			(SELECT s.first_aired FROM shows s WHERE s.id = media_id AND media_type = 'show')
-		) ` + how + `, media_type ` + how + `, media_id ` + how, nil
-	default:
-		return "", errInvalidSort
+	released := `COALESCE(
+		(SELECT m.released FROM movies m WHERE m.id = media_id AND media_type = 'movie'),
+		(SELECT s.first_aired FROM shows s WHERE s.id = media_id AND media_type = 'show')
+	)`
+	fields := map[string]shared.OrderField{
+		"rank":     {Expr: "rank"},
+		"added":    {Expr: timeCol},
+		"listed":   {Expr: timeCol},
+		"title":    {Expr: title},
+		"released": {Expr: released},
 	}
+	return shared.SQLOrder(sortBy, how, fields, "asc", "media_type", "media_id")
 }
 
 // collectionSort resolves a `{sort}` path segment with the contract's optional
@@ -113,7 +103,7 @@ func handleContractFavorites(kind string) fiber.Handler {
 		sortBy, how := collectionSort(c)
 		order, err := mediaListOrder(sortBy, how, "favorited_at")
 		if err != nil {
-			return response.BadRequest(c, "invalid sort")
+			return response.BadRequest(c, err.Error())
 		}
 		page, limit := contractPage(c)
 
@@ -135,12 +125,14 @@ func handleContractFavoritesTyped(c *fiber.Ctx) error {
 		return nil
 	}
 	kind, ok := profileMediaType(c.Params("type"))
-	if !ok {
-		return response.BadRequest(c, "invalid type")
+	if !ok || (kind != "movie" && kind != "show") {
+		// The contract's item oneOf has movie and show branches only; a
+		// season/episode favorite has no shape this endpoint declares.
+		return response.BadRequest(c, "type must be one of movies, shows")
 	}
 	order, err := mediaListOrder(c.Params("sort_by"), c.Params("sort_how"), "favorited_at")
 	if err != nil {
-		return response.BadRequest(c, "invalid sort")
+		return response.BadRequest(c, err.Error())
 	}
 	page, limit := contractPage(c)
 	items, total, err := readFavorites(c, db, target.ID, kind, order, page, limit)
@@ -150,12 +142,15 @@ func handleContractFavoritesTyped(c *fiber.Ctx) error {
 	return writeContractPage(c, items, page, limit, total, len(items))
 }
 
+// readFavorites reads user_favorites in the contract's item shape. kind "" is
+// the contract's /favorites/media read, which is defined as favorite movies and
+// shows only; the other collection reads pass an explicit type.
 func readFavorites(c *fiber.Ctx, db *gorm.DB, userID, kind, order string, page, limit int) ([]map[string]any, int64, error) {
 	q := db.Where("user_id = ?", userID)
 	if kind != "" {
 		q = q.Where("media_type = ?", kind)
 	} else {
-		q = q.Where("media_type IN ?", []string{"movie", "show", "season", "episode"})
+		q = q.Where("media_type IN ?", []string{"movie", "show"})
 	}
 	var total int64
 	if err := q.Model(&database.UserFavorite{}).Count(&total).Error; err != nil {
@@ -196,7 +191,7 @@ func handleContractWatchlist(kind string) fiber.Handler {
 		sortBy, how := collectionSort(c)
 		order, err := mediaListOrder(sortBy, how, "listed_at")
 		if err != nil {
-			return response.BadRequest(c, "invalid sort")
+			return response.BadRequest(c, err.Error())
 		}
 		page, limit := contractPage(c)
 
@@ -206,6 +201,30 @@ func handleContractWatchlist(kind string) fiber.Handler {
 		} else {
 			q = q.Where("media_type IN ?", []string{"movie", "show"})
 		}
+
+		allowed := []string{shared.FilterGenres, shared.FilterYears, shared.FilterRatings,
+			shared.FilterStatuses, shared.FilterCertifications}
+		if kind == "movie" {
+			// Shows carry no runtime column; the mixed and show reads must
+			// refuse runtimes rather than ignore it.
+			allowed = append(allowed, shared.FilterRuntimes)
+		}
+		filter, ok := shared.ParseCatalogueFilter(c, allowed...)
+		if !ok {
+			return nil
+		}
+		clause, args := filter.WatchlistWhere(db, kind != "show", kind != "movie")
+		if clause != "" {
+			q = q.Where(clause, args...)
+		}
+		visClause, visArgs, ok := shared.WatchlistVisibility(c)
+		if !ok {
+			return nil
+		}
+		if visClause != "" {
+			q = q.Where(visClause, visArgs...)
+		}
+
 		var total int64
 		if err := q.Model(&database.UserWatchlist{}).Count(&total).Error; err != nil {
 			return response.InternalError(c)
@@ -373,6 +392,3 @@ func handleContractFavoritesComments(c *fiber.Ctx) error {
 	}
 	return writeContractPage(c, items, page, limit, total, len(items))
 }
-
-// errInvalidSort marks a sort value this collection cannot order by.
-var errInvalidSort = errors.New("invalid sort")
