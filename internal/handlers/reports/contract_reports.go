@@ -29,9 +29,9 @@ import (
 // to the stored description.
 
 func init() {
-	openapi.Register(openapi.RouteDef{Method: "POST", Path: "/v1/people/{id}/report", Summary: "Report a person (contract path)", Tags: []string{"Reports"}, Auth: "required", StatusCodes: map[int]string{201: "Reported", 400: "Invalid request", 401: "Unauthorized", 404: "Person not found", 409: "Already reported"}})
-	openapi.Register(openapi.RouteDef{Method: "POST", Path: "/v1/shows/{id}/seasons/{season}/report", Summary: "Report a season (contract path)", Tags: []string{"Reports"}, Auth: "required", StatusCodes: map[int]string{201: "Reported", 400: "Invalid request", 401: "Unauthorized", 404: "Show or season not found", 409: "Already reported"}})
-	openapi.Register(openapi.RouteDef{Method: "POST", Path: "/v1/shows/{id}/seasons/{season}/episodes/{episode}/report", Summary: "Report an episode (contract path)", Tags: []string{"Reports"}, Auth: "required", StatusCodes: map[int]string{201: "Reported", 400: "Invalid request", 401: "Unauthorized", 404: "Show, season or episode not found", 409: "Already reported"}})
+	openapi.Register(openapi.RouteDef{Method: "POST", Path: "/v1/people/{id}/report", Summary: "Report a person (contract path)", Tags: []string{"Reports"}, Auth: "required", StatusCodes: map[int]string{201: "Reported", 400: "Invalid request", 401: "Unauthorized", 404: "Person not found", 409: "Already reported", 429: "Rate limited"}})
+	openapi.Register(openapi.RouteDef{Method: "POST", Path: "/v1/shows/{id}/seasons/{season}/report", Summary: "Report a season (contract path)", Tags: []string{"Reports"}, Auth: "required", StatusCodes: map[int]string{201: "Reported", 400: "Invalid request", 401: "Unauthorized", 404: "Show or season not found", 409: "Already reported", 429: "Rate limited"}})
+	openapi.Register(openapi.RouteDef{Method: "POST", Path: "/v1/shows/{id}/seasons/{season}/episodes/{episode}/report", Summary: "Report an episode (contract path)", Tags: []string{"Reports"}, Auth: "required", StatusCodes: map[int]string{201: "Reported", 400: "Invalid request", 401: "Unauthorized", 404: "Show, season or episode not found", 409: "Already reported", 429: "Rate limited"}})
 }
 
 // registerContractReportRoutes mounts the contract-shaped report submissions.
@@ -100,6 +100,13 @@ func submitContractReport(c *fiber.Ctx, mediaType string, mediaID int64, reasons
 	message := strings.TrimSpace(req.Message)
 	if len(message) > maxReportDescription {
 		return response.BadRequest(c, "message exceeds maximum length")
+	}
+
+	// The report-specific per-user window applies here exactly as it does on the
+	// legacy flat routes; without it a caller could file unlimited contract
+	// reports against distinct targets and flood the moderation queue.
+	if err := reportRateCheck(c, userID); err != nil {
+		return err
 	}
 
 	db, err := database.GetDB()

@@ -1,6 +1,7 @@
 package tmdbmeta
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/haaku-tv/haaku/external/tmdb"
@@ -337,12 +338,83 @@ func handleSeasonInfo(c *fiber.Ctx) error {
 		if ferr != nil {
 			return nil, ferr
 		}
-		return toPayload(contractSeasonInfo(season, detail))
+		// Cache the provider's detail, not the shaped contract object. The
+		// contract object embeds fields from the season row (episode_count,
+		// poster, updated_at), so storing it would freeze one request's view of
+		// that row and stop later changes — a re-ingested episode count, a new
+		// poster — from ever showing. It is rebuilt from the current row below.
+		return toPayload(detail)
 	})
 	if err != nil {
 		return err
 	}
-	return c.JSON(payload)
+	if len(payload) == 0 {
+		// The provider has no record of the season: keep the contract's empty
+		// response rather than inventing a placeholder.
+		return c.JSON(database.JSONMap{})
+	}
+	return c.JSON(contractSeasonInfo(season, seasonDetailFromPayload(payload)))
+}
+
+// seasonDetailFromPayload interprets a stored season_info payload as the
+// provider's season detail.
+//
+// The format written now is the marshalled tmdb.Season. A row written by the
+// previous format — where this endpoint stored the whole contract-shaped object
+// — is recognised by its "aired_episodes" key and mapped back onto the detail,
+// so an already-cached season keeps answering the same data instead of crashing
+// or 500ing on the old layout. Either way the season row's own fields (number,
+// ids.trakt, aired_episodes, updated_at) come from the current row, never the
+// cache.
+func seasonDetailFromPayload(payload database.JSONMap) *tmdb.Season {
+	if len(payload) == 0 {
+		return nil
+	}
+	if _, oldFormat := payload["aired_episodes"]; oldFormat {
+		detail := &tmdb.Season{}
+		if ids, ok := payload["ids"].(map[string]any); ok {
+			if n, ok := jsonInt(ids["tmdb"]); ok {
+				detail.ID = int(n)
+			}
+		}
+		if s, ok := payload["title"].(string); ok {
+			detail.Name = s
+		}
+		if s, ok := payload["overview"].(string); ok {
+			detail.Overview = s
+		}
+		if s, ok := payload["first_aired"].(string); ok {
+			detail.AirDate = s
+		}
+		if n, ok := jsonInt(payload["votes"]); ok {
+			detail.VoteCount = n
+		}
+		return detail
+	}
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return nil
+	}
+	var detail tmdb.Season
+	if err := json.Unmarshal(b, &detail); err != nil {
+		return nil
+	}
+	return &detail
+}
+
+// jsonInt reads a whole number out of a JSON-decoded map, tolerating the float64
+// that encoding/json produces as well as the integer types a typed payload
+// carries.
+func jsonInt(v any) (int64, bool) {
+	switch n := v.(type) {
+	case float64:
+		return int64(n), true
+	case int64:
+		return n, true
+	case int:
+		return int64(n), true
+	}
+	return 0, false
 }
 
 // contractSeasonInfo builds the contract's season object from our season row

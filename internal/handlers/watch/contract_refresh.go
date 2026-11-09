@@ -34,7 +34,7 @@ func init() {
 			Summary:     "Re-fetch a title's watch providers (contract path)",
 			Tags:        []string{"Watch Now"},
 			Auth:        "required",
-			StatusCodes: map[int]string{201: "Refresh queued", 401: "Unauthorized", 404: "Media not found", 503: "Provider data temporarily unavailable"},
+			StatusCodes: map[int]string{201: "Refresh completed", 401: "Unauthorized", 404: "Media not found", 503: "Provider data temporarily unavailable"},
 		})
 	}
 }
@@ -72,6 +72,13 @@ func handleRefreshMovieProviders(c *fiber.Ctx) error {
 	if ferr != nil {
 		return fiber.NewError(fiber.StatusServiceUnavailable, "TMDB watch providers unavailable")
 	}
+	if movie.Metadata == nil {
+		// A row with a NULL metadata column loads as a nil JSONMap, which
+		// storeRefreshedProviders cannot write into. Allocate one here so the
+		// refresh can actually store the providers, and assign it back to the
+		// model the persist closure reads.
+		movie.Metadata = database.JSONMap{}
+	}
 	return storeRefreshedProviders(c, movie.Metadata, resp, func() error {
 		return db.Model(&movie).Update("metadata", movie.Metadata).Error
 	})
@@ -103,6 +110,11 @@ func handleRefreshShowProviders(c *fiber.Ctx) error {
 	resp, ferr := client.GetShowWatchProviders(show.TmdbID)
 	if ferr != nil {
 		return fiber.NewError(fiber.StatusServiceUnavailable, "TMDB watch providers unavailable")
+	}
+	if show.Metadata == nil {
+		// See handleRefreshMovieProviders: a NULL metadata column must not make
+		// the refresh un-storable.
+		show.Metadata = database.JSONMap{}
 	}
 	return storeRefreshedProviders(c, show.Metadata, resp, func() error {
 		return db.Model(&show).Update("metadata", show.Metadata).Error

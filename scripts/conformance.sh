@@ -129,6 +129,26 @@ echo "==> seeding fixtures"
 export HAAKU_CONFORMANCE_SEED=1
 "$HARNESS_BIN" -seed
 
+echo "==> clearing the report rate-limit window"
+# The per-user report limiter is a Redis sliding window that outlives a run. The
+# harness files its report cases as a single seeded user, so a second run inside
+# the same hour would trip the (now-enforced) limit and misreport already-working
+# rows as 429. Clear that one namespace so each run starts from a clean limiter.
+# Best-effort: with no redis-cli, or no Redis at all (the limiter then fails
+# open), this is a no-op.
+if command -v redis-cli >/dev/null 2>&1; then
+  rc=(redis-cli)
+  if [ -n "${REDIS_URL:-}" ]; then
+    rc+=(-u "$REDIS_URL")
+  fi
+  rc+=(-n "${REDIS_DB:-0}")
+  report_keys="$("${rc[@]}" --scan --pattern 'rate_limit:report:*' 2>/dev/null || true)"
+  if [ -n "$report_keys" ]; then
+    # shellcheck disable=SC2086  # the key list is deliberately word-split
+    "${rc[@]}" del $report_keys >/dev/null 2>&1 || true
+  fi
+fi
+
 echo "==> starting server on $BASE_URL"
 "$API_BIN" >"$BIN_DIR/server.log" 2>&1 &
 SERVER_PID=$!

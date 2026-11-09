@@ -138,6 +138,44 @@ func TestContractReports(t *testing.T) {
 	})
 }
 
+// TestContractReportsRateLimited proves the report-specific per-user window is
+// enforced on the contract routes: once past the limit the next submission is a
+// 429, before any target lookup or database work. The limiter is substituted
+// because the Redis-backed one fails open without Redis (the sqlite suite).
+func TestContractReportsRateLimited(t *testing.T) {
+	db := setupContractDB(t)
+	_, _, _, person := seedContractTargets(t, db)
+	app := makeContractReportApp("reporter-rl")
+
+	orig := reportRateCheck
+	t.Cleanup(func() { reportRateCheck = orig })
+	var calls int
+	reportRateCheck = func(c *fiber.Ctx, userID string) error {
+		calls++
+		if calls > 1 {
+			c.Set("Retry-After", "60")
+			_ = response.WriteError(c, fiber.StatusTooManyRequests, "rate_limited", "too many reports — slow down")
+			return response.ErrHandled
+		}
+		return nil
+	}
+
+	first := do(t, app, http.MethodPost, pathf("/v1/people/%d/report", person.ID), []byte(`{"reason":"metadata"}`))
+	if first.StatusCode != http.StatusCreated {
+		t.Fatalf("first submission: expected 201, got %d", first.StatusCode)
+	}
+	// The second submission hits the same target. A 429 (not the 409 a duplicate
+	// would otherwise produce) shows the limit is applied before the duplicate
+	// check and the insert.
+	second := do(t, app, http.MethodPost, pathf("/v1/people/%d/report", person.ID), []byte(`{"reason":"metadata"}`))
+	if second.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("second submission past the limit: expected 429, got %d", second.StatusCode)
+	}
+	if second.Header.Get("Retry-After") == "" {
+		t.Error("429 response is missing Retry-After")
+	}
+}
+
 func TestContractReportsRequireAuth(t *testing.T) {
 	setupContractDB(t)
 	app := fiber.New(fiber.Config{ErrorHandler: response.HandleError})

@@ -17,6 +17,7 @@ import (
 	"sync"
 
 	"github.com/haaku-tv/haaku/external/tmdb"
+	"github.com/haaku-tv/haaku/internal/auth"
 	"github.com/haaku-tv/haaku/internal/database"
 	"github.com/haaku-tv/haaku/internal/handlers/media"
 	"github.com/haaku-tv/haaku/internal/openapi"
@@ -61,11 +62,11 @@ func registerOpenAPIRoutes() {
 		{Method: "GET", Path: "/v1/shows/{id}/seasons/{season}/videos", Summary: "Get videos for a season (contract path)", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Videos", 400: "Invalid season number", 404: "Show or season not found", 503: "Provider data temporarily unavailable"}},
 		{Method: "GET", Path: "/v1/shows/{id}/seasons/{season}/info", Summary: "Get a single season for a show (contract path)", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Season", 400: "Invalid season number", 404: "Show or season not found", 503: "Provider data temporarily unavailable"}},
 		{Method: "GET", Path: "/v1/shows/{id}/seasons/{season}/translations", Summary: "Get translations for a season (contract path)", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Translations", 400: "Invalid season number", 404: "Show or season not found", 503: "Provider data temporarily unavailable"}},
-		{Method: "GET", Path: "/v1/shows/{id}/seasons/{season}/watching", Summary: "Users watching a season right now (contract path)", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Watching users", 400: "Invalid season number", 404: "Show or season not found"}},
+		{Method: "GET", Path: "/v1/shows/{id}/seasons/{season}/watching", Summary: "Users watching a season right now (contract path)", Tags: []string{"Shows"}, Auth: "optional", StatusCodes: map[int]string{200: "Watching users", 400: "Invalid season number", 404: "Show or season not found"}},
 
 		{Method: "GET", Path: "/v1/shows/{id}/seasons/{season}/episodes/{episode}/videos", Summary: "Get videos for an episode (contract path)", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Videos", 400: "Invalid season or episode number", 404: "Show, season or episode not found", 503: "Provider data temporarily unavailable"}},
 		{Method: "GET", Path: "/v1/shows/{id}/seasons/{season}/episodes/{episode}/translations", Summary: "Get translations for an episode (contract path)", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Translations", 400: "Invalid season or episode number", 404: "Show, season or episode not found", 503: "Provider data temporarily unavailable"}},
-		{Method: "GET", Path: "/v1/shows/{id}/seasons/{season}/episodes/{episode}/watching", Summary: "Users watching an episode right now (contract path)", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Watching users", 400: "Invalid season or episode number", 404: "Show, season or episode not found"}},
+		{Method: "GET", Path: "/v1/shows/{id}/seasons/{season}/episodes/{episode}/watching", Summary: "Users watching an episode right now (contract path)", Tags: []string{"Shows"}, Auth: "optional", StatusCodes: map[int]string{200: "Watching users", 400: "Invalid season or episode number", 404: "Show, season or episode not found"}},
 	}
 	for _, r := range routes {
 		openapi.Register(r)
@@ -88,10 +89,10 @@ func RegisterRoutes(api fiber.Router) {
 	shows.Get("/:id/seasons/:season/videos", handleSeasonVideos)
 	shows.Get("/:id/seasons/:season/info", handleSeasonInfo)
 	shows.Get("/:id/seasons/:season/translations", handleSeasonTranslations)
-	shows.Get("/:id/seasons/:season/watching", handleSeasonWatching)
+	shows.Get("/:id/seasons/:season/watching", auth.OptionalAuth(), handleSeasonWatching)
 	shows.Get("/:id/seasons/:season/episodes/:episode/videos", handleEpisodeVideos)
 	shows.Get("/:id/seasons/:season/episodes/:episode/translations", handleEpisodeTranslations)
-	shows.Get("/:id/seasons/:season/episodes/:episode/watching", handleEpisodeWatching)
+	shows.Get("/:id/seasons/:season/episodes/:episode/watching", auth.OptionalAuth(), handleEpisodeWatching)
 }
 
 // ---------------------------------------------------------------------------
@@ -255,13 +256,14 @@ func arrayValue(payload database.JSONMap, key string) []any {
 // pagination convention. Every list operation carries the five X-Pagination-*
 // headers even when the contract declares no page/limit of its own; clients page
 // deterministically only when they are present. These lists are not paginated
-// upstream beyond what the store returns, so the reported total is the number
-// served.
+// upstream — a call always returns the full stored set — so the whole result is
+// reported as a single page. A requested ?page/?limit therefore cannot advertise
+// a next page that would just replay the same rows.
 func writeList(c *fiber.Ctx, items []any) error {
-	page, limit := response.ParsePagination(c, len(items))
+	limit := len(items)
 	if limit < 1 {
 		limit = 1
 	}
-	response.SetPaginationHeaders(c, page, limit, int64(len(items)), len(items))
+	response.SetPaginationHeaders(c, 1, limit, int64(len(items)), len(items))
 	return c.JSON(items)
 }

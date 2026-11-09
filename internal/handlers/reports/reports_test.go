@@ -251,6 +251,20 @@ func TestListReports(t *testing.T) {
 		}
 	})
 
+	t.Run("person target_type is accepted", func(t *testing.T) {
+		// Person reports are stored by the contract route; the list filter must
+		// accept the same target type rather than 400 on it.
+		resp := do(t, app, http.MethodGet, "/v1/reports?target_type=person", nil)
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
+		for _, r := range decodeList(t, resp) {
+			if r.MediaType != "person" {
+				t.Errorf("person filter returned media_type %q", r.MediaType)
+			}
+		}
+	})
+
 	t.Run("invalid status is 400", func(t *testing.T) {
 		resp := do(t, app, http.MethodGet, "/v1/reports?status=bogus", nil)
 		if resp.StatusCode != http.StatusBadRequest {

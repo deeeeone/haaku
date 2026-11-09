@@ -41,7 +41,7 @@ func testDB(t *testing.T) *gorm.DB {
 	}
 	models := []any{
 		&database.Movie{}, &database.Show{}, &database.Season{}, &database.Episode{},
-		&database.Person{}, &database.User{},
+		&database.Person{}, &database.User{}, &database.UserBlock{}, &database.UserFollow{},
 		&database.ContentReport{}, &database.MediaMetadata{},
 	}
 	if err := db.AutoMigrate(models...); err != nil {
@@ -177,6 +177,21 @@ func seedMedia(t *testing.T, db *gorm.DB) (database.Movie, database.Show, databa
 
 func makeApp() *fiber.App {
 	app := fiber.New(fiber.Config{ErrorHandler: response.HandleError})
+	RegisterRoutes(app.Group("/v1"))
+	return app
+}
+
+// makeAppWithCaller is makeApp with an identity pinned in the request context,
+// so the optional-auth watching routes resolve a caller the way a signed-in
+// request would. An empty caller leaves the request anonymous.
+func makeAppWithCaller(caller string) *fiber.App {
+	app := fiber.New(fiber.Config{ErrorHandler: response.HandleError})
+	app.Use(func(c *fiber.Ctx) error {
+		if caller != "" {
+			c.Locals("user_id", caller)
+		}
+		return c.Next()
+	})
 	RegisterRoutes(app.Group("/v1"))
 	return app
 }
@@ -528,6 +543,121 @@ func TestWatching(t *testing.T) {
 		}
 		if got := resp.Header.Get("X-Pagination-Total-Items"); got != "1" {
 			t.Errorf("%s: X-Pagination-Total-Items = %q, want 1", path, got)
+		}
+	}
+}
+
+// TestWatchingStoppedSessionIsNotWatching guards the "latest session first"
+// rule: an earlier unexpired start must not keep a user marked as watching once
+// they have stopped. The stop handler writes no expiry, so a query that filters
+// on expiry before choosing the latest row sees only the start and answers the
+// user anyway.
+func TestWatchingStoppedSessionIsNotWatching(t *testing.T) {
+	db := testDB(t)
+	srv := newFixtureServer(t)
+	setTestClient(t, srv.Server)
+	_, show, season, episode := seedMedia(t, db)
+
+	now := time.Now().UTC()
+	if err := db.Create(&database.User{ID: "u1", Username: "alice"}).Error; err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+	epID := episode.ID
+	// An unexpired start, left behind by a later stop.
+	start := database.ScrobbleSession{UserID: "u1", MediaType: "episode", MediaID: epID, EpisodeID: &epID, Action: "start", ExpiresAt: now.Add(time.Hour), CreatedAt: now.Add(-time.Minute)}
+	if err := db.Create(&start).Error; err != nil {
+		t.Fatalf("seed start: %v", err)
+	}
+	// The later stop carries no expiry (zero), exactly as the stop handler
+	// writes it.
+	stop := database.ScrobbleSession{UserID: "u1", MediaType: "episode", MediaID: epID, EpisodeID: &epID, Action: "stop", CreatedAt: now}
+	if err := db.Create(&stop).Error; err != nil {
+		t.Fatalf("seed stop: %v", err)
+	}
+
+	app := makeApp()
+	for _, path := range []string{
+		fmt.Sprintf("/v1/shows/%d/seasons/%d/episodes/%d/watching", show.ID, season.SeasonNumber, episode.EpisodeNumber),
+		fmt.Sprintf("/v1/shows/%d/seasons/%d/watching", show.ID, season.SeasonNumber),
+	} {
+		status, body := getJSON(t, app, path)
+		if status != http.StatusOK {
+			t.Fatalf("%s: status %d body %s", path, status, body)
+		}
+		var out []map[string]any
+		if err := json.Unmarshal(body, &out); err != nil {
+			t.Fatalf("%s: decode: %v (%s)", path, err, body)
+		}
+		if len(out) != 0 {
+			t.Errorf("%s: user still shown as watching after stop: %s", path, body)
+		}
+	}
+}
+
+// TestWatchingActivityVisibility guards the privacy rule on the watching
+// routes: a user who hides their activity, and a user blocked by the caller,
+// must not appear in the list — the same decision auth.VisibleUserIDs applies to
+// the profile's activity section.
+func TestWatchingActivityVisibility(t *testing.T) {
+	db := testDB(t)
+	srv := newFixtureServer(t)
+	setTestClient(t, srv.Server)
+	_, show, season, episode := seedMedia(t, db)
+
+	now := time.Now().UTC()
+	users := []database.User{
+		{ID: "caller", Username: "caller"},
+		{ID: "hider", Username: "hider", Settings: `{"privacy":{"activity":"private"}}`},
+		{ID: "blocked", Username: "blockeduser"},
+	}
+	for i := range users {
+		if err := db.Create(&users[i]).Error; err != nil {
+			t.Fatalf("seed user %s: %v", users[i].ID, err)
+		}
+	}
+	// The caller blocks blockeduser; a block in either direction hides the row.
+	if err := db.Create(&database.UserBlock{BlockerID: "caller", BlockedID: "blocked"}).Error; err != nil {
+		t.Fatalf("seed block: %v", err)
+	}
+	epID := episode.ID
+	for _, uid := range []string{"hider", "blocked"} {
+		s := database.ScrobbleSession{UserID: uid, MediaType: "episode", MediaID: epID, EpisodeID: &epID, Action: "start", ExpiresAt: now.Add(time.Hour), CreatedAt: now}
+		if err := db.Create(&s).Error; err != nil {
+			t.Fatalf("seed session for %s: %v", uid, err)
+		}
+	}
+
+	paths := []string{
+		fmt.Sprintf("/v1/shows/%d/seasons/%d/episodes/%d/watching", show.ID, season.SeasonNumber, episode.EpisodeNumber),
+		fmt.Sprintf("/v1/shows/%d/seasons/%d/watching", show.ID, season.SeasonNumber),
+	}
+	// As the caller: neither the activity-hiding user nor the blocked one.
+	assertWatchingExcludes(t, makeAppWithCaller("caller"), paths, "hider", "blockeduser")
+	// An anonymous caller cannot see the activity-hiding user either. (The
+	// blocked user has no block edge visible to an anonymous caller, so only the
+	// privacy flag is asserted here.)
+	assertWatchingExcludes(t, makeApp(), paths, "hider")
+}
+
+func assertWatchingExcludes(t *testing.T, app *fiber.App, paths []string, forbidden ...string) {
+	t.Helper()
+	bad := make(map[string]bool, len(forbidden))
+	for _, name := range forbidden {
+		bad[name] = true
+	}
+	for _, path := range paths {
+		status, body := getJSON(t, app, path)
+		if status != http.StatusOK {
+			t.Fatalf("%s: status %d body %s", path, status, body)
+		}
+		var out []map[string]any
+		if err := json.Unmarshal(body, &out); err != nil {
+			t.Fatalf("%s: decode: %v (%s)", path, err, body)
+		}
+		for _, u := range out {
+			if name, _ := u["username"].(string); bad[name] {
+				t.Errorf("%s: leaked a hidden or blocked user: %v", path, name)
+			}
 		}
 	}
 }
