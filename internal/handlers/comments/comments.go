@@ -47,12 +47,22 @@ func registerOpenAPIRoutes() {
 }
 
 // RegisterRoutes wires all comment route handlers.
+//
+// Registration order is load-bearing: Fiber matches in registration order, so
+// the literal segments at a depth must precede a :id at the same depth.
+// /comments/recent/... and /comments/updates/... therefore register before
+// /comments/:id/..., and /comments/:id/reactions/summary (static) registers
+// before /comments/:id/reactions/:reaction_type (parameterised).
 func RegisterRoutes(api fiber.Router) {
 	cg := api.Group("/comments")
 
 	cg.Get("/trending", handleTrending)
 	cg.Get("/recent", handleRecent)
 	cg.Get("/updates", handleUpdates)
+	// Contract-shaped feeds: comment kind and media type as path segments.
+	cg.Get("/recent/:comment_type/:type", handleContractRecent)
+	cg.Get("/updates/:comment_type/:type", handleContractUpdates)
+
 	cg.Post("/", auth.AuthRequired(), handleCreateComment)
 	cg.Get("/:id", handleGetComment)
 	cg.Put("/:id", auth.AuthRequired(), handleEditComment)
@@ -62,7 +72,13 @@ func RegisterRoutes(api fiber.Router) {
 	cg.Post("/:id/like", auth.AuthRequired(), handleLikeComment)
 	cg.Delete("/:id/like", auth.AuthRequired(), handleUnlikeComment)
 	cg.Get("/:id/likes", handleGetLikes)
+	// Contract reaction reads. "summary" is static and must precede the
+	// parameterised reaction_type write routes below.
 	cg.Get("/:id/reactions", handleGetReactions)
+	cg.Get("/:id/reactions/summary", handleReactionSummary)
+	cg.Post("/:id/reactions/:reaction_type", auth.AuthRequired(), handleAddContractReaction)
+	cg.Delete("/:id/reactions/:reaction_type", auth.AuthRequired(), handleRemoveContractReaction)
+	// Legacy body-based reaction writes (emoji), kept for the web client.
 	cg.Post("/:id/reactions", auth.AuthRequired(), handleAddReaction)
 	cg.Delete("/:id/reactions", auth.AuthRequired(), handleRemoveReaction)
 	cg.Post("/:id/report", auth.AuthRequired(), handleReportComment)
@@ -76,23 +92,6 @@ func RegisterRoutes(api fiber.Router) {
 // ---------------------------------------------------------------------------
 // Request/Response types
 // ---------------------------------------------------------------------------
-
-type commentCreateRequest struct {
-	Comment string `json:"comment"`
-	Spoiler *bool  `json:"spoiler,omitempty"`
-	Item    *struct {
-		Movie   *int64 `json:"movie,omitempty"`
-		Show    *int64 `json:"show,omitempty"`
-		Season  *int64 `json:"season,omitempty"`
-		Episode *int64 `json:"episode,omitempty"`
-		List    *int64 `json:"list,omitempty"`
-	} `json:"item,omitempty"`
-}
-
-type commentEditRequest struct {
-	Comment string `json:"comment"`
-	Spoiler *bool  `json:"spoiler,omitempty"`
-}
 
 type replyCreateRequest struct {
 	Comment string `json:"comment"`
@@ -153,10 +152,6 @@ type paginatedResponse struct {
 	Page       int               `json:"page"`
 	Limit      int               `json:"limit"`
 	TotalCount int64             `json:"total_count"`
-}
-
-type reactionsResponse struct {
-	Reactions map[string]int64 `json:"reactions"`
 }
 
 type likesResponse struct {
@@ -338,183 +333,6 @@ func handleGetComment(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(toCommentResponse(&comment))
-}
-
-// POST /v1/comments
-func handleCreateComment(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(string)
-
-	var req commentCreateRequest
-	if err := response.ParseBody(c, &req); err != nil {
-		return err
-	}
-	if err := validateCommentBody(c, req.Comment); err != nil {
-		return err
-	}
-
-	var resultComment *database.Comment
-	err := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
-		cacheTx := cache.NewCacheTransaction()
-
-		comment := database.Comment{
-			UserID:      userID,
-			Body:        req.Comment,
-			CommentType: "shout",
-			CreatedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
-		}
-		if req.Spoiler != nil {
-			comment.Spoiler = *req.Spoiler
-		}
-		// Determine media type and ID from the item block.
-		if req.Item != nil {
-			if req.Item.Movie != nil {
-				comment.MediaType = "movie"
-				comment.MediaID = req.Item.Movie
-			} else if req.Item.Show != nil {
-				comment.MediaType = "show"
-				comment.MediaID = req.Item.Show
-			} else if req.Item.Season != nil {
-				comment.MediaType = "season"
-				comment.MediaID = req.Item.Season
-			} else if req.Item.Episode != nil {
-				comment.MediaType = "episode"
-				comment.MediaID = req.Item.Episode
-			} else if req.Item.List != nil {
-				comment.ListID = req.Item.List
-			}
-		}
-
-		if err := tx.Create(&comment).Error; err != nil {
-			return nil, fmt.Errorf("create comment: %w", err)
-		}
-		resultComment = &comment
-
-		bumpCommentTarget(cacheTx, &comment)
-		return cacheTx, nil
-	})
-	if err != nil {
-		fmt.Printf("comments: create comment failed: %v\n", err)
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to create comment")
-	}
-
-	return c.Status(fiber.StatusCreated).JSON(toCommentResponse(resultComment))
-}
-
-// PUT /v1/comments/:id
-func handleEditComment(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(string)
-
-	var req commentEditRequest
-	if err := response.ParseBody(c, &req); err != nil {
-		return err
-	}
-	if err := validateCommentBody(c, req.Comment); err != nil {
-		return err
-	}
-
-	db, err := database.GetDB()
-	if err != nil {
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
-	}
-
-	id, parseErr := response.ParseIDParam(c, "comment")
-	if parseErr != nil {
-		return parseErr
-	}
-
-	var comment database.Comment
-	if err := db.First(&comment, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return response.WriteError(c, fiber.StatusNotFound, "not_found", "comment not found")
-		}
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
-	}
-
-	if comment.UserID != userID {
-		return response.WriteError(c, fiber.StatusForbidden, "forbidden", "you can only edit your own comments")
-	}
-
-	now := time.Now()
-	updates := map[string]interface{}{
-		"body":       req.Comment,
-		"edited_at":  now,
-		"updated_at": now,
-	}
-	if req.Spoiler != nil {
-		updates["spoiler"] = *req.Spoiler
-	}
-
-	if err := db.Model(&comment).Updates(updates).Error; err != nil {
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to update comment")
-	}
-
-	// Reload to get updated values
-	db.First(&comment, id)
-	return c.JSON(toCommentResponse(&comment))
-}
-
-// DELETE /v1/comments/:id
-func handleDeleteComment(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(string)
-
-	db, err := database.GetDB()
-	if err != nil {
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
-	}
-
-	id, parseErr := response.ParseIDParam(c, "comment")
-	if parseErr != nil {
-		return parseErr
-	}
-
-	var comment database.Comment
-	if err := db.First(&comment, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return response.WriteError(c, fiber.StatusNotFound, "not_found", "comment not found")
-		}
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
-	}
-
-	if comment.UserID != userID {
-		// Moderators and admins can delete any comment. Check the caller's role
-		// from the DB, handling a failed lookup rather than silently treating
-		// them as a non-moderator.
-		var user database.User
-		if err := db.First(&user, "id = ?", userID).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				// Authenticated principal has no user row — deny (safe default).
-				fmt.Printf("comments: delete comment %d: requester %q has no user row\n", id, userID)
-				return response.WriteError(c, fiber.StatusForbidden, "forbidden", "you can only delete your own comments")
-			}
-			fmt.Printf("comments: delete comment %d: lookup requester %q failed: %v\n", id, userID, err)
-			return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
-		}
-		if !user.IsModerator && !user.IsAdmin {
-			return response.WriteError(c, fiber.StatusForbidden, "forbidden", "you can only delete your own comments")
-		}
-	}
-
-	// Only allow delete if < 14 days old OR 0 replies
-	age := time.Since(comment.CreatedAt)
-	if age > 14*24*time.Hour && comment.ReplyCount > 0 {
-		return response.WriteError(c, fiber.StatusConflict, "conflict", "comment is older than 14 days and has replies — cannot delete")
-	}
-
-	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
-		cacheTx := cache.NewCacheTransaction()
-		if err := tx.Delete(&comment).Error; err != nil {
-			return nil, fmt.Errorf("delete comment: %w", err)
-		}
-		bumpCommentTarget(cacheTx, &comment)
-		return cacheTx, nil
-	})
-	if err != nil {
-		fmt.Printf("comments: delete comment %d failed: %v\n", id, err)
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "failed to delete comment")
-	}
-
-	return c.SendStatus(fiber.StatusNoContent)
 }
 
 // GET /v1/comments/:id/replies
@@ -776,44 +594,6 @@ func handleGetLikes(c *fiber.Ctx) error {
 	response.SetPaginationHeaders(c, page, limit, totalCount, len(users))
 
 	return c.JSON(likesResponse{Users: users})
-}
-
-// GET /v1/comments/:id/reactions
-func handleGetReactions(c *fiber.Ctx) error {
-	db, err := database.GetDB()
-	if err != nil {
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database unavailable")
-	}
-
-	id, parseErr := response.ParseIDParam(c, "comment")
-	if parseErr != nil {
-		return parseErr
-	}
-
-	var comment database.Comment
-	if err := db.First(&comment, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return response.WriteError(c, fiber.StatusNotFound, "not_found", "comment not found")
-		}
-		return response.WriteError(c, fiber.StatusInternalServerError, "internal", "database query error")
-	}
-
-	var results []struct {
-		ReactionType string
-		Count        int64
-	}
-	db.Model(&database.CommentReaction{}).
-		Select("reaction_type, count(*) as count").
-		Where("comment_id = ?", id).
-		Group("reaction_type").
-		Scan(&results)
-
-	reactions := make(map[string]int64)
-	for _, r := range results {
-		reactions[r.ReactionType] = r.Count
-	}
-
-	return c.JSON(reactionsResponse{Reactions: reactions})
 }
 
 // POST /v1/comments/:id/reactions

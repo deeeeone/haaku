@@ -157,7 +157,7 @@ func contractComment(cm *database.Comment, user *database.User, plays int) map[s
 		"created_at":  contractshape.Timestamp(cm.CreatedAt),
 		"updated_at":  contractshape.Timestamp(cm.UpdatedAt),
 		"comment":     cm.Body,
-		"gif":         nil,
+		"gif":         contractGif(cm),
 		"spoiler":     cm.Spoiler,
 		"review":      cm.CommentType == "review",
 		"replies":     cm.ReplyCount,
