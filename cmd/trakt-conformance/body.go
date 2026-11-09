@@ -32,9 +32,12 @@ func decorateOAuthBody(opPath string, v any, fx Fixtures) any {
 		return v
 	}
 	switch opPath {
-	case "/oauth/device/token":
-		m["device_code"] = fx.DeviceCode
-		m["grant_type"] = "urn:ietf:params:oauth:grant-type:device_code"
+	// Deliberately no case for /oauth/device/token: the contract's body there is
+	// {code, client_id, client_secret}. The harness used to add device_code and
+	// grant_type, which the contract does not declare, so it was sending a body
+	// the contract never defined - and a handler that answered it proved nothing
+	// about the operation being tested. sampleValue already fills `code` with the
+	// device code the harness obtained over HTTP.
 	case "/oauth/token":
 		if _, ok := m["grant_type"]; !ok {
 			m["grant_type"] = "authorization_code"

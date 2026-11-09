@@ -19,8 +19,12 @@ func (d *Document) Resolve(schema map[string]any) map[string]any {
 			for _, sub := range all {
 				m := d.Resolve(asMap(sub))
 				for k, v := range m {
-					if k == "properties" {
+					switch k {
+					case "properties":
 						mergeProps(merged, v)
+						continue
+					case "required":
+						mergeRequired(merged, v)
 						continue
 					}
 					merged[k] = v
@@ -32,6 +36,35 @@ func (d *Document) Resolve(schema map[string]any) map[string]any {
 		break
 	}
 	return schema
+}
+
+// mergeRequired unions the required sets of every allOf branch.
+//
+// The old loop assigned each branch's `required` over the previous one's, so only
+// the LAST branch's required names survived. RequiredNames then under-reported,
+// and a response missing a field an earlier branch demanded validated clean -
+// the exact class of false negative this harness exists to prevent.
+func mergeRequired(dst map[string]any, v any) {
+	names, ok := v.([]any)
+	if !ok {
+		return
+	}
+	existing, _ := dst["required"].([]any)
+	seen := make(map[string]bool, len(existing)+len(names))
+	for _, n := range existing {
+		if s, ok := n.(string); ok {
+			seen[s] = true
+		}
+	}
+	for _, n := range names {
+		s, ok := n.(string)
+		if !ok || seen[s] {
+			continue
+		}
+		seen[s] = true
+		existing = append(existing, s)
+	}
+	dst["required"] = existing
 }
 
 func mergeProps(dst map[string]any, v any) {
