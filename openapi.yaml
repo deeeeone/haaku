@@ -4917,8 +4917,6 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented (requires lists engine)
             security: []
             summary: Get lists containing a movie
             tags:
@@ -4927,12 +4925,10 @@ paths:
         get:
             operationId: _v1_movies_id_lists_type_sort_GET
             responses:
+                "200":
+                    description: Lists containing the movie
                 "400":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
+                    description: Invalid type, sort or movie id
                 "401":
                     content:
                         application/json:
@@ -4940,11 +4936,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: unauthorized
                 "404":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Movie not found
                 "409":
                     content:
                         application/json:
@@ -4969,10 +4961,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: 'Not implemented — lists engine (issue #67) (#67)'
             security: []
-            summary: Parity stub — not implemented (lists engine)
+            summary: Get lists containing a movie by kind and sort
             tags:
                 - Movies
     /v1/movies/{id}/people:
@@ -6641,12 +6631,10 @@ paths:
         get:
             operationId: _v1_people_id_lists_type_sort_GET
             responses:
+                "200":
+                    description: Lists containing the person
                 "400":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
+                    description: Invalid type, sort or person id
                 "401":
                     content:
                         application/json:
@@ -6654,11 +6642,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: unauthorized
                 "404":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Person not found
                 "409":
                     content:
                         application/json:
@@ -6683,10 +6667,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: 'Not implemented — lists engine (issue #67) (#67)'
             security: []
-            summary: Parity stub — not implemented (lists engine)
+            summary: Get lists containing a person by kind and sort
             tags:
                 - People
     /v1/people/{id}/movies:
@@ -8161,8 +8143,6 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented (requires lists engine)
             security: []
             summary: Get lists containing a show
             tags:
@@ -8171,12 +8151,10 @@ paths:
         get:
             operationId: _v1_shows_id_lists_type_sort_GET
             responses:
+                "200":
+                    description: Lists containing the show
                 "400":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
+                    description: Invalid type, sort or show id
                 "401":
                     content:
                         application/json:
@@ -8184,11 +8162,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: unauthorized
                 "404":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Show not found
                 "409":
                     content:
                         application/json:
@@ -8213,10 +8187,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: 'Not implemented — lists engine (issue #67) (#67)'
             security: []
-            summary: Parity stub — not implemented (lists engine)
+            summary: Get lists containing a show by kind and sort
             tags:
                 - Shows
     /v1/shows/{id}/next_episode:
@@ -9154,6 +9126,50 @@ paths:
                     description: Not implemented — No videos table and no TMDB video ingest. (#68)
             security: []
             summary: Parity stub — not implemented (TMDB metadata ingest)
+            tags:
+                - Shows
+    /v1/shows/{id}/seasons/{season}/lists/{type}/{sort}:
+        get:
+            operationId: _v1_shows_id_seasons_season_lists_type_sort_GET
+            responses:
+                "200":
+                    description: Lists containing the season
+                "400":
+                    description: Invalid type, sort, show id or season number
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    description: Show or season not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Get lists containing a season by kind and sort
             tags:
                 - Shows
     /v1/shows/{id}/seasons/{season}/people:

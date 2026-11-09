@@ -38,7 +38,6 @@ func stubHandler(issue int, trakt, reason string) fiber.Handler {
 func RegisterRoutes(api fiber.Router) {
 	registerStub49(api)
 	registerStub66(api)
-	registerStub67(api)
 	registerStub68(api)
 	registerStub69(api)
 	registerStub106(api)
@@ -49,7 +48,6 @@ func routeDefs() []openapi.RouteDef {
 	var all []openapi.RouteDef
 	all = append(all, defsStub49()...)
 	all = append(all, defsStub66()...)
-	all = append(all, defsStub67()...)
 	all = append(all, defsStub68()...)
 	all = append(all, defsStub69()...)
 	all = append(all, defsStub106()...)

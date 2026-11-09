@@ -151,9 +151,8 @@ sections:
         rationale: "Served at Trakt's path: the cached TMDB provider sets, shaped to the contract's cable/free/cinema/subscription/purchase object (flatrate -> subscription, buy/rent -> purchase)."
       - trakt: "GET /movies/{id}/lists/{type}/{sort}"
         ours: "GET /v1/movies/{id}/lists/{type}/{sort}"
-        status: blocked-engine
-        rationale: "The closest route is registered but answers 501; the per-type/per-sort variant cannot land before the lists engine."
-        engine: "lists engine (issue #67)"
+        status: implemented
+        rationale: "Public lists containing the movie ranked by the requested sort; official/watchlist/favorites are not modelled as lists, so they return a computed [] with 200."
       - trakt: "GET /movies/{id}/stats"
         ours: "GET /v1/movies/{id}/stats"
         status: implemented
@@ -249,9 +248,8 @@ sections:
         rationale: "Landed: deletes the caller's episode watch-history for that show only and returns the recomputed watched progress (Trakt's shape)."
       - trakt: "GET /shows/{id}/lists/{type}/{sort}"
         ours: "GET /v1/shows/{id}/lists/{type}/{sort}"
-        status: blocked-engine
-        rationale: "The closest route answers 501; the type/sort variant needs the lists engine."
-        engine: "lists engine (issue #67)"
+        status: implemented
+        rationale: "Public lists containing the show ranked by the requested sort; official/watchlist/favorites are not modelled as lists, so they return a computed [] with 200."
       - trakt: "GET /shows/{id}/watchnow/{country}"
         ours: "GET /v1/shows/{id}/watchnow/{country}"
         status: implemented
@@ -293,9 +291,9 @@ sections:
         compat: "sort newest|oldest|likes|replies order the stored comments; highest|lowest|plays are declared but not computed from stored rows and answer 400 naming the accepted set, as does any other value."
         rationale: "Real rows from comments(media_type='season', media_id); the {sort} path segment resolves to a real ORDER BY instead of a fixed default."
       - trakt: "GET /shows/{id}/seasons/{season}/lists/{type}/{sort}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: list items can reference a season, but no per-season list route exists."
+        ours: "GET /v1/shows/{id}/seasons/{season}/lists/{type}/{sort}"
+        status: implemented
+        rationale: "Served at Trakt's path: show+season resolves to our season row, then public lists storing that season are ranked; official/watchlist/favorites return a computed [] with 200."
       - trakt: "GET /shows/{id}/seasons/{season}/people"
         ours: "GET /v1/shows/{id}/seasons/{season}/people"
         status: blocked-data
@@ -325,9 +323,8 @@ sections:
     rows:
       - trakt: "GET /people/{id}/lists/{type}/{sort}"
         ours: "GET /v1/people/{id}/lists/{type}/{sort}"
-        status: blocked-engine
-        rationale: "Lists containing a person need the lists engine; no per-person list route exists."
-        engine: "lists engine (issue #67)"
+        status: implemented
+        rationale: "Public lists containing the person (list_items.media_type is unconstrained, so person rows are queryable); official/watchlist/favorites return a computed [] with 200."
   - name: "Recommendations"
     rows:
       - trakt: "DELETE /recommendations/movies/{id}"
@@ -1637,11 +1634,9 @@ sections:
         rationale: "Updates the owner's smart_lists row and returns the contract shape (handleContractUpdateSmartList)."
       - trakt: ""
         ours: "GET /v1/movies/{id}/lists"
-        status: blocked-engine
-        rationale: "custom: our own segment-less lists route (what the detail page calls); the contract's shape is /movies/{id}/lists/{type}/{sort}, which the parity stub serves. Both answer 501 until the lists engine lands."
-        engine: "lists engine (issue #67)"
+        status: out-of-scope
+        rationale: "custom: our own segment-less lists route (what the detail page calls), now serving type=personal&sort=popular; the contract path is /movies/{id}/lists/{type}/{sort}."
       - trakt: ""
         ours: "GET /v1/shows/{id}/lists"
-        status: blocked-engine
-        rationale: "custom: our own segment-less lists route (what the detail page calls); the contract's shape is /shows/{id}/lists/{type}/{sort}, which the parity stub serves. Both answer 501 until the lists engine lands."
-        engine: "lists engine (issue #67)"
+        status: out-of-scope
+        rationale: "custom: our own segment-less lists route (what the detail page calls), now serving type=personal&sort=popular; the contract path is /shows/{id}/lists/{type}/{sort}."

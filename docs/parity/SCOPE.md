@@ -11,7 +11,7 @@ path (modulo our `/v1` prefix), with a real 2xx — except the recommendation/re
 engine, which stays an honest `501 not_implemented` and graded `blocked-engine` by
 the owner's carve-out. Done is `go run ./cmd/parity`, not a PR count.
 
-Contract operations: **336**. Not yet served (**in scope**): **165**. Out by owner decision: **31**. Served today: **139**.
+Contract operations: **336**. Not yet served (**in scope**): **161**. Out by owner decision: **31**. Served today: **143**.
 
 ## Out of scope (owner decisions, re-affirmed)
 
@@ -96,7 +96,6 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /movies/played/{period}` | blocked-engine | stats and rankings | #66 |
 | `GET /movies/streaming/{period}` | blocked-data | calendars and Watch Now data | #69 |
 | `GET /movies/watched/{period}` | blocked-engine | stats and rankings | #66 |
-| `GET /movies/{id}/lists/{type}/{sort}` | blocked-engine | lists engine — per-item lists | #67 |
 | `GET /movies/{id}/related` | blocked-engine | related / recommendations (owner carve-out: stays 501) | #49 |
 | `GET /movies/{id}/releases/{country}` | blocked-data | TMDB metadata ingest | #68 |
 | `GET /movies/{id}/studios` | blocked-data | TMDB metadata ingest | #68 |
@@ -107,7 +106,6 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /notes/{id}/item` | out-of-scope | comment moderation, reactions and the note item read | #107 |
 | `GET /people/updates/id/{start_date}` | out-of-scope | TMDB metadata ingest | #68 |
 | `GET /people/{id}/` | out-of-scope | TMDB metadata ingest | #68 |
-| `GET /people/{id}/lists/{type}/{sort}` | blocked-engine | lists engine — per-item lists | #67 |
 | `GET /recommendations/movies/` | out-of-scope | related / recommendations (owner carve-out: stays 501) | #49 |
 | `GET /recommendations/shows/` | out-of-scope | related / recommendations (owner carve-out: stays 501) | #49 |
 | `GET /search/{type}` | divergent | search engine | #70 |
@@ -118,7 +116,6 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /shows/streaming/{period}` | blocked-data | calendars and Watch Now data | #69 |
 | `GET /shows/watched/{period}` | blocked-engine | stats and rankings | #66 |
 | `GET /shows/{id}/certifications` | blocked-data | TMDB metadata ingest | #68 |
-| `GET /shows/{id}/lists/{type}/{sort}` | blocked-engine | lists engine — per-item lists | #67 |
 | `GET /shows/{id}/related` | blocked-engine | related / recommendations (owner carve-out: stays 501) | #49 |
 | `GET /shows/{id}/seasons/{season}` | divergent | divergent shapes — serve the contract path | #104 |
 | `GET /shows/{id}/seasons/{season}/comments/{sort}` | divergent | TMDB metadata ingest | #68 |
@@ -132,7 +129,6 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /shows/{id}/seasons/{season}/episodes/{episode}/watching` | out-of-scope | TMDB metadata ingest | #68 |
 | `GET /shows/{id}/seasons/{season}/episodes/{episode}/watchnow/{country}` | out-of-scope | TMDB metadata ingest | #68 |
 | `GET /shows/{id}/seasons/{season}/info` | out-of-scope | TMDB metadata ingest | #68 |
-| `GET /shows/{id}/seasons/{season}/lists/{type}/{sort}` | out-of-scope | lists engine — per-item lists | #67 |
 | `GET /shows/{id}/seasons/{season}/people` | blocked-data | TMDB metadata ingest | #68 |
 | `GET /shows/{id}/seasons/{season}/videos` | blocked-data | TMDB metadata ingest | #68 |
 | `GET /shows/{id}/seasons/{season}/watching` | out-of-scope | TMDB metadata ingest | #68 |
@@ -261,6 +257,7 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /movies/{id}` | `GET /v1/movies/{id}` |
 | `GET /movies/{id}/aliases` | `GET /v1/movies/{id}/aliases` |
 | `GET /movies/{id}/comments/{sort}` | `GET /v1/movies/{id}/comments/{sort}` |
+| `GET /movies/{id}/lists/{type}/{sort}` | `GET /v1/movies/{id}/lists/{type}/{sort}` |
 | `GET /movies/{id}/people` | `GET /v1/movies/{id}/people` |
 | `GET /movies/{id}/ratings` | `GET /v1/movies/{id}/ratings` |
 | `GET /movies/{id}/stats` | `GET /v1/movies/{id}/stats` |
@@ -269,6 +266,7 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /notes/{id}` | `GET /v1/notes/{id}` |
 | `GET /oauth/authorize` | `GET /oauth/authorize` |
 | `GET /people/updates/{start_date}` | `GET /v1/people/updates/{start_date}` |
+| `GET /people/{id}/lists/{type}/{sort}` | `GET /v1/people/{id}/lists/{type}/{sort}` |
 | `GET /people/{id}/movies` | `GET /v1/people/{id}/movies` |
 | `GET /people/{id}/shows` | `GET /v1/people/{id}/shows` |
 | `GET /search/recent_by_id/global/{type}` | `GET /v1/search/recent_by_id/global/{type}` |
@@ -283,6 +281,7 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /shows/{id}/aliases` | `GET /v1/shows/{id}/aliases` |
 | `GET /shows/{id}/comments/{sort}` | `GET /v1/shows/{id}/comments/{sort}` |
 | `GET /shows/{id}/last_episode` | `GET /v1/shows/{id}/last_episode` |
+| `GET /shows/{id}/lists/{type}/{sort}` | `GET /v1/shows/{id}/lists/{type}/{sort}` |
 | `GET /shows/{id}/next_episode` | `GET /v1/shows/{id}/next_episode` |
 | `GET /shows/{id}/people` | `GET /v1/shows/{id}/people` |
 | `GET /shows/{id}/progress/collection` | `GET /v1/shows/{id}/progress/collection` |
@@ -290,6 +289,7 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /shows/{id}/ratings` | `GET /v1/shows/{id}/ratings` |
 | `GET /shows/{id}/seasons` | `GET /v1/shows/{id}/seasons` |
 | `GET /shows/{id}/seasons/{season}/episodes/{episode}/lists/{type}/{sort}` | `GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/lists/{type}/{sort}` |
+| `GET /shows/{id}/seasons/{season}/lists/{type}/{sort}` | `GET /v1/shows/{id}/seasons/{season}/lists/{type}/{sort}` |
 | `GET /shows/{id}/seasons/{season}/ratings` | `GET /v1/shows/{id}/seasons/{season}/ratings` |
 | `GET /shows/{id}/seasons/{season}/stats` | `GET /v1/shows/{id}/seasons/{season}/stats` |
 | `GET /shows/{id}/seasons/{season}/translations` | `GET /v1/shows/{id}/seasons/{season}/translations` |

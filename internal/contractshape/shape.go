@@ -357,6 +357,13 @@ func SettingsUser(u *database.User) map[string]any {
 // requires name, privacy, share_link, type, the display/sorting flags,
 // timestamps, item_count, comment_count, likes, ids and user.
 func List(l *database.List, user *database.User) map[string]any {
+	return ListWithItemCount(l, user, 0)
+}
+
+// ListWithItemCount is List with the caller-supplied real item count. Callers
+// that have the count (a grouped list_items query) use this rather than emitting
+// the contract's required item_count as a fabricated zero.
+func ListWithItemCount(l *database.List, user *database.User, itemCount int64) map[string]any {
 	images := map[string]any{}
 	if l.CoverURL != "" {
 		images["poster"] = []string{l.CoverURL}
@@ -373,7 +380,7 @@ func List(l *database.List, user *database.User) map[string]any {
 		"sort_how":        l.SortHow,
 		"created_at":      Timestamp(l.CreatedAt),
 		"updated_at":      Timestamp(l.UpdatedAt),
-		"item_count":      0,
+		"item_count":      itemCount,
 		"comment_count":   l.CommentCount,
 		"likes":           l.LikeCount,
 		"ids":             ListIDs(l),

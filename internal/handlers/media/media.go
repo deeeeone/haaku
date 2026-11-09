@@ -25,7 +25,7 @@ func registerOpenAPIRoutes() {
 		{Method: "GET", Path: "/v1/movies/{id}/people", Summary: "Get cast and crew for a movie", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "People"}},
 		{Method: "GET", Path: "/v1/movies/{id}/ratings", Summary: "Get ratings for a movie", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "Rating summary"}},
 		{Method: "GET", Path: "/v1/movies/{id}/stats", Summary: "Get stats for a movie", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "Stats"}},
-		{Method: "GET", Path: "/v1/movies/{id}/lists", Summary: "Get lists containing a movie", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "Lists", 501: "Not implemented (requires lists engine)"}},
+		{Method: "GET", Path: "/v1/movies/{id}/lists", Summary: "Get lists containing a movie", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "Lists"}},
 		{Method: "GET", Path: "/v1/movies/{id}/watching", Summary: "Users watching a movie right now", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "Watching", 501: "Not implemented (requires activity engine)"}},
 		{Method: "GET", Path: "/v1/movies/{id}/comments/{sort}", Summary: "Get comments for a movie, sorted (newest, oldest, likes, replies, trending)", Tags: []string{"Movies"}, Auth: "optional", StatusCodes: map[int]string{200: "Comments", 400: "Invalid sort", 404: "Movie not found"}},
 
@@ -38,7 +38,7 @@ func registerOpenAPIRoutes() {
 		{Method: "GET", Path: "/v1/shows/{id}/people", Summary: "Get cast and crew for a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "People"}},
 		{Method: "GET", Path: "/v1/shows/{id}/ratings", Summary: "Get ratings for a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Rating summary"}},
 		{Method: "GET", Path: "/v1/shows/{id}/stats", Summary: "Get stats for a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Stats"}},
-		{Method: "GET", Path: "/v1/shows/{id}/lists", Summary: "Get lists containing a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Lists", 501: "Not implemented (requires lists engine)"}},
+		{Method: "GET", Path: "/v1/shows/{id}/lists", Summary: "Get lists containing a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Lists"}},
 		{Method: "GET", Path: "/v1/shows/{id}/watching", Summary: "Users watching a show right now", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Watching", 501: "Not implemented (requires activity engine)"}},
 		{Method: "GET", Path: "/v1/shows/{id}/next_episode", Summary: "Get the next scheduled episode for a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Next episode", 204: "No next episode", 404: "Show not found"}},
 		{Method: "GET", Path: "/v1/shows/{id}/last_episode", Summary: "Get the most recently aired episode for a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Last episode", 204: "No aired episode", 404: "Show not found"}},
@@ -66,6 +66,7 @@ func RegisterRoutes(api fiber.Router) {
 	movies.Get("/:id/people", handleGetMoviePeople)
 	movies.Get("/:id/ratings", handleGetMovieRatingSummary)
 	movies.Get("/:id/stats", handleGetMovieStats)
+	movies.Get("/:id/lists/:type/:sort", handleGetMovieListsByTypeSort)
 	movies.Get("/:id/lists", handleGetMovieLists)
 	movies.Get("/:id/watching", handleGetMovieWatching)
 	movies.Get("/:id/comments/:sort", handleGetMovieComments)
@@ -81,6 +82,8 @@ func RegisterRoutes(api fiber.Router) {
 	shows.Get("/:id/people", handleGetShowPeople)
 	shows.Get("/:id/ratings", handleGetShowRatingSummary)
 	shows.Get("/:id/stats", handleGetShowStats)
+	shows.Get("/:id/seasons/:season/lists/:type/:sort", handleGetShowSeasonLists)
+	shows.Get("/:id/lists/:type/:sort", handleGetShowListsByTypeSort)
 	shows.Get("/:id/lists", handleGetShowLists)
 	shows.Get("/:id/watching", handleGetShowWatching)
 	shows.Get("/:id/next_episode", handleGetShowNextEpisode)
@@ -95,6 +98,7 @@ func RegisterRoutes(api fiber.Router) {
 	people.Get("/:id", handleGetPerson)
 	people.Get("/:id/movies", handleGetPersonMovies)
 	people.Get("/:id/shows", handleGetPersonShows)
+	people.Get("/:id/lists/:type/:sort", handleGetPersonListsByTypeSort)
 
 	// --- Translation & alias routes ---
 	RegisterTranslationRoutes(api)
@@ -202,12 +206,6 @@ func handleGetMovieStats(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
 	return c.JSON(stats)
-}
-
-func handleGetMovieLists(c *fiber.Ctx) error {
-	// Lists containing a movie require the lists engine (not landed). Fails
-	// closed with 501 rather than return a fabricated empty list.
-	return response.NotImplemented(c, "lists require the lists engine, which is not implemented")
 }
 
 func handleGetMovieWatching(c *fiber.Ctx) error {
@@ -488,12 +486,6 @@ func handleGetShowStats(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
 	return c.JSON(stats)
-}
-
-func handleGetShowLists(c *fiber.Ctx) error {
-	// Lists containing a show require the lists engine (not landed). Fails
-	// closed with 501 rather than return a fabricated empty list.
-	return response.NotImplemented(c, "lists require the lists engine, which is not implemented")
 }
 
 func handleGetShowWatching(c *fiber.Ctx) error {

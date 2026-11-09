@@ -26,3 +26,9 @@ acknowledged:
   - signature: "removed-status-code GET /v1/shows/{id}/stats 501"
     date: 2026-11-09
     reason: "Same as the movie stats row: the 501 placeholder became a working 200 response, so nothing clients call or parse was removed."
+  - signature: "removed-status-code GET /v1/movies/{id}/lists 501"
+    date: 2026-11-09
+    reason: "The 501 stub is replaced by real public-list data; clients that treated 501 as unavailable now receive Trakt's list array with 200 and need no change."
+  - signature: "removed-status-code GET /v1/shows/{id}/lists 501"
+    date: 2026-11-09
+    reason: "Same as the movie lists row: the 501 placeholder became a working 200 response, so nothing clients call or parse was removed."
