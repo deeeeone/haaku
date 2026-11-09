@@ -11,6 +11,7 @@ import (
 	"github.com/haaku-tv/haaku/internal/database"
 
 	"github.com/gofiber/fiber/v2"
+	"gorm.io/gorm"
 )
 
 // doGETFull is doGET plus the response, so a test can read the pagination
@@ -39,13 +40,10 @@ func day(y int, m time.Month, d int) *database.Date {
 }
 
 // seedFilterCatalogue seeds two movies and one show with the columns the
-// catalogue filters read, and a watchlist + history row for the target.
-
-func TestContractWatchlistCatalogueFilters(t *testing.T) {
-	db := contractTestDB(t)
-	seedUser(t, db, "target", false, "active")
+// catalogue filters read, plus watchlist rows for the target.
+func seedFilterCatalogue(t *testing.T, db *gorm.DB) {
+	t.Helper()
 	now := time.Now().UTC()
-
 	if err := db.Create(&database.Movie{ID: 101, TmdbID: 101, Slug: "alpha", Title: "Alpha",
 		Genres: database.StringSlice{"Drama"}, Released: day(2011, 1, 1), Runtime: 100,
 		RatingAvg: 8.0, Status: "Released", Certification: "R", CreatedAt: now, UpdatedAt: now}).Error; err != nil {
@@ -70,6 +68,12 @@ func TestContractWatchlistCatalogueFilters(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+}
+
+func TestContractWatchlistCatalogueFilters(t *testing.T) {
+	db := contractTestDB(t)
+	seedUser(t, db, "target", false, "active")
+	seedFilterCatalogue(t, db)
 	app := newContractApp("target")
 
 	cases := []struct {
@@ -107,27 +111,66 @@ func TestContractWatchlistCatalogueFilters(t *testing.T) {
 	}
 }
 
-// TestContractCatalogueFiltersRefuseUnstored proves a declared-but-unstored
-// filter is a 400, and that runtimes is refused where the media table has no
-// runtime column (shows).
-func TestContractCatalogueFiltersRefuseUnstored(t *testing.T) {
+// TestContractCatalogueFiltersIgnoreUnstored proves a declared-but-unstored
+// filter is IGNORED rather than a 400: the request answers 200 with the
+// superset, and the response names the parameter it did not apply (which is why
+// the parity row for these operations is graded divergent with a compat note).
+// A malformed value of a filter we do support stays a 400 — proven in
+// shared.TestParseRefusesBadValuesAndIgnoresUnstored and by the years case here.
+func TestContractCatalogueFiltersIgnoreUnstored(t *testing.T) {
 	db := contractTestDB(t)
 	seedUser(t, db, "target", false, "active")
+	seedFilterCatalogue(t, db)
 	app := newContractApp("target")
 
-	for _, path := range []string{
-		"/v1/users/target/watchlist/movies/rank?countries=us",
-		"/v1/users/target/watchlist/movies/rank?watchnow=free",
-		"/v1/users/target/watchlist/shows/rank?runtimes=30-60",
-		"/v1/users/target/watchlist/movie,show/rank?runtimes=30-60",
-	} {
-		if status, body := doGET(t, app, path); status != http.StatusBadRequest {
-			t.Errorf("%s: status %d, want 400 (%s)", path, status, body)
+	cases := []struct {
+		path    string
+		items   int
+		ignored string
+	}{
+		// movies: two watchlist rows, neither narrowed by an unstored filter.
+		{"/v1/users/target/watchlist/movies/rank?countries=us", 2, "countries"},
+		{"/v1/users/target/watchlist/movies/rank?watchnow=free", 2, "watchnow"},
+		// runtimes is supported on movies but shows carry no runtime column.
+		{"/v1/users/target/watchlist/shows/rank?runtimes=30-60", 1, "runtimes"},
+		{"/v1/users/target/watchlist/movie,show/rank?runtimes=30-60", 3, "runtimes"},
+	}
+	for _, tc := range cases {
+		resp, body := doGETFull(t, app, tc.path)
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("%s: status %d, want 200 (%s)", tc.path, resp.StatusCode, body)
+			continue
+		}
+		var items []map[string]any
+		if err := json.Unmarshal([]byte(body), &items); err != nil {
+			t.Errorf("%s: decode: %v", tc.path, err)
+			continue
+		}
+		if len(items) != tc.items {
+			t.Errorf("%s: got %d items, want the %d-item superset (%s)", tc.path, len(items), tc.items, body)
+		}
+		if got := resp.Header.Get("X-Haaku-Ignored-Filters"); got != tc.ignored {
+			t.Errorf("%s: X-Haaku-Ignored-Filters = %q, want %q", tc.path, got, tc.ignored)
 		}
 	}
-	// A movie watchlist can honour runtimes.
-	if status, body := doGET(t, app, "/v1/users/target/watchlist/movies/rank?runtimes=30-60"); status != http.StatusOK {
-		t.Errorf("movie runtimes: status %d, want 200 (%s)", status, body)
+
+	// A movie watchlist can honour runtimes, so nothing is ignored and the
+	// filter really narrows (a 30-60 minute movie is not in this catalogue).
+	resp, body := doGETFull(t, app, "/v1/users/target/watchlist/movies/rank?runtimes=30-60")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("movie runtimes: status %d, want 200 (%s)", resp.StatusCode, body)
+	}
+	if got := resp.Header.Get("X-Haaku-Ignored-Filters"); got != "" {
+		t.Errorf("movie runtimes ignored %q; it is honour-able here", got)
+	}
+
+	// The hard 400 stays for a malformed value of a supported filter.
+	resp, body = doGETFull(t, app, "/v1/users/target/watchlist/movies/rank?years=99999999")
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("years=99999999: status %d, want 400 (%s)", resp.StatusCode, body)
+	}
+	if !strings.Contains(body, "9998") {
+		t.Errorf("400 body does not name the accepted range: %s", body)
 	}
 }
 
@@ -260,21 +303,25 @@ func TestContractWatchedAggregateKeepsCalendarHiddenItems(t *testing.T) {
 	}
 }
 
-// TestContractActivitiesRejectInvalidFilterWithoutFriends proves filter
-// validation runs before the account set is resolved: an account with no
-// visible friends still gets a 400 for a filter the store cannot evaluate,
-// rather than an empty 200.
-func TestContractActivitiesRejectInvalidFilterWithoutFriends(t *testing.T) {
+// TestContractActivitiesFilterValidationRunsBeforeAccountLookup proves filter
+// handling runs before the account set is resolved: a malformed value of a
+// supported filter is a 400 even for an account with no visible friends (not an
+// empty 200), while an unstored documented parameter is ignored there too.
+func TestContractActivitiesFilterValidationRunsBeforeAccountLookup(t *testing.T) {
 	db := contractTestDB(t)
 	seedUser(t, db, "target", false, "active")
 	seedUser(t, db, "stranger", false, "active")
 	app := newContractApp("stranger")
 
-	for _, query := range []string{"countries=us", "ignore_watched=true", "years=99999999"} {
+	for _, query := range []string{"ignore_watched=true", "years=99999999"} {
 		status, body := doGET(t, app, "/v1/users/target/friends/activities?"+query)
 		if status != http.StatusBadRequest {
 			t.Errorf("%s: status %d, want 400 (%s)", query, status, body)
 		}
+	}
+	// countries has no stored column, so it is ignored rather than refused.
+	if status, body := doGET(t, app, "/v1/users/target/friends/activities?countries=us"); status != http.StatusOK {
+		t.Errorf("countries=us: status %d, want 200 (ignored) (%s)", status, body)
 	}
 }
 
@@ -344,7 +391,18 @@ func TestContractHistoryCatalogueFilter(t *testing.T) {
 	if got := resp.Header.Get("X-Pagination-Total-Items"); got != "1" {
 		t.Errorf("history X-Pagination-Total-Items = %q, want 1", got)
 	}
-	if status, body := doGET(t, app, "/v1/users/target/history/movies?countries=us"); status != http.StatusBadRequest {
-		t.Errorf("history countries: status %d, want 400 (%s)", status, body)
+	// An unstored documented filter is ignored: both history rows come back and
+	// the response says which parameter it did not apply.
+	resp, body = doGETFull(t, app, "/v1/users/target/history/movies?countries=us")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("history countries: status %d, want 200 (ignored) (%s)", resp.StatusCode, body)
+	}
+	var all []map[string]any
+	_ = json.Unmarshal([]byte(body), &all)
+	if len(all) != 2 {
+		t.Errorf("history countries=us: got %d items, want the 2-item superset", len(all))
+	}
+	if got := resp.Header.Get("X-Haaku-Ignored-Filters"); got != "countries" {
+		t.Errorf("history countries: X-Haaku-Ignored-Filters = %q, want countries", got)
 	}
 }
