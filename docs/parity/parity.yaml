@@ -699,11 +699,11 @@ sections:
       - trakt: "GET /comments/recent/{comment_type}/{type}"
         ours: "GET /v1/comments/recent/{comment_type}/{type}"
         status: implemented
-        rationale: "Served at the contract path: real rows from comments, filtered by comment_type (all|shouts|reviews) and media type, newest created_at first, bare array of contract comment objects plus X-Pagination-* headers. include_replies returns reply rows in the same stream."
+        rationale: "Served at the contract path: real rows from comments, filtered by comment_type (all|shouts|reviews) and media type, newest created_at first, bare array of contract comment objects (parent_id 0 for a top-level comment, the contract's required integer) plus X-Pagination-* headers. include_replies returns reply rows in the same stream."
       - trakt: "GET /comments/updates/{comment_type}/{type}"
         ours: "GET /v1/comments/updates/{comment_type}/{type}"
         status: implemented
-        rationale: "Served at the contract path: comments with edited_at IS NOT NULL for the requested comment kind and media type, newest edit first, bare array of contract comment objects plus X-Pagination-* headers."
+        rationale: "Served at the contract path: comments with edited_at IS NOT NULL for the requested comment kind and media type, newest edit first, bare array of contract comment objects (parent_id 0 for a top-level comment) plus X-Pagination-* headers."
       - trakt: "GET /comments/{id}"
         ours: "GET /v1/comments/{id}"
         status: implemented
@@ -1308,7 +1308,7 @@ sections:
       - trakt: "POST /comments/"
         ours: "POST /v1/comments"
         status: implemented
-        rationale: "Served at POST /v1/comments; the contract's trailing slash is the same route because Fiber runs without StrictRouting. Accepts item.{movie|show|season|episode|list}.ids.trakt (and the legacy flat/web item spellings), comment, spoiler, review and gif (stored in comments.gif_url/gif_slug), and answers 201 with the contract comment object."
+        rationale: "Served at POST /v1/comments; the contract's trailing slash is the same route because Fiber runs without StrictRouting. Accepts the contract body's top-level movie|show|season|episode|list object (each {ids:{trakt}}), plus the legacy flat and web item spellings, comment, spoiler, review and gif (stored in comments.gif_url/gif_slug), and answers 201 with the contract comment object. parent_id is 0 for a top-level comment: the contract declares it as a required integer with no null alternative, so 0 is the only expressible sentinel (ids are positive)."
       - trakt: "POST /comments/{id}/like"
         ours: "POST /v1/comments/{id}/like"
         status: implemented
@@ -1550,7 +1550,7 @@ sections:
       - trakt: "PUT /comments/{id}/"
         ours: "PUT /v1/comments/{id}"
         status: implemented
-        rationale: "Served at PUT /v1/comments/{id}; the contract's trailing slash is the same route under the default router. Author or moderator (403 otherwise, 404 for a missing comment), updates comment/spoiler/review/gif and answers 200 with the contract comment object."
+        rationale: "Served at PUT /v1/comments/{id}; the contract's trailing slash is the same route under the default router. Author or moderator (403 otherwise, 404 for a missing comment), updates comment/spoiler/review/gif and answers 200 with the contract comment object. parent_id is 0 for a top-level comment — the contract's required integer with no null alternative."
       - trakt: "PUT /notes/{id}"
         ours: "PUT /v1/notes/{id}"
         status: implemented

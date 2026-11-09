@@ -305,12 +305,15 @@ func idValue(method, path string, fx Fixtures) string {
 		return fx.UserID
 	case "comments":
 		// The reply/like assertions need a comment with rows; the plain comment
-		// GET keeps the reply-free row so DELETE is not a 409, and DELETE uses a
-		// third row so it cannot consume the GET fixture.
+		// GET keeps the reply-free row so DELETE is not a 409, and the two
+		// destructive DELETEs get their own rows so neither consumes the other's.
 		if strings.Contains(path, "/replies") || strings.Contains(path, "/likes") {
 			return fmt.Sprintf("%d", fx.ThreadCommentID)
 		}
 		if method == "DELETE" {
+			if strings.Contains(path, "/reactions/") {
+				return fmt.Sprintf("%d", fx.ReactionCommentID)
+			}
 			return fmt.Sprintf("%d", fx.DeleteCommentID)
 		}
 		return fmt.Sprintf("%d", fx.CommentID)

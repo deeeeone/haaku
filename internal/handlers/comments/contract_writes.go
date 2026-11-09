@@ -39,12 +39,61 @@ import (
 // commentWriteRequest is the union of the contract, legacy and web bodies. The
 // item and gif blocks are raw so one struct can accept all three item spellings
 // and the tri-state gif (absent / object / explicit null to remove).
+//
+// The contract does not nest the target under an "item" key: its POST body is
+// an allOf of {comment, spoiler, gif} and a oneOf of {movie}|{show}|{season}|
+// {episode}|{list}, each carrying an ids object. Those top-level keys therefore
+// need their own fields — without them the contract's own body decoded to a
+// request with no item at all, and the handler answered 400 to a valid request.
 type commentWriteRequest struct {
 	Comment string          `json:"comment"`
 	Spoiler *bool           `json:"spoiler"`
 	Review  bool            `json:"review"`
 	Item    json.RawMessage `json:"item"`
+	Movie   json.RawMessage `json:"movie"`
+	Show    json.RawMessage `json:"show"`
+	Season  json.RawMessage `json:"season"`
+	Episode json.RawMessage `json:"episode"`
+	List    json.RawMessage `json:"list"`
 	Gif     json.RawMessage `json:"gif"`
+}
+
+// commentItemTargets are the contract's top-level item keys, in the order the
+// oneOf declares them.
+var commentItemTargets = []string{"movie", "show", "season", "episode", "list"}
+
+// resolveItem returns the request's media/list target, accepting both the
+// contract's top-level key and the nested "item" block the legacy API and the
+// web client send.
+func (r commentWriteRequest) resolveItem() (mediaType string, mediaID, listID *int64, err error) {
+	if len(r.Item) > 0 && string(r.Item) != "null" {
+		return parseCommentItem(r.Item)
+	}
+
+	top := map[string]json.RawMessage{
+		"movie": r.Movie, "show": r.Show, "season": r.Season,
+		"episode": r.Episode, "list": r.List,
+	}
+	var named []string
+	for _, typ := range commentItemTargets {
+		if raw, ok := top[typ]; ok && len(raw) > 0 && string(raw) != "null" {
+			named = append(named, typ)
+		}
+	}
+	if len(named) == 0 {
+		return "", nil, nil, nil
+	}
+	// The contract's oneOf admits exactly one target; two named targets is a
+	// body the contract does not define, so say so rather than picking one.
+	if len(named) > 1 {
+		return "", nil, nil, fmt.Errorf("item must name exactly one of movie, show, season, episode, list")
+	}
+	typ := named[0]
+	id, err := parseItemIDValue(top[typ])
+	if err != nil {
+		return "", nil, nil, err
+	}
+	return applyItemTarget(typ, id)
 }
 
 // errNoItemID is returned when an item block names a media kind but carries no
@@ -173,7 +222,7 @@ func handleCreateComment(c *fiber.Ctx) error {
 		return err
 	}
 
-	mediaType, mediaID, listID, err := parseCommentItem(req.Item)
+	mediaType, mediaID, listID, err := req.resolveItem()
 	if err != nil {
 		return response.BadRequest(c, err.Error())
 	}
