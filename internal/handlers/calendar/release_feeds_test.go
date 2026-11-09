@@ -352,7 +352,9 @@ func TestContractShowFeeds(t *testing.T) {
 func TestMediaCalendar(t *testing.T) {
 	db := setupReleaseDB(t)
 	seedReleaseMovies(t, db)
-	seedShows(t, db)
+	if _, _, err := seedShows(t, db); err != nil {
+		t.Fatal(err)
+	}
 	app := makeFeedsApp()
 
 	t.Run("movies and episodes merge into one date-ordered stream", func(t *testing.T) {
