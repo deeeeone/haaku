@@ -44,14 +44,22 @@ type Client struct {
 	token      string
 }
 
-// New creates a TMDB client. Reads TMDB_API_KEY from env.
+// New creates a TMDB client. Reads TMDB_API_KEY from env, and TMDB_BASE_URL
+// when set, to point every call at a different API root. The variable exists
+// so the conformance gate can run the whole fetch -> store -> serve path
+// against a local provider stub with no network and no real credentials; it
+// defaults to the real v3 root and is not otherwise required.
 func New() (*Client, error) {
 	token := strings.TrimSpace(os.Getenv("TMDB_API_KEY"))
 	if token == "" {
 		return nil, fmt.Errorf("TMDB_API_KEY environment variable is required")
 	}
+	base := strings.TrimRight(strings.TrimSpace(os.Getenv("TMDB_BASE_URL")), "/")
+	if base == "" {
+		base = v3BaseURL
+	}
 	return &Client{
-		baseURL: v3BaseURL,
+		baseURL: base,
 		httpClient: &http.Client{
 			Timeout: 15 * time.Second,
 		},

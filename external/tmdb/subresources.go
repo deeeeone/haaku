@@ -70,6 +70,15 @@ func (c *Client) GetShowTranslations(id int) (*Translations, error) {
 	return decode[Translations](resp)
 }
 
+// GetSeasonTranslations returns every language TMDB holds for a season.
+func (c *Client) GetSeasonTranslations(showID, season int) (*Translations, error) {
+	resp, err := c.doV3("GET", fmt.Sprintf("/tv/%d/season/%d/translations", showID, season), nil)
+	if err != nil {
+		return nil, err
+	}
+	return decode[Translations](resp)
+}
+
 // GetEpisodeTranslations returns every language TMDB holds for an episode.
 func (c *Client) GetEpisodeTranslations(showID, season, episode int) (*Translations, error) {
 	resp, err := c.doV3("GET", fmt.Sprintf("/tv/%d/season/%d/episode/%d/translations", showID, season, episode), nil)

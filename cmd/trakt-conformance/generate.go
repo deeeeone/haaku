@@ -233,8 +233,18 @@ func paramValue(name, method, path string, p contract.Parameter, fx Fixtures) st
 	case "lang":
 		return "en"
 	case "season", "number":
+		// A report is unique per (reporter, media). The flat
+		// /seasons/{id}/report case already reports season one, so a
+		// contract-path report of the same season would legitimately answer
+		// 409; point those cases at the second season's premiere instead.
+		if method == "POST" && strings.HasSuffix(path, "/report") {
+			return fmt.Sprintf("%d", fx.Season2Num)
+		}
 		return fmt.Sprintf("%d", fx.SeasonNum)
 	case "episode":
+		if method == "POST" && strings.HasSuffix(path, "/report") {
+			return fmt.Sprintf("%d", fx.Episode3Num)
+		}
 		return fmt.Sprintf("%d", fx.EpisodeNum)
 	case "list_id":
 		if strings.Contains(path, "/smart-lists") {

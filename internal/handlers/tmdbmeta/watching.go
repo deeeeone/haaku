@@ -5,6 +5,7 @@ import (
 
 	"github.com/haaku-tv/haaku/internal/contractshape"
 	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/response"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -80,5 +81,13 @@ func serveWatchingUsers(c *fiber.Ctx, db *gorm.DB, userIDs []string) error {
 		seen[id] = true
 		out = append(out, contractshape.User(users[id]))
 	}
+	// The response is a list, so the contract's pagination convention applies
+	// even though these operations declare no page/limit of their own: callers
+	// page deterministically only when the headers are present.
+	page, limit := response.ParsePagination(c, len(out))
+	if limit < 1 {
+		limit = 1
+	}
+	response.SetPaginationHeaders(c, page, limit, int64(len(out)), len(out))
 	return c.JSON(out)
 }

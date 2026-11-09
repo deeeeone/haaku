@@ -32,16 +32,21 @@ type Fixtures struct {
 	MovieSlug string `json:"movie_slug"`
 	MovieTVDB int    `json:"movie_tvdb"`
 
-	ShowID     int64  `json:"show_id"`
-	ShowTMDB   int    `json:"show_tmdb"`
-	ShowIMDB   string `json:"show_imdb"`
-	ShowSlug   string `json:"show_slug"`
-	ShowTVDB   int    `json:"show_tvdb"`
-	SeasonID   int64  `json:"season_id"`
-	SeasonNum  int    `json:"season_number"`
-	EpisodeID  int64  `json:"episode_id"`
-	Episode2ID int64  `json:"episode2_id"`
-	EpisodeNum int    `json:"episode_number"`
+	ShowID    int64  `json:"show_id"`
+	ShowTMDB  int    `json:"show_tmdb"`
+	ShowIMDB  string `json:"show_imdb"`
+	ShowSlug  string `json:"show_slug"`
+	ShowTVDB  int    `json:"show_tvdb"`
+	SeasonID  int64  `json:"season_id"`
+	SeasonNum int    `json:"season_number"`
+	// Season2Num/Episode3Num address the second season's premiere. The report
+	// cases use them so a contract-path report does not collide with the report
+	// the flat /seasons/{id}/report case already wrote for season one.
+	Season2Num  int   `json:"season2_number"`
+	EpisodeID   int64 `json:"episode_id"`
+	Episode2ID  int64 `json:"episode2_id"`
+	EpisodeNum  int   `json:"episode_number"`
+	Episode3Num int   `json:"episode3_number"`
 
 	PersonID   int64  `json:"person_id"`
 	PersonTMDB int    `json:"person_tmdb"`
@@ -364,6 +369,28 @@ func seedFixtures(db *gorm.DB, fx *Fixtures) error {
 		}
 	}
 
+	// A live scrobble session for the viewer, so the watching rows
+	// (/users/{id}/watching and the season/episode watching sub-resources) serve
+	// a real user object instead of an empty array that validates nothing. The
+	// predicate those handlers use is a live, non-expired session whose action is
+	// not pause/stop. The /users/{id}/watching case addresses the viewer
+	// (idValue returns fx.UserID for the users segment), so the session must be
+	// the viewer's. Re-seeding must not stack duplicates, so replace the user's
+	// sessions rather than create-if-absent.
+	if err := db.Where("user_id = ?", uid).Delete(&database.ScrobbleSession{}).Error; err != nil {
+		return fmt.Errorf("seed scrobble cleanup: %w", err)
+	}
+	episodeID := episodes[0].ID
+	seasonID := season.ID
+	liveSession := database.ScrobbleSession{
+		UserID: uid, MediaType: "episode", MediaID: episodeID,
+		SeasonID: &seasonID, EpisodeID: &episodeID, Action: "start", Progress: 12.5,
+		ExpiresAt: now.Add(4 * time.Hour), CreatedAt: now.Add(-time.Minute),
+	}
+	if err := db.Create(&liveSession).Error; err != nil {
+		return fmt.Errorf("seed scrobble session: %w", err)
+	}
+
 	// Comments carry no unique constraint to conflict on, so DoNothing silently
 	// appended a second row on every re-run and the fixture id moved. Read-or-create
 	// on the natural key instead.
@@ -529,7 +556,9 @@ func seedFixtures(db *gorm.DB, fx *Fixtures) error {
 	fx.ShowID, fx.ShowTMDB = show.ID, show.TmdbID
 	fx.ShowIMDB, fx.ShowSlug, fx.ShowTVDB = show.ImdbID, show.Slug, 81189
 	fx.SeasonID, fx.SeasonNum = season.ID, season.SeasonNumber
+	fx.Season2Num = season2.SeasonNumber
 	fx.EpisodeID, fx.Episode2ID, fx.EpisodeNum = episodes[0].ID, episodes[1].ID, episodes[0].EpisodeNumber
+	fx.Episode3Num = episode3.EpisodeNumber
 	fx.PersonID = person.ID
 	fx.PersonTMDB, fx.PersonIMDB = person.TmdbID, person.ImdbID
 	fx.PersonSlug = "bryan-cranston"

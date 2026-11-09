@@ -60,6 +60,7 @@ func registerOpenAPIRoutes() {
 
 		{Method: "GET", Path: "/v1/shows/{id}/seasons/{season}/videos", Summary: "Get videos for a season (contract path)", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Videos", 400: "Invalid season number", 404: "Show or season not found", 503: "Provider data temporarily unavailable"}},
 		{Method: "GET", Path: "/v1/shows/{id}/seasons/{season}/info", Summary: "Get a single season for a show (contract path)", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Season", 400: "Invalid season number", 404: "Show or season not found", 503: "Provider data temporarily unavailable"}},
+		{Method: "GET", Path: "/v1/shows/{id}/seasons/{season}/translations", Summary: "Get translations for a season (contract path)", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Translations", 400: "Invalid season number", 404: "Show or season not found", 503: "Provider data temporarily unavailable"}},
 		{Method: "GET", Path: "/v1/shows/{id}/seasons/{season}/watching", Summary: "Users watching a season right now (contract path)", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Watching users", 400: "Invalid season number", 404: "Show or season not found"}},
 
 		{Method: "GET", Path: "/v1/shows/{id}/seasons/{season}/episodes/{episode}/videos", Summary: "Get videos for an episode (contract path)", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Videos", 400: "Invalid season or episode number", 404: "Show, season or episode not found", 503: "Provider data temporarily unavailable"}},
@@ -86,6 +87,7 @@ func RegisterRoutes(api fiber.Router) {
 	shows.Get("/:id/translations", handleShowTranslations)
 	shows.Get("/:id/seasons/:season/videos", handleSeasonVideos)
 	shows.Get("/:id/seasons/:season/info", handleSeasonInfo)
+	shows.Get("/:id/seasons/:season/translations", handleSeasonTranslations)
 	shows.Get("/:id/seasons/:season/watching", handleSeasonWatching)
 	shows.Get("/:id/seasons/:season/episodes/:episode/videos", handleEpisodeVideos)
 	shows.Get("/:id/seasons/:season/episodes/:episode/translations", handleEpisodeTranslations)
@@ -247,4 +249,19 @@ func arrayValue(payload database.JSONMap, key string) []any {
 		return []any{}
 	}
 	return arr
+}
+
+// writeList emits a list-shaped contract response together with the §7
+// pagination convention. Every list operation carries the five X-Pagination-*
+// headers even when the contract declares no page/limit of its own; clients page
+// deterministically only when they are present. These lists are not paginated
+// upstream beyond what the store returns, so the reported total is the number
+// served.
+func writeList(c *fiber.Ctx, items []any) error {
+	page, limit := response.ParsePagination(c, len(items))
+	if limit < 1 {
+		limit = 1
+	}
+	response.SetPaginationHeaders(c, page, limit, int64(len(items)), len(items))
+	return c.JSON(items)
 }

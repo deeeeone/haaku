@@ -2969,7 +2969,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Season translations, all languages unless ?language= is set (contract path) */
+        /** Get translations for a season (contract path) */
         get: operations["_v1_shows_id_seasons_season_translations_GET"];
         put?: never;
         post?: never;
@@ -21333,14 +21333,12 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description invalid request */
+            /** @description Invalid season number */
             400: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
+                content?: never;
             };
             /** @description unauthorized */
             401: {
@@ -21351,14 +21349,12 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description not found */
+            /** @description Show or season not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
+                content?: never;
             };
             /** @description conflict */
             409: {
@@ -21387,8 +21383,17 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Upstream provider error */
+            /** @description internal server error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Provider data temporarily unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -111,6 +111,11 @@ func newFixtureServer(t *testing.T) *fixtureServer {
 	mux.HandleFunc("/tv/1396/translations", jsonHandler(fs, func(w http.ResponseWriter) {
 		_, _ = fmt.Fprint(w, `{"translations":[{"iso_639_1":"en","iso_3166_1":"US","data":{"name":"Breaking Bad","overview":"Chemistry"}}]}`)
 	}))
+	mux.HandleFunc("/tv/1396/season/1/translations", jsonHandler(fs, func(w http.ResponseWriter) {
+		_, _ = fmt.Fprint(w, `{"translations":[
+			{"iso_639_1":"en","iso_3166_1":"US","data":{"name":"Season 1","overview":"The first season","tagline":"A season tagline"}},
+			{"iso_639_1":"es","iso_3166_1":"ES","data":{"name":"Temporada 1","overview":"La primera","tagline":""}}]}`)
+	}))
 	mux.HandleFunc("/tv/1396/season/1/episode/1/translations", jsonHandler(fs, func(w http.ResponseWriter) {
 		_, _ = fmt.Fprint(w, `{"translations":[{"iso_639_1":"en","iso_3166_1":"US","data":{"name":"Pilot","overview":"Pilot ep"}}]}`)
 	}))
@@ -193,6 +198,22 @@ func getJSON(t *testing.T, app *fiber.App, path string) (int, []byte) {
 		t.Fatalf("read body: %v", err)
 	}
 	return resp.StatusCode, buf
+}
+
+// getResp returns the raw response so a test can read the pagination headers.
+func getResp(t *testing.T, app *fiber.App, path string) *http.Response {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodGet, path, nil)
+	if err != nil {
+		t.Fatalf("build request: %v", err)
+	}
+	req.Host = "example.com"
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("GET %s: %v", path, err)
+	}
+	t.Cleanup(func() { _ = resp.Body.Close() })
+	return resp
 }
 
 func TestVideos(t *testing.T) {
@@ -321,10 +342,71 @@ func TestTranslations(t *testing.T) {
 
 	for _, path := range []string{
 		fmt.Sprintf("/v1/shows/%d/translations", show.ID),
+		fmt.Sprintf("/v1/shows/%d/seasons/1/translations", show.ID),
 		fmt.Sprintf("/v1/shows/%d/seasons/1/episodes/1/translations", show.ID),
 	} {
 		if status, body := getJSON(t, app, path); status != http.StatusOK {
 			t.Errorf("%s: status %d body %s", path, status, body)
+		}
+	}
+
+	// A season translation is served from the same store path as the movie and
+	// show ones, so the second call must not reach the provider. This is the
+	// regression guard for the 500 that answered before the season route moved
+	// onto fetch -> store -> serve.
+	before := srv.hits("/tv/1396/season/1/translations")
+	status, body = getJSON(t, app, fmt.Sprintf("/v1/shows/%d/seasons/1/translations", show.ID))
+	if status != http.StatusOK {
+		t.Fatalf("season translations: status %d body %s", status, body)
+	}
+	var seasonAll []map[string]any
+	if err := json.Unmarshal(body, &seasonAll); err != nil {
+		t.Fatalf("decode season translations: %v", err)
+	}
+	if len(seasonAll) != 2 || seasonAll[0]["language"] != "en" {
+		t.Errorf("season translations = %s", body)
+	}
+	if after := srv.hits("/tv/1396/season/1/translations"); after != before {
+		t.Errorf("second season translations call hit the provider (%d -> %d)", before, after)
+	}
+}
+
+// TestSecondCallIsServedFromTheStore closes the provider after the first fetch
+// and asserts the second call still answers: the payload is read from
+// media_metadata, not the provider. A store that only caches in-process would
+// pass a hit-counter test but fail this one.
+func TestSecondCallIsServedFromTheStore(t *testing.T) {
+	db := testDB(t)
+	srv := newFixtureServer(t)
+	setTestClient(t, srv.Server)
+	movie, show, _, _ := seedMedia(t, db)
+	app := makeApp()
+
+	paths := []string{
+		fmt.Sprintf("/v1/movies/%d/videos", movie.ID),
+		fmt.Sprintf("/v1/movies/%d/translations", movie.ID),
+		fmt.Sprintf("/v1/shows/%d/seasons/1/info", show.ID),
+	}
+	for _, p := range paths {
+		if status, body := getJSON(t, app, p); status != http.StatusOK {
+			t.Fatalf("first %s: status %d body %s", p, status, body)
+		}
+	}
+	firstBodies := map[string]string{}
+	for _, p := range paths {
+		_, body := getJSON(t, app, p)
+		firstBodies[p] = string(body)
+	}
+
+	srv.Close()
+
+	for _, p := range paths {
+		status, body := getJSON(t, app, p)
+		if status != http.StatusOK {
+			t.Fatalf("second %s with the provider down: status %d body %s", p, status, body)
+		}
+		if string(body) != firstBodies[p] {
+			t.Errorf("second %s body changed with the provider down:\n got %s\nwant %s", p, body, firstBodies[p])
 		}
 	}
 }
@@ -435,6 +517,17 @@ func TestWatching(t *testing.T) {
 		}
 		if out[0]["username"] != "alice" {
 			t.Errorf("%s: watching user = %v", path, out[0]["username"])
+		}
+		// The response is a list, so the contract's pagination convention
+		// applies and the headers must be present.
+		resp := getResp(t, app, path)
+		for _, h := range []string{"X-Pagination-Page", "X-Pagination-Limit", "X-Pagination-Total-Pages", "X-Pagination-Total-Items", "X-Pagination-Items-Count"} {
+			if resp.Header.Get(h) == "" {
+				t.Errorf("%s: missing header %s", path, h)
+			}
+		}
+		if got := resp.Header.Get("X-Pagination-Total-Items"); got != "1" {
+			t.Errorf("%s: X-Pagination-Total-Items = %q, want 1", path, got)
 		}
 	}
 }

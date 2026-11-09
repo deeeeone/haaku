@@ -9361,11 +9361,7 @@ paths:
                 "200":
                     description: Translations
                 "400":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
+                    description: Invalid season number
                 "401":
                     content:
                         application/json:
@@ -9373,11 +9369,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: unauthorized
                 "404":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Show or season not found
                 "409":
                     content:
                         application/json:
@@ -9397,11 +9389,17 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: rate limited
                 "500":
-                    description: Upstream provider error
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+                "503":
+                    description: Provider data temporarily unavailable
             security: []
-            summary: Season translations, all languages unless ?language= is set (contract path)
+            summary: Get translations for a season (contract path)
             tags:
-                - Seasons
+                - Shows
     /v1/shows/{id}/seasons/{season}/translations/{lang}:
         get:
             operationId: _v1_shows_id_seasons_season_translations_lang_GET

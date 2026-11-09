@@ -82,7 +82,7 @@ func serveVideos(c *fiber.Ctx, db *gorm.DB, mediaType string, mediaID int64, fet
 	if err != nil {
 		return err
 	}
-	return c.JSON(arrayValue(payload, "videos"))
+	return writeList(c, arrayValue(payload, "videos"))
 }
 
 // contractVideos maps TMDB's video set onto the contract's array. Only entries
@@ -169,7 +169,7 @@ func handleMovieReleases(c *fiber.Ctx) error {
 			filtered = append(filtered, row)
 		}
 	}
-	return c.JSON(filtered)
+	return writeList(c, filtered)
 }
 
 // contractReleases flattens TMDB's per-country release dates into the
@@ -226,6 +226,20 @@ func handleShowTranslations(c *fiber.Ctx) error {
 	}, true)
 }
 
+func handleSeasonTranslations(c *fiber.Ctx) error {
+	db, show, season, err := resolveShowSeason(c)
+	if err != nil {
+		return err
+	}
+	return serveTranslations(c, db, "season", season.ID, func() (*tmdb.Translations, error) {
+		client, cerr := getTMDBClient()
+		if cerr != nil {
+			return nil, cerr
+		}
+		return client.GetSeasonTranslations(show.TmdbID, season.SeasonNumber)
+	}, true)
+}
+
 func handleEpisodeTranslations(c *fiber.Ctx) error {
 	db, show, season, episode, err := resolveShowEpisode(c)
 	if err != nil {
@@ -262,7 +276,7 @@ func serveTranslations(
 	lang := strings.ToLower(strings.TrimSpace(c.Query("language")))
 	all := arrayValue(payload, "translations")
 	if lang == "" {
-		return c.JSON(all)
+		return writeList(c, all)
 	}
 	filtered := make([]any, 0)
 	for _, item := range all {
@@ -274,7 +288,7 @@ func serveTranslations(
 			filtered = append(filtered, row)
 		}
 	}
-	return c.JSON(filtered)
+	return writeList(c, filtered)
 }
 
 // contractTranslations maps TMDB's translation set onto the contract's array.
@@ -407,7 +421,7 @@ func handleMovieStudios(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(arrayValue(payload, "studios"))
+	return writeList(c, arrayValue(payload, "studios"))
 }
 
 func handleShowStudios(c *fiber.Ctx) error {
@@ -429,7 +443,7 @@ func handleShowStudios(c *fiber.Ctx) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(arrayValue(payload, "studios"))
+	return writeList(c, arrayValue(payload, "studios"))
 }
 
 // contractStudiosFromCompanies maps TMDB production companies to the contract's
