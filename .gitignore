@@ -30,3 +30,6 @@ coverage.out
 .local/
 tmp/
 /config/
+
+# Fixture ids written by cmd/trakt-conformance -seed (make conformance)
+.conformance-fixtures.json
