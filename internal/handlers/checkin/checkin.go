@@ -187,6 +187,13 @@ func resolveCheckinItem(c *fiber.Ctx, req *checkinRequest) (string, int64, *int6
 // DB failure) is logged and returned as a generic 500 so wrapped GORM / resolver
 // detail never reaches the client.
 func mapResolveError(c *fiber.Ctx, err error) error {
+	// media.ResolveID writes its own envelope — 404 "media not found", or 400
+	// "invalid id_type" — and returns response.ErrHandled to stop the caller.
+	// Answering here would replace that status with a generic 500, so a missing
+	// media id would read as a server fault.
+	if errors.Is(err, response.ErrHandled) {
+		return nil
+	}
 	switch {
 	case errors.Is(err, errNotAShow), errors.Is(err, errNotAMovie), errors.Is(err, errNoMediaSpecified):
 		return response.BadRequest(c, err.Error())

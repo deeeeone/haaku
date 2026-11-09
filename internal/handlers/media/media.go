@@ -105,12 +105,9 @@ func RegisterRoutes(api fiber.Router) {
 // ---------------------------------------------------------------------------
 
 func handleGetMovie(c *fiber.Ctx) error {
-	mediaType, id, err := ResolveID(c, c.Params("id"))
+	_, id, err := ResolveIDAs(c, c.Params("id"), "movie")
 	if err != nil {
 		return err
-	}
-	if mediaType != "movie" {
-		return response.NotFound(c, "not a movie")
 	}
 
 	db, dbErr := database.GetDB()
@@ -132,7 +129,7 @@ func handleGetMovie(c *fiber.Ctx) error {
 }
 
 func handleGetMoviePeople(c *fiber.Ctx) error {
-	_, id, err := ResolveID(c, c.Params("id"))
+	_, id, err := ResolveIDAs(c, c.Params("id"), "movie")
 	if err != nil {
 		return err
 	}
@@ -154,7 +151,7 @@ func handleGetMoviePeople(c *fiber.Ctx) error {
 }
 
 func handleGetMovieRatingSummary(c *fiber.Ctx) error {
-	_, id, err := ResolveID(c, c.Params("id"))
+	_, id, err := ResolveIDAs(c, c.Params("id"), "movie")
 	if err != nil {
 		return err
 	}
@@ -199,12 +196,9 @@ func handleGetMovieWatching(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 
 func handleGetShow(c *fiber.Ctx) error {
-	mediaType, id, err := ResolveID(c, c.Params("id"))
+	_, id, err := ResolveIDAs(c, c.Params("id"), "show")
 	if err != nil {
 		return err
-	}
-	if mediaType != "show" {
-		return response.NotFound(c, "not a show")
 	}
 
 	db, dbErr := database.GetDB()
@@ -244,12 +238,9 @@ func handleGetShow(c *fiber.Ctx) error {
 }
 
 func handleGetShowSeasons(c *fiber.Ctx) error {
-	mediaType, id, err := ResolveID(c, c.Params("id"))
+	_, id, err := ResolveIDAs(c, c.Params("id"), "show")
 	if err != nil {
 		return err
-	}
-	if mediaType != "show" {
-		return response.NotFound(c, "not a show")
 	}
 
 	db, dbErr := database.GetDB()
@@ -279,12 +270,9 @@ func handleGetShowSeasons(c *fiber.Ctx) error {
 }
 
 func handleGetShowSeason(c *fiber.Ctx) error {
-	showMediaType, showID, err := ResolveID(c, c.Params("id"))
+	_, showID, err := ResolveIDAs(c, c.Params("id"), "show")
 	if err != nil {
 		return err
-	}
-	if showMediaType != "show" {
-		return response.NotFound(c, "not a show")
 	}
 
 	seasonNum, err := strconv.Atoi(c.Params("season"))
@@ -310,12 +298,9 @@ func handleGetShowSeason(c *fiber.Ctx) error {
 }
 
 func handleGetShowSeasonEpisodes(c *fiber.Ctx) error {
-	showMediaType, showID, err := ResolveID(c, c.Params("id"))
+	_, showID, err := ResolveIDAs(c, c.Params("id"), "show")
 	if err != nil {
 		return err
-	}
-	if showMediaType != "show" {
-		return response.NotFound(c, "not a show")
 	}
 
 	seasonNum, err := strconv.Atoi(c.Params("season"))
@@ -365,12 +350,9 @@ func handleGetShowSeasonEpisodes(c *fiber.Ctx) error {
 }
 
 func handleGetShowEpisode(c *fiber.Ctx) error {
-	showMediaType, showID, err := ResolveID(c, c.Params("id"))
+	_, showID, err := ResolveIDAs(c, c.Params("id"), "show")
 	if err != nil {
 		return err
-	}
-	if showMediaType != "show" {
-		return response.NotFound(c, "not a show")
 	}
 
 	seasonNum, err := strconv.Atoi(c.Params("season"))
@@ -409,7 +391,7 @@ func handleGetShowEpisode(c *fiber.Ctx) error {
 }
 
 func handleGetShowPeople(c *fiber.Ctx) error {
-	_, id, err := ResolveID(c, c.Params("id"))
+	_, id, err := ResolveIDAs(c, c.Params("id"), "show")
 	if err != nil {
 		return err
 	}
@@ -430,7 +412,7 @@ func handleGetShowPeople(c *fiber.Ctx) error {
 }
 
 func handleGetShowRatingSummary(c *fiber.Ctx) error {
-	_, id, err := ResolveID(c, c.Params("id"))
+	_, id, err := ResolveIDAs(c, c.Params("id"), "show")
 	if err != nil {
 		return err
 	}
@@ -486,14 +468,11 @@ func handleGetShowLastEpisode(c *fiber.Ctx) error {
 
 // showBoundaryEpisode resolves the show in the route param and returns the one
 // episode matching the date predicate and ordering, or 204 when there is none.
-// The show must exist: an unknown id is a 404 from ResolveID.
+// The show must exist: an unknown id is a 404 from ResolveIDAs.
 func showBoundaryEpisode(c *fiber.Ctx, datePredicate, order string) error {
-	mediaType, showID, err := ResolveID(c, c.Params("id"))
+	_, showID, err := ResolveIDAs(c, c.Params("id"), "show")
 	if err != nil {
 		return err
-	}
-	if mediaType != "show" {
-		return response.NotFound(c, "not a show")
 	}
 
 	db, dbErr := database.GetDB()
@@ -523,12 +502,9 @@ func showBoundaryEpisode(c *fiber.Ctx, datePredicate, order string) error {
 // ---------------------------------------------------------------------------
 
 func handleGetPerson(c *fiber.Ctx) error {
-	mediaType, id, err := ResolveID(c, c.Params("id"))
+	_, id, err := ResolveIDAs(c, c.Params("id"), "person")
 	if err != nil {
 		return err
-	}
-	if mediaType != "person" {
-		return response.NotFound(c, "not a person")
 	}
 
 	db, dbErr := database.GetDB()
@@ -569,7 +545,7 @@ func handleGetPerson(c *fiber.Ctx) error {
 }
 
 func handleGetPersonMovies(c *fiber.Ctx) error {
-	_, personID, err := ResolveID(c, c.Params("id"))
+	_, personID, err := ResolveIDAs(c, c.Params("id"), "person")
 	if err != nil {
 		return err
 	}
@@ -594,7 +570,7 @@ func handleGetPersonMovies(c *fiber.Ctx) error {
 }
 
 func handleGetPersonShows(c *fiber.Ctx) error {
-	_, personID, err := ResolveID(c, c.Params("id"))
+	_, personID, err := ResolveIDAs(c, c.Params("id"), "person")
 	if err != nil {
 		return err
 	}
