@@ -404,8 +404,8 @@ sections:
       - trakt: "GET /users/{id}/watchlist/{type}/{sort_by}/{sort_how}"
         ours: "GET /v1/users/{id}/watchlist/{type}/{sort_by}/{sort_how}"
         status: divergent
-        rationale: "The contract path is registered for movies and shows only; seasons/episodes cannot be stored in user_watchlist (#71), and sort_by is a documented subset."
-        compat: "movies and shows served; seasons|episodes return 400 (#71); sort_by rank|added|listed|title|popularity|released|runtime|votes|percentage|random; PrivacyFilter-gated."
+        rationale: "The contract path is registered for movies and shows; seasons/episodes cannot be stored in user_watchlist (#71)."
+        compat: "movies and shows served; seasons|episodes return 400 (#71); sort_by rank|added|listed|title|released and sort_how asc|desc served, other sort_by/sort_how values 400 (popularity/runtime/votes/percentage/random are not orderable from user_watchlist rows); PrivacyFilter-gated."
       - trakt: "GET /users/{id}/watching"
         ours: "GET /v1/users/{id}/watching"
         status: implemented
@@ -1089,28 +1089,30 @@ sections:
         status: implemented
         rationale: "Landed: the public profile carries the contract's required username/private/deleted/ids plus joined_at/about/images; PrivacyFilterSection(profile)-gated."
       - trakt: "GET /users/{id}/favorites/comments/{sort}"
-        status: out-of-scope
-        rationale: "deferred: haaku stores comment likes and reactions but no favorite-a-comment relation, so there is no honest payload; tracked with the list/comment engine (#67)."
+        ours: "GET /v1/users/{id}/favorites/comments/{sort}"
+        status: divergent
+        rationale: "Served: top-level comments on the user's favorited movies/shows from stored comments, in the contract's comment shape (id, parent_id, created_at, updated_at, comment, spoiler, review, replies, likes, user_stats, user)."
+        compat: "sort newest|oldest|likes|replies served; other values 400. parent_id is null on top-level comments (the contract types it integer); gif and user_rating are not stored and are omitted. PrivacyFilter-gated."
       - trakt: "GET /users/{id}/favorites/media/{sort}"
         ours: "GET /v1/users/{id}/favorites/media/{sort}"
         status: divergent
-        rationale: "Served for the storable favorite types (movies, shows, seasons, episodes) with the contract's {rank,id,listed_at,type,movie|show|season|episode} shape."
-        compat: "sort values rank|added|listed|title|released are served; other sort values 400 rather than being silently ignored. PrivacyFilter-gated."
+        rationale: "Served for the storable favorite types (movies, shows, seasons, episodes) with the contract's {rank,id,listed_at,type,movie|show|season|episode} item shape; the embedded media ids carry trakt+slug and null for unheld external ids."
+        compat: "sort values rank|added|listed|title|released are served (with the contract's sort_by/sort_how query overrides); other sort values 400 rather than being silently ignored. The contract's item oneOf declares only movie and show branches, so the season/episode rows are an extra served type outside that oneOf. PrivacyFilter-gated."
       - trakt: "GET /users/{id}/favorites/movies/{sort}"
         ours: "GET /v1/users/{id}/favorites/movies/{sort}"
         status: divergent
-        rationale: "Served from user_favorites rows with the contract's movie object."
-        compat: "sort values rank|added|listed|title|released served; others 400. PrivacyFilter-gated."
+        rationale: "Served from user_favorites rows with the contract's movie object and the required {rank,id,listed_at,type,movie} item shape."
+        compat: "sort values rank|added|listed|title|released served (with the sort_by/sort_how query overrides); others 400. PrivacyFilter-gated."
       - trakt: "GET /users/{id}/favorites/shows/{sort}"
         ours: "GET /v1/users/{id}/favorites/shows/{sort}"
         status: divergent
-        rationale: "Served from user_favorites rows with the contract's show object."
-        compat: "sort values rank|added|listed|title|released served; others 400. PrivacyFilter-gated."
+        rationale: "Served from user_favorites rows with the contract's show object and the required {rank,id,listed_at,type,show} item shape."
+        compat: "sort values rank|added|listed|title|released served (with the sort_by/sort_how query overrides); others 400. PrivacyFilter-gated."
       - trakt: "GET /users/{id}/favorites/{type}/{sort_by}/{sort_how}"
         ours: "GET /v1/users/{id}/favorites/{type}/{sort_by}/{sort_how}"
         status: divergent
-        rationale: "Served for type movies|shows|seasons|episodes (and all) from user_favorites."
-        compat: "sort_by rank|added|listed|title|released and sort_how asc|desc served; other sort_by values 400. PrivacyFilter-gated."
+        rationale: "Served for type movies|shows|seasons|episodes (and all) from user_favorites, in the contract's item shape."
+        compat: "sort_by rank|added|listed|title|released and sort_how asc|desc served; other sort_by/sort_how values 400. The contract's item oneOf declares only movie and show branches, so season/episode types are an extra served type. PrivacyFilter-gated."
       - trakt: "GET /users/{id}/followers"
         ours: "GET /v1/users/{id}/followers"
         status: implemented
@@ -1126,32 +1128,32 @@ sections:
       - trakt: "GET /users/{id}/history/episodes"
         ours: "GET /v1/users/{id}/history/episodes"
         status: divergent
-        rationale: "Served from user_history episode rows with the contract's {id,watched_at,action,type,episode} shape."
-        compat: "page/limit/extended/start_at/end_at/start_date/end_date served; the catalogue filters (watchnow, genres, years, ratings, runtimes, countries, statuses, certifications, parental_*) are ignored. PrivacyFilterSection(history)-gated."
+        rationale: "Served from user_history episode rows with the contract's required {id,watched_at,action,type,episode,show} shape: every row carries both the episode and its parent show, with the embedded ids carrying trakt and explicit nulls for unheld external ids."
+        compat: "page/limit/extended/start_date/end_date served; the catalogue filters (watchnow, genres, years, ratings, runtimes, countries, statuses, certifications, parental_*) are ignored. PrivacyFilterSection(history)-gated."
       - trakt: "GET /users/{id}/history/episodes/{item_id}"
         ours: "GET /v1/users/{id}/history/episodes/{item_id}"
         status: divergent
-        rationale: "Served for a numeric local episode id; the contract's per-item shape."
+        rationale: "Served for a numeric local episode id with the contract's required {episode,show} per-item shape."
         compat: "numeric episode id served; ?id_type= external episode ids (imdb/tmdb/tvdb) are not stored. PrivacyFilterSection(history)-gated."
       - trakt: "GET /users/{id}/history/movies"
         ours: "GET /v1/users/{id}/history/movies"
         status: divergent
-        rationale: "Served from user_history movie rows with the contract's {id,watched_at,action,type,movie} shape."
-        compat: "page/limit/extended/start_at/end_at/start_date/end_date served; catalogue filters (watchnow, genres, years, ratings, runtimes, ...) are ignored. PrivacyFilterSection(history)-gated."
+        rationale: "Served from user_history movie rows with the contract's required {id,watched_at,action,type,movie} shape; the movie ids carry trakt+slug and explicit nulls for unheld imdb/tmdb/tvdb."
+        compat: "page/limit/extended/start_date/end_date served; catalogue filters (watchnow, genres, years, ratings, runtimes, ...) are ignored. PrivacyFilterSection(history)-gated."
       - trakt: "GET /users/{id}/history/movies/{item_id}"
         ours: "GET /v1/users/{id}/history/movies/{item_id}"
         status: divergent
-        rationale: "Served; {item_id} resolves a numeric id, slug, or ?id_type= external movie id."
-        compat: "catalogue filters ignored; time-window params served. PrivacyFilterSection(history)-gated."
+        rationale: "Served; {item_id} resolves a numeric id, slug, or ?id_type= external movie id, in the contract's per-item shape."
+        compat: "catalogue filters ignored; extended/start_at/end_at/page/limit served. PrivacyFilterSection(history)-gated."
       - trakt: "GET /users/{id}/history/shows"
         ours: "GET /v1/users/{id}/history/shows"
         status: divergent
-        rationale: "Served from user_history episode rows with the contract's episode shape."
-        compat: "catalogue filters ignored; page/limit/extended/time-window served. PrivacyFilterSection(history)-gated."
+        rationale: "Served from user_history episode rows with the contract's required {episode,show} shape; each row carries the episode and its parent show."
+        compat: "catalogue filters ignored; page/limit/extended/start_date/end_date served. PrivacyFilterSection(history)-gated."
       - trakt: "GET /users/{id}/history/shows/{item_id}"
         ours: "GET /v1/users/{id}/history/shows/{item_id}"
         status: divergent
-        rationale: "Served: resolves a show by numeric id, slug or ?id_type= and returns its episodes' history."
+        rationale: "Served: resolves a show by numeric id, slug or ?id_type= and returns its episodes' history in the contract's {episode,show} shape."
         compat: "catalogue filters ignored. PrivacyFilterSection(history)-gated."
       - trakt: "GET /users/{id}/lists"
         ours: "GET /v1/users/{id}/lists"
@@ -1218,8 +1220,10 @@ sections:
         status: implemented
         rationale: "Landed: user_ratings filtered by media type (movies|shows|episodes|seasons|all) and rating 1-10; PrivacyFilterSection(ratings)-gated."
       - trakt: "GET /users/{id}/smart-list-drafts"
-        status: out-of-scope
-        rationale: "deferred: smart_lists stores filters but no draft/confidence columns, so convertible_count/confidence cannot be served honestly; tracked by #67."
+        ours: "GET /v1/users/{id}/smart-list-drafts"
+        status: divergent
+        rationale: "Served owner-only; the contract's documented empty state (convertible_count 0, best_confidence null, lists [])."
+        compat: "haaku stores smart-list filters but no stale_origin or draft confidence, so no list is ever convertible: the endpoint answers the contract's empty state rather than a fabricated draft list; non-owner 403."
       - trakt: "GET /users/{id}/smart-lists"
         ours: ""
         status: out-of-scope
@@ -1239,13 +1243,13 @@ sections:
       - trakt: "GET /users/{id}/watched/shows"
         ours: "GET /v1/users/{id}/watched/shows"
         status: divergent
-        rationale: "Served: show -> season -> episode -> watched dates map from user_history."
-        compat: "specials and season_numbers query params are ignored; PrivacyFilterSection(history)-gated."
+        rationale: "Served: show -> season -> episode -> watched dates map from user_history, contract shape."
+        compat: "specials (season 0) served: included only when specials=true, as the contract specifies; season_numbers is ignored (seasons have no stored slug, so keys are always season numbers). PrivacyFilterSection(history)-gated."
       - trakt: "GET /users/{id}/watched/{type}"
         ours: "GET /v1/users/{id}/watched/{type}"
         status: divergent
         rationale: "Served for type movies|shows|seasons|episodes as the contract's aggregated {plays,last_watched_at,last_updated_at,media} array."
-        compat: "hidden/specials/count_specials query params are ignored; PrivacyFilterSection(history)-gated."
+        compat: "specials served (season 0 omitted unless specials=true; the aggregation excludes specials by default); hidden and count_specials are ignored. The contract's 200 oneOf declares only movie and show item branches, so the season/episode types are extra. PrivacyFilterSection(history)-gated."
       - trakt: "GET /users/{id}/watchlist/comments/{sort}"
         ours: "GET /v1/users/{id}/watchlist/comments/{sort}"
         status: implemented
@@ -1253,18 +1257,18 @@ sections:
       - trakt: "GET /users/{id}/watchlist/movie,show/{sort}"
         ours: "GET /v1/users/{id}/watchlist/movie,show/{sort}"
         status: divergent
-        rationale: "Served for movie+show watchlist rows in the contract shape."
-        compat: "sort values rank|added|listed|title|released served; others 400. PrivacyFilter-gated."
+        rationale: "Served for movie+show watchlist rows in the contract's item shape."
+        compat: "sort values rank|added|listed|title|released served (with sort_by/sort_how query overrides); others 400. PrivacyFilter-gated."
       - trakt: "GET /users/{id}/watchlist/movies/{sort}"
         ours: "GET /v1/users/{id}/watchlist/movies/{sort}"
         status: divergent
-        rationale: "Served from user_watchlist movie rows in the contract shape."
-        compat: "sort values rank|added|listed|title|released served; others 400. PrivacyFilter-gated."
+        rationale: "Served from user_watchlist movie rows in the contract's required {rank,id,listed_at,type,movie} shape."
+        compat: "sort values rank|added|listed|title|released served (with sort_by/sort_how query overrides); others 400. PrivacyFilter-gated."
       - trakt: "GET /users/{id}/watchlist/shows/{sort}"
         ours: "GET /v1/users/{id}/watchlist/shows/{sort}"
         status: divergent
-        rationale: "Served from user_watchlist show rows in the contract shape."
-        compat: "sort values rank|added|listed|title|released served; others 400. PrivacyFilter-gated."
+        rationale: "Served from user_watchlist show rows in the contract's required {rank,id,listed_at,type,show} shape."
+        compat: "sort values rank|added|listed|title|released served (with sort_by/sort_how query overrides); others 400. PrivacyFilter-gated."
       - trakt: "GET /users/{id}/yir/all"
         ours: ""
         status: out-of-scope
@@ -1285,7 +1289,7 @@ sections:
         ours: "GET /v1/users/{id}/{type}/activities"
         status: divergent
         rationale: "Served for type friends|followers|following: recent user_history events by those accounts, contract {id,activity_at,action,user,media} shape."
-        compat: "the catalogue filters (watchnow, genres, years, ratings, ...) are ignored; PrivacyFilterSection(activity)-gated."
+        compat: "the 7-day default window (start_date/end_date narrow it) is served from stored watched_at; the catalogue filters (watchnow, genres, years, ratings, ...) are ignored. PrivacyFilterSection(activity)-gated."
       - trakt: "GET /younify/connections"
         ours: ""
         status: out-of-scope

@@ -64,55 +64,60 @@ func Year(d *database.Date) any {
 	return d.Year()
 }
 
+// idsMap is the contract's media ids object: the numeric trakt id, the required
+// slug, and each external id present in the contract's schema. A value we do
+// not hold is emitted as JSON null — never an empty string, never a fabricated
+// number — which is exactly what the contract's `[type, null]` ids allow.
+func idsMap(trakt int64, slug string, imdb string, tmdb, tvdb int) map[string]any {
+	return map[string]any{
+		"trakt": trakt,
+		"slug":  slug,
+		"imdb":  NullableString(imdb),
+		"tmdb":  NullableInt(tmdb),
+		"tvdb":  NullableInt(tvdb),
+	}
+}
+
+// localSlug returns the row's slug, or the stable local slug derived from the
+// numeric id when ingest stored none. The contract requires `slug` to be a
+// non-null string on movies and shows, so this is the one required id we cannot
+// emit as null; the value is deterministic and derived from our own row, not
+// from an external service.
+func localSlug(slug, kind string, id int64) string {
+	if slug != "" {
+		return slug
+	}
+	return kind + "-" + strconv.FormatInt(id, 10)
+}
+
 // MovieIDs builds the contract ids object for a movie. `trakt` is our stable
 // numeric row id; the external ids come straight off the row.
 func MovieIDs(m *database.Movie) map[string]any {
-	ids := map[string]any{"trakt": m.ID}
-	if m.Slug != "" {
-		ids["slug"] = m.Slug
-	} else {
-		ids["slug"] = "movie-" + strconv.FormatInt(m.ID, 10)
-	}
-	if m.ImdbID != "" {
-		ids["imdb"] = m.ImdbID
-	}
-	if m.TmdbID != 0 {
-		ids["tmdb"] = m.TmdbID
-	}
-	if m.TvdbID != 0 {
-		ids["tvdb"] = m.TvdbID
-	}
-	return ids
+	return idsMap(m.ID, localSlug(m.Slug, "movie", m.ID), m.ImdbID, m.TmdbID, m.TvdbID)
 }
 
 // ShowIDs builds the contract ids object for a show.
 func ShowIDs(s *database.Show) map[string]any {
-	ids := map[string]any{"trakt": s.ID}
-	if s.Slug != "" {
-		ids["slug"] = s.Slug
-	} else {
-		ids["slug"] = "show-" + strconv.FormatInt(s.ID, 10)
-	}
-	if s.ImdbID != "" {
-		ids["imdb"] = s.ImdbID
-	}
-	if s.TmdbID != 0 {
-		ids["tmdb"] = s.TmdbID
-	}
-	if s.TvdbID != 0 {
-		ids["tvdb"] = s.TvdbID
-	}
-	return ids
+	return idsMap(s.ID, localSlug(s.Slug, "show", s.ID), s.ImdbID, s.TmdbID, s.TvdbID)
 }
 
-// EpisodeIDs builds the contract ids object for an episode.
+// EpisodeIDs builds the contract ids object for an episode. The episodes table
+// stores no external ids, so those keys are null; the contract requires only
+// `trakt`.
 func EpisodeIDs(e *database.Episode) map[string]any {
-	return map[string]any{"trakt": e.ID}
+	return idsMap(e.ID, "", "", 0, 0)
 }
 
-// SeasonIDs builds the contract ids object for a season.
+// SeasonIDs builds the contract ids object for a season. The seasons table
+// stores no external ids, so those keys are null; the contract requires only
+// `trakt`.
 func SeasonIDs(s *database.Season) map[string]any {
-	return map[string]any{"trakt": s.ID}
+	return map[string]any{
+		"trakt": s.ID,
+		"tvdb":  nil,
+		"tmdb":  nil,
+		"imdb":  nil,
+	}
 }
 
 // Season renders a season in the contract's season object shape. The contract
