@@ -30,6 +30,16 @@ BIN_DIR="$(mktemp -d)"
 API_BIN="$BIN_DIR/api"
 HARNESS_BIN="$BIN_DIR/trakt-conformance"
 SERVER_PID=""
+PG_STARTED=0
+
+# A cluster of our own. dev-pg.sh defaults to a per-checkout data directory, which
+# in a developer's worktree is the same cluster "make pg-up" hands them - and this
+# script migrates, seeds and then destroys whatever it is pointed at. Taking their
+# data with it, or deleting a cluster this run did not create, is not acceptable,
+# so use private paths, remember that we created them, and clean up only those.
+PG_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/haaku-conformance-pg.XXXXXX")"
+export HAAKU_PG_DIR="$PG_ROOT/data"
+export HAAKU_PG_SOCK="$PG_ROOT/sock"
 
 cleanup() {
   local status=$?
@@ -38,9 +48,15 @@ cleanup() {
     wait "$SERVER_PID" 2>/dev/null || true
   fi
   if [ "$KEEP" = 1 ]; then
-    echo "conformance: --keep, leaving PostgreSQL running (destroy with ./scripts/dev-pg.sh destroy)" >&2
-  else
+    echo "conformance: --keep, leaving the cluster running in $PG_ROOT" >&2
+    echo "conformance: stop it with HAAKU_PG_DIR=\"$HAAKU_PG_DIR\" HAAKU_PG_SOCK=\"$HAAKU_PG_SOCK\" ./scripts/dev-pg.sh destroy" >&2
+  elif [ "$PG_STARTED" = 1 ]; then
     ./scripts/dev-pg.sh destroy >/dev/null 2>&1 || true
+    rm -rf "$PG_ROOT"
+  else
+    # Nothing was started, so there is no cluster of ours to destroy - but the
+    # empty directory mktemp made is still ours.
+    rm -rf "$PG_ROOT"
   fi
   rm -rf "$BIN_DIR"
   exit "$status"
@@ -54,6 +70,7 @@ go build -o "$HARNESS_BIN" ./cmd/trakt-conformance
 echo "==> starting throwaway PostgreSQL"
 DATABASE_URL="$(./scripts/dev-pg.sh start -q 2>/dev/null | tail -1)"
 [ -n "$DATABASE_URL" ] || { echo "conformance: dev-pg.sh printed no DATABASE_URL" >&2; exit 1; }
+PG_STARTED=1
 export DATABASE_URL
 
 # The API refuses to start without these; the secret is generated at runtime so
@@ -74,6 +91,10 @@ echo "==> applying migrations"
 "$API_BIN" --migrate-only >/dev/null
 
 echo "==> seeding fixtures"
+# The seed writes a local account with a published password; the harness refuses
+# without this opt-in, and this script only ever points it at the private,
+# throwaway cluster above.
+export HAAKU_CONFORMANCE_SEED=1
 "$HARNESS_BIN" -seed
 
 echo "==> starting server on $BASE_URL"

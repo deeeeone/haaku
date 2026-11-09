@@ -2,8 +2,7 @@ package response
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
+	"reflect"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -40,12 +39,28 @@ func (f *FlexibleID) UnmarshalJSON(data []byte) error {
 		}
 		parsed, perr := strconv.Atoi(s)
 		if perr != nil {
-			return fmt.Errorf("expected a number or a numeric string, got %q", s)
+			return &json.UnmarshalTypeError{Value: "string", Type: reflect.TypeOf(*f)}
 		}
 		*f = FlexibleID(parsed)
 		return nil
 	}
-	return errors.New("expected a number or a numeric string")
+	return &json.UnmarshalTypeError{Value: jsonKind(data), Type: reflect.TypeOf(*f)}
+}
+
+// jsonKind names the JSON kind of a raw value from its first byte, so the
+// UnmarshalTypeError carries what actually arrived rather than a generic message.
+func jsonKind(data []byte) string {
+	switch {
+	case len(data) == 0:
+		return "null"
+	case data[0] == '{':
+		return "object"
+	case data[0] == '[':
+		return "array"
+	case data[0] == 't' || data[0] == 'f':
+		return "bool"
+	}
+	return "number"
 }
 
 // MarshalJSON always writes a JSON number, so a FlexibleID never changes the

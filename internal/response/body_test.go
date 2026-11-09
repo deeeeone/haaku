@@ -104,4 +104,31 @@ func TestFlexibleIDRejectsNonNumericString(t *testing.T) {
 	if !strings.Contains(msg, "numeric string") {
 		t.Fatalf("message %q does not say what form was expected", msg)
 	}
+	// The doc comment on ParseBody promises "ids.tmdb: expected a number or a
+	// numeric string". Returning a *json.UnmarshalTypeError is what makes
+	// encoding/json attach the field path; a plain error silently drops it, and a
+	// test that only looks for "numeric string" cannot tell the two apart.
+	if !strings.Contains(msg, "ids.tmdb") {
+		t.Fatalf("message %q does not name the field path (ids.tmdb)", msg)
+	}
+}
+
+// TestTypeNameNeverLeaksGoTypes pins the client-facing wording: a mismatch
+// against a named Go type must not echo that type back. "expected
+// checkin.checkinIDs, got a string" is unreadable and was the old behaviour.
+func TestTypeNameNeverLeaksGoTypes(t *testing.T) {
+	var dst struct {
+		IDs   struct{ TMDB FlexibleID } `json:"ids"`
+		Title string                    `json:"title"`
+	}
+	status, msg := call(t, `{"title": 5}`, &dst)
+	if status != 400 {
+		t.Fatalf("status = %d, want 400", status)
+	}
+	if strings.Contains(msg, "struct {") || strings.Contains(msg, "response.") {
+		t.Fatalf("message %q leaks a Go type name", msg)
+	}
+	if !strings.Contains(msg, "title: expected a string") {
+		t.Fatalf("message %q does not name the field and the JSON type", msg)
+	}
 }

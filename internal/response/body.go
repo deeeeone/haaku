@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -62,39 +63,50 @@ func typeErrorMessage(e *json.UnmarshalTypeError) string {
 	if field == "" {
 		field = "<body>"
 	}
-	return fmt.Sprintf("%s: expected %s, got %s", field, jsonTypeName(e.Type.String()), jsonValueName(e.Value))
+	return fmt.Sprintf("%s: expected %s, got %s", field, jsonTypeName(e.Type), jsonValueName(e.Value))
 }
 
 // jsonTypeName renders a Go type as the JSON type a client knows.
-func jsonTypeName(goType string) string {
-	switch goType {
-	case "int", "int8", "int16", "int32", "int64",
-		"uint", "uint8", "uint16", "uint32", "uint64",
-		"float32", "float64":
+//
+// It switches on reflect.Kind rather than on the type's name, because the name is
+// a Go internal the client has no business seeing: a mismatch against
+// checkin.checkinIDs or database.JSONMap used to answer "expected
+// checkin.checkinIDs, got a string", which tells a caller nothing they can act
+// on. Unknown kinds fall back to "a value", never to the Go type.
+func jsonTypeName(t reflect.Type) string {
+	if t == nil {
+		return "a value"
+	}
+	if t == reflect.TypeOf(FlexibleID(0)) {
+		return "a number or a numeric string"
+	}
+	switch t.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64:
 		return "a number"
-	case "string":
+	case reflect.String:
 		return "a string"
-	case "bool":
+	case reflect.Bool:
 		return "a boolean"
-	case "map[string]interface {}":
+	case reflect.Struct, reflect.Map:
 		return "an object"
-	case "[]interface {}":
+	case reflect.Slice, reflect.Array:
 		return "an array"
 	}
-	if len(goType) > 1 && goType[0] == '[' {
-		return "an array"
-	}
-	if len(goType) > 2 && goType[:2] == "[]" {
-		return "an array"
-	}
-	return goType
+	return "a value"
 }
 
-// jsonValueName names the JSON value that failed to decode.
+// jsonValueName names the JSON value that failed to decode, with the article the
+// noun needs ("an object", "a string") — "a object" was the old output.
 func jsonValueName(value string) string {
 	switch value {
 	case "":
 		return "null"
+	case "object":
+		return "an object"
+	case "array":
+		return "an array"
 	default:
 		return "a " + value
 	}

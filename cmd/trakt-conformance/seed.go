@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -33,9 +34,35 @@ type Fixtures struct {
 	Password  string `json:"password"`
 }
 
-// seedFixtures inserts a small but complete catalogue and one viewer's data,
-// idempotently, so the conformance run has real rows to serve. It never
-// invents a payload: every case reads what is here.
+// firstOrCreate loads dst by its natural key when the row is already there and
+// creates it when it is not.
+//
+// Neither upsert form works here. clause.OnConflict{UpdateAll: true} with no
+// Columns targets the primary key, and these inserts carry ID 0, so
+// "ON CONFLICT (id) DO UPDATE" never fires — the second -seed then inserted a
+// fresh row and died on the natural key's unique index. Naming the column does
+// not work either: the index behind it is partial, and PostgreSQL refuses to infer
+// a partial index without its predicate ("there is no unique or exclusion
+// constraint matching the ON CONFLICT specification", SQLSTATE 42P10). A read
+// followed by a create says what it means on both PostgreSQL and sqlite.
+func firstOrCreate(db *gorm.DB, dst any, where string, args ...any) error {
+	err := db.Where(where, args...).First(dst).Error
+	if err == nil {
+		return nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
+	return db.Create(dst).Error
+}
+
+// seedFixtures inserts a small but complete catalogue and one viewer's data, so
+// the conformance run has real rows to serve. It never invents a payload: every
+// case reads what is here.
+//
+// It is re-runnable: rows with a natural key upsert on that key (see onConflict),
+// and rows inserted with DoNothing are read back when the insert returned no id,
+// so the fixture ids written to disk are the same on every run.
 func seedFixtures(db *gorm.DB, fx *Fixtures) error {
 	now := time.Now().UTC()
 
@@ -47,7 +74,7 @@ func seedFixtures(db *gorm.DB, fx *Fixtures) error {
 		Popularity: 100, RatingAvg: 8.4, RatingCount: 40000,
 		Images: database.JSONMap{"poster": []any{"https://example.test/fc.jpg"}, "fanart": []any{}},
 	}
-	if err := db.Clauses(clause.OnConflict{UpdateAll: true}).Create(&movie).Error; err != nil {
+	if err := firstOrCreate(db, &movie, "tmdb_id = ?", movie.TmdbID); err != nil {
 		return fmt.Errorf("seed movie: %w", err)
 	}
 	movie2 := database.Movie{
@@ -57,7 +84,7 @@ func seedFixtures(db *gorm.DB, fx *Fixtures) error {
 		Popularity: 90, RatingAvg: 8.9, RatingCount: 35000,
 		Images: database.JSONMap{"poster": []any{}, "fanart": []any{}},
 	}
-	if err := db.Clauses(clause.OnConflict{UpdateAll: true}).Create(&movie2).Error; err != nil {
+	if err := firstOrCreate(db, &movie2, "tmdb_id = ?", movie2.TmdbID); err != nil {
 		return fmt.Errorf("seed movie2: %w", err)
 	}
 
@@ -69,7 +96,7 @@ func seedFixtures(db *gorm.DB, fx *Fixtures) error {
 		Genres: database.StringSlice{"Drama"}, Language: "en", Popularity: 200, RatingAvg: 9.3,
 		Images: database.JSONMap{"poster": []any{}, "fanart": []any{}},
 	}
-	if err := db.Clauses(clause.OnConflict{UpdateAll: true}).Create(&show).Error; err != nil {
+	if err := firstOrCreate(db, &show, "tmdb_id = ?", show.TmdbID); err != nil {
 		return fmt.Errorf("seed show: %w", err)
 	}
 
@@ -93,11 +120,20 @@ func seedFixtures(db *gorm.DB, fx *Fixtures) error {
 		if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&episodes[i]).Error; err != nil {
 			return fmt.Errorf("seed episode: %w", err)
 		}
+		if episodes[i].ID == 0 { // existed already: read it back
+			// DoNothing returns no row on conflict, so a second -seed run would
+			// otherwise carry EpisodeID 0 into the history/collection/playback
+			// rows below and address a media id that does not exist.
+			if err := db.Where("season_id = ? AND episode_number = ?", season.ID, episodes[i].EpisodeNumber).
+				First(&episodes[i]).Error; err != nil {
+				return fmt.Errorf("seed episode read-back: %w", err)
+			}
+		}
 	}
 
 	person := database.Person{TmdbID: 17419, ImdbID: "nm0186505", Name: "Bryan Cranston", Gender: 2,
 		KnownForDepartment: "Acting"}
-	if err := db.Clauses(clause.OnConflict{UpdateAll: true}).Create(&person).Error; err != nil {
+	if err := firstOrCreate(db, &person, "tmdb_id = ?", person.TmdbID); err != nil {
 		return fmt.Errorf("seed person: %w", err)
 	}
 	credit := database.Credit{PersonID: person.ID, MediaType: "show", MediaID: show.ID,
@@ -195,9 +231,13 @@ func seedFixtures(db *gorm.DB, fx *Fixtures) error {
 		}
 	}
 
+	// Comments carry no unique constraint to conflict on, so DoNothing silently
+	// appended a second row on every re-run and the fixture id moved. Read-or-create
+	// on the natural key instead.
 	comment := database.Comment{UserID: uid, MediaType: "movie", MediaID: &movie.ID,
 		CommentType: "shout", Body: "A conformance comment.", Spoiler: false}
-	if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&comment).Error; err != nil {
+	if err := firstOrCreate(db, &comment, "user_id = ? AND media_type = ? AND media_id = ?",
+		uid, "movie", movie.ID); err != nil {
 		return fmt.Errorf("seed comment: %w", err)
 	}
 
@@ -205,6 +245,11 @@ func seedFixtures(db *gorm.DB, fx *Fixtures) error {
 		Privacy: "public", SortBy: "rank", SortHow: "asc", AllowComments: true}
 	if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&list).Error; err != nil {
 		return fmt.Errorf("seed list: %w", err)
+	}
+	if list.ID == 0 { // existed already: read it back
+		if err := db.Where("user_id = ? AND slug = ?", uid, "conformance-list").First(&list).Error; err != nil {
+			return fmt.Errorf("seed list read-back: %w", err)
+		}
 	}
 	if list.ID == 0 {
 		if err := db.Where("slug = ?", "conformance-list").First(&list).Error; err != nil {

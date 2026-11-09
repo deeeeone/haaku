@@ -13,20 +13,27 @@
 // Response side: it validates the served payload against the contract's
 // response schema at every level (types, required sets, nullability, the ids
 // object, date-time formats, array vs object envelopes), the X-Pagination-*
-// headers the contract carries, and the error envelope.
+// headers, and the error envelope. The pagination headers are a Trakt
+// *convention*, not a contract statement: the vendored document declares no
+// response headers at all, so that check is labelled as a convention in the
+// output rather than presented as contract-derived.
 //
 // Usage:
 //
 //	go run ./cmd/trakt-conformance -seed      # seed fixtures and exit
 //	go run ./cmd/trakt-conformance            # run the cases against -base-url
 //
-// It prints a per-operation PASS/FAIL table and a "N of 336 conformant"
-// summary, and exits non-zero when any case fails.
+// It prints a per-operation PASS/FAIL table and a "N of M graded operations
+// conformant" summary, and exits non-zero when any case fails. The denominator
+// is the graded set, never the whole contract: counting the 200-odd operations
+// that were never graded makes the ratio look 2.5x worse and incomparable
+// between runs.
 package main
 
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -94,7 +101,19 @@ func run() int {
 }
 
 // seed opens the database and inserts the fixture catalogue and viewer.
+//
+// It refuses unless HAAKU_CONFORMANCE_SEED=1 is set. The fixture set includes a
+// local account with a *published* password, and the credential upsert overwrites
+// whatever that user id already had — so pointing -seed at a shared instance with
+// local auth enabled would hand anyone who can reach the login endpoint a working
+// account. scripts/conformance.sh sets the opt-in for the throwaway cluster it
+// provisions; a person seeding a database by hand has to say so.
 func seed(fixturesPath string) error {
+	if os.Getenv("HAAKU_CONFORMANCE_SEED") != "1" {
+		return errors.New("refusing to seed: set HAAKU_CONFORMANCE_SEED=1 to confirm you mean " +
+			"to write conformance fixtures (including a local account with a published " +
+			"password) into DATABASE_URL")
+	}
 	db, err := database.InitDB()
 	if err != nil {
 		return err
@@ -190,8 +209,7 @@ func conform(cfg config) error {
 	printTable(results)
 	printProbes(probeResults)
 
-	total := len(allOps)
-	fmt.Printf("\n%d of %d conformant\n", pass, total)
+	fmt.Printf("\n%d of %d graded operations conformant (%d operations in the contract)\n", pass, len(gradedKeys), len(allOps))
 	fmt.Printf("graded operations: %d  (pass %d, fail %d, no case %d)\n", len(gradedKeys), pass, fail, noCase)
 	fmt.Printf("not graded (out of scope): %d\n", outOfScope)
 	if failed := countFailed(probeResults); failed > 0 {

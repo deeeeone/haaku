@@ -30,7 +30,9 @@ Response side:
 - status is one the contract declares for the operation;
 - every field at every level: type, `required` sets, nullability, nested
   objects/arrays, `enum`, and `date-time` formats (milliseconds included);
-- the `X-Pagination-*` headers whenever the contract's body is an array;
+- the `X-Pagination-*` headers whenever the body is an array — **a convention, not
+  a contract statement**: the vendored document declares no response headers, so a
+  failure here is labelled `convention` in the output rather than contract;
 - error bodies remain a JSON object envelope.
 
 Plus request-side probes for issue #88: malformed JSON keeps the syntax
@@ -39,8 +41,9 @@ as a string is accepted.
 
 ## Output
 
-A per-operation `PASS`/`FAIL` table and a `N of 336 conformant` summary. It
-exits non-zero when any case fails. Graded operations with no case are reported
+A per-operation `PASS`/`FAIL` table and a `N of M graded operations conformant`
+summary (M is the graded set, not the 336-operation contract). It exits non-zero
+when any case fails. Graded operations with no case are reported
 as `NO-CASE` (and `-strict` makes them fail, which is the flip for `make check`).
 
 ## Fixtures
