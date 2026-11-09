@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2329  # cleanup() is invoked from the EXIT/INT/TERM trap
 #
 # Boot a seeded, migrated server on a throwaway PostgreSQL and run the Trakt
 # conformance harness against it (issue #102).
@@ -30,7 +31,7 @@ API_BIN="$BIN_DIR/api"
 HARNESS_BIN="$BIN_DIR/trakt-conformance"
 SERVER_PID=""
 
-cleanup() {  # shellcheck disable=SC2329  (invoked via trap)
+cleanup() {
   local status=$?
   if [ -n "$SERVER_PID" ] && kill -0 "$SERVER_PID" 2>/dev/null; then
     kill -TERM "$SERVER_PID" 2>/dev/null || true
