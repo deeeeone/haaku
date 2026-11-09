@@ -355,9 +355,9 @@ sections:
         status: implemented
         rationale: "Landed as a per-type read pinned to media_type='show'."
       - trakt: "GET /sync/collection/episodes"
-        ours: "GET /v1/sync/collection/episodes"
+        ours: "GET /v1/sync/collection/{type}"
         status: implemented
-        rationale: "Episode rows in user_collection are the source of truth; seasons and shows with seasons expand to their episode rows, and the read returns Trakt's collected-episode shape."
+        rationale: "Episode rows in user_collection are the source of truth; seasons and shows with seasons expand to their episode rows, and the generic contract collection route returns Trakt's collected-episode shape for type=episodes."
       - trakt: "GET /sync/watchlist/movies"
         ours: "GET /v1/sync/watchlist/movies"
         status: implemented
@@ -367,11 +367,11 @@ sections:
         status: implemented
         rationale: "Landed as a per-type read pinned to media_type='show'."
       - trakt: "GET /sync/watchlist/seasons"
-        ours: ""
+        ours: "GET /v1/sync/watchlist/seasons"
         status: blocked-data
         rationale: "user_watchlist.media_type is 'movie' or 'show' only."
       - trakt: "GET /sync/watchlist/episodes"
-        ours: ""
+        ours: "GET /v1/sync/watchlist/episodes"
         status: blocked-data
         rationale: "user_watchlist.media_type is 'movie' or 'show' only."
       - trakt: "GET /sync/ratings/movies"

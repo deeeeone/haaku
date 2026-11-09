@@ -21,10 +21,10 @@ import (
 // params and return a {items,page,limit,row_count} envelope. These routes pin
 // the segments and emit the contract's bare array of rows.
 //
-// A media type the backing table cannot store is answered as an empty array
-// only where no such row could ever exist (episode collection rows); the
-// watchlist's seasons/episodes types are not storable at all (#71), so that
-// path stays divergent in the manifest rather than pretending.
+// Episode collection rows are real (issue #71): season and show writes expand
+// to them, so the collection route renders each as its episode object plus the
+// owning show. Other collections' unstoreable types stay divergent in the
+// manifest rather than pretending.
 
 func init() {
 	routes := []openapi.RouteDef{
@@ -117,6 +117,21 @@ func collectionItem(db *gorm.DB, row *database.UserCollection) (map[string]any, 
 		if err := db.First(&s, row.MediaID).Error; err != nil {
 			return nil, false
 		}
+		item["show"] = contractshape.Show(&s)
+	case "episode":
+		var e database.Episode
+		if err := db.First(&e, row.MediaID).Error; err != nil {
+			return nil, false
+		}
+		var season database.Season
+		if err := db.First(&season, e.SeasonID).Error; err != nil {
+			return nil, false
+		}
+		var s database.Show
+		if err := db.First(&s, e.ShowID).Error; err != nil {
+			return nil, false
+		}
+		item["episode"] = contractshape.Episode(&e, season.SeasonNumber)
 		item["show"] = contractshape.Show(&s)
 	default:
 		return nil, false

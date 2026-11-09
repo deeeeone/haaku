@@ -10811,18 +10811,14 @@ paths:
             summary: Add collection items
             tags:
                 - Sync
-    /v1/sync/collection/episodes:
+    /v1/sync/collection/{type}:
         get:
-            operationId: _v1_sync_collection_episodes_GET
+            operationId: _v1_sync_collection_type_GET
             responses:
                 "200":
-                    description: Collected episodes
+                    description: Collection items
                 "400":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
+                    description: Invalid type
                 "401":
                     description: Unauthorized
                 "404":
@@ -10858,7 +10854,7 @@ paths:
             security:
                 - apiKey: []
                 - oauth: []
-            summary: Get collected episodes
+            summary: Collection rows for one media type (contract path)
             tags:
                 - Sync
     /v1/sync/collection/media:
@@ -12996,6 +12992,60 @@ paths:
             summary: Watchlist for one media type, sorted (contract path)
             tags:
                 - Sync
+    /v1/sync/watchlist/episodes:
+        get:
+            operationId: _v1_sync_watchlist_episodes_GET
+            responses:
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+                "501":
+                    description: Not implemented — user_watchlist.media_type is 'movie' or 'show' only. (#106)
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Parity stub — not implemented (parity tracker)
+            tags:
+                - Sync
     /v1/sync/watchlist/movies:
         get:
             operationId: _v1_sync_watchlist_movies_GET
@@ -13193,6 +13243,60 @@ paths:
                 - apiKey: []
                 - oauth: []
             summary: Reorder watchlist
+            tags:
+                - Sync
+    /v1/sync/watchlist/seasons:
+        get:
+            operationId: _v1_sync_watchlist_seasons_GET
+            responses:
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+                "501":
+                    description: Not implemented — user_watchlist.media_type is 'movie' or 'show' only. (#106)
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Parity stub — not implemented (parity tracker)
             tags:
                 - Sync
     /v1/sync/watchlist/shows:

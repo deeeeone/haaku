@@ -119,7 +119,7 @@ func newCollectionApp() *fiber.App {
 		c.Locals("user_id", collectionTestUser)
 		return c.Next()
 	})
-	v1.Get("/sync/collection/episodes", handleGetCollectionEpisodes)
+	v1.Get("/sync/collection/:type", handleContractCollection)
 	v1.Post("/sync/collection", handleAddCollection)
 	v1.Post("/sync/collection/remove", handleRemoveCollection)
 	return app
@@ -458,7 +458,7 @@ func TestCollectionEpisodesRequiresAuth(t *testing.T) {
 	app := fiber.New()
 	v1 := app.Group("/v1")
 	v1.Use(auth.AuthRequired())
-	v1.Get("/sync/collection/episodes", handleGetCollectionEpisodes)
+	v1.Get("/sync/collection/:type", handleContractCollection)
 
 	status, raw := doGET(t, app, "/v1/sync/collection/episodes")
 	if status != http.StatusUnauthorized {

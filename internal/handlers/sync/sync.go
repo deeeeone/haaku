@@ -32,7 +32,6 @@ func registerOpenAPIRoutes() {
 		{Method: "POST", Path: "/v1/sync/history/remove", Summary: "Remove history items", Tags: []string{"Sync"}, Auth: "required", StatusCodes: map[int]string{200: "Remove result", 401: "Unauthorized"}},
 		// Collection
 		{Method: "GET", Path: "/v1/sync/collection", Summary: "Get user collection", Tags: []string{"Sync"}, Auth: "required", StatusCodes: map[int]string{200: "Collection items", 401: "Unauthorized"}},
-		{Method: "GET", Path: "/v1/sync/collection/episodes", Summary: "Get collected episodes", Tags: []string{"Sync"}, Auth: "required", StatusCodes: map[int]string{200: "Collected episodes", 401: "Unauthorized"}},
 		{Method: "POST", Path: "/v1/sync/collection", Summary: "Add collection items", Tags: []string{"Sync"}, Auth: "required", StatusCodes: map[int]string{200: "Add result", 401: "Unauthorized"}},
 		{Method: "POST", Path: "/v1/sync/collection/remove", Summary: "Remove collection items", Tags: []string{"Sync"}, Auth: "required", StatusCodes: map[int]string{200: "Remove result", 401: "Unauthorized"}},
 		// Watchlist
@@ -69,7 +68,6 @@ func RegisterRoutes(api fiber.Router) {
 
 	// Collection
 	sync.Get("/collection", handleGetCollection)
-	sync.Get("/collection/episodes", handleGetCollectionEpisodes)
 	sync.Post("/collection", handleAddCollection)
 	sync.Post("/collection/remove", handleRemoveCollection)
 
