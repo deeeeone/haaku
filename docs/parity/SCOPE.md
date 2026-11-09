@@ -11,7 +11,7 @@ path (modulo our `/v1` prefix), with a real 2xx — except the recommendation/re
 engine, which stays an honest `501 not_implemented` and graded `blocked-engine` by
 the owner's carve-out. Done is `go run ./cmd/parity`, not a PR count.
 
-Contract operations: **336**. Not yet served (**in scope**): **115**. Out by owner decision: **31**. Served today: **190**.
+Contract operations: **336**. Not yet served (**in scope**): **119**. Out by owner decision: **31**. Served today: **186**.
 
 ## Out of scope (owner decisions, re-affirmed)
 
@@ -71,6 +71,10 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /calendars/{target}/streaming/{start_date}/{days}` | blocked-data | calendars and Watch Now data | #69 |
 | `GET /certifications/movies` | out-of-scope | reference-data certification enums | #109 |
 | `GET /certifications/shows` | out-of-scope | reference-data certification enums | #109 |
+| `GET /comments/trending/{comment_type}/{type}` | divergent | comment moderation, reactions and the note item read | #107 |
+| `GET /comments/{id}` | divergent | comment moderation, reactions and the note item read | #107 |
+| `GET /comments/{id}/likes` | divergent | comment moderation, reactions and the note item read | #107 |
+| `GET /comments/{id}/replies` | divergent | comment moderation, reactions and the note item read | #107 |
 | `GET /episodes/{id}/watchnow/{country}` | out-of-scope | TMDB metadata ingest | #68 |
 | `GET /lists/{id}/comments/{sort}` | divergent | list management — writes, items, smart lists | #105 |
 | `GET /lists/{id}/items/{type}/{sort_by}/{sort_how}` | divergent | list management — writes, items, smart lists | #105 |
@@ -195,14 +199,10 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /calendars/{target}/movies/{start_date}/{days}` | `GET /v1/calendars/all/movies/{start_date}/{days}` |
 | `GET /certifications/{type}` | `GET /v1/certifications/{type}` |
 | `GET /comments/recent/{comment_type}/{type}` | `GET /v1/comments/recent/{comment_type}/{type}` |
-| `GET /comments/trending/{comment_type}/{type}` | `GET /v1/comments/trending/{comment_type}/{type}` |
 | `GET /comments/updates/{comment_type}/{type}` | `GET /v1/comments/updates/{comment_type}/{type}` |
-| `GET /comments/{id}` | `GET /v1/comments/{id}` |
 | `GET /comments/{id}/item` | `GET /v1/comments/{id}/item` |
-| `GET /comments/{id}/likes` | `GET /v1/comments/{id}/likes` |
 | `GET /comments/{id}/reactions/` | `GET /v1/comments/{id}/reactions` |
 | `GET /comments/{id}/reactions/summary` | `GET /v1/comments/{id}/reactions/summary` |
-| `GET /comments/{id}/replies` | `GET /v1/comments/{id}/replies` |
 | `GET /countries/{type}` | `GET /v1/countries/{type}` |
 | `GET /genres/{type}` | `GET /v1/genres/{type}` |
 | `GET /languages/{type}` | `GET /v1/languages/{type}` |
