@@ -128,6 +128,9 @@ func RegisterRoutes(api fiber.Router) {
 
 	// Auth-required: my movies (watchlist + history, hidden excluded)
 	calendars.Get("/my/movies/:start_date/:days", auth.AuthRequired(), handleCalendarMovies)
+
+	// Contract-shaped release calendars (Trakt's /calendars/releases/hot/...).
+	registerContractReleaseRoutes(calendars)
 }
 
 // ---------------------------------------------------------------------------
@@ -167,10 +170,19 @@ type CalendarSeason struct {
 func handleCalendarShows(c *fiber.Ctx) error {
 	// Derive target from the URL path.
 	target := deriveTarget(c.Path())
+	// A contract-shaped route (e.g. /calendars/releases/hot/new/...) pins the
+	// target to the public "all" feed and the subtype via Locals instead of
+	// path segments we do not have.
+	if v, ok := c.Locals("calendar_target").(string); ok && v != "" {
+		target = v
+	}
 
 	startDateStr := c.Params("start_date")
 	daysStr := c.Params("days")
 	typeFilter := c.Query("type", "")
+	if v, ok := c.Locals("calendar_type").(string); ok && v != "" {
+		typeFilter = v
+	}
 
 	// Validate start_date.
 	startDate, err := time.Parse("2006-01-02", startDateStr)
@@ -200,7 +212,6 @@ func handleCalendarShows(c *fiber.Ctx) error {
 
 	// Build the base episode query.
 	query := db.Table("episodes e").
-		Select("e.*").
 		Where("e.aired_at >= ? AND e.aired_at < ?",
 			startDate.Format("2006-01-02"),
 			endDate.Format("2006-01-02"))
@@ -295,6 +306,12 @@ func handleCalendarShows(c *fiber.Ctx) error {
 			},
 		}
 		resp = append(resp, entry)
+	}
+
+	// A contract-shaped request returns the contract's bare array of release
+	// entries; our own calendar routes keep the paginated envelope.
+	if contract, _ := c.Locals("calendar_contract").(bool); contract {
+		return c.JSON(contractReleaseEntries(episodes, showMap, seasonMap))
 	}
 
 	// Return with pagination envelope.

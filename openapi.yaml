@@ -1369,6 +1369,150 @@ paths:
             summary: Parity stub — not implemented (calendars & Watch Now data)
             tags:
                 - Calendars
+    /v1/calendars/releases/hot/finales/{start_date}/{days}:
+        get:
+            operationId: _v1_calendars_releases_hot_finales_start_date_days_GET
+            responses:
+                "200":
+                    description: Calendar release entries
+                "400":
+                    description: Invalid start_date or days parameter
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Release calendar for the finales feed (contract path)
+            tags:
+                - Calendars
+    /v1/calendars/releases/hot/new/{start_date}/{days}:
+        get:
+            operationId: _v1_calendars_releases_hot_new_start_date_days_GET
+            responses:
+                "200":
+                    description: Calendar release entries
+                "400":
+                    description: Invalid start_date or days parameter
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Release calendar for the new feed (contract path)
+            tags:
+                - Calendars
+    /v1/calendars/releases/hot/premieres/{start_date}/{days}:
+        get:
+            operationId: _v1_calendars_releases_hot_premieres_start_date_days_GET
+            responses:
+                "200":
+                    description: Calendar release entries
+                "400":
+                    description: Invalid start_date or days parameter
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Release calendar for the premieres feed (contract path)
+            tags:
+                - Calendars
     /v1/calendars/watched/shows/{start_date}/{days}:
         get:
             operationId: _v1_calendars_watched_shows_start_date_days_GET
@@ -2393,6 +2537,56 @@ paths:
                 - apiKey: []
                 - oauth: []
             summary: Trending comments (most liked/replied in 7 days)
+            tags:
+                - Comments
+    /v1/comments/trending/{comment_type}/{type}:
+        get:
+            operationId: _v1_comments_trending_comment_type_type_GET
+            responses:
+                "200":
+                    description: Trending comments
+                "400":
+                    description: Invalid comment_type or type
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Trending comments for one media type and comment kind (contract path)
             tags:
                 - Comments
     /v1/comments/updates:
@@ -3835,6 +4029,54 @@ paths:
             summary: Get popular lists
             tags:
                 - Lists
+    /v1/lists/popular/{type}:
+        get:
+            operationId: _v1_lists_popular_type_GET
+            responses:
+                "200":
+                    description: popular lists
+                "400":
+                    description: Invalid list type
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Get popular lists of one kind (contract path)
+            tags:
+                - Lists
     /v1/lists/trending:
         get:
             operationId: _v1_lists_trending_GET
@@ -3885,6 +4127,54 @@ paths:
                     description: internal server error
             security: []
             summary: Get trending lists
+            tags:
+                - Lists
+    /v1/lists/trending/{type}:
+        get:
+            operationId: _v1_lists_trending_type_GET
+            responses:
+                "200":
+                    description: trending lists
+                "400":
+                    description: Invalid list type
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Get trending lists of one kind (contract path)
             tags:
                 - Lists
     /v1/media/anticipated:
@@ -4893,6 +5183,156 @@ paths:
                     description: Not implemented (requires activity engine)
             security: []
             summary: Users watching a movie right now
+            tags:
+                - Movies
+    /v1/movies/{id}/watchnow/{country}:
+        get:
+            operationId: _v1_movies_id_watchnow_country_GET
+            responses:
+                "200":
+                    description: Provider availability by category
+                "400":
+                    description: Invalid country code
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    description: Media not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Watch-now providers for one country (contract path)
+            tags:
+                - Movies
+    /v1/movies/anticipated:
+        get:
+            operationId: _v1_movies_anticipated_GET
+            responses:
+                "200":
+                    description: Anticipated items
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Anticipated upcoming movies weighted by watchlist interest (contract path)
+            tags:
+                - Movies
+    /v1/movies/boxoffice:
+        get:
+            operationId: _v1_movies_boxoffice_GET
+            responses:
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+                "501":
+                    description: Not implemented — No revenue/box-office columns exist and the TMDB ingest does not fetch them. (#66)
+            security: []
+            summary: Parity stub — not implemented (stats & rankings engine)
             tags:
                 - Movies
     /v1/movies/collected/{period}:
@@ -6621,6 +7061,102 @@ paths:
             summary: Full-text search across movies, shows, episodes, people, and lists
             tags:
                 - Search
+    /v1/search/{id_type}/{id}:
+        get:
+            operationId: _v1_search_id_type_id_GET
+            responses:
+                "200":
+                    description: Media found
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    description: No media found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Look up media by external id (contract path)
+            tags:
+                - Search
+    /v1/search/{type}:
+        get:
+            operationId: _v1_search_type_GET
+            responses:
+                "200":
+                    description: Search results
+                "400":
+                    description: Invalid type or query
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Search one media type (contract path)
+            tags:
+                - Search
     /v1/search/exact:
         get:
             operationId: _v1_search_exact_GET
@@ -8100,6 +8636,50 @@ paths:
             summary: Get comments for an episode, sorted (newest, oldest, likes, replies, trending)
             tags:
                 - Shows
+    /v1/shows/{id}/seasons/{season}/episodes/{episode}/lists/{type}/{sort}:
+        get:
+            operationId: _v1_shows_id_seasons_season_episodes_episode_lists_type_sort_GET
+            responses:
+                "200":
+                    description: Lists
+                "400":
+                    description: Invalid type, sort, season or episode
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    description: Show, season or episode not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Lists containing an episode, filtered by kind and sort (contract path)
+            tags:
+                - Episodes
     /v1/shows/{id}/seasons/{season}/episodes/{episode}/people:
         get:
             operationId: _v1_shows_id_seasons_season_episodes_episode_people_GET
@@ -8304,6 +8884,142 @@ paths:
             summary: Parity stub — not implemented (TMDB metadata ingest)
             tags:
                 - Shows
+    /v1/shows/{id}/seasons/{season}/ratings:
+        get:
+            operationId: _v1_shows_id_seasons_season_ratings_GET
+            responses:
+                "200":
+                    description: Ratings
+                "400":
+                    description: Invalid season number
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    description: Show or season not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Season rating distribution (contract path)
+            tags:
+                - Seasons
+    /v1/shows/{id}/seasons/{season}/stats:
+        get:
+            operationId: _v1_shows_id_seasons_season_stats_GET
+            responses:
+                "200":
+                    description: Stats
+                "400":
+                    description: Invalid season number
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    description: Show or season not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Season stats (contract path)
+            tags:
+                - Seasons
+    /v1/shows/{id}/seasons/{season}/translations:
+        get:
+            operationId: _v1_shows_id_seasons_season_translations_GET
+            responses:
+                "200":
+                    description: Translations
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    description: Upstream provider error
+            security: []
+            summary: Season translations, all languages unless ?language= is set (contract path)
+            tags:
+                - Seasons
     /v1/shows/{id}/seasons/{season}/translations/{lang}:
         get:
             operationId: _v1_shows_id_seasons_season_translations_lang_GET
@@ -8706,6 +9422,104 @@ paths:
                     description: Not implemented (requires activity engine)
             security: []
             summary: Users watching a show right now
+            tags:
+                - Shows
+    /v1/shows/{id}/watchnow/{country}:
+        get:
+            operationId: _v1_shows_id_watchnow_country_GET
+            responses:
+                "200":
+                    description: Provider availability by category
+                "400":
+                    description: Invalid country code
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    description: Media not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Watch-now providers for one country (contract path)
+            tags:
+                - Shows
+    /v1/shows/anticipated:
+        get:
+            operationId: _v1_shows_anticipated_GET
+            responses:
+                "200":
+                    description: Anticipated items
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Anticipated upcoming shows weighted by watchlist interest (contract path)
             tags:
                 - Shows
     /v1/shows/collected/{period}:
@@ -9607,6 +10421,52 @@ paths:
             summary: Add collection items
             tags:
                 - Sync
+    /v1/sync/collection/{type}:
+        get:
+            operationId: _v1_sync_collection_type_GET
+            responses:
+                "200":
+                    description: Collection items
+                "400":
+                    description: Invalid type
+                "401":
+                    description: Unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Collection rows for one media type (contract path)
+            tags:
+                - Sync
     /v1/sync/collection/episodes:
         get:
             operationId: _v1_sync_collection_episodes_GET
@@ -9908,6 +10768,52 @@ paths:
                 - apiKey: []
                 - oauth: []
             summary: Add favorites
+            tags:
+                - Sync
+    /v1/sync/favorites/{type}/{sort_by}/{sort_how}:
+        get:
+            operationId: _v1_sync_favorites_type_sort_by_sort_how_GET
+            responses:
+                "200":
+                    description: Favorite items
+                "400":
+                    description: Invalid type or sort
+                "401":
+                    description: Unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Favorites for one media type, sorted (contract path)
             tags:
                 - Sync
     /v1/sync/favorites/movies:
@@ -10712,6 +11618,52 @@ paths:
             summary: Add/update ratings
             tags:
                 - Sync
+    /v1/sync/ratings/{type}/{rating}:
+        get:
+            operationId: _v1_sync_ratings_type_rating_GET
+            responses:
+                "200":
+                    description: Rating items
+                "400":
+                    description: Invalid type or rating
+                "401":
+                    description: Unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Ratings for one media type filtered by rating (contract path)
+            tags:
+                - Sync
     /v1/sync/ratings/episodes:
         get:
             operationId: _v1_sync_ratings_episodes_GET
@@ -11059,6 +12011,52 @@ paths:
                 - apiKey: []
                 - oauth: []
             summary: Add watchlist items
+            tags:
+                - Sync
+    /v1/sync/watchlist/{type}/{sort_by}/{sort_how}:
+        get:
+            operationId: _v1_sync_watchlist_type_sort_by_sort_how_GET
+            responses:
+                "200":
+                    description: Watchlist items
+                "400":
+                    description: Invalid type or sort
+                "401":
+                    description: Unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Watchlist for one media type, sorted (contract path)
             tags:
                 - Sync
     /v1/sync/watchlist/movies:
@@ -12621,6 +13619,54 @@ paths:
             summary: A user's watchlist filtered by media type
             tags:
                 - Users
+    /v1/users/{id}/watchlist/{type}/{sort_by}/{sort_how}:
+        get:
+            operationId: _v1_users_id_watchlist_type_sort_by_sort_how_GET
+            responses:
+                "200":
+                    description: Watchlist items
+                "400":
+                    description: Invalid type or sort
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "403":
+                    description: Private profile
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: A user's watchlist for one media type, sorted (contract path)
+            tags:
+                - Users
     /v1/users/hidden/{section}:
         delete:
             operationId: _v1_users_hidden_section_DELETE
@@ -13880,6 +14926,52 @@ paths:
             summary: Create smart list
             tags:
                 - Lists
+    /v1/users/settings:
+        get:
+            operationId: _v1_users_settings_GET
+            responses:
+                "200":
+                    description: Settings
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    description: Unauthorized
+                "404":
+                    description: User not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Get the authenticated user's settings (contract path)
+            tags:
+                - Users
     /v1/watchnow/sources:
         get:
             operationId: _v1_watchnow_sources_GET

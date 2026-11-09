@@ -158,6 +158,11 @@ func RegisterRoutes(app *fiber.App) {
 		},
 	})
 
+	// Contract-shaped search paths (static /search/exact and /search/lookup
+	// are registered above, so the parameterised routes cannot swallow them).
+	api.Get("/search/:type", handleContractSearchType)
+	api.Get("/search/:id_type/:id", handleContractSearchLookup)
+
 	// Ingest-on-demand: turns an external id a client got from the live provider
 	// search into a canonical local media row. Auth is required because it
 	// writes (it creates the movie/show, its seasons and its episodes).
@@ -222,12 +227,16 @@ func RegisterRoutes(app *fiber.App) {
 
 	// Sync history/collection/watchlist/ratings/favorites (T3.1 + T3.2)
 	sync.RegisterRoutes(api)
+	// Contract-shaped sync reads (Trakt's /sync/{collection}/{type}[/...]).
+	sync.RegisterContractRoutes(api)
 
 	// Hidden items (T3.10)
 	hidden.RegisterRoutes(api)
 
 	// Lists + Smart Lists (T4.1 + T4.2)
 	lists.RegisterRoutes(api)
+	// Contract-shaped public list feeds (/lists/{popular,trending}/{type}).
+	lists.RegisterContractRoutes(api)
 
 	// Collaborations (T4.3)
 	collab.RegisterRoutes(api)
@@ -246,6 +255,8 @@ func RegisterRoutes(app *fiber.App) {
 
 	// Comments (T4.5)
 	comments.RegisterRoutes(api)
+	// Contract-shaped trending comments (/comments/trending/{comment_type}/{type}).
+	comments.RegisterContractRoutes(api)
 
 	// Activity feed (T4.6)
 	activity.RegisterRoutes(api)
@@ -301,6 +312,9 @@ func RegisterRoutes(app *fiber.App) {
 	// api keys) or ":id" would swallow "me".
 	// TestNoStaticRouteIsShadowed guards the ordering.
 	users.RegisterProfileReadRoutes(api)
+	// Contract-shaped user reads (/users/settings is registered in
+	// users.RegisterRoutes; this adds the sorted per-type watchlist path).
+	users.RegisterContractRoutes(api)
 
 	_ = api
 }

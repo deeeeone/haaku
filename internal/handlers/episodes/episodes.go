@@ -39,6 +39,9 @@ func RegisterRoutes(api fiber.Router) {
 	ep.Get("/:id/ratings", handleGetEpisodeRatings)
 	ep.Get("/:id/comments", handleGetEpisodeComments)
 	ep.Get("/:id/lists", handleGetEpisodeLists)
+
+	// Contract-shaped nested episode lists (/shows/{id}/seasons/{season}/episodes/{episode}/lists/...).
+	registerContractEpisodeListRoutes(api)
 }
 
 // ---------------------------------------------------------------------------

@@ -55,6 +55,9 @@ func RegisterRoutes(api fiber.Router) {
 
 	// /users/:id routes (public, privacy-filtered). The profile read is gated by
 	// users.settings.privacy.profile in addition to is_private/blocks.
+	// The contract spells the caller's settings /users/settings; register it
+	// before /:id so "settings" is not captured as a user id.
+	users.Get("/settings", auth.AuthRequired(), handleContractSettings)
 	users.Get("/:id", auth.OptionalAuth(), auth.PrivacyFilterSection("id", "profile"), handleGetUser)
 
 	// Block endpoints (stub — 501)

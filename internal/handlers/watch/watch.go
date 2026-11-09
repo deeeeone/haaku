@@ -65,6 +65,9 @@ func RegisterRoutes(api fiber.Router) {
 
 	shows := api.Group("/shows")
 	shows.Get("/:id/watch", handleShowWatch)
+
+	// Contract-shaped watch-now routes (Trakt's /{movies,shows}/{id}/watchnow/{country}).
+	registerContractWatchRoutes(api)
 }
 
 // tmdbClient is lazily initialized on first use.

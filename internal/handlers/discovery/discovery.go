@@ -49,6 +49,10 @@ func RegisterRoutes(api fiber.Router) {
 	api.Get("/shows/trending", handleShowsTrending)
 	api.Get("/shows/popular", handleShowsPopular)
 	api.Get("/shows/recommendations/:id", handleShowsRecommendations)
+
+	// Contract-shaped anticipated feeds — static "/anticipated" must precede
+	// media's parameterised /movies/:id and /shows/:id.
+	registerContractAnticipatedRoutes(api)
 }
 
 // ---------------------------------------------------------------------------

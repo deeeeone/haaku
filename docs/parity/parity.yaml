@@ -59,20 +59,17 @@ sections:
         status: blocked-data
         rationale: "No unified release feed: 'hot' mixes theatrical, streaming and episode releases in one ranked list; we store only movies.released and episodes.aired_at, with no cross-medium ranking."
       - trakt: "GET /calendars/releases/hot/new/{start_date}/{days}"
-        ours: "GET /v1/calendars/all/shows/{start_date}/{days}"
-        status: divergent
-        rationale: "The same row set (series premieres in a window) is served by the episode calendar with the subtype as a query param."
-        compat: "ours is ?type=new on the shows calendar; the compat listener maps the /new/{date}/{days} segments onto ?type=new. Ordering differs (date-ordered here, 'hot'-ranked upstream)."
+        ours: "GET /v1/calendars/releases/hot/new/{start_date}/{days}"
+        status: implemented
+        rationale: "Served at Trakt's path from the episode calendar pinned to ?type=new; date-ordered, not hot-ranked."
       - trakt: "GET /calendars/releases/hot/premieres/{start_date}/{days}"
-        ours: "GET /v1/calendars/all/shows/{start_date}/{days}"
-        status: divergent
-        rationale: "Season premieres in a window are served by the episode calendar with ?type=premieres."
-        compat: "?type=premieres (season_number > 1, episode 1); the compat listener maps the path segments onto it."
+        ours: "GET /v1/calendars/releases/hot/premieres/{start_date}/{days}"
+        status: implemented
+        rationale: "Served at Trakt's path from the episode calendar pinned to ?type=premieres (season_number > 1, episode 1)."
       - trakt: "GET /calendars/releases/hot/finales/{start_date}/{days}"
-        ours: "GET /v1/calendars/all/shows/{start_date}/{days}"
-        status: divergent
-        rationale: "Season finales in a window are served by the episode calendar with ?type=finale."
-        compat: "?type=finale (last episode of a season); Trakt spells the segment 'finales', the compat listener must map the name as well as the shape."
+        ours: "GET /v1/calendars/releases/hot/finales/{start_date}/{days}"
+        status: implemented
+        rationale: "Served at Trakt's path from the episode calendar pinned to ?type=finale (last episode of each season)."
   - name: "Media"
     rows:
       - trakt: "GET /media/trending"
@@ -103,10 +100,9 @@ sections:
         rationale: "Collector counts per period require the rankings engine's period rollups."
         engine: "stats/rankings engine (issue #66)"
       - trakt: "GET /movies/anticipated"
-        ours: "GET /v1/media/anticipated"
-        status: divergent
-        rationale: "The watchlist-weighted anticipation score is served by the media-wide anticipated feed, which already filters by type."
-        compat: "ours takes ?type=movie; the compat listener maps /movies/anticipated onto it. Auth is required here (Trakt allows optional auth)."
+        ours: "GET /v1/movies/anticipated"
+        status: implemented
+        rationale: "Served at Trakt's path from the same watchlist-weighted anticipation query, shaped as the contract's {list_count, movie} array."
       - trakt: "GET /movies/hot"
         ours: "GET /v1/movies/hot"
         status: blocked-engine
@@ -150,10 +146,9 @@ sections:
         status: blocked-data
         rationale: "No production-company table; TMDB company ids are not ingested."
       - trakt: "GET /movies/{id}/watchnow/{country}"
-        ours: "GET /v1/movies/{id}/watch"
-        status: divergent
-        rationale: "Same TMDB provider payload (flatrate/rent/buy, cached in movies.metadata) served under a different segment with the country as a query param."
-        compat: "compat listener rewrites /movies/{id}/watchnow/{country} -> /v1/movies/{id}/watch?country={country}; the envelope is ours, not Trakt's."
+        ours: "GET /v1/movies/{id}/watchnow/{country}"
+        status: implemented
+        rationale: "Served at Trakt's path: the cached TMDB provider sets, shaped to the contract's cable/free/cinema/subscription/purchase object (flatrate -> subscription, buy/rent -> purchase)."
       - trakt: "GET /movies/{id}/lists/{type}/{sort}"
         ours: "GET /v1/movies/{id}/lists/{type}/{sort}"
         status: blocked-engine
@@ -187,10 +182,9 @@ sections:
         rationale: "Period collector counts need the rankings engine rollups."
         engine: "stats/rankings engine (issue #66)"
       - trakt: "GET /shows/anticipated"
-        ours: "GET /v1/media/anticipated"
-        status: divergent
-        rationale: "Watchlist-weighted anticipation, already filtered by type on the media-wide feed."
-        compat: "ours takes ?type=show; the compat listener maps /shows/anticipated onto it."
+        ours: "GET /v1/shows/anticipated"
+        status: implemented
+        rationale: "Served at Trakt's path from the same watchlist-weighted anticipation query, shaped as the contract's {list_count, show} array."
       - trakt: "GET /shows/hot"
         ours: "GET /v1/shows/hot"
         status: blocked-engine
@@ -260,10 +254,9 @@ sections:
         rationale: "The closest route answers 501; the type/sort variant needs the lists engine."
         engine: "lists engine (issue #67)"
       - trakt: "GET /shows/{id}/watchnow/{country}"
-        ours: "GET /v1/shows/{id}/watch"
-        status: divergent
-        rationale: "Same TMDB provider payload, different segment name and country-in-query shape."
-        compat: "compat listener rewrites /shows/{id}/watchnow/{country} -> /v1/shows/{id}/watch?country={country}."
+        ours: "GET /v1/shows/{id}/watchnow/{country}"
+        status: implemented
+        rationale: "Served at Trakt's path: the cached TMDB provider sets, shaped to the contract's category object."
       - trakt: "GET /shows/{id}/stats"
         ours: "GET /v1/shows/{id}/stats"
         status: blocked-engine
@@ -285,20 +278,17 @@ sections:
         rationale: "The same episode record is served top-level (flat ids), not nested under show/season."
         compat: "same as the season row: the listener resolves show+season+episode to our episode id and nests the payload."
       - trakt: "GET /shows/{id}/seasons/{season}/translations"
-        ours: "GET /v1/shows/{id}/seasons/{season}/translations/{lang}"
-        status: divergent
-        compat: "we require {lang} as a path segment; the contract takes the language as a query param"
-        rationale: "Nested season translations already exist in Trakt shape."
+        ours: "GET /v1/shows/{id}/seasons/{season}/translations"
+        status: implemented
+        rationale: "Served at Trakt's path with the language as an optional ?language= query; TMDB season translations shaped as the contract's array."
       - trakt: "GET /shows/{id}/seasons/{season}/ratings"
-        ours: "GET /v1/seasons/{id}/ratings"
-        status: divergent
-        rationale: "Season rating distribution is served flat, keyed by our season id."
-        compat: "listener resolves show+season_number to the flat route; the body shape (distribution) is already shared."
+        ours: "GET /v1/shows/{id}/seasons/{season}/ratings"
+        status: implemented
+        rationale: "Served at Trakt's path: show+season_number resolves to our season row, and the distribution is computed from user_ratings as percentages over the 1..10 buckets."
       - trakt: "GET /shows/{id}/seasons/{season}/stats"
-        ours: "GET /v1/seasons/{id}/stats"
-        status: divergent
-        rationale: "Season stats (watchers/plays/rating) are served flat, keyed by our season id."
-        compat: "listener resolves show+season_number to the flat route."
+        ours: "GET /v1/shows/{id}/seasons/{season}/stats"
+        status: implemented
+        rationale: "Served at Trakt's path: watchers/plays/comments/lists/votes counted from stored rows; collectors is 0 because user_collection cannot store season rows."
       - trakt: "GET /shows/{id}/seasons/{season}/comments/{sort}"
         ours: "GET /v1/shows/{id}/seasons/{season}/comments/{sort}"
         status: divergent
@@ -322,10 +312,9 @@ sections:
         rationale: "Episode comments are now served nested under the show (landed with the media comment reads); our route carries a trailing {sort} segment Trakt's does not. A flat /v1/episodes/{id}/comments route also still exists."
         compat: "listener resolves show+season+episode to our episode id and delegates; the trailing {sort} defaults to newest."
       - trakt: "GET /shows/{id}/seasons/{season}/episodes/{episode}/lists/{type}/{sort}"
-        ours: "GET /v1/episodes/{id}/lists"
-        status: divergent
-        rationale: "Lists containing the episode exist, served flat by episode id."
-        compat: "listener resolves the nested episode to our id and delegates to the flat route."
+        ours: "GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/lists/{type}/{sort}"
+        status: implemented
+        rationale: "Served at Trakt's path: show+season+episode resolves to our episode row, then lists containing it are filtered by kind and sort and returned in the contract's list shape."
       - trakt: "GET /shows/{id}/seasons/{season}/episodes/{episode}/people"
         ours: "GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/people"
         status: blocked-data
@@ -372,30 +361,28 @@ sections:
         status: blocked-data
         rationale: "user_collection.media_type is 'movie' or 'show' only; an episode collection row cannot be stored."
       - trakt: "GET /sync/watchlist/{type}/{sort_by}/{sort_how}"
-        ours: "GET /v1/sync/watchlist/movies"
+        ours: "GET /v1/sync/watchlist/{type}/{sort_by}/{sort_how}"
         status: divergent
-        compat: "served flat at /v1/sync/watchlist/{type} for movies and shows; the {sort_by}/{sort_how} segments are not implemented (no sort), and seasons/episodes are blocked on data (#71)"
-        rationale: "Landed as a per-type read pinned to media_type='movie'."
+        rationale: "The contract path is registered for movies and shows only; seasons/episodes cannot be stored in user_watchlist (#71), and sort_by is a documented subset."
+        compat: "movies and shows served; seasons|episodes return 400 (user_watchlist cannot store them, #71); sort_by rank|added|listed|title|popularity|released|runtime|votes|percentage|random."
       - trakt: "GET /sync/ratings/{type}/{rating}"
-        ours: "GET /v1/sync/ratings/movies"
-        status: divergent
-        compat: "served flat at /v1/sync/ratings/{type} for all four types; the {rating} filter segment is not implemented"
-        rationale: "Landed as a per-type read pinned to media_type='movie'."
+        ours: "GET /v1/sync/ratings/{type}/{rating}"
+        status: implemented
+        rationale: "Served at Trakt's path: all four media types, filtered by the 1..10 rating segment from user_ratings."
       - trakt: "GET /sync/favorites/{type}/{sort_by}/{sort_how}"
-        ours: "GET /v1/sync/favorites/movies"
+        ours: "GET /v1/sync/favorites/{type}/{sort_by}/{sort_how}"
         status: divergent
-        compat: "served flat at /v1/sync/favorites/{type} for movies and shows; the {sort_by}/{sort_how} segments are not implemented"
-        rationale: "Landed as a per-type read pinned to media_type='movie'."
+        rationale: "The contract path is registered for movies and shows only; sort_by is implemented for rank, added, listed, title, popularity, released, runtime, votes, percentage and random, other values are 400."
+        compat: "movies and shows served; sort_by rank|added|listed|title|popularity|released|runtime|votes|percentage|random; any other sort_by is 400."
       - trakt: "GET /sync/history/{type}/{id}"
-        ours: "GET /v1/sync/history/movies"
-        status: divergent
-        compat: "custom: our per-type list lives at /v1/sync/history/{type}; the contract's /sync/history/{type}/{id} is the single-item read, and the per-type lists are on the profile surface (/users/{id}/history/{type})"
-        rationale: "Landed as a per-type read pinned to media_type='movie'."
+        ours: "GET /v1/sync/history/{media_type}/{media_id}"
+        status: implemented
+        rationale: "Served at the contract path shape: the single-item read returns the caller's rows with the contract's id, watched_at, action and type fields."
       - trakt: "GET /sync/collection/{type}"
-        ours: "GET /v1/sync/collection"
+        ours: "GET /v1/sync/collection/{type}"
         status: divergent
-        rationale: "Media type is a query param; the ?extended=min / ?minimal response narrowing is not implemented - decision: narrowing is an optimisation, and a client that sends it still receives a valid (fuller) body, so no shim is planned."
-        compat: "listener maps /sync/collection/{type} -> /v1/sync/collection?type=...; the narrowing params are accepted and ignored."
+        rationale: "The generic path is served for episodes as the contract's bare array; movies and shows are shadowed by the existing static per-type routes, which return our paginated envelope."
+        compat: "episodes: bare contract array; movies|shows: the static /v1/sync/collection/{movies,shows} routes win and return the paginated envelope, so those two values are not yet contract-shaped."
   - name: "Users"
     rows:
       - trakt: "GET /users/{id}/collection/{type}"
@@ -415,10 +402,10 @@ sections:
         status: implemented
         rationale: "Landed: real rows from user_ratings, PrivacyFilter-gated."
       - trakt: "GET /users/{id}/watchlist/{type}/{sort_by}/{sort_how}"
-        ours: "GET /v1/users/{id}/watchlist"
+        ours: "GET /v1/users/{id}/watchlist/{type}/{sort_by}/{sort_how}"
         status: divergent
-        compat: "served flat at /v1/users/{id}/watchlist/{type}; the {sort_by}/{sort_how} segments are not implemented"
-        rationale: "Landed: real rows from user_watchlist with Trakt's sort_by=rank|listed|added|title, PrivacyFilter-gated. (The per-type /watchlist/{media_type} variant is served too.)"
+        rationale: "The contract path is registered for movies and shows only; seasons/episodes cannot be stored in user_watchlist (#71), and sort_by is a documented subset."
+        compat: "movies and shows served; seasons|episodes return 400 (#71); sort_by rank|added|listed|title|popularity|released|runtime|votes|percentage|random; PrivacyFilter-gated."
       - trakt: "GET /users/{id}/watching"
         ours: "GET /v1/users/{id}/watching"
         status: implemented
@@ -456,10 +443,9 @@ sections:
         status: out-of-scope
         rationale: "decision: profile imagery is Clerk/image-host territory; no cover upload is planned."
       - trakt: "GET /users/settings"
-        ours: "GET /v1/users/me/settings"
-        status: divergent
-        rationale: "Settings are served under an extra /me segment."
-        compat: "listener maps /users/settings -> /v1/users/me/settings for an authenticated caller."
+        ours: "GET /v1/users/settings"
+        status: implemented
+        rationale: "Served at Trakt's path for the authenticated caller, shaped as {user, permissions, account}."
   - name: "Watch Now"
     rows:
       - trakt: "GET /watchnow/sources"
@@ -479,15 +465,14 @@ sections:
   - name: "Search"
     rows:
       - trakt: "GET /search/{type}"
-        ours: "GET /v1/search"
+        ours: "GET /v1/search/{type}"
         status: divergent
-        rationale: "Search is served with the media type as a query param rather than a path segment."
-        compat: "listener maps /search/movie|show|episode|person|list -> /v1/search?type=...; the result envelope also differs (ours is a bare array)."
+        rationale: "The contract path is registered, but only movie and show are searched from the catalogue; episode/person/list are rejected with 400 rather than searched."
+        compat: "only movie and show are served; episode|person|list return 400 (no episode/person/list search index exists)."
       - trakt: "GET /search/{id_type}/{id}"
-        ours: "GET /v1/search/lookup"
-        status: divergent
-        rationale: "Lookup by external id is served with id_type/id as query params."
-        compat: "listener maps /search/tmdb/{id} -> /v1/search/lookup?id_type=tmdb&id={id}."
+        ours: "GET /v1/search/{id_type}/{id}"
+        status: implemented
+        rationale: "Served at Trakt's path: resolves the external id from external_ids and returns the contract's search-item array."
       - trakt: "POST /search/recent/"
         ours: "POST /v1/search/recent"
         status: blocked-data
@@ -499,22 +484,19 @@ sections:
   - name: "Comments"
     rows:
       - trakt: "GET /comments/trending/{comment_type}/{type}"
-        ours: "GET /v1/comments/trending"
-        status: divergent
-        rationale: "Trending comments are served with comment_type and media_type as CSV query params."
-        compat: "listener maps the two segments onto ?comment_type=&media_type=; the window (7 days) is the same."
+        ours: "GET /v1/comments/trending/{comment_type}/{type}"
+        status: implemented
+        rationale: "Served at Trakt's path: the two segments pin comment_type and media_type on the same 7-day trending query and return the contract's comment shape."
   - name: "Lists"
     rows:
       - trakt: "GET /lists/trending/{type}"
-        ours: "GET /v1/lists/trending"
-        status: divergent
-        rationale: "Trending lists are served without the list-type segment."
-        compat: "the type segment is not honoured yet (our route ranks all list types); the listener can pass it through unchanged but cannot filter until we do."
+        ours: "GET /v1/lists/trending/{type}"
+        status: implemented
+        rationale: "Served at Trakt's path: the trending ranking filtered to lists containing items of the requested kind."
       - trakt: "GET /lists/popular/{type}"
-        ours: "GET /v1/lists/popular"
-        status: divergent
-        rationale: "Popular lists are served without the list-type segment."
-        compat: "same as /lists/trending/{type}: the segment is currently ignored."
+        ours: "GET /v1/lists/popular/{type}"
+        status: implemented
+        rationale: "Served at Trakt's path: public lists ranked by likes and filtered to lists containing items of the requested kind."
   - name: "Custom surface (non-Trakt)"
     rows:
       - trakt: ""
