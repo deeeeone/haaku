@@ -36,6 +36,10 @@ func init() {
 				200: "Provider availability by category",
 				400: "Invalid country code",
 				404: "Media not found",
+				// A cache miss goes upstream to TMDB; when that fetch fails the handler
+				// answers 503 rather than an empty 200, so the contract has to say so or
+				// a client cannot discover the case.
+				503: "Provider data temporarily unavailable",
 			},
 		})
 	}

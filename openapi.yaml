@@ -5225,6 +5225,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
+                "503":
+                    description: Provider data temporarily unavailable
             security: []
             summary: Watch-now providers for one country (contract path)
             tags:
@@ -9412,6 +9414,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
+                "503":
+                    description: Provider data temporarily unavailable
             security: []
             summary: Watch-now providers for one country (contract path)
             tags:
