@@ -11,7 +11,7 @@ path (modulo our `/v1` prefix), with a real 2xx — except the recommendation/re
 engine, which stays an honest `501 not_implemented` and graded `blocked-engine` by
 the owner's carve-out. Done is `go run ./cmd/parity`, not a PR count.
 
-Contract operations: **336**. Not yet served (**in scope**): **119**. Out by owner decision: **31**. Served today: **186**.
+Contract operations: **336**. Not yet served (**in scope**): **117**. Out by owner decision: **31**. Served today: **188**.
 
 ## Out of scope (owner decisions, re-affirmed)
 
@@ -71,8 +71,6 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /calendars/{target}/shows/premieres/{start_date}/{days}` | out-of-scope | calendars and Watch Now data | #69 |
 | `GET /calendars/{target}/shows/{start_date}/{days}` | out-of-scope | calendars and Watch Now data | #69 |
 | `GET /calendars/{target}/streaming/{start_date}/{days}` | blocked-data | calendars and Watch Now data | #69 |
-| `GET /certifications/movies` | out-of-scope | reference-data certification enums | #109 |
-| `GET /certifications/shows` | out-of-scope | reference-data certification enums | #109 |
 | `GET /comments/recent/{comment_type}/{type}` | out-of-scope | comment moderation, reactions and the note item read | #107 |
 | `GET /comments/updates/{comment_type}/{type}` | out-of-scope | comment moderation, reactions and the note item read | #107 |
 | `GET /comments/{id}/reactions/` | out-of-scope | comment moderation, reactions and the note item read | #107 |
@@ -195,6 +193,8 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /calendars/releases/hot/new/{start_date}/{days}` | `GET /v1/calendars/releases/hot/new/{start_date}/{days}` |
 | `GET /calendars/releases/hot/premieres/{start_date}/{days}` | `GET /v1/calendars/releases/hot/premieres/{start_date}/{days}` |
 | `GET /calendars/{target}/movies/{start_date}/{days}` | `GET /v1/calendars/all/movies/{start_date}/{days}` |
+| `GET /certifications/movies` | `GET /v1/certifications/movies` |
+| `GET /certifications/shows` | `GET /v1/certifications/shows` |
 | `GET /certifications/{type}` | `GET /v1/certifications/{type}` |
 | `GET /comments/trending/{comment_type}/{type}` | `GET /v1/comments/trending/{comment_type}/{type}` |
 | `GET /comments/{id}` | `GET /v1/comments/{id}` |
