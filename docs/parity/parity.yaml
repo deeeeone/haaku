@@ -156,8 +156,9 @@ sections:
         engine: "lists engine (issue #67)"
       - trakt: "GET /movies/{id}/stats"
         ours: "GET /v1/movies/{id}/stats"
-        status: implemented
-        rationale: "Served at Trakt's path: watchers (distinct user_history users), plays (history rows), collectors (distinct user_collection users), comments, lists and votes (user_ratings rows), favorited (user_favorites) are counted from stored rows. recommended is served as null - we store no 'recommend to a friend' action, so a 0 would be a fabricated count."
+        status: divergent
+        rationale: "Served at Trakt's path: watchers (distinct user_history users), plays (history rows), collectors (distinct user_collection users), comments, lists and votes (user_ratings rows), favorited (user_favorites) are counted from stored rows. One field does not conform: `recommended` is served as null because we store no 'recommend to a friend' action, and the contract declares it an integer. A 0 there would be a fabricated count, so the row stays divergent until the action exists."
+        compat: "every count is real; only `recommended` is null where the contract wants an integer. A client that requires it should treat null as 'unknown', not 0."
       - trakt: "GET /movies/{id}/watching"
         ours: "GET /v1/movies/{id}/watching"
         status: blocked-engine
@@ -258,8 +259,9 @@ sections:
         rationale: "Served at Trakt's path: the cached TMDB provider sets, shaped to the contract's category object."
       - trakt: "GET /shows/{id}/stats"
         ours: "GET /v1/shows/{id}/stats"
-        status: implemented
-        rationale: "Served at Trakt's path: watchers/plays aggregate user_history over the show's episodes (history stores episode rows, not show rows); collectors, comments, lists, votes and favorited count rows for the show itself. recommended is null - no such action is stored."
+        status: divergent
+        rationale: "Served at Trakt's path: watchers/plays aggregate user_history over the show's episodes (history stores episode rows, not show rows); collectors, comments, lists, votes and favorited count rows for the show itself. One field does not conform: `recommended` is null where the contract declares an integer, because no recommend action is stored and a 0 would be a fabricated count."
+        compat: "every count is real; only `recommended` is null where the contract wants an integer."
       - trakt: "GET /shows/{id}/watching"
         ours: "GET /v1/shows/{id}/watching"
         status: blocked-engine
