@@ -49,6 +49,10 @@ func RegisterRoutes(api fiber.Router) {
 	api.Get("/reports", auth.AuthRequired(), auth.RequireModerator(), handleListReports)
 	api.Post("/reports/:id/resolve", auth.AuthRequired(), auth.RequireModerator(), handleResolveReport)
 	api.Post("/reports/:id/dismiss", auth.AuthRequired(), auth.RequireModerator(), handleDismissReport)
+
+	// Contract-shaped report submissions (issue #68): the nested
+	// show/season/episode paths and the person report.
+	registerContractReportRoutes(api)
 }
 
 // ---------------------------------------------------------------------------
@@ -90,6 +94,7 @@ var validReportTargetTypes = map[string]bool{
 	"show":    true,
 	"season":  true,
 	"episode": true,
+	"person":  true,
 }
 
 // maxReportDescription caps free-form report detail. The schema column is
@@ -207,7 +212,7 @@ func handleReportContent(c *fiber.Ctx, mediaType string) error {
 
 	// Rate-limit report submissions per user before doing any work, so abuse
 	// is throttled regardless of the target media.
-	if err := reportRateAllowed(c, userID); err != nil {
+	if err := reportRateCheck(c, userID); err != nil {
 		return err
 	}
 
@@ -295,7 +300,7 @@ func handleListReports(c *fiber.Ctx) error {
 	}
 	targetType := strings.ToLower(strings.TrimSpace(c.Query("target_type")))
 	if targetType != "" && !validReportTargetTypes[targetType] {
-		return response.BadRequest(c, "invalid target_type: must be one of movie, show, season, episode")
+		return response.BadRequest(c, "invalid target_type: must be one of movie, show, season, episode, person")
 	}
 
 	db, err := database.GetDB()
@@ -403,6 +408,13 @@ func handleActOnReport(c *fiber.Ctx, newStatus string) error {
 // Helpers
 // ---------------------------------------------------------------------------
 
+// reportRateCheck is the entry point every report submission uses for its
+// per-user limit. It is a package variable so a test can substitute a
+// deterministic limiter: the Redis-backed one fails OPEN when Redis is absent
+// (the sqlite-only suite), which would make any "the next one is 429" assertion
+// vacuous. Production always runs reportRateAllowed.
+var reportRateCheck = reportRateAllowed
+
 // reportRateAllowed enforces a per-user sliding-window limit on report
 // submissions via Redis. It returns a 429 rate_limited response (with a
 // Retry-After header) when the user exceeds reportRateMax submissions within
@@ -422,7 +434,11 @@ func reportRateAllowed(c *fiber.Ctx, userID string) error {
 	// limiter).
 	if err == nil && window.Count > reportRateMax {
 		c.Set("Retry-After", fmt.Sprintf("%d", int(window.Reset.Seconds())))
-		return response.WriteError(c, fiber.StatusTooManyRequests, "rate_limited", "too many reports — slow down")
+		// Write the 429 and return ErrHandled, not the nil that WriteError's
+		// c.JSON returns on success: a nil return would let the caller run on and
+		// insert the report anyway.
+		_ = response.WriteError(c, fiber.StatusTooManyRequests, "rate_limited", "too many reports — slow down")
+		return response.ErrHandled
 	}
 	return nil
 }
@@ -440,6 +456,8 @@ func reportTargetExists(db *gorm.DB, mediaType string, mediaID int64) (bool, err
 		model = &database.Season{}
 	case "episode":
 		model = &database.Episode{}
+	case "person":
+		model = &database.Person{}
 	default:
 		return false, nil
 	}

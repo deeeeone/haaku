@@ -29,7 +29,9 @@ KEEP=0
 BIN_DIR="$(mktemp -d)"
 API_BIN="$BIN_DIR/api"
 HARNESS_BIN="$BIN_DIR/trakt-conformance"
+STUB_BIN="$BIN_DIR/tmdb-stub"
 SERVER_PID=""
+STUB_PID=""
 PG_STARTED=0
 
 # A cluster of our own. dev-pg.sh defaults to a per-checkout data directory, which
@@ -43,6 +45,10 @@ export HAAKU_PG_SOCK="$PG_ROOT/sock"
 
 cleanup() {
   local status=$?
+  if [ -n "$STUB_PID" ] && kill -0 "$STUB_PID" 2>/dev/null; then
+    kill -TERM "$STUB_PID" 2>/dev/null || true
+    wait "$STUB_PID" 2>/dev/null || true
+  fi
   if [ -n "$SERVER_PID" ] && kill -0 "$SERVER_PID" 2>/dev/null; then
     kill -TERM "$SERVER_PID" 2>/dev/null || true
     wait "$SERVER_PID" 2>/dev/null || true
@@ -66,6 +72,32 @@ trap cleanup EXIT INT TERM
 echo "==> go build"
 go build -o "$API_BIN" ./cmd/api
 go build -o "$HARNESS_BIN" ./cmd/trakt-conformance
+go build -o "$STUB_BIN" ./cmd/tmdb-stub
+
+echo "==> starting local TMDB stub"
+STUB_PORT="${CONFORMANCE_STUB_PORT:-18091}"
+"$STUB_BIN" -addr "127.0.0.1:${STUB_PORT}" >"$BIN_DIR/tmdb-stub.log" 2>&1 &
+STUB_PID=$!
+stub_ready=0
+for _ in $(seq 1 100); do
+  if curl -fsS "http://127.0.0.1:${STUB_PORT}/healthz" >/dev/null 2>&1; then
+    stub_ready=1
+    break
+  fi
+  if ! kill -0 "$STUB_PID" 2>/dev/null; then
+    echo "conformance: TMDB stub exited during startup" >&2
+    cat "$BIN_DIR/tmdb-stub.log" >&2
+    exit 1
+  fi
+  sleep 0.1
+done
+if [ "$stub_ready" != 1 ]; then
+  echo "conformance: TMDB stub did not become ready" >&2
+  exit 1
+fi
+# The provider path is exercised end to end against canned payloads, with no
+# network and no real TMDB credentials. The client reads this once at startup.
+export TMDB_BASE_URL="http://127.0.0.1:${STUB_PORT}/3"
 
 echo "==> starting throwaway PostgreSQL"
 DATABASE_URL="$(./scripts/dev-pg.sh start -q 2>/dev/null | tail -1)"
@@ -96,6 +128,26 @@ echo "==> seeding fixtures"
 # throwaway cluster above.
 export HAAKU_CONFORMANCE_SEED=1
 "$HARNESS_BIN" -seed
+
+echo "==> clearing the report rate-limit window"
+# The per-user report limiter is a Redis sliding window that outlives a run. The
+# harness files its report cases as a single seeded user, so a second run inside
+# the same hour would trip the (now-enforced) limit and misreport already-working
+# rows as 429. Clear that one namespace so each run starts from a clean limiter.
+# Best-effort: with no redis-cli, or no Redis at all (the limiter then fails
+# open), this is a no-op.
+if command -v redis-cli >/dev/null 2>&1; then
+  rc=(redis-cli)
+  if [ -n "${REDIS_URL:-}" ]; then
+    rc+=(-u "$REDIS_URL")
+  fi
+  rc+=(-n "${REDIS_DB:-0}")
+  report_keys="$("${rc[@]}" --scan --pattern 'rate_limit:report:*' 2>/dev/null || true)"
+  if [ -n "$report_keys" ]; then
+    # shellcheck disable=SC2086  # the key list is deliberately word-split
+    "${rc[@]}" del $report_keys >/dev/null 2>&1 || true
+  fi
+fi
 
 echo "==> starting server on $BASE_URL"
 "$API_BIN" >"$BIN_DIR/server.log" 2>&1 &

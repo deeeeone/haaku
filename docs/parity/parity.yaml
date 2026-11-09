@@ -126,13 +126,13 @@ sections:
         rationale: "Needs the recommendation graph. Our own route GET /v1/movies/recommendations/{id} is the nearest surface but answers 501 not_implemented (its custom-surface row is in the last section), and Trakt's /movies/{id}/related is a distinct surface, so neither is parity here."
         engine: "recommendations engine (issue #49)"
       - trakt: "GET /movies/{id}/releases/{country}"
+        status: implemented
         ours: "GET /v1/movies/{id}/releases/{country}"
-        status: blocked-data
-        rationale: "movies has one released DATE; per-country release types (theatrical/digital/physical) are not modelled."
+        rationale: "Serves real rows from TMDB release_dates stored in media_metadata (kind=releases): per-country theatrical/digital/physical/TV dates with that country's certification, filtered by the {country} segment. Fetched on the first request, served from the store after."
       - trakt: "GET /movies/{id}/videos"
+        status: implemented
         ours: "GET /v1/movies/{id}/videos"
-        status: blocked-data
-        rationale: "No videos table and no TMDB video ingest, so there is nothing to serve."
+        rationale: "Serves the movie's TMDB videos from media_metadata (kind=videos): YouTube trailers/teasers with title, url, site, type, size, official, published_at, country and language. Fetched once, then served from the store."
       - trakt: "GET /movies/{id}/comments/{sort}"
         ours: "GET /v1/movies/{id}/comments/{sort}"
         status: implemented
@@ -142,9 +142,10 @@ sections:
         status: out-of-scope
         rationale: "decision: Trakt derives sentiments from a per-episode sentiment model over its whole comment corpus; nothing in a self-hosted instance produces that signal, and inventing a score is exactly the fabricated payload this manifest forbids. Declined, tracked here so it can be revisited if a scorer is ever built."
       - trakt: "GET /movies/{id}/studios"
+        status: divergent
         ours: "GET /v1/movies/{id}/studios"
-        status: blocked-data
-        rationale: "No production-company table; TMDB company ids are not ingested."
+        rationale: "Serves the movie's TMDB production companies as the studio list; we hold no Trakt company ids, so ids.trakt is null and ids.tmdb carries the TMDB company id."
+        compat: "ids.trakt is null (we hold no Trakt company ids); ids.tmdb is the TMDB production-company id."
       - trakt: "GET /movies/{id}/watchnow/{country}"
         ours: "GET /v1/movies/{id}/watchnow/{country}"
         status: implemented
@@ -204,9 +205,9 @@ sections:
         rationale: "Needs the recommendation graph; our own route GET /v1/shows/recommendations/{id} is the nearest surface but answers 501 not_implemented (see the custom-surface row in the last section)."
         engine: "recommendations engine (issue #49)"
       - trakt: "GET /shows/{id}/videos"
+        status: implemented
         ours: "GET /v1/shows/{id}/videos"
-        status: blocked-data
-        rationale: "No videos table and no TMDB video ingest."
+        rationale: "Serves the show's TMDB videos from media_metadata (kind=videos), fetched once and served from the store."
       - trakt: "GET /shows/{id}/comments/{sort}"
         ours: "GET /v1/shows/{id}/comments/{sort}"
         status: implemented
@@ -216,13 +217,14 @@ sections:
         status: out-of-scope
         rationale: "decision: same as /movies/{id}/sentiments — no sentiment scorer exists and none is planned, and a fabricated score is worse than an honest absence."
       - trakt: "GET /shows/{id}/studios"
+        status: divergent
         ours: "GET /v1/shows/{id}/studios"
-        status: blocked-data
-        rationale: "No production-company table; shows.network is a network, not the studio list Trakt returns."
+        rationale: "Serves the show's TMDB networks as the studio list; we hold no Trakt company ids, so ids.trakt is null and ids.tmdb carries the TMDB network id."
+        compat: "ids.trakt is null (we hold no Trakt company ids); ids.tmdb is the TMDB network id."
       - trakt: "GET /shows/{id}/certifications"
+        status: implemented
         ours: "GET /v1/shows/{id}/certifications"
-        status: blocked-data
-        rationale: "shows.certification is a single value; Trakt returns certifications keyed by country, which is not modelled."
+        rationale: "Serves the show's stored certification as the bare JSON string the vendored contract types this response as (its description says grouped-by-country but its schema is `string`)."
       - trakt: "GET /shows/{id}/next_episode"
         ours: "GET /v1/shows/{id}/next_episode"
         status: implemented
@@ -303,9 +305,9 @@ sections:
         status: blocked-data
         rationale: "Season credits are not ingested: the credits table takes a media_type, but only movie/show credits are written today."
       - trakt: "GET /shows/{id}/seasons/{season}/videos"
+        status: implemented
         ours: "GET /v1/shows/{id}/seasons/{season}/videos"
-        status: blocked-data
-        rationale: "No videos table and no TMDB video ingest."
+        rationale: "Serves TMDB season videos from media_metadata (kind=videos); fetched once, then served from the store."
       - trakt: "GET /shows/{id}/seasons/{season}/episodes/{episode}/comments/{sort}"
         ours: "GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/comments/{sort}"
         status: implemented
@@ -320,9 +322,9 @@ sections:
         status: blocked-data
         rationale: "Episode credits are not ingested (credits table is written for movie/show only)."
       - trakt: "GET /shows/{id}/seasons/{season}/episodes/{episode}/videos"
+        status: implemented
         ours: "GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/videos"
-        status: blocked-data
-        rationale: "No videos table and no TMDB video ingest."
+        rationale: "Serves TMDB episode videos from media_metadata (kind=videos); fetched once, then served from the store."
   - name: "People"
     rows:
       - trakt: "GET /people/{id}/lists/{type}/{sort}"
@@ -735,7 +737,7 @@ sections:
       - trakt: "GET /episodes/{id}/watchnow/{country}"
         ours: ""
         status: out-of-scope
-        rationale: "deferred: episode-level sub-resources blocked on ingest (#68)"
+        rationale: "decision: no episode-level watch-provider data exists (TMDB exposes watch providers per movie/show, not per episode); our provider hrefs are served at /v1/{movies,shows}/{id}/watchnow/{country}."
       - trakt: "GET /genres/{type}"
         ours: "GET /v1/genres/{type}"
         status: implemented
@@ -823,13 +825,13 @@ sections:
         status: implemented
         rationale: "Served at GET /v1/movies/{id}/ratings; the path shape matches the contract."
       - trakt: "GET /movies/{id}/translations"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining movie metadata sub-resources blocked on ingest (#68)"
+        status: implemented
+        ours: "GET /v1/movies/{id}/translations"
+        rationale: "Serves TMDB movie translations from media_metadata (kind=translations); ?language= filters the stored set."
       - trakt: "GET /movies/{id}/watchnow/justwatch_links/{country}"
         ours: ""
         status: out-of-scope
-        rationale: "deferred: the remaining movie metadata sub-resources blocked on ingest (#68)"
+        rationale: "decision: Trakt's justwatch_links are Trakt's own affiliate links; we hold TMDB provider hrefs (served at /v1/movies/{id}/watchnow/{country}) and will not relabel them as Trakt links."
       - trakt: "GET /networks"
         ours: "GET /v1/networks"
         status: implemented
@@ -850,7 +852,7 @@ sections:
       - trakt: "GET /people/updates/id/{start_date}"
         ours: ""
         status: out-of-scope
-        rationale: "deferred: person surfaces blocked on metadata ingest (#68)"
+        rationale: "deferred: person surfaces are not ingested as a change feed, so there is no updated-person id feed to serve."
       - trakt: "GET /people/updates/{start_date}"
         ours: "GET /v1/people/updates/{start_date}"
         status: implemented
@@ -858,7 +860,7 @@ sections:
       - trakt: "GET /people/{id}/"
         ours: ""
         status: out-of-scope
-        rationale: "deferred: person surfaces blocked on metadata ingest (#68)"
+        rationale: "deferred: /v1/people/{id} serves our own person shape, not the contract's ids/social_ids envelope."
       - trakt: "GET /people/{id}/movies"
         ours: "GET /v1/people/{id}/movies"
         status: implemented
@@ -924,37 +926,37 @@ sections:
         status: implemented
         rationale: "Served at Trakt's path: watchers (distinct user_history users), plays (history rows), collectors (user_collection), comments, lists and votes are counted from stored rows for the resolved episode; no constant fields."
       - trakt: "GET /shows/{id}/seasons/{season}/episodes/{episode}/translations"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
+        status: implemented
+        ours: "GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/translations"
+        rationale: "Serves TMDB episode translations from media_metadata (kind=translations); ?language= filters the stored set."
       - trakt: "GET /shows/{id}/seasons/{season}/episodes/{episode}/watching"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
+        status: implemented
+        ours: "GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/watching"
+        rationale: "Real users holding a live, non-expired scrobble session on the episode, rendered as the contract's user objects."
       - trakt: "GET /shows/{id}/seasons/{season}/episodes/{episode}/watchnow/{country}"
         ours: ""
         status: out-of-scope
-        rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
+        rationale: "decision: no episode-level watch-provider data exists in the provider."
       - trakt: "GET /shows/{id}/seasons/{season}/info"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
+        status: implemented
+        ours: "GET /v1/shows/{id}/seasons/{season}/info"
+        rationale: "Serves the season row plus TMDB season detail (title, overview, first_aired, votes, episode_count, ids.tmdb) from media_metadata (kind=season_info). rating is null: no season rating is stored."
       - trakt: "GET /shows/{id}/seasons/{season}/watching"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
+        status: implemented
+        ours: "GET /v1/shows/{id}/seasons/{season}/watching"
+        rationale: "Real users holding a live, non-expired scrobble session on any episode of the season (action start/scrobble, not pause/stop), rendered as the contract's user objects."
       - trakt: "GET /shows/{id}/seasons/{season}/watchnow/justwatch_links/{country}"
         ours: ""
         status: out-of-scope
-        rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
+        rationale: "decision: no season-level watch-provider data, and Trakt's justwatch_links are affiliate links we do not hold."
       - trakt: "GET /shows/{id}/translations"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining show metadata sub-resources (videos, studios, sentiments, certifications) blocked on ingest (#68)"
+        status: implemented
+        ours: "GET /v1/shows/{id}/translations"
+        rationale: "Serves TMDB show translations from media_metadata (kind=translations); ?language= filters the stored set."
       - trakt: "GET /shows/{id}/watchnow/justwatch_links/{country}"
         ours: ""
         status: out-of-scope
-        rationale: "deferred: the remaining show metadata sub-resources (videos, studios, sentiments, certifications) blocked on ingest (#68)"
+        rationale: "decision: Trakt's justwatch_links are Trakt's own affiliate links; we hold TMDB provider hrefs (served at /v1/shows/{id}/watchnow/{country}) and will not relabel them as Trakt links."
       - trakt: "GET /smart-lists/templates"
         ours: "GET /v1/smart-lists/templates"
         status: blocked-data
@@ -1338,9 +1340,9 @@ sections:
         status: implemented
         rationale: "Inserts a content_reports row (media_type=list) and returns 201; a duplicate report is 409 (handleContractReportList)."
       - trakt: "POST /movies/{id}/refresh/justwatch"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining movie metadata sub-resources blocked on ingest (#68)"
+        status: implemented
+        ours: "POST /v1/movies/{id}/refresh/justwatch"
+        rationale: "Re-fetches the movie's TMDB watch providers and rewrites the cached set in movies.metadata, then answers the contract's 201 {}. Auth required."
       - trakt: "POST /movies/{id}/report"
         ours: "POST /v1/movies/{id}/report"
         status: implemented
@@ -1366,9 +1368,9 @@ sections:
         status: implemented
         rationale: "Served at POST /oauth/token; the path shape matches the contract."
       - trakt: "POST /people/{id}/report"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: person surfaces blocked on metadata ingest (#68)"
+        status: implemented
+        ours: "POST /v1/people/{id}/report"
+        rationale: "Writes a content_reports row for the person using the contract's reason enum; 201 on create, 409 on a duplicate, 400 on a bad reason, 404 on a missing person. Auth required."
       - trakt: "POST /scrobble/pause"
         ours: "POST /v1/scrobble/pause"
         status: implemented
@@ -1386,21 +1388,21 @@ sections:
         status: implemented
         rationale: "Served at POST /v1/seasons/{id}/report; the path shape matches the contract."
       - trakt: "POST /shows/{id}/refresh/justwatch"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining show metadata sub-resources (videos, studios, sentiments, certifications) blocked on ingest (#68)"
+        status: implemented
+        ours: "POST /v1/shows/{id}/refresh/justwatch"
+        rationale: "Re-fetches the show's TMDB watch providers and rewrites the cached set in shows.metadata, then answers the contract's 201 {}. Auth required."
       - trakt: "POST /shows/{id}/report"
         ours: "POST /v1/shows/{id}/report"
         status: implemented
         rationale: "Served at POST /v1/shows/{id}/report; the path shape matches the contract."
       - trakt: "POST /shows/{id}/seasons/{season}/episodes/{episode}/report"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
+        status: implemented
+        ours: "POST /v1/shows/{id}/seasons/{season}/episodes/{episode}/report"
+        rationale: "Resolves show+season+episode to the episode row and writes a content_reports row; 201/400/404/409 as the contract specifies. Auth required."
       - trakt: "POST /shows/{id}/seasons/{season}/report"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
+        status: implemented
+        ours: "POST /v1/shows/{id}/seasons/{season}/report"
+        rationale: "Resolves show+season to the season row and writes a content_reports row; 201/400/404/409 as the contract specifies. Auth required."
       - trakt: "POST /sync/collection"
         ours: "POST /v1/sync/collection"
         status: implemented

@@ -38,6 +38,7 @@ type Movie struct {
 	Budget              int64         `json:"budget"`  // for metadata passthrough
 	Revenue             int64         `json:"revenue"` // for metadata passthrough
 	ProductionCountries []Country     `json:"production_countries"`
+	ProductionCompanies []Company     `json:"production_companies"`
 	ExternalIDs         *ExternalIDs  `json:"external_ids,omitempty"`
 	ReleaseDates        *ReleaseDates `json:"release_dates,omitempty"`
 	Videos              *Videos       `json:"videos,omitempty"`
@@ -95,6 +96,8 @@ type Season struct {
 	Overview     string          `json:"overview"`
 	AirDate      string          `json:"air_date"`
 	PosterPath   string          `json:"poster_path"`
+	VoteAverage  float64         `json:"vote_average"`
+	VoteCount    int64           `json:"vote_count"`
 	Episodes     []EpisodeDetail `json:"episodes"`
 }
 
@@ -149,8 +152,41 @@ type Genre struct {
 }
 
 type Network struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
+	ID            int    `json:"id"`
+	Name          string `json:"name"`
+	OriginCountry string `json:"origin_country"`
+}
+
+// Company is a TMDB production company (a movie's studio list).
+type Company struct {
+	ID            int    `json:"id"`
+	Name          string `json:"name"`
+	OriginCountry string `json:"origin_country"`
+	LogoPath      string `json:"logo_path"`
+}
+
+// Translations is TMDB's translations payload, shared by movies, shows and
+// episodes. Each entry carries the per-language text under `data`.
+type Translations struct {
+	Translations []Translation `json:"translations"`
+}
+
+// Translation is one language's text for a title or episode.
+type Translation struct {
+	ISO639      string          `json:"iso_639_1"`
+	ISO3166     string          `json:"iso_3166_1"`
+	Name        string          `json:"name"`
+	EnglishName string          `json:"english_name"`
+	Data        TranslationData `json:"data"`
+}
+
+// TranslationData is the per-language text. Movies fill title/overview/tagline;
+// episodes fill name/overview.
+type TranslationData struct {
+	Title    string `json:"title"`
+	Name     string `json:"name"`
+	Overview string `json:"overview"`
+	Tagline  string `json:"tagline"`
 }
 
 type Country struct {
@@ -428,11 +464,16 @@ type Videos struct {
 
 // Video is one trailer/teaser/clip.
 type Video struct {
-	Key      string `json:"key"`
-	Site     string `json:"site"`
-	Type     string `json:"type"`
-	Name     string `json:"name"`
-	Official bool   `json:"official"`
+	ID          string `json:"id"`
+	Key         string `json:"key"`
+	Site        string `json:"site"`
+	Type        string `json:"type"`
+	Name        string `json:"name"`
+	Official    bool   `json:"official"`
+	ISO639      string `json:"iso_639_1"`
+	ISO3166     string `json:"iso_3166_1"`
+	Size        int    `json:"size"`
+	PublishedAt string `json:"published_at"`
 }
 
 // TrailerURL returns a YouTube URL for the best trailer TMDB has, or "".

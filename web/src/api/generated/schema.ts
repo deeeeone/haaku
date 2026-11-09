@@ -1531,6 +1531,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/movies/{id}/refresh/justwatch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Re-fetch a title's watch providers (contract path) */
+        post: operations["_v1_movies_id_refresh_justwatch_POST"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/movies/{id}/related": {
         parameters: {
             query?: never;
@@ -1555,7 +1572,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Parity stub — not implemented (TMDB metadata ingest) */
+        /** Get per-country releases for a movie (contract path) */
         get: operations["_v1_movies_id_releases_country_GET"];
         put?: never;
         post?: never;
@@ -1606,8 +1623,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Parity stub — not implemented (TMDB metadata ingest) */
+        /** Get studios for a movie (contract path) */
         get: operations["_v1_movies_id_studios_GET"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/movies/{id}/translations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get translations for a movie (contract path) */
+        get: operations["_v1_movies_id_translations_GET"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1640,7 +1674,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Parity stub — not implemented (TMDB metadata ingest) */
+        /** Get videos for a movie (contract path) */
         get: operations["_v1_movies_id_videos_GET"];
         put?: never;
         post?: never;
@@ -2054,6 +2088,23 @@ export interface paths {
         get: operations["_v1_people_id_movies_GET"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/people/{id}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Report a person (contract path) */
+        post: operations["_v1_people_id_report_POST"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2492,7 +2543,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Parity stub — not implemented (TMDB metadata ingest) */
+        /** Get content certifications for a show (contract path) */
         get: operations["_v1_shows_id_certifications_GET"];
         put?: never;
         post?: never;
@@ -2667,6 +2718,23 @@ export interface paths {
         get: operations["_v1_shows_id_ratings_GET"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shows/{id}/refresh/justwatch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Re-fetch a title's watch providers (contract path) */
+        post: operations["_v1_shows_id_refresh_justwatch_POST"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2860,6 +2928,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/shows/{id}/seasons/{season}/episodes/{episode}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Report an episode (contract path) */
+        post: operations["_v1_shows_id_seasons_season_episodes_episode_report_POST"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/shows/{id}/seasons/{season}/episodes/{episode}/stats": {
         parameters: {
             query?: never;
@@ -2869,6 +2954,23 @@ export interface paths {
         };
         /** Episode stats (contract path) */
         get: operations["_v1_shows_id_seasons_season_episodes_episode_stats_GET"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shows/{id}/seasons/{season}/episodes/{episode}/translations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get translations for an episode (contract path) */
+        get: operations["_v1_shows_id_seasons_season_episodes_episode_translations_GET"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2901,8 +3003,42 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Parity stub — not implemented (TMDB metadata ingest) */
+        /** Get videos for an episode (contract path) */
         get: operations["_v1_shows_id_seasons_season_episodes_episode_videos_GET"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shows/{id}/seasons/{season}/episodes/{episode}/watching": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Users watching an episode right now (contract path) */
+        get: operations["_v1_shows_id_seasons_season_episodes_episode_watching_GET"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shows/{id}/seasons/{season}/info": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a single season for a show (contract path) */
+        get: operations["_v1_shows_id_seasons_season_info_GET"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2945,6 +3081,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/shows/{id}/seasons/{season}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Report a season (contract path) */
+        post: operations["_v1_shows_id_seasons_season_report_POST"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/shows/{id}/seasons/{season}/stats": {
         parameters: {
             query?: never;
@@ -2969,7 +3122,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Season translations, all languages unless ?language= is set (contract path) */
+        /** Get translations for a season (contract path) */
         get: operations["_v1_shows_id_seasons_season_translations_GET"];
         put?: never;
         post?: never;
@@ -3003,8 +3156,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Parity stub — not implemented (TMDB metadata ingest) */
+        /** Get videos for a season (contract path) */
         get: operations["_v1_shows_id_seasons_season_videos_GET"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shows/{id}/seasons/{season}/watching": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Users watching a season right now (contract path) */
+        get: operations["_v1_shows_id_seasons_season_watching_GET"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3037,8 +3207,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Parity stub — not implemented (TMDB metadata ingest) */
+        /** Get studios for a show (contract path) */
         get: operations["_v1_shows_id_studios_GET"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shows/{id}/translations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get translations for a show (contract path) */
+        get: operations["_v1_shows_id_translations_GET"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3071,7 +3258,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Parity stub — not implemented (TMDB metadata ingest) */
+        /** Get videos for a show (contract path) */
         get: operations["_v1_shows_id_videos_GET"];
         put?: never;
         post?: never;
@@ -6120,7 +6307,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -6199,7 +6388,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -6278,7 +6469,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -6357,7 +6550,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -6436,7 +6631,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -6515,7 +6712,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -6657,7 +6856,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -6700,7 +6901,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -6788,14 +6991,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description User not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -6874,14 +7081,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description User not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -6960,14 +7171,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description User not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -7046,14 +7261,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description User not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -7195,21 +7414,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Invalid credentials */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Account pending or banned */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -7243,7 +7468,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description internal server error */
             500: {
@@ -7358,7 +7585,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -7437,7 +7666,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -7453,7 +7684,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -7469,7 +7702,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unprocessable */
             422: {
@@ -7577,7 +7812,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -7658,7 +7895,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -7683,7 +7922,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -7762,7 +8003,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -7841,14 +8084,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -7918,14 +8165,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -7995,14 +8246,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -8072,14 +8327,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -8205,7 +8464,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -8230,7 +8491,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -8309,7 +8572,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -8388,7 +8653,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -8467,14 +8734,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -8544,7 +8815,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -8639,7 +8912,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -8709,14 +8984,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -8732,7 +9011,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unprocessable */
             422: {
@@ -8793,7 +9074,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -8863,7 +9146,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -8960,7 +9245,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -9039,14 +9326,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -9125,21 +9416,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Too old or has replies */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unprocessable */
             422: {
@@ -9209,7 +9506,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -9288,7 +9587,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -9367,7 +9668,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -9446,7 +9749,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -9525,7 +9830,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -9586,7 +9893,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -9602,7 +9911,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -9681,7 +9992,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -9760,7 +10073,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -9821,7 +10136,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -9837,7 +10154,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -9898,7 +10217,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -9914,7 +10235,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -10137,7 +10460,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -10297,7 +10622,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -10376,7 +10703,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -10473,7 +10802,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -10552,7 +10883,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -10631,7 +10964,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -10710,7 +11045,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -10778,21 +11115,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Episode not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -10871,7 +11214,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -10932,7 +11277,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -11020,7 +11367,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -11090,14 +11439,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -11176,14 +11529,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Token not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -11244,14 +11601,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Invalid token */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -11321,7 +11682,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -11418,14 +11781,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -11486,21 +11853,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -11579,14 +11952,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -11665,14 +12042,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description List not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -11733,28 +12114,36 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden (not owner) */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description List not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -11824,21 +12213,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden (not owner) */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -11917,7 +12312,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -11996,14 +12393,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -12082,14 +12483,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -12150,21 +12555,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -12234,7 +12645,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -12250,14 +12663,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -12336,14 +12753,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -12422,14 +12843,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -12508,14 +12933,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -12576,21 +13005,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -12660,21 +13095,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -12762,14 +13203,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -12839,14 +13284,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -12916,14 +13365,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -13002,7 +13455,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -13063,28 +13518,36 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Already reported */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unprocessable */
             422: {
@@ -13217,7 +13680,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -13377,7 +13842,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -13465,7 +13932,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -13591,7 +14060,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -13616,21 +14087,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description The provider has no such record */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -13673,14 +14150,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description The metadata provider is not configured */
             503: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -13761,7 +14242,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -13885,7 +14368,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -13946,7 +14431,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -13962,7 +14449,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -14086,7 +14575,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -14167,7 +14658,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -14333,6 +14826,96 @@ export interface operations {
             };
         };
     };
+    _v1_movies_id_refresh_justwatch_POST: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Refresh completed */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Media not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unprocessable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Provider data temporarily unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     _v1_movies_id_related_GET: {
         parameters: {
             query?: never;
@@ -14410,7 +14993,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -14423,7 +15008,14 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description invalid request */
+            /** @description Releases */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid country code */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -14441,7 +15033,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description not found */
+            /** @description Movie not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -14486,12 +15078,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — movies has one released DATE; per-country release types (theatrical/digital/physical) are not modell (#68) */
-            501: {
+            /** @description Provider data temporarily unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -14523,21 +15117,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Movie not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -14667,6 +15267,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Studios */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description invalid request */
             400: {
                 headers: {
@@ -14685,7 +15292,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description not found */
+            /** @description Movie not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -14730,12 +15337,104 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — No production-company table; TMDB company ids are not ingested. (#68) */
-            501: {
+            /** @description Provider data temporarily unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    _v1_movies_id_translations_GET: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Translations */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Movie not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unprocessable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Provider data temporarily unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -14778,7 +15477,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -14827,6 +15528,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Videos */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description invalid request */
             400: {
                 headers: {
@@ -14845,7 +15553,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description not found */
+            /** @description Movie not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -14890,12 +15598,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — No videos table and no TMDB video ingest, so there is nothing to serve. (#68) */
-            501: {
+            /** @description Provider data temporarily unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -14920,7 +15630,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -14936,7 +15648,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -15060,7 +15774,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -15085,7 +15801,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -15101,7 +15819,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -15144,7 +15864,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -15306,7 +16028,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -15387,7 +16111,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -15468,7 +16194,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -15637,7 +16365,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -15718,7 +16448,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -15824,7 +16556,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -15903,7 +16637,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -16038,7 +16774,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -16144,14 +16882,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -16230,21 +16972,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not your note */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -16314,21 +17062,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not your note */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -16398,21 +17152,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not your note */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -16482,7 +17242,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -16561,7 +17323,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -16640,7 +17404,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -16928,7 +17694,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -16994,6 +17762,87 @@ export interface operations {
                 };
             };
             /** @description rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    _v1_people_id_report_POST: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reported */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Person not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Already reported */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unprocessable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Rate limited */
             429: {
                 headers: {
                     [name: string]: unknown;
@@ -17115,7 +17964,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -17203,7 +18054,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -17329,7 +18182,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -17363,7 +18218,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -17489,7 +18346,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -17514,21 +18373,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Moderator access required */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -17598,35 +18463,45 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Moderator access required */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Report not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Report already actioned */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unprocessable */
             422: {
@@ -17678,35 +18553,45 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Moderator access required */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Report not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Report already actioned */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unprocessable */
             422: {
@@ -17758,14 +18643,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -17835,14 +18724,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -17867,7 +18760,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description rate limited */
             429: {
@@ -17910,7 +18805,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -17935,14 +18832,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Progress too low */
             422: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description rate limited */
             429: {
@@ -17985,7 +18886,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -18082,7 +18985,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -18143,7 +19048,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -18222,7 +19129,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -18238,7 +19147,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -18299,7 +19210,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -18315,7 +19228,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -18432,7 +19347,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -18513,7 +19430,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -18556,7 +19475,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -18635,7 +19556,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -18703,21 +19626,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Season not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -18796,7 +19725,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -18956,7 +19887,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -19005,6 +19938,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Certification */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description invalid request */
             400: {
                 headers: {
@@ -19023,7 +19963,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description not found */
+            /** @description Show not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -19068,13 +20008,6 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — shows.certification is a single value; Trakt returns certifications keyed by country, which is not m (#68) */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
     _v1_shows_id_comments_sort_GET: {
@@ -19098,7 +20031,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -19114,7 +20049,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -19200,7 +20137,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -19324,7 +20263,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -19405,7 +20346,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -19455,7 +20398,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -19606,14 +20551,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Show not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -19683,14 +20632,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Show not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -19760,14 +20713,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Show not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -19884,7 +20841,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -19960,6 +20919,96 @@ export interface operations {
             };
             /** @description internal server error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    _v1_shows_id_refresh_justwatch_POST: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Refresh completed */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Media not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unprocessable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Provider data temporarily unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -20046,7 +21095,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -20078,21 +21129,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Show not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -20315,7 +21372,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -20331,7 +21390,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -20554,7 +21615,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -20570,7 +21633,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -20631,7 +21696,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -20647,7 +21714,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -20764,7 +21833,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -20789,7 +21860,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -20805,7 +21878,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -20826,6 +21901,87 @@ export interface operations {
                 };
             };
             /** @description rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    _v1_shows_id_seasons_season_episodes_episode_report_POST: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reported */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Show, season or episode not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Already reported */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unprocessable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Rate limited */
             429: {
                 headers: {
                     [name: string]: unknown;
@@ -20866,7 +22022,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -20882,7 +22040,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -20913,6 +22073,96 @@ export interface operations {
             };
             /** @description internal server error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    _v1_shows_id_seasons_season_episodes_episode_translations_GET: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Translations */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid season or episode number */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Show, season or episode not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unprocessable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Provider data temporarily unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -20961,7 +22211,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -21010,7 +22262,14 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description invalid request */
+            /** @description Videos */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid season or episode number */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -21028,7 +22287,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description not found */
+            /** @description Show, season or episode not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -21073,12 +22332,185 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — No videos table and no TMDB video ingest. (#68) */
-            501: {
+            /** @description Provider data temporarily unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    _v1_shows_id_seasons_season_episodes_episode_watching_GET: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Watching users */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Invalid season or episode number */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Show, season or episode not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unprocessable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    _v1_shows_id_seasons_season_info_GET: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Season */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid season number */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Show or season not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unprocessable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Provider data temporarily unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -21159,7 +22591,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -21184,7 +22618,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -21200,7 +22636,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -21221,6 +22659,87 @@ export interface operations {
                 };
             };
             /** @description rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    _v1_shows_id_seasons_season_report_POST: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Reported */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Show or season not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Already reported */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unprocessable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Rate limited */
             429: {
                 headers: {
                     [name: string]: unknown;
@@ -21261,7 +22780,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -21277,7 +22798,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -21333,7 +22856,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description invalid request */
+            /** @description Invalid season number */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -21351,7 +22874,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description not found */
+            /** @description Show or season not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -21387,12 +22910,23 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Upstream provider error */
+            /** @description internal server error */
             500: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Provider data temporarily unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -21435,7 +22969,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -21484,7 +23020,14 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description invalid request */
+            /** @description Videos */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid season number */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -21502,7 +23045,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description not found */
+            /** @description Show or season not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -21547,12 +23090,95 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — No videos table and no TMDB video ingest. (#68) */
-            501: {
+            /** @description Provider data temporarily unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    _v1_shows_id_seasons_season_watching_GET: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Watching users */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Invalid season number */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Show or season not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unprocessable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -21646,6 +23272,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Studios */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description invalid request */
             400: {
                 headers: {
@@ -21664,7 +23297,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description not found */
+            /** @description Show not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -21709,12 +23342,104 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — No production-company table; shows.network is a network, not the studio list Trakt returns. (#68) */
-            501: {
+            /** @description Provider data temporarily unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    _v1_shows_id_translations_GET: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Translations */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Show not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unprocessable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Provider data temporarily unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -21757,7 +23482,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -21806,6 +23533,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Videos */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description invalid request */
             400: {
                 headers: {
@@ -21824,7 +23558,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description not found */
+            /** @description Show not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -21869,12 +23603,14 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — No videos table and no TMDB video ingest. (#68) */
-            501: {
+            /** @description Provider data temporarily unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -21899,7 +23635,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -21915,7 +23653,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -22039,7 +23779,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -22064,7 +23806,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -22080,7 +23824,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -22123,7 +23869,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -22285,7 +24033,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -22366,7 +24116,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -22447,7 +24199,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -22616,7 +24370,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -22697,7 +24453,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -22803,7 +24561,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -22882,7 +24642,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -23017,7 +24779,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -23051,14 +24815,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -23119,21 +24887,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -23212,14 +24986,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -23289,21 +25067,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -23364,28 +25148,36 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -23502,7 +25294,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -23536,7 +25330,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -23615,7 +25411,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -23694,7 +25492,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -23773,7 +25573,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -23843,14 +25645,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -23976,7 +25782,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -24001,14 +25809,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -24078,14 +25890,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -24155,14 +25971,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -24232,14 +26052,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -24318,7 +26142,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -24397,7 +26223,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -24476,7 +26304,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -24555,7 +26385,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -24634,7 +26466,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -24704,21 +26538,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -24779,14 +26619,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -24865,7 +26709,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -24944,7 +26790,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -25023,7 +26871,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -25102,7 +26952,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -25181,7 +27033,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -25260,7 +27114,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -25339,7 +27195,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -25418,7 +27276,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -25497,7 +27357,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -25576,7 +27438,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -25655,7 +27519,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -25815,14 +27681,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -25901,7 +27771,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -25971,7 +27843,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -26050,7 +27924,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -26120,14 +27996,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -26197,14 +28077,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -26274,14 +28158,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -26360,7 +28248,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -26439,7 +28329,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -26509,14 +28401,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -26595,7 +28491,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -26674,7 +28572,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -26753,7 +28653,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -26832,7 +28734,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -26911,7 +28815,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -26981,14 +28887,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -27067,7 +28977,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -27137,14 +29049,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -27223,7 +29139,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -27302,14 +29220,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -27370,14 +29292,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -27456,7 +29382,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -27535,7 +29463,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -27614,7 +29544,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -27693,7 +29625,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -27772,7 +29706,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -27842,14 +29778,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -27928,14 +29868,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Sync session not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -28005,14 +29949,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Sync session not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -28082,14 +30030,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Sync session not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -28168,14 +30120,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -28236,7 +30192,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -28252,14 +30210,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -28320,21 +30282,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description User not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -28404,14 +30372,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Block not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -28490,14 +30462,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -28558,7 +30534,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -28574,14 +30552,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -28642,7 +30624,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -28658,14 +30642,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -28726,7 +30714,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -28742,14 +30732,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -28810,7 +30804,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -28826,14 +30822,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -28894,7 +30894,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -28910,14 +30912,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -28978,7 +30984,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -28994,14 +31002,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -29062,7 +31074,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -29078,14 +31092,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -29146,21 +31164,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description User not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -29230,14 +31254,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -29316,7 +31344,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -29395,7 +31425,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -29474,7 +31506,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -29553,14 +31587,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -29621,7 +31659,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -29637,14 +31677,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -29705,7 +31749,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -29721,14 +31767,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -29789,7 +31839,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -29805,14 +31857,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -29891,14 +31947,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -29959,7 +32019,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -29975,14 +32037,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -30061,14 +32127,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -30129,7 +32199,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -30145,14 +32217,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -30231,14 +32307,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -30317,14 +32397,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -30403,14 +32487,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -30480,14 +32568,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Private profile */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -30557,21 +32649,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -30659,14 +32757,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -30727,28 +32829,36 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -30818,21 +32928,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -30911,14 +33027,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -30979,28 +33099,36 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -31061,28 +33189,36 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -31143,7 +33279,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -31159,14 +33297,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -31245,14 +33387,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -31331,14 +33477,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -31417,14 +33567,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -31485,28 +33639,36 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -31567,28 +33729,36 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -31667,14 +33837,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -31744,21 +33918,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Private */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -31828,21 +34008,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Private */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -31921,14 +34107,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -31989,28 +34179,36 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -32071,28 +34269,36 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Already reported */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unprocessable */
             422: {
@@ -32153,21 +34359,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -32228,28 +34440,36 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -32319,14 +34539,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -32396,21 +34620,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -32480,7 +34710,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -32496,14 +34728,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -32582,14 +34818,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -32650,7 +34890,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -32666,14 +34908,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -32734,7 +34980,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -32750,14 +34998,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -32836,14 +35088,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -32922,14 +35178,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -33008,14 +35268,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -33076,28 +35340,36 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Private profile */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -33167,21 +35439,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not the owner */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -33251,14 +35529,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -33328,21 +35610,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -33421,21 +35709,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -33496,28 +35790,36 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -33587,21 +35889,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Forbidden */
             403: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -33680,14 +35988,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description User not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -33748,7 +36060,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -33764,14 +36078,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -33832,7 +36150,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -33848,14 +36168,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -33916,7 +36240,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -33932,14 +36258,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -34018,14 +36348,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -34086,7 +36420,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -34102,14 +36438,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -34170,7 +36510,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -34186,14 +36528,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -34254,7 +36600,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -34270,14 +36618,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -34338,7 +36690,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -34354,14 +36708,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -34422,7 +36780,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -34438,14 +36798,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -34506,7 +36870,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -34522,14 +36888,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -34590,7 +36960,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -34606,14 +36978,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -34683,7 +37059,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -34762,7 +37140,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -34832,14 +37212,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -34909,14 +37293,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -34995,7 +37383,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -35065,14 +37455,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -35151,7 +37545,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -35230,7 +37626,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -35381,7 +37779,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description unauthorized */
             401: {
@@ -35478,7 +37878,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -35548,7 +37950,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -35600,7 +38004,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -35634,7 +38040,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -35713,14 +38121,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Request not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -35790,14 +38202,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Request not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -35867,7 +38283,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -35946,7 +38364,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -36016,14 +38436,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -36102,7 +38526,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -36181,7 +38607,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -36251,14 +38679,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -36337,14 +38769,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -36414,7 +38850,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -36493,7 +38931,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -36563,14 +39003,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -36649,7 +39093,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -36719,14 +39165,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -36796,14 +39246,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -36873,14 +39327,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -36959,14 +39417,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description User not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -37027,14 +39489,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -37160,7 +39626,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -37241,7 +39709,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -37275,7 +39745,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -37345,14 +39817,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {
@@ -37422,21 +39898,27 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Endpoint not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -37506,14 +39988,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Endpoint not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -37583,14 +40069,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Endpoint not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -37660,14 +40150,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Endpoint not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -37737,14 +40231,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Endpoint not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -37805,14 +40303,18 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description Invalid webhook signature */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description not found */
             404: {

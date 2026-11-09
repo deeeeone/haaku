@@ -462,8 +462,16 @@ func handleUserWatching(c *fiber.Ctx) error {
 	if session.Action == "pause" || session.Action == "stop" {
 		return c.JSON(fiber.Map{})
 	}
+	// The contract's watching object describes either a movie or an episode.
+	// A live show-level session has no episode to describe, so it is not a
+	// representable watching row and answers the empty object rather than an
+	// out-of-enum type.
+	if session.MediaType != "movie" && session.MediaType != "episode" {
+		return c.JSON(fiber.Map{})
+	}
 
 	return c.JSON(fiber.Map{
+		"type":       session.MediaType,
 		"media_type": session.MediaType,
 		"media_id":   session.MediaID,
 		"season_id":  session.SeasonID,

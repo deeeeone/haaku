@@ -32,7 +32,7 @@ func TestStubsAnswer501NamingTheTracker(t *testing.T) {
 		"/v1/media/trending",                       // #66
 		"/v1/movies/watched/30d",                   // #66 — static segment over /movies/:id
 		"/v1/shows/1/related",                      // #49
-		"/v1/shows/2/videos",                       // #68
+		"/v1/shows/2/seasons/1/people",             // #68 (videos is now served)
 		"/v1/calendars/all/dvd/2026-11-01/7",       // #69, {target} template
 		"/v1/calendars/all/streaming/2026-11-01/7", // #69
 	} {
