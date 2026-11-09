@@ -12,6 +12,14 @@ import (
 // that haaku does not serve yet. Each answers an honest 501 naming the blocker and the
 // tracking issue, so a Trakt client gets a real answer instead of a 404.
 func registerStub69(api fiber.Router) {
+	// GET /calendars/{target}/dvd/{start_date}/{days} — blocked-data: movies carries a single released DATE; there is no dvd/digital/physical date column, so a DVD calendar cannot be answered without inventing dates.
+	// Upstream getdvdReleases; 200: array of {movie,released}; path: target,start_date,days; +21 query
+	// Tracked in #69: https://github.com/haaku-tv/haaku/issues/69
+	api.Get("/v1/calendars/:target/dvd/:start_date/:days", stubHandler(69, "GET /calendars/{target}/dvd/{start_date}/{days}", "movies carries a single released DATE; there is no dvd/digital/physical date column, so a DVD calendar cannot be answered without inventing dates."))
+	// GET /calendars/{target}/streaming/{start_date}/{days} — blocked-data: No streaming-release date is stored; watch providers live in movies.metadata per title (TMDB), not as dated releases.
+	// Upstream getstreaming; 200: array of {movie,released}; path: target,start_date,days; +21 query
+	// Tracked in #69: https://github.com/haaku-tv/haaku/issues/69
+	api.Get("/v1/calendars/:target/streaming/:start_date/:days", stubHandler(69, "GET /calendars/{target}/streaming/{start_date}/{days}", "No streaming-release date is stored; watch providers live in movies.metadata per title (TMDB), not as dated releases."))
 	// GET /calendars/releases/hot/{start_date}/{days} — blocked-data: No unified release feed: 'hot' mixes theatrical, streaming and episode releases in one ranked list; we store only movies.released and episodes.aired_at, with no cross-medium ranking.
 	// Upstream getreleasesHot; 200: array of {episode,first_aired,movie,released,show}; path: start_date,days; +20 query
 	// Tracked in #69: https://github.com/haaku-tv/haaku/issues/69
@@ -20,10 +28,6 @@ func registerStub69(api fiber.Router) {
 	// Upstream getstreaming; 200: array of {delta,movie,rank}; path: period; +23 query
 	// Tracked in #69: https://github.com/haaku-tv/haaku/issues/69
 	api.Get("/v1/movies/streaming/:period", stubHandler(69, "GET /movies/streaming/{period}", "Trakt's streaming list is driven by streaming release dates, which we do not store (see /calendars/all/streaming)."))
-	// GET /movies/boxoffice — blocked-data: No revenue/box-office columns exist and the TMDB ingest does not fetch them.
-	// Upstream getboxoffice; 200: array of {movie,revenue}; +1 query
-	// Tracked in #69: https://github.com/haaku-tv/haaku/issues/69
-	api.Get("/v1/movies/boxoffice", stubHandler(69, "GET /movies/boxoffice", "No revenue/box-office columns exist and the TMDB ingest does not fetch them."))
 	// GET /shows/streaming/{period} — blocked-data: Driven by streaming release dates, which are not stored (see /calendars/all/streaming).
 	// Upstream getstreaming; 200: array of {delta,rank,show}; path: period; +23 query
 	// Tracked in #69: https://github.com/haaku-tv/haaku/issues/69
@@ -36,10 +40,6 @@ func registerStub69(api fiber.Router) {
 	// Upstream getcountry; path: countryCode
 	// Tracked in #69: https://github.com/haaku-tv/haaku/issues/69
 	api.Get("/v1/watchnow/sources/{countryCode}", stubHandler(69, "GET /watchnow/sources/{countryCode}", "Same gap: no catalogue to filter by country."))
-	// GET /watchnow/justwatch_links/{country} — blocked-data: No JustWatch link/deeplink data is stored anywhere.
-	// Upstream: no exact path match — see docs/parity/reconciliation.md
-	// Tracked in #69: https://github.com/haaku-tv/haaku/issues/69
-	api.Get("/v1/watchnow/justwatch_links/:country", stubHandler(69, "GET /watchnow/justwatch_links/{country}", "No JustWatch link/deeplink data is stored anywhere."))
 }
 
 // defsStub69 is the registry entry for each stub above. The 501 in
@@ -47,6 +47,22 @@ func registerStub69(api fiber.Router) {
 // appear as a 501 in the generated spec.
 func defsStub69() []openapi.RouteDef {
 	return []openapi.RouteDef{
+		{
+			Method:      "GET",
+			Path:        "/v1/calendars/{target}/dvd/{start_date}/{days}",
+			Summary:     "Parity stub — not implemented (calendars & Watch Now data)",
+			Tags:        []string{"Calendars"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — movies carries a single released DATE; there is no dvd/digital/physical date column, so a DVD calend (#69)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/calendars/{target}/streaming/{start_date}/{days}",
+			Summary:     "Parity stub — not implemented (calendars & Watch Now data)",
+			Tags:        []string{"Calendars"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — No streaming-release date is stored; watch providers live in movies.metadata per title (TMDB), not a (#69)"},
+		},
 		{
 			Method:      "GET",
 			Path:        "/v1/calendars/releases/hot/{start_date}/{days}",
@@ -62,14 +78,6 @@ func defsStub69() []openapi.RouteDef {
 			Tags:        []string{"Movies"},
 			Auth:        "none",
 			StatusCodes: map[int]string{501: "Not implemented — Trakt's streaming list is driven by streaming release dates, which we do not store (see /calendars/a (#69)"},
-		},
-		{
-			Method:      "GET",
-			Path:        "/v1/movies/boxoffice",
-			Summary:     "Parity stub — not implemented (calendars & Watch Now data)",
-			Tags:        []string{"Movies"},
-			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — No revenue/box-office columns exist and the TMDB ingest does not fetch them. (#69)"},
 		},
 		{
 			Method:      "GET",
@@ -94,14 +102,6 @@ func defsStub69() []openapi.RouteDef {
 			Tags:        []string{"WatchNow"},
 			Auth:        "none",
 			StatusCodes: map[int]string{501: "Not implemented — Same gap: no catalogue to filter by country. (#69)"},
-		},
-		{
-			Method:      "GET",
-			Path:        "/v1/watchnow/justwatch_links/{country}",
-			Summary:     "Parity stub — not implemented (calendars & Watch Now data)",
-			Tags:        []string{"WatchNow"},
-			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — No JustWatch link/deeplink data is stored anywhere. (#69)"},
 		},
 	}
 }

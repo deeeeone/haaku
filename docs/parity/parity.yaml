@@ -79,29 +79,29 @@ sections:
         ours: "GET /v1/media/trending"
         status: blocked-engine
         rationale: "Per-type feeds exist (/v1/movies/trending, /v1/shows/trending) but a single cross-type ranked feed needs the rankings engine."
-        engine: "rankings/stats engine (issue #5)"
+        engine: "stats/rankings engine (issue #66)"
       - trakt: "GET /media/popular"
         ours: "GET /v1/media/popular"
         status: blocked-engine
         rationale: "Our popularity is movies/shows.popularity; one feed ranked across both media types is the rankings engine's job."
-        engine: "rankings/stats engine (issue #5)"
+        engine: "stats/rankings engine (issue #66)"
   - name: "Movies"
     rows:
       - trakt: "GET /movies/watched/{period}"
         ours: "GET /v1/movies/watched/{period}"
         status: blocked-engine
         rationale: "Distinct watchers per period is a period-activity aggregate we do not compute yet."
-        engine: "stats/rankings engine (issue #5)"
+        engine: "stats/rankings engine (issue #66)"
       - trakt: "GET /movies/played/{period}"
         ours: "GET /v1/movies/played/{period}"
         status: blocked-engine
         rationale: "Play counts per period need the same aggregate as watched/{period}."
-        engine: "stats/rankings engine (issue #5)"
+        engine: "stats/rankings engine (issue #66)"
       - trakt: "GET /movies/collected/{period}"
         ours: "GET /v1/movies/collected/{period}"
         status: blocked-engine
         rationale: "Collector counts per period require the rankings engine's period rollups."
-        engine: "stats/rankings engine (issue #5)"
+        engine: "stats/rankings engine (issue #66)"
       - trakt: "GET /movies/anticipated"
         ours: "GET /v1/media/anticipated"
         status: divergent
@@ -111,7 +111,7 @@ sections:
         ours: "GET /v1/movies/hot"
         status: blocked-engine
         rationale: "hot is watchers in the last 24 hours; we store no windowed watcher counts (movies/trending is popularity-ordered, not play-ordered)."
-        engine: "stats/rankings engine (issue #5)"
+        engine: "stats/rankings engine (issue #66)"
       - trakt: "GET /movies/streaming/{period}"
         ours: "GET /v1/movies/streaming/{period}"
         status: blocked-data
@@ -128,7 +128,7 @@ sections:
         ours: "GET /v1/movies/{id}/related"
         status: blocked-engine
         rationale: "Needs the recommendation graph. Our own route GET /v1/movies/recommendations/{id} is the nearest surface but answers 501 not_implemented (its custom-surface row is in the last section), and Trakt's /movies/{id}/related is a distinct surface, so neither is parity here."
-        engine: "recommendations engine (issue #5)"
+        engine: "recommendations engine (issue #49)"
       - trakt: "GET /movies/{id}/releases/{country}"
         ours: "GET /v1/movies/{id}/releases/{country}"
         status: blocked-data
@@ -155,15 +155,15 @@ sections:
         rationale: "Same TMDB provider payload (flatrate/rent/buy, cached in movies.metadata) served under a different segment with the country as a query param."
         compat: "compat listener rewrites /movies/{id}/watchnow/{country} -> /v1/movies/{id}/watch?country={country}; the envelope is ours, not Trakt's."
       - trakt: "GET /movies/{id}/lists/{type}/{sort}"
-        ours: "GET /v1/movies/{id}/lists"
+        ours: "GET /v1/movies/{id}/lists/{type}/{sort}"
         status: blocked-engine
         rationale: "The closest route is registered but answers 501; the per-type/per-sort variant cannot land before the lists engine."
-        engine: "lists engine (issue #5)"
+        engine: "lists engine (issue #67)"
       - trakt: "GET /movies/{id}/stats"
         ours: "GET /v1/movies/{id}/stats"
         status: blocked-engine
         rationale: "Registered but responds 501 not_implemented by design - it must not be counted as parity."
-        engine: "stats engine (issue #5)"
+        engine: "stats engine (issue #86)"
       - trakt: "GET /movies/{id}/watching"
         ours: "GET /v1/movies/{id}/watching"
         status: blocked-engine
@@ -175,17 +175,17 @@ sections:
         ours: "GET /v1/shows/watched/{period}"
         status: blocked-engine
         rationale: "Period distinct watchers for shows need the period-activity aggregate."
-        engine: "stats/rankings engine (issue #5)"
+        engine: "stats/rankings engine (issue #66)"
       - trakt: "GET /shows/played/{period}"
         ours: "GET /v1/shows/played/{period}"
         status: blocked-engine
         rationale: "Period play counts for shows need the same aggregate."
-        engine: "stats/rankings engine (issue #5)"
+        engine: "stats/rankings engine (issue #66)"
       - trakt: "GET /shows/collected/{period}"
         ours: "GET /v1/shows/collected/{period}"
         status: blocked-engine
         rationale: "Period collector counts need the rankings engine rollups."
-        engine: "stats/rankings engine (issue #5)"
+        engine: "stats/rankings engine (issue #66)"
       - trakt: "GET /shows/anticipated"
         ours: "GET /v1/media/anticipated"
         status: divergent
@@ -195,7 +195,7 @@ sections:
         ours: "GET /v1/shows/hot"
         status: blocked-engine
         rationale: "hot needs windowed watcher counts we do not compute (shows/trending is popularity-ordered)."
-        engine: "stats/rankings engine (issue #5)"
+        engine: "stats/rankings engine (issue #66)"
       - trakt: "GET /shows/streaming/{period}"
         ours: "GET /v1/shows/streaming/{period}"
         status: blocked-data
@@ -208,7 +208,7 @@ sections:
         ours: "GET /v1/shows/{id}/related"
         status: blocked-engine
         rationale: "Needs the recommendation graph; our own route GET /v1/shows/recommendations/{id} is the nearest surface but answers 501 not_implemented (see the custom-surface row in the last section)."
-        engine: "recommendations engine (issue #5)"
+        engine: "recommendations engine (issue #49)"
       - trakt: "GET /shows/{id}/videos"
         ours: "GET /v1/shows/{id}/videos"
         status: blocked-data
@@ -249,16 +249,16 @@ sections:
         ours: "DELETE /v1/shows/{id}/progress/watched/reset"
         status: blocked-engine
         rationale: "Resetting progress can only exist once progress is computed and stored."
-        engine: "stats/rankings engine (issue #5)"
+        engine: "stats/rankings engine (issue #66)"
       - trakt: "POST /shows/{id}/progress/watched/reset"
         ours: "POST /v1/shows/{id}/progress/watched/reset"
         status: implemented
         rationale: "Landed: deletes the caller's episode watch-history for that show only and returns the recomputed watched progress (Trakt's shape)."
       - trakt: "GET /shows/{id}/lists/{type}/{sort}"
-        ours: "GET /v1/shows/{id}/lists"
+        ours: "GET /v1/shows/{id}/lists/{type}/{sort}"
         status: blocked-engine
         rationale: "The closest route answers 501; the type/sort variant needs the lists engine."
-        engine: "lists engine (issue #5)"
+        engine: "lists engine (issue #67)"
       - trakt: "GET /shows/{id}/watchnow/{country}"
         ours: "GET /v1/shows/{id}/watch"
         status: divergent
@@ -268,7 +268,7 @@ sections:
         ours: "GET /v1/shows/{id}/stats"
         status: blocked-engine
         rationale: "Registered but responds 501 not_implemented; not parity."
-        engine: "stats engine (issue #5)"
+        engine: "stats engine (issue #86)"
       - trakt: "GET /shows/{id}/watching"
         ours: "GET /v1/shows/{id}/watching"
         status: blocked-engine
@@ -340,19 +340,19 @@ sections:
         ours: "GET /v1/people/{id}/lists/{type}/{sort}"
         status: blocked-engine
         rationale: "Lists containing a person need the lists engine; no per-person list route exists."
-        engine: "lists engine (issue #5)"
+        engine: "lists engine (issue #67)"
   - name: "Recommendations"
     rows:
       - trakt: "DELETE /recommendations/movies/{id}"
         ours: "DELETE /v1/recommendations/movies/{id}"
         status: blocked-engine
         rationale: "Hiding a recommendation is a decision the recommendations engine does not model yet (the user_hidden table is not wired to it)."
-        engine: "recommendations engine (issue #5)"
+        engine: "recommendations engine (issue #49)"
       - trakt: "DELETE /recommendations/shows/{id}"
         ours: "DELETE /v1/recommendations/shows/{id}"
         status: blocked-engine
         rationale: "Same as the movie dismissal: no per-item hide decision is modelled."
-        engine: "recommendations engine (issue #5)"
+        engine: "recommendations engine (issue #49)"
   - name: "Sync"
     rows:
       - trakt: "GET /sync/last_activities"
@@ -406,10 +406,6 @@ sections:
         ours: "GET /v1/users/{id}/history"
         status: implemented
         rationale: "Landed: real rows from user_history in our sync HistoryResponse shape, PrivacyFilter-gated."
-      - trakt: "GET /users/{id}/history/{type}"
-        ours: "GET /v1/users/{id}/history/{media_type}"
-        status: implemented
-        rationale: "Same handler pinned to the media type segment (movies|shows|seasons|episodes|all)."
       - trakt: "GET /users/{id}/history/{type}/{item_id}"
         ours: "GET /v1/users/{id}/history/{media_type}/{media_id}"
         status: implemented
@@ -418,10 +414,6 @@ sections:
         ours: "GET /v1/users/{id}/ratings"
         status: implemented
         rationale: "Landed: real rows from user_ratings, PrivacyFilter-gated."
-      - trakt: "GET /users/{id}/ratings/{type}"
-        ours: "GET /v1/users/{id}/ratings/{media_type}"
-        status: implemented
-        rationale: "Same handler pinned to the media type segment (four media types support ratings)."
       - trakt: "GET /users/{id}/watchlist/{type}/{sort_by}/{sort_how}"
         ours: "GET /v1/users/{id}/watchlist"
         status: divergent
@@ -443,14 +435,14 @@ sections:
         ours: "GET /v1/users/{id}/likes/comments"
         status: implemented
         rationale: "Landed: a user's liked comments (/likes/comments) and liked lists (/likes/lists) are both served, matching Trakt's {type} in {comments, lists}; list likes not visible to the caller are omitted rather than leaked."
-      - trakt: "GET /users/me/likes/comments"
+      - trakt: ""
         ours: "GET /v1/users/me/likes/comments"
-        status: implemented
-        rationale: "Landed: the caller's own liked comments from comment_likes."
-      - trakt: "GET /users/me/likes/lists"
+        status: out-of-scope
+        rationale: "custom: our own 'my liked comments' aggregate; the contract exposes per-comment likes (/comments/{id}/likes) and has no /me roll-up"
+      - trakt: ""
         ours: "GET /v1/users/me/likes/lists"
-        status: implemented
-        rationale: "Landed: the caller's own liked lists from list_likes."
+        status: out-of-scope
+        rationale: "custom: our own 'my liked lists' aggregate; the contract exposes /lists/{id}/likes and has no /me roll-up"
       - trakt: "PUT /users/avatar"
         ours: ""
         status: out-of-scope
@@ -478,10 +470,6 @@ sections:
         ours: "GET /v1/watchnow/sources/{countryCode}"
         status: blocked-data
         rationale: "Same gap: no catalogue to filter by country."
-      - trakt: "GET /watchnow/justwatch_links/{country}"
-        ours: "GET /v1/watchnow/justwatch_links/{country}"
-        status: blocked-data
-        rationale: "No JustWatch link/deeplink data is stored anywhere."
   - name: "Team"
     rows:
       - trakt: "GET /team/"
@@ -500,14 +488,10 @@ sections:
         status: divergent
         rationale: "Lookup by external id is served with id_type/id as query params."
         compat: "listener maps /search/tmdb/{id} -> /v1/search/lookup?id_type=tmdb&id={id}."
-      - trakt: "POST /search"
-        ours: "POST /v1/search"
+      - trakt: "POST /search/recent/"
+        ours: "POST /v1/search/recent"
         status: blocked-data
         rationale: "Persisting a recent search needs a recent-searches table, which does not exist (search is stateless today)."
-      - trakt: "GET /search/recent"
-        ours: "GET /v1/search/recent"
-        status: blocked-data
-        rationale: "No recent-searches store exists to read back."
       - trakt: "GET /search/recent_by_id/global/{type}"
         ours: "GET /v1/search/recent_by_id/global/{type}"
         status: blocked-data
@@ -585,12 +569,12 @@ sections:
         ours: "GET /v1/movies/recommendations/{id}"
         status: blocked-engine
         rationale: "Custom 501: our own movie 'more like this' route (Trakt's nearest surface is /movies/{id}/related). Answers 501 not_implemented until the recommendations engine lands, so it is a stub, not parity. Recorded here so a 501 route cannot go unmeasured."
-        engine: "recommendations engine (issue #5)"
+        engine: "recommendations engine (issue #49)"
       - trakt: ""
         ours: "GET /v1/shows/recommendations/{id}"
         status: blocked-engine
         rationale: "Custom 501: our own show 'more like this' route; answers 501 not_implemented until the recommendations engine lands. Recorded here so a 501 route cannot go unmeasured."
-        engine: "recommendations engine (issue #5)"
+        engine: "recommendations engine (issue #49)"
       - trakt: ""
         ours: "GET /v1/auth/config"
         status: out-of-scope
@@ -631,3 +615,968 @@ sections:
         ours: "POST /v1/admin/users/{id}/password-reset"
         status: out-of-scope
         rationale: "custom: issue a one-time reset token for an admin to hand over; no mail transport is involved."
+
+  - name: "Contract surface missing from the original inventory"
+    rows:
+      - trakt: "DELETE /checkin"
+        ours: "DELETE /v1/checkin"
+        status: implemented
+        rationale: "Served at DELETE /v1/checkin; the path shape matches the contract."
+      - trakt: "DELETE /comments/{id}/"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the comment moderation/reaction surface; our comments module serves the create/reply/like subset"
+      - trakt: "DELETE /comments/{id}/like"
+        ours: "DELETE /v1/comments/{id}/like"
+        status: implemented
+        rationale: "Served at DELETE /v1/comments/{id}/like; the path shape matches the contract."
+      - trakt: "DELETE /comments/{id}/reactions/{reaction_type}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the comment moderation/reaction surface; our comments module serves the create/reply/like subset"
+      - trakt: "DELETE /lists/{id}/like"
+        ours: "DELETE /v1/lists/{id}/like"
+        status: implemented
+        rationale: "Served at DELETE /v1/lists/{id}/like; the path shape matches the contract."
+      - trakt: "DELETE /notes/{id}"
+        ours: "DELETE /v1/notes/{id}"
+        status: implemented
+        rationale: "Served at DELETE /v1/notes/{id}; the path shape matches the contract."
+      - trakt: "DELETE /sync/playback/{id}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+      - trakt: "DELETE /users/requests/{id}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the follow-request workflow, deferred with the optional shared social server (#54)"
+      - trakt: "DELETE /users/settings/plex/connect"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: Trakt's Plex integration and 'sync' product; haaku tracks via scrobbling, not a sync client"
+      - trakt: "DELETE /users/syncs/{id}"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: Trakt's Plex integration and 'sync' product; haaku tracks via scrobbling, not a sync client"
+      - trakt: "DELETE /users/{id}/block"
+        ours: "DELETE /v1/users/{id}/block"
+        status: implemented
+        rationale: "Served at DELETE /v1/users/{id}/block; the path shape matches the contract."
+      - trakt: "DELETE /users/{id}/follow"
+        ours: "DELETE /v1/users/{id}/follow"
+        status: implemented
+        rationale: "Served at DELETE /v1/users/{id}/follow; the path shape matches the contract."
+      - trakt: "DELETE /users/{id}/lists/{list_id}/"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "DELETE /users/{id}/lists/{list_id}/like"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "DELETE /users/{id}/smart-lists/{list_id}/"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "DELETE /younify/users/services/{service_id}"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: Trakt's proprietary cross-service linking product; a self-hosted tracker has nothing to link through it"
+      - trakt: "GET /calendars/{target}/media/{start_date}/{days}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: DVD, streaming and release calendars blocked on release data (#69)"
+      - trakt: "GET /calendars/{target}/shows/finales/{start_date}/{days}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: DVD, streaming and release calendars blocked on release data (#69)"
+      - trakt: "GET /calendars/{target}/shows/new/{start_date}/{days}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: DVD, streaming and release calendars blocked on release data (#69)"
+      - trakt: "GET /calendars/{target}/shows/premieres/{start_date}/{days}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: DVD, streaming and release calendars blocked on release data (#69)"
+      - trakt: "GET /calendars/{target}/shows/{start_date}/{days}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: DVD, streaming and release calendars blocked on release data (#69)"
+      - trakt: "GET /certifications/movies"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: reference-data enums beyond the subsets /v1/reference serves"
+      - trakt: "GET /certifications/shows"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: reference-data enums beyond the subsets /v1/reference serves"
+      - trakt: "GET /certifications/{type}"
+        ours: "GET /v1/certifications/{type}"
+        status: implemented
+        rationale: "Served at GET /v1/certifications/{type}; the path shape matches the contract."
+      - trakt: "GET /comments/recent/{comment_type}/{type}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the comment moderation/reaction surface; our comments module serves the create/reply/like subset"
+      - trakt: "GET /comments/updates/{comment_type}/{type}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the comment moderation/reaction surface; our comments module serves the create/reply/like subset"
+      - trakt: "GET /comments/{id}"
+        ours: "GET /v1/comments/{id}"
+        status: implemented
+        rationale: "Served at GET /v1/comments/{id}; the path shape matches the contract."
+      - trakt: "GET /comments/{id}/item"
+        ours: "GET /v1/comments/{id}/item"
+        status: implemented
+        rationale: "Served at GET /v1/comments/{id}/item; the path shape matches the contract."
+      - trakt: "GET /comments/{id}/likes"
+        ours: "GET /v1/comments/{id}/likes"
+        status: implemented
+        rationale: "Served at GET /v1/comments/{id}/likes; the path shape matches the contract."
+      - trakt: "GET /comments/{id}/reactions/"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the comment moderation/reaction surface; our comments module serves the create/reply/like subset"
+      - trakt: "GET /comments/{id}/reactions/summary"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the comment moderation/reaction surface; our comments module serves the create/reply/like subset"
+      - trakt: "GET /comments/{id}/replies"
+        ours: "GET /v1/comments/{id}/replies"
+        status: implemented
+        rationale: "Served at GET /v1/comments/{id}/replies; the path shape matches the contract."
+      - trakt: "GET /countries/{type}"
+        ours: "GET /v1/countries/{type}"
+        status: implemented
+        rationale: "Served at GET /v1/countries/{type}; the path shape matches the contract."
+      - trakt: "GET /episodes/{id}/watchnow/{country}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: episode-level sub-resources blocked on ingest (#68)"
+      - trakt: "GET /genres/{type}"
+        ours: "GET /v1/genres/{type}"
+        status: implemented
+        rationale: "Served at GET /v1/genres/{type}; the path shape matches the contract."
+      - trakt: "GET /languages/{type}"
+        ours: "GET /v1/languages/{type}"
+        status: implemented
+        rationale: "Served at GET /v1/languages/{type}; the path shape matches the contract."
+      - trakt: "GET /lists/popular"
+        ours: "GET /v1/lists/popular"
+        status: implemented
+        rationale: "Served at GET /v1/lists/popular; the path shape matches the contract."
+      - trakt: "GET /lists/trending"
+        ours: "GET /v1/lists/trending"
+        status: implemented
+        rationale: "Served at GET /v1/lists/trending; the path shape matches the contract."
+      - trakt: "GET /lists/{id}"
+        ours: "GET /v1/lists/{id}"
+        status: implemented
+        rationale: "Served at GET /v1/lists/{id}; the path shape matches the contract."
+      - trakt: "GET /lists/{id}/comments/{sort}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining lists surface tracked by #67"
+      - trakt: "GET /lists/{id}/items/movie"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining lists surface tracked by #67"
+      - trakt: "GET /lists/{id}/items/movie,show"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining lists surface tracked by #67"
+      - trakt: "GET /lists/{id}/items/movie,show,episode,season"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining lists surface tracked by #67"
+      - trakt: "GET /lists/{id}/items/show"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining lists surface tracked by #67"
+      - trakt: "GET /lists/{id}/items/{type}/{sort_by}/{sort_how}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining lists surface tracked by #67"
+      - trakt: "GET /lists/{id}/likes"
+        ours: "GET /v1/lists/{id}/likes"
+        status: implemented
+        rationale: "Served at GET /v1/lists/{id}/likes; the path shape matches the contract."
+      - trakt: "GET /media/anticipated"
+        ours: "GET /v1/media/anticipated"
+        status: implemented
+        rationale: "Served at GET /v1/media/anticipated; the path shape matches the contract."
+      - trakt: "GET /movies/favorited/{period}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining movie metadata sub-resources blocked on ingest (#68)"
+      - trakt: "GET /movies/popular"
+        ours: "GET /v1/movies/popular"
+        status: implemented
+        rationale: "Served at GET /v1/movies/popular; the path shape matches the contract."
+      - trakt: "GET /movies/trending"
+        ours: "GET /v1/movies/trending"
+        status: implemented
+        rationale: "Served at GET /v1/movies/trending; the path shape matches the contract."
+      - trakt: "GET /movies/updates/{start_date}"
+        ours: "GET /v1/movies/updates/{start_date}"
+        status: implemented
+        rationale: "Served at GET /v1/movies/updates/{start_date}; the path shape matches the contract."
+      - trakt: "GET /movies/{id}"
+        ours: "GET /v1/movies/{id}"
+        status: implemented
+        rationale: "Served at GET /v1/movies/{id}; the path shape matches the contract."
+      - trakt: "GET /movies/{id}/aliases"
+        ours: "GET /v1/movies/{id}/aliases"
+        status: implemented
+        rationale: "Served at GET /v1/movies/{id}/aliases; the path shape matches the contract."
+      - trakt: "GET /movies/{id}/people"
+        ours: "GET /v1/movies/{id}/people"
+        status: implemented
+        rationale: "Served at GET /v1/movies/{id}/people; the path shape matches the contract."
+      - trakt: "GET /movies/{id}/ratings"
+        ours: "GET /v1/movies/{id}/ratings"
+        status: implemented
+        rationale: "Served at GET /v1/movies/{id}/ratings; the path shape matches the contract."
+      - trakt: "GET /movies/{id}/translations"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining movie metadata sub-resources blocked on ingest (#68)"
+      - trakt: "GET /movies/{id}/watchnow/justwatch_links/{country}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining movie metadata sub-resources blocked on ingest (#68)"
+      - trakt: "GET /networks"
+        ours: "GET /v1/networks"
+        status: implemented
+        rationale: "Served at GET /v1/networks; the path shape matches the contract."
+      - trakt: "GET /notes/{id}"
+        ours: "GET /v1/notes/{id}"
+        status: implemented
+        rationale: "Served at GET /v1/notes/{id}; the path shape matches the contract."
+      - trakt: "GET /notes/{id}/item"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: tracked by the owning group issue under #4"
+      - trakt: "GET /oauth/authorize"
+        ours: "GET /oauth/authorize"
+        status: implemented
+        rationale: "Served at GET /oauth/authorize; the path shape matches the contract."
+      - trakt: "GET /people/updates/id/{start_date}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: person surfaces blocked on metadata ingest (#68)"
+      - trakt: "GET /people/updates/{start_date}"
+        ours: "GET /v1/people/updates/{start_date}"
+        status: implemented
+        rationale: "Served at GET /v1/people/updates/{start_date}; the path shape matches the contract."
+      - trakt: "GET /people/{id}/"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: person surfaces blocked on metadata ingest (#68)"
+      - trakt: "GET /people/{id}/movies"
+        ours: "GET /v1/people/{id}/movies"
+        status: implemented
+        rationale: "Served at GET /v1/people/{id}/movies; the path shape matches the contract."
+      - trakt: "GET /people/{id}/shows"
+        ours: "GET /v1/people/{id}/shows"
+        status: implemented
+        rationale: "Served at GET /v1/people/{id}/shows; the path shape matches the contract."
+      - trakt: "GET /recommendations/movies/"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the item-to-item recommendations engine tracked by #49"
+      - trakt: "GET /recommendations/shows/"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the item-to-item recommendations engine tracked by #49"
+      - trakt: "GET /search/{type}/exact"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: recent-search persistence tracked by #70"
+      - trakt: "GET /shows/favorited/{period}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining show metadata sub-resources (videos, studios, sentiments, certifications) blocked on ingest (#68)"
+      - trakt: "GET /shows/popular"
+        ours: "GET /v1/shows/popular"
+        status: implemented
+        rationale: "Served at GET /v1/shows/popular; the path shape matches the contract."
+      - trakt: "GET /shows/trending"
+        ours: "GET /v1/shows/trending"
+        status: implemented
+        rationale: "Served at GET /v1/shows/trending; the path shape matches the contract."
+      - trakt: "GET /shows/updates/{start_date}"
+        ours: "GET /v1/shows/updates/{start_date}"
+        status: implemented
+        rationale: "Served at GET /v1/shows/updates/{start_date}; the path shape matches the contract."
+      - trakt: "GET /shows/{id}"
+        ours: "GET /v1/shows/{id}"
+        status: implemented
+        rationale: "Served at GET /v1/shows/{id}; the path shape matches the contract."
+      - trakt: "GET /shows/{id}/aliases"
+        ours: "GET /v1/shows/{id}/aliases"
+        status: implemented
+        rationale: "Served at GET /v1/shows/{id}/aliases; the path shape matches the contract."
+      - trakt: "GET /shows/{id}/people"
+        ours: "GET /v1/shows/{id}/people"
+        status: implemented
+        rationale: "Served at GET /v1/shows/{id}/people; the path shape matches the contract."
+      - trakt: "GET /shows/{id}/ratings"
+        ours: "GET /v1/shows/{id}/ratings"
+        status: implemented
+        rationale: "Served at GET /v1/shows/{id}/ratings; the path shape matches the contract."
+      - trakt: "GET /shows/{id}/seasons"
+        ours: "GET /v1/shows/{id}/seasons"
+        status: implemented
+        rationale: "Served at GET /v1/shows/{id}/seasons; the path shape matches the contract."
+      - trakt: "GET /shows/{id}/seasons/{season}/episodes/{episode}/ratings"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
+      - trakt: "GET /shows/{id}/seasons/{season}/episodes/{episode}/stats"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
+      - trakt: "GET /shows/{id}/seasons/{season}/episodes/{episode}/translations"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
+      - trakt: "GET /shows/{id}/seasons/{season}/episodes/{episode}/watching"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
+      - trakt: "GET /shows/{id}/seasons/{season}/episodes/{episode}/watchnow/{country}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
+      - trakt: "GET /shows/{id}/seasons/{season}/info"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
+      - trakt: "GET /shows/{id}/seasons/{season}/watching"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
+      - trakt: "GET /shows/{id}/seasons/{season}/watchnow/justwatch_links/{country}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
+      - trakt: "GET /shows/{id}/translations"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining show metadata sub-resources (videos, studios, sentiments, certifications) blocked on ingest (#68)"
+      - trakt: "GET /shows/{id}/watchnow/justwatch_links/{country}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining show metadata sub-resources (videos, studios, sentiments, certifications) blocked on ingest (#68)"
+      - trakt: "GET /smart-lists/templates"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "GET /smart-lists/{list_id}"
+        ours: "GET /v1/smart-lists/{id}"
+        status: implemented
+        rationale: "Served at GET /v1/smart-lists/{id}; the path shape matches the contract."
+      - trakt: "GET /smart-lists/{list_id}/items"
+        ours: "GET /v1/smart-lists/{id}/items"
+        status: implemented
+        rationale: "Served at GET /v1/smart-lists/{id}/items; the path shape matches the contract."
+      - trakt: "GET /smart-lists/{list_id}/items/{type}/{sort_by}/{sort_how}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "GET /sync/collection/media"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+      - trakt: "GET /sync/collection/minimal/episodes"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+      - trakt: "GET /sync/collection/minimal/movies"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+      - trakt: "GET /sync/collection/minimal/shows"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+      - trakt: "GET /sync/playback"
+        ours: "GET /v1/sync/playback"
+        status: implemented
+        rationale: "Served at GET /v1/sync/playback; the path shape matches the contract."
+      - trakt: "GET /sync/playback/episodes"
+        ours: "GET /v1/sync/playback/episodes"
+        status: implemented
+        rationale: "Served at GET /v1/sync/playback/episodes; the path shape matches the contract."
+      - trakt: "GET /sync/playback/movies"
+        ours: "GET /v1/sync/playback/movies"
+        status: implemented
+        rationale: "Served at GET /v1/sync/playback/movies; the path shape matches the contract."
+      - trakt: "GET /sync/progress/up_next"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+      - trakt: "GET /sync/progress/up_next_nitro"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+      - trakt: "GET /sync/progress/watched"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+      - trakt: "GET /sync/watched/{type}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+      - trakt: "GET /users/blocked"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/hidden/dropped"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: per-section hidden-item lists; our hidden surface serves the subset we use (/v1/hidden)"
+      - trakt: "GET /users/hidden/progress_watched"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: per-section hidden-item lists; our hidden surface serves the subset we use (/v1/hidden)"
+      - trakt: "GET /users/hidden/{section}"
+        ours: "GET /v1/users/hidden/{section}"
+        status: implemented
+        rationale: "Served at GET /v1/users/hidden/{section}; the path shape matches the contract."
+      - trakt: "GET /users/reactions/comments"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/requests/"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the follow-request workflow, deferred with the optional shared social server (#54)"
+      - trakt: "GET /users/requests/following"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the follow-request workflow, deferred with the optional shared social server (#54)"
+      - trakt: "GET /users/saved_filters/{section}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/settings/plex/"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: Trakt's Plex integration and 'sync' product; haaku tracks via scrobbling, not a sync client"
+      - trakt: "GET /users/settings/plex/servers"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: Trakt's Plex integration and 'sync' product; haaku tracks via scrobbling, not a sync client"
+      - trakt: "GET /users/settings/plex/servers/{server_id}"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: Trakt's Plex integration and 'sync' product; haaku tracks via scrobbling, not a sync client"
+      - trakt: "GET /users/syncs/"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: Trakt's Plex integration and 'sync' product; haaku tracks via scrobbling, not a sync client"
+      - trakt: "GET /users/syncs/{id}"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: Trakt's Plex integration and 'sync' product; haaku tracks via scrobbling, not a sync client"
+      - trakt: "GET /users/syncs/{id}/paused"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: Trakt's Plex integration and 'sync' product; haaku tracks via scrobbling, not a sync client"
+      - trakt: "GET /users/syncs/{id}/skipped"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: Trakt's Plex integration and 'sync' product; haaku tracks via scrobbling, not a sync client"
+      - trakt: "GET /users/syncs/{type}"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: Trakt's Plex integration and 'sync' product; haaku tracks via scrobbling, not a sync client"
+      - trakt: "GET /users/{id}/"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/{id}/favorites/comments/{sort}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/{id}/favorites/media/{sort}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/{id}/favorites/movies/{sort}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/{id}/favorites/shows/{sort}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/{id}/favorites/{type}/{sort_by}/{sort_how}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/{id}/followers"
+        ours: "GET /v1/users/{id}/followers"
+        status: implemented
+        rationale: "Served at GET /v1/users/{id}/followers; the path shape matches the contract."
+      - trakt: "GET /users/{id}/following"
+        ours: "GET /v1/users/{id}/following"
+        status: implemented
+        rationale: "Served at GET /v1/users/{id}/following; the path shape matches the contract."
+      - trakt: "GET /users/{id}/friends"
+        ours: "GET /v1/users/{id}/friends"
+        status: implemented
+        rationale: "Served at GET /v1/users/{id}/friends; the path shape matches the contract."
+      - trakt: "GET /users/{id}/history/episodes"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/{id}/history/episodes/{item_id}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/{id}/history/movies"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/{id}/history/movies/{item_id}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/{id}/history/shows"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/{id}/history/shows/{item_id}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/{id}/lists"
+        ours: "GET /v1/users/{id}/lists"
+        status: implemented
+        rationale: "Served at GET /v1/users/{id}/lists; the path shape matches the contract."
+      - trakt: "GET /users/{id}/lists/collaborations"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "GET /users/{id}/lists/{list_id}/"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "GET /users/{id}/lists/{list_id}/comments/{sort}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "GET /users/{id}/lists/{list_id}/items/movie"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "GET /users/{id}/lists/{list_id}/items/movie,show"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "GET /users/{id}/lists/{list_id}/items/movie,show,season,episode"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "GET /users/{id}/lists/{list_id}/items/show"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "GET /users/{id}/lists/{list_id}/items/{type}/{sort_by}/{sort_how}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "GET /users/{id}/lists/{list_id}/likes"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "GET /users/{id}/lists/{list_id}/smart-list-draft"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "GET /users/{id}/mir/{year}/{month}"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: Trakt's Year/Month-in-Review are proprietary aggregates over its whole user base; we do not reproduce them"
+      - trakt: "GET /users/{id}/ratings/episodes"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/{id}/ratings/movies"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/{id}/ratings/shows"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/{id}/ratings/{type}/{rating}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/{id}/smart-list-drafts"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "GET /users/{id}/smart-lists"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "GET /users/{id}/smart-lists/{list_id}/"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "GET /users/{id}/stats"
+        ours: "GET /v1/users/{id}/stats"
+        status: implemented
+        rationale: "Served at GET /v1/users/{id}/stats; the path shape matches the contract."
+      - trakt: "GET /users/{id}/watched/movies"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/{id}/watched/shows"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/{id}/watched/{type}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/{id}/watchlist/comments/{sort}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/{id}/watchlist/movie,show/{sort}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/{id}/watchlist/movies/{sort}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/{id}/watchlist/shows/{sort}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /users/{id}/yir/all"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: Trakt's Year/Month-in-Review are proprietary aggregates over its whole user base; we do not reproduce them"
+      - trakt: "GET /users/{id}/yir/{year}"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: Trakt's Year/Month-in-Review are proprietary aggregates over its whole user base; we do not reproduce them"
+      - trakt: "GET /users/{id}/yir/{year}/persona"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: Trakt's Year/Month-in-Review are proprietary aggregates over its whole user base; we do not reproduce them"
+      - trakt: "GET /users/{id}/yir/{year}/{year_end}"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: Trakt's Year/Month-in-Review are proprietary aggregates over its whole user base; we do not reproduce them"
+      - trakt: "GET /users/{id}/{type}/activities"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "GET /younify/connections"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: Trakt's proprietary cross-service linking product; a self-hosted tracker has nothing to link through it"
+      - trakt: "POST /checkin"
+        ours: "POST /v1/checkin"
+        status: implemented
+        rationale: "Served at POST /v1/checkin; the path shape matches the contract."
+      - trakt: "POST /comments/"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the comment moderation/reaction surface; our comments module serves the create/reply/like subset"
+      - trakt: "POST /comments/{id}/like"
+        ours: "POST /v1/comments/{id}/like"
+        status: implemented
+        rationale: "Served at POST /v1/comments/{id}/like; the path shape matches the contract."
+      - trakt: "POST /comments/{id}/reactions/{reaction_type}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the comment moderation/reaction surface; our comments module serves the create/reply/like subset"
+      - trakt: "POST /comments/{id}/replies"
+        ours: "POST /v1/comments/{id}/replies"
+        status: implemented
+        rationale: "Served at POST /v1/comments/{id}/replies; the path shape matches the contract."
+      - trakt: "POST /comments/{id}/report"
+        ours: "POST /v1/comments/{id}/report"
+        status: implemented
+        rationale: "Served at POST /v1/comments/{id}/report; the path shape matches the contract."
+      - trakt: "POST /episodes/{id}/report"
+        ours: "POST /v1/episodes/{id}/report"
+        status: implemented
+        rationale: "Served at POST /v1/episodes/{id}/report; the path shape matches the contract."
+      - trakt: "POST /lists/{id}/like"
+        ours: "POST /v1/lists/{id}/like"
+        status: implemented
+        rationale: "Served at POST /v1/lists/{id}/like; the path shape matches the contract."
+      - trakt: "POST /lists/{id}/report"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining lists surface tracked by #67"
+      - trakt: "POST /movies/{id}/refresh/justwatch"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining movie metadata sub-resources blocked on ingest (#68)"
+      - trakt: "POST /movies/{id}/report"
+        ours: "POST /v1/movies/{id}/report"
+        status: implemented
+        rationale: "Served at POST /v1/movies/{id}/report; the path shape matches the contract."
+      - trakt: "POST /notes"
+        ours: "POST /v1/notes"
+        status: implemented
+        rationale: "Served at POST /v1/notes; the path shape matches the contract."
+      - trakt: "POST /oauth/device/code"
+        ours: "POST /oauth/device/code"
+        status: implemented
+        rationale: "Served at POST /oauth/device/code; the path shape matches the contract."
+      - trakt: "POST /oauth/device/token"
+        ours: "POST /oauth/device/token"
+        status: implemented
+        rationale: "Served at POST /oauth/device/token; the path shape matches the contract."
+      - trakt: "POST /oauth/revoke"
+        ours: "POST /oauth/revoke"
+        status: implemented
+        rationale: "Served at POST /oauth/revoke; the path shape matches the contract."
+      - trakt: "POST /oauth/token"
+        ours: "POST /oauth/token"
+        status: implemented
+        rationale: "Served at POST /oauth/token; the path shape matches the contract."
+      - trakt: "POST /people/{id}/report"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: person surfaces blocked on metadata ingest (#68)"
+      - trakt: "POST /scrobble/pause"
+        ours: "POST /v1/scrobble/pause"
+        status: implemented
+        rationale: "Served at POST /v1/scrobble/pause; the path shape matches the contract."
+      - trakt: "POST /scrobble/start"
+        ours: "POST /v1/scrobble/start"
+        status: implemented
+        rationale: "Served at POST /v1/scrobble/start; the path shape matches the contract."
+      - trakt: "POST /scrobble/stop"
+        ours: "POST /v1/scrobble/stop"
+        status: implemented
+        rationale: "Served at POST /v1/scrobble/stop; the path shape matches the contract."
+      - trakt: "POST /seasons/{id}/report"
+        ours: "POST /v1/seasons/{id}/report"
+        status: implemented
+        rationale: "Served at POST /v1/seasons/{id}/report; the path shape matches the contract."
+      - trakt: "POST /shows/{id}/refresh/justwatch"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining show metadata sub-resources (videos, studios, sentiments, certifications) blocked on ingest (#68)"
+      - trakt: "POST /shows/{id}/report"
+        ours: "POST /v1/shows/{id}/report"
+        status: implemented
+        rationale: "Served at POST /v1/shows/{id}/report; the path shape matches the contract."
+      - trakt: "POST /shows/{id}/seasons/{season}/episodes/{episode}/report"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
+      - trakt: "POST /shows/{id}/seasons/{season}/report"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
+      - trakt: "POST /sync/collection"
+        ours: "POST /v1/sync/collection"
+        status: implemented
+        rationale: "Served at POST /v1/sync/collection; the path shape matches the contract."
+      - trakt: "POST /sync/collection/remove"
+        ours: "POST /v1/sync/collection/remove"
+        status: implemented
+        rationale: "Served at POST /v1/sync/collection/remove; the path shape matches the contract."
+      - trakt: "POST /sync/favorites"
+        ours: "POST /v1/sync/favorites"
+        status: implemented
+        rationale: "Served at POST /v1/sync/favorites; the path shape matches the contract."
+      - trakt: "POST /sync/favorites/remove"
+        ours: "POST /v1/sync/favorites/remove"
+        status: implemented
+        rationale: "Served at POST /v1/sync/favorites/remove; the path shape matches the contract."
+      - trakt: "POST /sync/favorites/reorder"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+      - trakt: "POST /sync/history"
+        ours: "POST /v1/sync/history"
+        status: implemented
+        rationale: "Served at POST /v1/sync/history; the path shape matches the contract."
+      - trakt: "POST /sync/history/remove"
+        ours: "POST /v1/sync/history/remove"
+        status: implemented
+        rationale: "Served at POST /v1/sync/history/remove; the path shape matches the contract."
+      - trakt: "POST /sync/ratings"
+        ours: "POST /v1/sync/ratings"
+        status: implemented
+        rationale: "Served at POST /v1/sync/ratings; the path shape matches the contract."
+      - trakt: "POST /sync/ratings/remove"
+        ours: "POST /v1/sync/ratings/remove"
+        status: implemented
+        rationale: "Served at POST /v1/sync/ratings/remove; the path shape matches the contract."
+      - trakt: "POST /sync/watchlist"
+        ours: "POST /v1/sync/watchlist"
+        status: implemented
+        rationale: "Served at POST /v1/sync/watchlist; the path shape matches the contract."
+      - trakt: "POST /sync/watchlist/remove"
+        ours: "POST /v1/sync/watchlist/remove"
+        status: implemented
+        rationale: "Served at POST /v1/sync/watchlist/remove; the path shape matches the contract."
+      - trakt: "POST /sync/watchlist/reorder"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+      - trakt: "POST /users/hidden/calendar/remove"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: per-section hidden-item lists; our hidden surface serves the subset we use (/v1/hidden)"
+      - trakt: "POST /users/hidden/progress_watched/remove"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: per-section hidden-item lists; our hidden surface serves the subset we use (/v1/hidden)"
+      - trakt: "POST /users/hidden/{section}"
+        ours: "POST /v1/users/hidden/{section}"
+        status: implemented
+        rationale: "Served at POST /v1/users/hidden/{section}; the path shape matches the contract."
+      - trakt: "POST /users/hidden/{section}/remove"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: per-section hidden-item lists; our hidden surface serves the subset we use (/v1/hidden)"
+      - trakt: "POST /users/requests/{id}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the follow-request workflow, deferred with the optional shared social server (#54)"
+      - trakt: "POST /users/settings/plex/connect"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: Trakt's Plex integration and 'sync' product; haaku tracks via scrobbling, not a sync client"
+      - trakt: "POST /users/settings/plex/sync"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: Trakt's Plex integration and 'sync' product; haaku tracks via scrobbling, not a sync client"
+      - trakt: "POST /users/{id}/block"
+        ours: "POST /v1/users/{id}/block"
+        status: implemented
+        rationale: "Served at POST /v1/users/{id}/block; the path shape matches the contract."
+      - trakt: "POST /users/{id}/follow"
+        ours: "POST /v1/users/{id}/follow"
+        status: implemented
+        rationale: "Served at POST /v1/users/{id}/follow; the path shape matches the contract."
+      - trakt: "POST /users/{id}/lists"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "POST /users/{id}/lists/reorder"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "POST /users/{id}/lists/{list_id}/items"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "POST /users/{id}/lists/{list_id}/items/remove"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "POST /users/{id}/lists/{list_id}/items/reorder"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "POST /users/{id}/lists/{list_id}/like"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "POST /users/{id}/lists/{list_id}/reorder"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "POST /users/{id}/lists/{list_id}/report"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "POST /users/{id}/lists/{list_id}/smart-list-draft/convert"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "POST /users/{id}/report"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "POST /users/{id}/smart-lists"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "POST /younify/connect"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: Trakt's proprietary cross-service linking product; a self-hosted tracker has nothing to link through it"
+      - trakt: "POST /younify/users/refresh"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: Trakt's proprietary cross-service linking product; a self-hosted tracker has nothing to link through it"
+      - trakt: "POST /younify/users/refresh/{service_id}"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: Trakt's proprietary cross-service linking product; a self-hosted tracker has nothing to link through it"
+      - trakt: "POST /younify/users/refresh/{service_id}/{all_data}"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: Trakt's proprietary cross-service linking product; a self-hosted tracker has nothing to link through it"
+      - trakt: "PUT /comments/{id}/"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the comment moderation/reaction surface; our comments module serves the create/reply/like subset"
+      - trakt: "PUT /notes/{id}"
+        ours: "PUT /v1/notes/{id}"
+        status: implemented
+        rationale: "Served at PUT /v1/notes/{id}; the path shape matches the contract."
+      - trakt: "PUT /sync/favorites/{list_item_id}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+      - trakt: "PUT /sync/watchlist"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+      - trakt: "PUT /sync/watchlist/{list_item_id}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
+      - trakt: "PUT /users/settings"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+      - trakt: "PUT /users/settings/plex/"
+        ours: ""
+        status: out-of-scope
+        rationale: "decision: Trakt's Plex integration and 'sync' product; haaku tracks via scrobbling, not a sync client"
+      - trakt: "PUT /users/{id}/lists/{list_id}/"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "PUT /users/{id}/lists/{list_id}/items/{list_item_id}"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: "PUT /users/{id}/smart-lists/{list_id}/"
+        ours: ""
+        status: out-of-scope
+        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+      - trakt: ""
+        ours: "GET /v1/movies/{id}/lists"
+        status: blocked-engine
+        rationale: "custom: our own segment-less lists route (what the detail page calls); the contract's shape is /movies/{id}/lists/{type}/{sort}, which the parity stub serves. Both answer 501 until the lists engine lands."
+        engine: "lists engine (issue #67)"
+      - trakt: ""
+        ours: "GET /v1/shows/{id}/lists"
+        status: blocked-engine
+        rationale: "custom: our own segment-less lists route (what the detail page calls); the contract's shape is /shows/{id}/lists/{type}/{sort}, which the parity stub serves. Both answer 501 until the lists engine lands."
+        engine: "lists engine (issue #67)"

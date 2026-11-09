@@ -317,7 +317,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Parity stub — not implemented (parity tracker) */
+        /** Parity stub — not implemented (calendars & Watch Now data) */
         get: operations["_v1_calendars_target_dvd_start_date_days_GET"];
         put?: never;
         post?: never;
@@ -334,7 +334,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Parity stub — not implemented (parity tracker) */
+        /** Parity stub — not implemented (calendars & Watch Now data) */
         get: operations["_v1_calendars_target_streaming_start_date_days_GET"];
         put?: never;
         post?: never;
@@ -1259,6 +1259,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/movies/{id}/lists/{type}/{sort}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Parity stub — not implemented (lists engine) */
+        get: operations["_v1_movies_id_lists_type_sort_GET"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/movies/{id}/people": {
         parameters: {
             query?: never;
@@ -1453,7 +1470,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Parity stub — not implemented (calendars & Watch Now data) */
+        /** Parity stub — not implemented (stats & rankings engine) */
         get: operations["_v1_movies_boxoffice_GET"];
         put?: never;
         post?: never;
@@ -2019,8 +2036,7 @@ export interface paths {
         /** Full-text search across movies, shows, episodes, people, and lists */
         get: operations["_v1_search_GET"];
         put?: never;
-        /** Parity stub — not implemented (search engine) */
-        post: operations["_v1_search_POST"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2068,10 +2084,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Parity stub — not implemented (search engine) */
-        get: operations["_v1_search_recent_GET"];
+        get?: never;
         put?: never;
-        post?: never;
+        /** Parity stub — not implemented (search engine) */
+        post: operations["_v1_search_recent_POST"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2085,7 +2101,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Parity stub — not implemented (parity tracker) */
+        /** Parity stub — not implemented (search engine) */
         get: operations["_v1_search_recent_by_id_global_type_GET"];
         put?: never;
         post?: never;
@@ -2265,6 +2281,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/shows/{id}/lists/{type}/{sort}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Parity stub — not implemented (lists engine) */
+        get: operations["_v1_shows_id_lists_type_sort_GET"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/shows/{id}/next_episode": {
         parameters: {
             query?: never;
@@ -2344,7 +2377,7 @@ export interface paths {
         put?: never;
         /** Reset the caller's watched-episode history for one show (ratings/collection untouched) */
         post: operations["_v1_shows_id_progress_watched_reset_POST"];
-        /** Parity stub — not implemented (parity tracker) */
+        /** Parity stub — not implemented (stats & rankings engine) */
         delete: operations["_v1_shows_id_progress_watched_reset_DELETE"];
         options?: never;
         head?: never;
@@ -2511,7 +2544,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Parity stub — not implemented (parity tracker) */
+        /** Parity stub — not implemented (TMDB metadata ingest) */
         get: operations["_v1_shows_id_seasons_season_episodes_episode_people_GET"];
         put?: never;
         post?: never;
@@ -2545,7 +2578,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Parity stub — not implemented (parity tracker) */
+        /** Parity stub — not implemented (TMDB metadata ingest) */
         get: operations["_v1_shows_id_seasons_season_episodes_episode_videos_GET"];
         put?: never;
         post?: never;
@@ -4231,23 +4264,6 @@ export interface paths {
         put?: never;
         /** Create smart list */
         post: operations["_v1_users_me_smart_lists_POST"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/v1/watchnow/justwatch_links/{country}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Parity stub — not implemented (calendars & Watch Now data) */
-        get: operations["_v1_watchnow_justwatch_links_country_GET"];
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -5965,7 +5981,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — movies carries a single released DATE; there is no dvd/digital/physical date column, so a DVD calend (#4) */
+            /** @description Not implemented — movies carries a single released DATE; there is no dvd/digital/physical date column, so a DVD calend (#69) */
             501: {
                 headers: {
                     [name: string]: unknown;
@@ -6046,7 +6062,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — No streaming-release date is stored; watch providers live in movies.metadata per title (TMDB), not a (#4) */
+            /** @description Not implemented — No streaming-release date is stored; watch providers live in movies.metadata per title (TMDB), not a (#69) */
             501: {
                 headers: {
                     [name: string]: unknown;
@@ -10918,7 +10934,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — rankings/stats engine (issue #5) (#66) */
+            /** @description Not implemented — stats/rankings engine (issue #66) (#66) */
             501: {
                 headers: {
                     [name: string]: unknown;
@@ -11088,7 +11104,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — rankings/stats engine (issue #5) (#66) */
+            /** @description Not implemented — stats/rankings engine (issue #66) (#66) */
             501: {
                 headers: {
                     [name: string]: unknown;
@@ -11422,6 +11438,87 @@ export interface operations {
             };
         };
     };
+    _v1_movies_id_lists_type_sort_GET: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unprocessable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not implemented — lists engine (issue #67) (#67) */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     _v1_movies_id_people_GET: {
         parameters: {
             query?: never;
@@ -11656,7 +11753,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — recommendations engine (issue #5) (#49) */
+            /** @description Not implemented — recommendations engine (issue #49) (#49) */
             501: {
                 headers: {
                     [name: string]: unknown;
@@ -12394,7 +12491,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — No revenue/box-office columns exist and the TMDB ingest does not fetch them. (#69) */
+            /** @description Not implemented — No revenue/box-office columns exist and the TMDB ingest does not fetch them. (#66) */
             501: {
                 headers: {
                     [name: string]: unknown;
@@ -12475,7 +12572,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — stats/rankings engine (issue #5) (#66) */
+            /** @description Not implemented — stats/rankings engine (issue #66) (#66) */
             501: {
                 headers: {
                     [name: string]: unknown;
@@ -12556,7 +12653,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — stats/rankings engine (issue #5) (#66) */
+            /** @description Not implemented — stats/rankings engine (issue #66) (#66) */
             501: {
                 headers: {
                     [name: string]: unknown;
@@ -12637,7 +12734,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — stats/rankings engine (issue #5) (#66) */
+            /** @description Not implemented — stats/rankings engine (issue #66) (#66) */
             501: {
                 headers: {
                     [name: string]: unknown;
@@ -13207,7 +13304,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — stats/rankings engine (issue #5) (#66) */
+            /** @description Not implemented — stats/rankings engine (issue #66) (#66) */
             501: {
                 headers: {
                     [name: string]: unknown;
@@ -14097,7 +14194,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — lists engine (issue #5) (#67) */
+            /** @description Not implemented — lists engine (issue #67) (#67) */
             501: {
                 headers: {
                     [name: string]: unknown;
@@ -14498,7 +14595,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — recommendations engine (issue #5) (#49) */
+            /** @description Not implemented — recommendations engine (issue #49) (#49) */
             501: {
                 headers: {
                     [name: string]: unknown;
@@ -14658,7 +14755,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — recommendations engine (issue #5) (#49) */
+            /** @description Not implemented — recommendations engine (issue #49) (#49) */
             501: {
                 headers: {
                     [name: string]: unknown;
@@ -15217,87 +15314,6 @@ export interface operations {
             };
         };
     };
-    _v1_search_POST: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description invalid request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description unprocessable */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description rate limited */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Not implemented — Persisting a recent search needs a recent-searches table, which does not exist (search is stateless  (#70) */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
     _v1_search_exact_GET: {
         parameters: {
             query?: never;
@@ -15452,7 +15468,7 @@ export interface operations {
             };
         };
     };
-    _v1_search_recent_GET: {
+    _v1_search_recent_POST: {
         parameters: {
             query?: never;
             header?: never;
@@ -15524,7 +15540,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — No recent-searches store exists to read back. (#70) */
+            /** @description Not implemented — Persisting a recent search needs a recent-searches table, which does not exist (search is stateless  (#70) */
             501: {
                 headers: {
                     [name: string]: unknown;
@@ -15605,7 +15621,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — Same missing store; the Trakt id-keyed variant too. (#4) */
+            /** @description Not implemented — Same missing store; the Trakt id-keyed variant too. (#70) */
             501: {
                 headers: {
                     [name: string]: unknown;
@@ -16425,6 +16441,87 @@ export interface operations {
             };
         };
     };
+    _v1_shows_id_lists_type_sort_GET: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unprocessable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not implemented — lists engine (issue #67) (#67) */
+            501: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     _v1_shows_id_next_episode_GET: {
         parameters: {
             query?: never;
@@ -16895,7 +16992,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — stats/rankings engine (issue #5) (#4) */
+            /** @description Not implemented — stats/rankings engine (issue #66) (#66) */
             501: {
                 headers: {
                     [name: string]: unknown;
@@ -17057,7 +17154,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — recommendations engine (issue #5) (#49) */
+            /** @description Not implemented — recommendations engine (issue #49) (#49) */
             501: {
                 headers: {
                     [name: string]: unknown;
@@ -17698,7 +17795,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — Episode credits are not ingested (credits table is written for movie/show only). (#4) */
+            /** @description Not implemented — Episode credits are not ingested (credits table is written for movie/show only). (#68) */
             501: {
                 headers: {
                     [name: string]: unknown;
@@ -17858,7 +17955,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — No videos table and no TMDB video ingest. (#4) */
+            /** @description Not implemented — No videos table and no TMDB video ingest. (#68) */
             501: {
                 headers: {
                     [name: string]: unknown;
@@ -18674,7 +18771,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — stats/rankings engine (issue #5) (#66) */
+            /** @description Not implemented — stats/rankings engine (issue #66) (#66) */
             501: {
                 headers: {
                     [name: string]: unknown;
@@ -18755,7 +18852,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — stats/rankings engine (issue #5) (#66) */
+            /** @description Not implemented — stats/rankings engine (issue #66) (#66) */
             501: {
                 headers: {
                     [name: string]: unknown;
@@ -18836,7 +18933,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — stats/rankings engine (issue #5) (#66) */
+            /** @description Not implemented — stats/rankings engine (issue #66) (#66) */
             501: {
                 headers: {
                     [name: string]: unknown;
@@ -19406,7 +19503,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — stats/rankings engine (issue #5) (#66) */
+            /** @description Not implemented — stats/rankings engine (issue #66) (#66) */
             501: {
                 headers: {
                     [name: string]: unknown;
@@ -26999,87 +27096,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
-            };
-        };
-    };
-    _v1_watchnow_justwatch_links_country_GET: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description invalid request */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description conflict */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description unprocessable */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description rate limited */
-            429: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
-            };
-            /** @description Not implemented — No JustWatch link/deeplink data is stored anywhere. (#69) */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };

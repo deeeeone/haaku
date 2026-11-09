@@ -12,10 +12,18 @@ import (
 // that haaku does not serve yet. Each answers an honest 501 naming the blocker and the
 // tracking issue, so a Trakt client gets a real answer instead of a 404.
 func registerStub67(api fiber.Router) {
-	// GET /people/{id}/lists/{type}/{sort} — blocked-engine: lists engine (issue #5)
+	// GET /movies/{id}/lists/{type}/{sort} — blocked-engine: lists engine (issue #67)
 	// Upstream getlists; 200: array of {allow_comments,comment_count,converted_to,created_at,description,display_numbers,ids,images,item_count,likes,name,privacy,share_link,sort_by,sort_how,stale_origin,type,updated_at,user}; path: id,sort,type; +3 query
 	// Tracked in #67: https://github.com/haaku-tv/haaku/issues/67
-	api.Get("/v1/people/:id/lists/:type/:sort", stubHandler(67, "GET /people/{id}/lists/{type}/{sort}", "lists engine (issue #5)"))
+	api.Get("/v1/movies/:id/lists/:type/:sort", stubHandler(67, "GET /movies/{id}/lists/{type}/{sort}", "lists engine (issue #67)"))
+	// GET /shows/{id}/lists/{type}/{sort} — blocked-engine: lists engine (issue #67)
+	// Upstream getlists; 200: array of {allow_comments,comment_count,converted_to,created_at,description,display_numbers,ids,images,item_count,likes,name,privacy,share_link,sort_by,sort_how,stale_origin,type,updated_at,user}; path: id,sort,type; +3 query
+	// Tracked in #67: https://github.com/haaku-tv/haaku/issues/67
+	api.Get("/v1/shows/:id/lists/:type/:sort", stubHandler(67, "GET /shows/{id}/lists/{type}/{sort}", "lists engine (issue #67)"))
+	// GET /people/{id}/lists/{type}/{sort} — blocked-engine: lists engine (issue #67)
+	// Upstream getlists; 200: array of {allow_comments,comment_count,converted_to,created_at,description,display_numbers,ids,images,item_count,likes,name,privacy,share_link,sort_by,sort_how,stale_origin,type,updated_at,user}; path: id,sort,type; +3 query
+	// Tracked in #67: https://github.com/haaku-tv/haaku/issues/67
+	api.Get("/v1/people/:id/lists/:type/:sort", stubHandler(67, "GET /people/{id}/lists/{type}/{sort}", "lists engine (issue #67)"))
 }
 
 // defsStub67 is the registry entry for each stub above. The 501 in
@@ -25,11 +33,27 @@ func defsStub67() []openapi.RouteDef {
 	return []openapi.RouteDef{
 		{
 			Method:      "GET",
+			Path:        "/v1/movies/{id}/lists/{type}/{sort}",
+			Summary:     "Parity stub — not implemented (lists engine)",
+			Tags:        []string{"Movies"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — lists engine (issue #67) (#67)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/shows/{id}/lists/{type}/{sort}",
+			Summary:     "Parity stub — not implemented (lists engine)",
+			Tags:        []string{"Shows"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — lists engine (issue #67) (#67)"},
+		},
+		{
+			Method:      "GET",
 			Path:        "/v1/people/{id}/lists/{type}/{sort}",
 			Summary:     "Parity stub — not implemented (lists engine)",
 			Tags:        []string{"People"},
 			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — lists engine (issue #5) (#67)"},
+			StatusCodes: map[int]string{501: "Not implemented — lists engine (issue #67) (#67)"},
 		},
 	}
 }

@@ -12,14 +12,14 @@ import (
 // that haaku does not serve yet. Each answers an honest 501 naming the blocker and the
 // tracking issue, so a Trakt client gets a real answer instead of a 404.
 func registerStub70(api fiber.Router) {
-	// POST /search — blocked-data: Persisting a recent search needs a recent-searches table, which does not exist (search is stateless today).
-	// Upstream: no exact path match — see docs/parity/reconciliation.md
+	// POST /search/recent/ — blocked-data: Persisting a recent search needs a recent-searches table, which does not exist (search is stateless today).
+	// Upstream postadd
 	// Tracked in #70: https://github.com/haaku-tv/haaku/issues/70
-	api.Post("/v1/search", stubHandler(70, "POST /search", "Persisting a recent search needs a recent-searches table, which does not exist (search is stateless today)."))
-	// GET /search/recent — blocked-data: No recent-searches store exists to read back.
-	// Upstream: no exact path match — see docs/parity/reconciliation.md
+	api.Post("/v1/search/recent", stubHandler(70, "POST /search/recent/", "Persisting a recent search needs a recent-searches table, which does not exist (search is stateless today)."))
+	// GET /search/recent_by_id/global/{type} — blocked-data: Same missing store; the Trakt id-keyed variant too.
+	// Upstream gettrending; path: type; +4 query
 	// Tracked in #70: https://github.com/haaku-tv/haaku/issues/70
-	api.Get("/v1/search/recent", stubHandler(70, "GET /search/recent", "No recent-searches store exists to read back."))
+	api.Get("/v1/search/recent_by_id/global/:type", stubHandler(70, "GET /search/recent_by_id/global/{type}", "Same missing store; the Trakt id-keyed variant too."))
 }
 
 // defsStub70 is the registry entry for each stub above. The 501 in
@@ -29,7 +29,7 @@ func defsStub70() []openapi.RouteDef {
 	return []openapi.RouteDef{
 		{
 			Method:      "POST",
-			Path:        "/v1/search",
+			Path:        "/v1/search/recent",
 			Summary:     "Parity stub — not implemented (search engine)",
 			Tags:        []string{"Search"},
 			Auth:        "required",
@@ -37,11 +37,11 @@ func defsStub70() []openapi.RouteDef {
 		},
 		{
 			Method:      "GET",
-			Path:        "/v1/search/recent",
+			Path:        "/v1/search/recent_by_id/global/{type}",
 			Summary:     "Parity stub — not implemented (search engine)",
 			Tags:        []string{"Search"},
 			Auth:        "required",
-			StatusCodes: map[int]string{501: "Not implemented — No recent-searches store exists to read back. (#70)"},
+			StatusCodes: map[int]string{501: "Not implemented — Same missing store; the Trakt id-keyed variant too. (#70)"},
 		},
 	}
 }
