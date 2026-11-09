@@ -206,21 +206,23 @@ func progressSort(c *fiber.Ctx, rows []*showProgressRow) error {
 	less := func(a, b *showProgressRow) bool { return false }
 	switch sortBy {
 	case "last_watched_at":
+		// Ascending: nil and older timestamps sort first, so the direction
+		// flip below produces the order the caller asked for (the default
+		// desc puts the most recent watch first).
 		less = func(a, b *showProgressRow) bool {
 			at, bt := a.lastWatchedAt, b.lastWatchedAt
-			if at == nil && bt == nil {
+			switch {
+			case at == nil && bt == nil:
 				return a.show.ID < b.show.ID
-			}
-			if at == nil {
-				return false
-			}
-			if bt == nil {
+			case at == nil:
 				return true
-			}
-			if at.Equal(*bt) {
+			case bt == nil:
+				return false
+			case at.Equal(*bt):
 				return a.show.ID < b.show.ID
+			default:
+				return at.Before(*bt)
 			}
-			return at.After(*bt)
 		}
 	case "title":
 		less = func(a, b *showProgressRow) bool { return a.show.Title < b.show.Title }

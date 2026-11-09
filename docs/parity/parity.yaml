@@ -627,7 +627,7 @@ sections:
       - trakt: "DELETE /sync/playback/{id}"
         ours: "DELETE /v1/sync/playback/{id}"
         status: implemented
-        rationale: "Serves the caller's playback entry by the media id the playback read returns; deletes the matching user_playback row and answers 204, or 404 when the caller owns no such entry."
+        rationale: "Serves the caller's playback entry by the media id the playback read returns; deletes the matching user_playback row and answers 204, or 404 when the caller owns no such entry. The path carries no media_type, so an id matching rows of more than one media_type is rejected with 400 rather than deleting several kinds."
       - trakt: "DELETE /users/requests/{id}"
         ours: ""
         status: out-of-scope

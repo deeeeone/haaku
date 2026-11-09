@@ -69,6 +69,10 @@ func newRemainingApp(userID string) *fiber.App {
 	s.Delete("/playback/:id", handleDeletePlaybackContract)
 	// The native watchlist read, to prove a reorder is reflected.
 	s.Get("/watchlist", handleGetWatchlist)
+	// The contract reads, so a test can prove the id they return is the row id
+	// the write handlers accept.
+	s.Get("/watchlist/:type/:sort_by/:sort_how", handleContractWatchlist)
+	s.Get("/favorites/:type/:sort_by/:sort_how", handleContractFavorites)
 	return app
 }
 
@@ -310,9 +314,13 @@ func TestReorderWatchlistWritesRealRanks(t *testing.T) {
 	seedRemaining(t, db)
 	app := newRemainingApp(remUser)
 
-	// The item id a read returns is the media id; rank [20, 10] puts the show
-	// first. 999 is not owned and must be reported as skipped, never ranked.
-	status, raw := doJSON(t, app, http.MethodPost, "/v1/sync/watchlist/reorder", `{"rank":[20,10,999]}`)
+	// The item id a read returns is the list row's own id, not its media id.
+	movieRow, showRow := watchlistRows(t, db)
+
+	// rank [show, movie] puts the show first. 999 is not owned and must be
+	// reported as skipped, never ranked.
+	status, raw := doJSON(t, app, http.MethodPost, "/v1/sync/watchlist/reorder",
+		`{"rank":[`+itoa(showRow)+`,`+itoa(movieRow)+`,999]}`)
 	if status != http.StatusOK {
 		t.Fatalf("reorder: expected 200, got %d (%s)", status, raw)
 	}
@@ -349,7 +357,9 @@ func TestReorderFavoritesWritesRealRanks(t *testing.T) {
 	seedRemaining(t, db)
 	app := newRemainingApp(remUser)
 
-	status, raw := doJSON(t, app, http.MethodPost, "/v1/sync/favorites/reorder", `{"rank":[20,10]}`)
+	movieRow, showRow := favoriteRows(t, db)
+	status, raw := doJSON(t, app, http.MethodPost, "/v1/sync/favorites/reorder",
+		`{"rank":[`+itoa(showRow)+`,`+itoa(movieRow)+`]}`)
 	if status != http.StatusOK {
 		t.Fatalf("reorder favorites: expected 200, got %d (%s)", status, raw)
 	}
@@ -436,12 +446,14 @@ func TestUpdateWatchlistItem(t *testing.T) {
 	seedRemaining(t, db)
 	app := newRemainingApp(remUser)
 
-	status, raw := doJSON(t, app, http.MethodPut, "/v1/sync/watchlist/10", `{"rank":5,"notes":"later"}`)
+	movieRow, _ := watchlistRows(t, db)
+
+	status, raw := doJSON(t, app, http.MethodPut, "/v1/sync/watchlist/"+itoa(movieRow), `{"rank":5,"notes":"later"}`)
 	if status != http.StatusNoContent {
 		t.Fatalf("update watchlist item: expected 204, got %d (%s)", status, raw)
 	}
 	var row database.UserWatchlist
-	db.Where("user_id = ? AND media_id = ?", remUser, 10).First(&row)
+	db.Where("user_id = ? AND id = ?", remUser, movieRow).First(&row)
 	if row.Rank != 5 || row.Notes == nil || *row.Notes != "later" {
 		t.Errorf("watchlist row after update = rank %d notes %v", row.Rank, row.Notes)
 	}
@@ -457,13 +469,15 @@ func TestUpdateFavoriteItem(t *testing.T) {
 	seedRemaining(t, db)
 	app := newRemainingApp(remUser)
 
-	status, raw := doJSON(t, app, http.MethodPut, "/v1/sync/favorites/10", `{"rank":3}`)
+	movieRow, _ := favoriteRows(t, db)
+
+	status, raw := doJSON(t, app, http.MethodPut, "/v1/sync/favorites/"+itoa(movieRow), `{"rank":3}`)
 	if status != http.StatusNoContent {
 		t.Fatalf("update favorite: expected 204, got %d (%s)", status, raw)
 	}
 
 	// Favorites have no notes column; a notes field is rejected, not ignored.
-	status, _ = doJSON(t, app, http.MethodPut, "/v1/sync/favorites/10", `{"notes":"n"}`)
+	status, _ = doJSON(t, app, http.MethodPut, "/v1/sync/favorites/"+itoa(movieRow), `{"notes":"n"}`)
 	if status != http.StatusBadRequest {
 		t.Errorf("favorite notes: expected 400, got %d", status)
 	}

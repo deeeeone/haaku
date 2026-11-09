@@ -55,9 +55,13 @@ func handleReorderFavorites(c *fiber.Ctx) error {
 	}
 
 	resp := reorderResponse{SkippedIDs: []int64{}, List: reorderListInfo{ItemCount: len(rows)}}
+	// Ownership is keyed by the row's own id, not its media id: movies and
+	// shows live in separate tables whose sequences both start at 1, so the
+	// same media id can name two rows on the same list. Keying by media id
+	// would rank or update both when the caller meant one.
 	owned := make(map[int64]bool, len(rows))
 	for _, r := range rows {
-		owned[r.MediaID] = true
+		owned[r.ID] = true
 	}
 
 	txErr := db.Transaction(func(tx *gorm.DB) error {
@@ -67,7 +71,7 @@ func handleReorderFavorites(c *fiber.Ctx) error {
 				continue
 			}
 			if err := tx.Model(&database.UserFavorite{}).
-				Where("user_id = ? AND media_id = ?", userID, id).
+				Where("user_id = ? AND id = ?", userID, id).
 				Update("rank", i+1).Error; err != nil {
 				return err
 			}
@@ -101,9 +105,10 @@ func handleReorderWatchlistContract(c *fiber.Ctx) error {
 	}
 
 	resp := reorderResponse{SkippedIDs: []int64{}, List: reorderListInfo{ItemCount: len(rows)}}
+	// Row id, not media id: see handleReorderFavorites.
 	owned := make(map[int64]bool, len(rows))
 	for _, r := range rows {
-		owned[r.MediaID] = true
+		owned[r.ID] = true
 	}
 
 	txErr := db.Transaction(func(tx *gorm.DB) error {
@@ -113,7 +118,7 @@ func handleReorderWatchlistContract(c *fiber.Ctx) error {
 				continue
 			}
 			if err := tx.Model(&database.UserWatchlist{}).
-				Where("user_id = ? AND media_id = ?", userID, id).
+				Where("user_id = ? AND id = ?", userID, id).
 				Update("rank", i+1).Error; err != nil {
 				return err
 			}
@@ -166,7 +171,7 @@ func handleUpdateFavoriteItem(c *fiber.Ctx) error {
 	}
 
 	res := db.Model(&database.UserFavorite{}).
-		Where("user_id = ? AND media_id = ?", userID, id).
+		Where("user_id = ? AND id = ?", userID, id).
 		Updates(updates)
 	if res.Error != nil {
 		return response.InternalError(c)
@@ -214,7 +219,7 @@ func handleUpdateWatchlistItem(c *fiber.Ctx) error {
 	}
 
 	res := db.Model(&database.UserWatchlist{}).
-		Where("user_id = ? AND media_id = ?", userID, id).
+		Where("user_id = ? AND id = ?", userID, id).
 		Updates(updates)
 	if res.Error != nil {
 		return response.InternalError(c)

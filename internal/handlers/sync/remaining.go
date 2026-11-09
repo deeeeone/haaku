@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"errors"
 	"strconv"
 
 	"github.com/haaku-tv/haaku/internal/auth"
@@ -80,6 +81,8 @@ func RegisterRemainingRoutes(api fiber.Router) {
 // handleDeletePlaybackContract removes a playback entry by the id a client got
 // from GET /sync/playback (our playback rows expose media_id as the item id).
 // A 404 is returned when the caller owns no such entry, matching the contract.
+// The path carries no media_type, so an id that matches rows of more than one
+// media_type is answered 400 (ambiguous) rather than deleting several kinds.
 func handleDeletePlaybackContract(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 
@@ -91,6 +94,20 @@ func handleDeletePlaybackContract(c *fiber.Ctx) error {
 	var deleted int64
 	txErr := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
 		cacheTx := cache.NewCacheTransaction()
+		// The path carries a single id and no media_type. The same id can name
+		// rows of more than one media_type (movie and episode ids come from
+		// separate sequences), so when the caller's matches span several types
+		// the id is ambiguous: reject rather than silently deleting a kind the
+		// caller did not name.
+		var matchedTypes []string
+		if err := tx.Model(&database.UserPlayback{}).
+			Where("user_id = ? AND media_id = ?", userID, id).
+			Distinct().Pluck("media_type", &matchedTypes).Error; err != nil {
+			return nil, err
+		}
+		if len(matchedTypes) > 1 {
+			return nil, errPlaybackAmbiguous
+		}
 		res := tx.Where("user_id = ? AND media_id = ?", userID, id).Delete(&database.UserPlayback{})
 		if res.Error != nil {
 			return nil, res.Error
@@ -103,8 +120,11 @@ func handleDeletePlaybackContract(c *fiber.Ctx) error {
 		return cacheTx, nil
 	})
 	if txErr != nil {
-		if txErr == errPlaybackEntryNotFound {
+		switch txErr {
+		case errPlaybackEntryNotFound:
 			return response.NotFound(c, "playback position not found")
+		case errPlaybackAmbiguous:
+			return response.BadRequest(c, "playback id matches more than one media type; the contract path carries no media_type to disambiguate")
 		}
 		return response.InternalError(c)
 	}
@@ -113,6 +133,10 @@ func handleDeletePlaybackContract(c *fiber.Ctx) error {
 }
 
 var errPlaybackEntryNotFound = gorm.ErrRecordNotFound
+
+// errPlaybackAmbiguous marks a playback id that matches rows of more than one
+// media_type, which DELETE /sync/playback/{id} cannot address.
+var errPlaybackAmbiguous = errors.New("playback id matches more than one media type")
 
 // ============================================================================
 // GET /sync/collection/media
