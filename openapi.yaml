@@ -1847,8 +1847,16 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "502":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
                     description: TMDB returned no usable catalog
                 "503":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
                     description: TMDB client unavailable
             security: []
             summary: List movie certifications grouped by country
@@ -1922,8 +1930,16 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "502":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
                     description: TMDB returned no usable catalog
                 "503":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
                     description: TMDB client unavailable
             security: []
             summary: List show certifications grouped by country
