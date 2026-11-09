@@ -156,12 +156,21 @@ type CrewMemberResponse struct {
 	Department string         `json:"department"`
 }
 
-// StatsResponse is the stats response for a media item.
+// StatsResponse is the contract's Stats object for a movie or show.
+//
+// Every field except Recommended is a COUNT over rows we store. Recommended
+// counts users who recommended the item to another user; we have no such
+// action in our schema, so it is served as null rather than a fabricated 0
+// (see docs/parity/parity.yaml, GET /movies/{id}/stats).
 type StatsResponse struct {
-	Watchers   int64 `json:"watchers"`
-	Plays      int64 `json:"plays"`
-	Collectors int64 `json:"collectors"`
-	Lists      int64 `json:"lists"`
+	Watchers    int64  `json:"watchers"`
+	Plays       int64  `json:"plays"`
+	Collectors  int64  `json:"collectors"`
+	Comments    int64  `json:"comments"`
+	Lists       int64  `json:"lists"`
+	Votes       int64  `json:"votes"`
+	Favorited   int64  `json:"favorited"`
+	Recommended *int64 `json:"recommended"`
 }
 
 // WatchingResponse is a stub — returns empty array for now.

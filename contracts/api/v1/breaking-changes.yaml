@@ -19,4 +19,10 @@
 # baseline is expected to be refreshed.
 
 version: 1
-acknowledged: []
+acknowledged:
+  - signature: "removed-status-code GET /v1/movies/{id}/stats 501"
+    date: 2026-11-09
+    reason: "The 501 not_implemented placeholder is replaced by a real 200 computed from stored rows; clients that handled 501 continue to work, and the 200 shape is unchanged, so nothing must be migrated."
+  - signature: "removed-status-code GET /v1/shows/{id}/stats 501"
+    date: 2026-11-09
+    reason: "The 501 not_implemented placeholder is replaced by a real 200 computed from stored rows; clients that handled 501 continue to work, and the 200 shape is unchanged, so nothing must be migrated."

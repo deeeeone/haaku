@@ -156,9 +156,9 @@ sections:
         engine: "lists engine (issue #67)"
       - trakt: "GET /movies/{id}/stats"
         ours: "GET /v1/movies/{id}/stats"
-        status: blocked-engine
-        rationale: "Registered but responds 501 not_implemented by design - it must not be counted as parity."
-        engine: "stats engine (issue #86)"
+        status: divergent
+        rationale: "Served at Trakt's path: watchers (distinct user_history users), plays (history rows), collectors (distinct user_collection users), comments, lists and votes (user_ratings rows), favorited (user_favorites) are counted from stored rows. One field does not conform: `recommended` is served as null because we store no 'recommend to a friend' action, and the contract declares it an integer. A 0 there would be a fabricated count, so the row stays divergent until the action exists."
+        compat: "every count is real; only `recommended` is null where the contract wants an integer. A client that requires it should treat null as 'unknown', not 0."
       - trakt: "GET /movies/{id}/watching"
         ours: "GET /v1/movies/{id}/watching"
         status: blocked-engine
@@ -259,9 +259,9 @@ sections:
         rationale: "Served at Trakt's path: the cached TMDB provider sets, shaped to the contract's category object."
       - trakt: "GET /shows/{id}/stats"
         ours: "GET /v1/shows/{id}/stats"
-        status: blocked-engine
-        rationale: "Registered but responds 501 not_implemented; not parity."
-        engine: "stats engine (issue #86)"
+        status: divergent
+        rationale: "Served at Trakt's path: watchers/plays aggregate user_history over the show's episodes (history stores episode rows, not show rows); collectors, comments, lists, votes and favorited count rows for the show itself. One field does not conform: `recommended` is null where the contract declares an integer, because no recommend action is stored and a 0 would be a fabricated count."
+        compat: "every count is real; only `recommended` is null where the contract wants an integer."
       - trakt: "GET /shows/{id}/watching"
         ours: "GET /v1/shows/{id}/watching"
         status: blocked-engine
@@ -916,13 +916,13 @@ sections:
         status: implemented
         rationale: "Served at GET /v1/shows/{id}/seasons; the path shape matches the contract."
       - trakt: "GET /shows/{id}/seasons/{season}/episodes/{episode}/ratings"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
+        ours: "GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/ratings"
+        status: implemented
+        rationale: "Served at Trakt's path: show+season_number+episode_number resolves to our episode row; votes and the 1..10 distribution are computed from user_ratings (percentages per bucket), rating is the stored average or null when nobody has voted."
       - trakt: "GET /shows/{id}/seasons/{season}/episodes/{episode}/stats"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
+        ours: "GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/stats"
+        status: implemented
+        rationale: "Served at Trakt's path: watchers (distinct user_history users), plays (history rows), collectors (user_collection), comments, lists and votes are counted from stored rows for the resolved episode; no constant fields."
       - trakt: "GET /shows/{id}/seasons/{season}/episodes/{episode}/translations"
         ours: ""
         status: out-of-scope

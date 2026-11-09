@@ -24,7 +24,7 @@ func registerOpenAPIRoutes() {
 		{Method: "GET", Path: "/v1/movies/{id}", Summary: "Get a movie", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "Movie"}},
 		{Method: "GET", Path: "/v1/movies/{id}/people", Summary: "Get cast and crew for a movie", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "People"}},
 		{Method: "GET", Path: "/v1/movies/{id}/ratings", Summary: "Get ratings for a movie", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "Rating summary"}},
-		{Method: "GET", Path: "/v1/movies/{id}/stats", Summary: "Get stats for a movie", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "Stats", 501: "Not implemented (requires stats engine)"}},
+		{Method: "GET", Path: "/v1/movies/{id}/stats", Summary: "Get stats for a movie (watchers, plays, collectors, comments, lists, votes, favorited, recommended)", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "Stats"}},
 		{Method: "GET", Path: "/v1/movies/{id}/lists", Summary: "Get lists containing a movie", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "Lists", 501: "Not implemented (requires lists engine)"}},
 		{Method: "GET", Path: "/v1/movies/{id}/watching", Summary: "Users watching a movie right now", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "Watching", 501: "Not implemented (requires activity engine)"}},
 		{Method: "GET", Path: "/v1/movies/{id}/comments/{sort}", Summary: "Get comments for a movie, sorted (newest, oldest, likes, replies, trending)", Tags: []string{"Movies"}, Auth: "optional", StatusCodes: map[int]string{200: "Comments", 400: "Invalid sort", 404: "Movie not found"}},
@@ -37,7 +37,7 @@ func registerOpenAPIRoutes() {
 		{Method: "GET", Path: "/v1/shows/{id}/seasons/{season}/episodes/{episode}", Summary: "Get a single episode", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Episode"}},
 		{Method: "GET", Path: "/v1/shows/{id}/people", Summary: "Get cast and crew for a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "People"}},
 		{Method: "GET", Path: "/v1/shows/{id}/ratings", Summary: "Get ratings for a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Rating summary"}},
-		{Method: "GET", Path: "/v1/shows/{id}/stats", Summary: "Get stats for a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Stats", 501: "Not implemented (requires stats engine)"}},
+		{Method: "GET", Path: "/v1/shows/{id}/stats", Summary: "Get stats for a show (watchers, plays, collectors, comments, lists, votes, favorited, recommended)", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Stats"}},
 		{Method: "GET", Path: "/v1/shows/{id}/lists", Summary: "Get lists containing a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Lists", 501: "Not implemented (requires lists engine)"}},
 		{Method: "GET", Path: "/v1/shows/{id}/watching", Summary: "Users watching a show right now", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Watching", 501: "Not implemented (requires activity engine)"}},
 		{Method: "GET", Path: "/v1/shows/{id}/next_episode", Summary: "Get the next scheduled episode for a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Next episode", 204: "No next episode", 404: "Show not found"}},
@@ -170,13 +170,6 @@ func handleGetMovieRatingSummary(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(buildRatingSummary(movie.RatingAvg, movie.RatingCount))
-}
-
-func handleGetMovieStats(c *fiber.Ctx) error {
-	// Stats (watchers/plays/collectors/lists) require user activity tables the
-	// stats engine hasn't landed. Fails closed with 501 rather than return
-	// fabricated zero counts.
-	return response.NotImplemented(c, "stats require the stats engine, which is not implemented")
 }
 
 func handleGetMovieLists(c *fiber.Ctx) error {
@@ -431,13 +424,6 @@ func handleGetShowRatingSummary(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(buildRatingSummary(show.RatingAvg, show.RatingCount))
-}
-
-func handleGetShowStats(c *fiber.Ctx) error {
-	// Stats (watchers/plays/collectors/lists) require user activity tables the
-	// stats engine hasn't landed. Fails closed with 501 rather than return
-	// fabricated zero counts.
-	return response.NotImplemented(c, "stats require the stats engine, which is not implemented")
 }
 
 func handleGetShowLists(c *fiber.Ctx) error {
