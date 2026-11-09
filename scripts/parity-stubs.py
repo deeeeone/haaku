@@ -12,6 +12,7 @@ import importlib.util
 import glob
 import json
 import re
+import subprocess
 from pathlib import Path
 
 import yaml
@@ -289,3 +290,15 @@ for line in lines:
     out.append(line)
 (WT / "docs/parity/parity.yaml").write_text("\n".join(out))
 print(f"  manifest updated in place: {stubbed} ours columns filled")
+
+# The generated Go has to be gofmt-clean: `gofmt -l` is part of the gate set, and
+# a generator that emits misaligned struct literals makes every regeneration a
+# red gate. Format here rather than expecting a human to remember.
+try:
+    subprocess.run(
+        ["gofmt", "-w", *sorted(str(p) for p in (PKG).glob("*.go"))],
+        check=True,
+        capture_output=True,
+    )
+except (OSError, subprocess.CalledProcessError) as exc:
+    print(f"  WARNING: gofmt not applied to generated stubs: {exc}")

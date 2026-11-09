@@ -28,19 +28,19 @@ func registerStub70(api fiber.Router) {
 func defsStub70() []openapi.RouteDef {
 	return []openapi.RouteDef{
 		{
-			Method:  "POST",
-			Path:    "/v1/search/recent",
-			Summary: "Parity stub — not implemented (search engine)",
-			Tags:    []string{"Search"},
-			Auth:    "required",
+			Method:      "POST",
+			Path:        "/v1/search/recent",
+			Summary:     "Parity stub — not implemented (search engine)",
+			Tags:        []string{"Search"},
+			Auth:        "required",
 			StatusCodes: map[int]string{501: "Not implemented — Persisting a recent search needs a recent-searches table, which does not exist (search is stateless  (#70)"},
 		},
 		{
-			Method:  "GET",
-			Path:    "/v1/search/recent_by_id/global/{type}",
-			Summary: "Parity stub — not implemented (search engine)",
-			Tags:    []string{"Search"},
-			Auth:    "required",
+			Method:      "GET",
+			Path:        "/v1/search/recent_by_id/global/{type}",
+			Summary:     "Parity stub — not implemented (search engine)",
+			Tags:        []string{"Search"},
+			Auth:        "required",
 			StatusCodes: map[int]string{501: "Not implemented — Same missing store; the Trakt id-keyed variant too. (#70)"},
 		},
 	}

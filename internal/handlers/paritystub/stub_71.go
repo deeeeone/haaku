@@ -24,11 +24,11 @@ func registerStub71(api fiber.Router) {
 func defsStub71() []openapi.RouteDef {
 	return []openapi.RouteDef{
 		{
-			Method:  "GET",
-			Path:    "/v1/sync/collection/episodes",
-			Summary: "Parity stub — not implemented (season/episode-level sync)",
-			Tags:    []string{"Sync"},
-			Auth:    "required",
+			Method:      "GET",
+			Path:        "/v1/sync/collection/episodes",
+			Summary:     "Parity stub — not implemented (season/episode-level sync)",
+			Tags:        []string{"Sync"},
+			Auth:        "required",
 			StatusCodes: map[int]string{501: "Not implemented — user_collection.media_type is 'movie' or 'show' only; an episode collection row cannot be stored. (#71)"},
 		},
 	}
