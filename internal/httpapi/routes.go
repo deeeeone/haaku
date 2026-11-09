@@ -32,6 +32,7 @@ import (
 	"github.com/haaku-tv/haaku/internal/handlers/updates"
 	"github.com/haaku-tv/haaku/internal/handlers/users"
 	"github.com/haaku-tv/haaku/internal/handlers/watch"
+	"github.com/haaku-tv/haaku/internal/handlers/watchnow"
 	"github.com/haaku-tv/haaku/internal/handlers/webhooks"
 	"github.com/haaku-tv/haaku/internal/oauth"
 	"github.com/haaku-tv/haaku/internal/openapi"
@@ -213,6 +214,9 @@ func RegisterRoutes(app *fiber.App) {
 
 	// Watch providers endpoints (Phase 1: T1.10)
 	watch.RegisterRoutes(api)
+
+	// Watch-now provider catalogue (issue #69).
+	watchnow.RegisterRoutes(api)
 
 	// Calendars (Phase 1: T1.8)
 	calendar.RegisterRoutes(api)

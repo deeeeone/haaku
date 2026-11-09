@@ -46,7 +46,6 @@ func init() {
 			Auth:    "none",
 			StatusCodes: map[int]string{
 				200: "Calendar release entries",
-				400: "Invalid start_date or days parameter",
 			},
 		})
 	}

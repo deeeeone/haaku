@@ -933,10 +933,12 @@ paths:
             summary: Create a local account (subject to the HAAKU_SIGNUP policy; the owner comes from HAAKU_ADMIN_*)
             tags:
                 - Local Auth
-    /v1/calendars/{target}/dvd/{start_date}/{days}:
+    /v1/calendars/all/dvd/{start_date}/{days}:
         get:
-            operationId: _v1_calendars_target_dvd_start_date_days_GET
+            operationId: _v1_calendars_all_dvd_start_date_days_GET
             responses:
+                "200":
+                    description: Calendar movie entries
                 "400":
                     content:
                         application/json:
@@ -979,16 +981,16 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented — movies carries a single released DATE; there is no dvd/digital/physical date column, so a DVD calend (#69)
             security: []
-            summary: Parity stub — not implemented (calendars & Watch Now data)
+            summary: DVD/physical release calendar (contract path)
             tags:
                 - Calendars
-    /v1/calendars/{target}/streaming/{start_date}/{days}:
+    /v1/calendars/all/media/{start_date}/{days}:
         get:
-            operationId: _v1_calendars_target_streaming_start_date_days_GET
+            operationId: _v1_calendars_all_media_start_date_days_GET
             responses:
+                "200":
+                    description: Calendar media entries
                 "400":
                     content:
                         application/json:
@@ -1031,10 +1033,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented — No streaming-release date is stored; watch providers live in movies.metadata per title (TMDB), not a (#69)
             security: []
-            summary: Parity stub — not implemented (calendars & Watch Now data)
+            summary: Movies and episodes releasing in a date range (contract path)
             tags:
                 - Calendars
     /v1/calendars/all/movies/{start_date}/{days}:
@@ -1044,7 +1044,11 @@ paths:
                 "200":
                     description: Calendar movie entries
                 "400":
-                    description: Invalid start_date or days parameter
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
                 "401":
                     content:
                         application/json:
@@ -1092,7 +1096,11 @@ paths:
                 "200":
                     description: Calendar entries
                 "400":
-                    description: Invalid start_date or days parameter
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
                 "401":
                     content:
                         application/json:
@@ -1133,6 +1141,214 @@ paths:
             summary: Get all upcoming episodes airing within a date range
             tags:
                 - Calendars
+    /v1/calendars/all/shows/finales/{start_date}/{days}:
+        get:
+            operationId: _v1_calendars_all_shows_finales_start_date_days_GET
+            responses:
+                "200":
+                    description: Calendar show entries
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Show calendar for the finales feed (contract path)
+            tags:
+                - Calendars
+    /v1/calendars/all/shows/new/{start_date}/{days}:
+        get:
+            operationId: _v1_calendars_all_shows_new_start_date_days_GET
+            responses:
+                "200":
+                    description: Calendar show entries
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Show calendar for the new feed (contract path)
+            tags:
+                - Calendars
+    /v1/calendars/all/shows/premieres/{start_date}/{days}:
+        get:
+            operationId: _v1_calendars_all_shows_premieres_start_date_days_GET
+            responses:
+                "200":
+                    description: Calendar show entries
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Show calendar for the premieres feed (contract path)
+            tags:
+                - Calendars
+    /v1/calendars/all/streaming/{start_date}/{days}:
+        get:
+            operationId: _v1_calendars_all_streaming_start_date_days_GET
+            responses:
+                "200":
+                    description: Calendar movie entries
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Streaming release calendar (contract path)
+            tags:
+                - Calendars
     /v1/calendars/favorites/shows/{start_date}/{days}:
         get:
             operationId: _v1_calendars_favorites_shows_start_date_days_GET
@@ -1140,7 +1356,11 @@ paths:
                 "200":
                     description: Calendar entries
                 "400":
-                    description: Invalid parameters
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
                 "401":
                     description: Unauthorized
                 "404":
@@ -1186,7 +1406,11 @@ paths:
                 "200":
                     description: Calendar entries
                 "400":
-                    description: Invalid parameters
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
                 "401":
                     description: Unauthorized
                 "404":
@@ -1225,6 +1449,114 @@ paths:
             summary: Get upcoming episodes from shows your mutual follows have watched
             tags:
                 - Calendars
+    /v1/calendars/my/dvd/{start_date}/{days}:
+        get:
+            operationId: _v1_calendars_my_dvd_start_date_days_GET
+            responses:
+                "200":
+                    description: Calendar movie entries
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: DVD/physical release calendar (contract path)
+            tags:
+                - Calendars
+    /v1/calendars/my/media/{start_date}/{days}:
+        get:
+            operationId: _v1_calendars_my_media_start_date_days_GET
+            responses:
+                "200":
+                    description: Calendar media entries
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Movies and episodes releasing in a date range (contract path)
+            tags:
+                - Calendars
     /v1/calendars/my/movies/{start_date}/{days}:
         get:
             operationId: _v1_calendars_my_movies_start_date_days_GET
@@ -1232,7 +1564,11 @@ paths:
                 "200":
                     description: Calendar movie entries
                 "400":
-                    description: Invalid parameters
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
                 "401":
                     description: Unauthorized
                 "404":
@@ -1278,7 +1614,11 @@ paths:
                 "200":
                     description: Calendar entries
                 "400":
-                    description: Invalid parameters
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
                 "401":
                     description: Unauthorized
                 "404":
@@ -1317,10 +1657,12 @@ paths:
             summary: Get your upcoming show calendar (shows you've watched or watchlisted)
             tags:
                 - Calendars
-    /v1/calendars/releases/hot/{start_date}/{days}:
+    /v1/calendars/my/shows/finales/{start_date}/{days}:
         get:
-            operationId: _v1_calendars_releases_hot_start_date_days_GET
+            operationId: _v1_calendars_my_shows_finales_start_date_days_GET
             responses:
+                "200":
+                    description: Calendar show entries
                 "400":
                     content:
                         application/json:
@@ -1363,10 +1705,224 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: 'Not implemented — No unified release feed: ''hot'' mixes theatrical, streaming and episode releases in one ranked list;  (#69)'
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Show calendar for the finales feed (contract path)
+            tags:
+                - Calendars
+    /v1/calendars/my/shows/new/{start_date}/{days}:
+        get:
+            operationId: _v1_calendars_my_shows_new_start_date_days_GET
+            responses:
+                "200":
+                    description: Calendar show entries
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Show calendar for the new feed (contract path)
+            tags:
+                - Calendars
+    /v1/calendars/my/shows/premieres/{start_date}/{days}:
+        get:
+            operationId: _v1_calendars_my_shows_premieres_start_date_days_GET
+            responses:
+                "200":
+                    description: Calendar show entries
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Show calendar for the premieres feed (contract path)
+            tags:
+                - Calendars
+    /v1/calendars/my/streaming/{start_date}/{days}:
+        get:
+            operationId: _v1_calendars_my_streaming_start_date_days_GET
+            responses:
+                "200":
+                    description: Calendar movie entries
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Streaming release calendar (contract path)
+            tags:
+                - Calendars
+    /v1/calendars/releases/hot/{start_date}/{days}:
+        get:
+            operationId: _v1_calendars_releases_hot_start_date_days_GET
+            responses:
+                "200":
+                    description: Hot release entries
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
             security: []
-            summary: Parity stub — not implemented (calendars & Watch Now data)
+            summary: Titles with a watchlist, collection or history signal releasing in a date range
             tags:
                 - Calendars
     /v1/calendars/releases/hot/finales/{start_date}/{days}:
@@ -1376,7 +1932,11 @@ paths:
                 "200":
                     description: Calendar release entries
                 "400":
-                    description: Invalid start_date or days parameter
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
                 "401":
                     content:
                         application/json:
@@ -1424,7 +1984,11 @@ paths:
                 "200":
                     description: Calendar release entries
                 "400":
-                    description: Invalid start_date or days parameter
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
                 "401":
                     content:
                         application/json:
@@ -1472,7 +2036,11 @@ paths:
                 "200":
                     description: Calendar release entries
                 "400":
-                    description: Invalid start_date or days parameter
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
                 "401":
                     content:
                         application/json:
@@ -1520,7 +2088,11 @@ paths:
                 "200":
                     description: Calendar entries
                 "400":
-                    description: Invalid parameters
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
                 "401":
                     description: Unauthorized
                 "404":
@@ -6047,6 +6619,8 @@ paths:
         get:
             operationId: _v1_movies_streaming_period_GET
             responses:
+                "200":
+                    description: Ranked streaming movies
                 "400":
                     content:
                         application/json:
@@ -6089,10 +6663,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented — Trakt's streaming list is driven by streaming release dates, which we do not store (see /calendars/a (#69)
             security: []
-            summary: Parity stub — not implemented (calendars & Watch Now data)
+            summary: Movies with a digital release in the period, ranked by watchers in that period
             tags:
                 - Movies
     /v1/movies/trending:
@@ -10653,7 +11225,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: Not implemented — Driven by streaming release dates, which are not stored (see /calendars/all/streaming). (#69)
+                    description: 'Not implemented — STOP (no honest source): TMDB has no dated streaming-release feed for shows — its watch-provider cat (#69)'
             security: []
             summary: Parity stub — not implemented (calendars & Watch Now data)
             tags:
@@ -19332,6 +19904,8 @@ paths:
         get:
             operationId: _v1_watchnow_sources_GET
             responses:
+                "200":
+                    description: Source records keyed by country
                 "400":
                     content:
                         application/json:
@@ -19374,16 +19948,16 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: 'Not implemented — There is no provider catalogue table: providers are TMDB per-title metadata (metadata JSONB), with n (#69)'
             security: []
-            summary: Parity stub — not implemented (calendars & Watch Now data)
+            summary: Watch-now sources for every country, keyed by country code
             tags:
-                - WatchNow
+                - Watch Now
     /v1/watchnow/sources/{countryCode}:
         get:
             operationId: _v1_watchnow_sources_countryCode_GET
             responses:
+                "200":
+                    description: One source record keyed by country
                 "400":
                     content:
                         application/json:
@@ -19426,12 +20000,10 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: 'Not implemented — Same gap: no catalogue to filter by country. (#69)'
             security: []
-            summary: Parity stub — not implemented (calendars & Watch Now data)
+            summary: Watch-now sources for one country
             tags:
-                - WatchNow
+                - Watch Now
     /v1/webhooks:
         get:
             operationId: _v1_webhooks_GET

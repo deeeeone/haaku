@@ -63,6 +63,10 @@ func RegisterRoutes(api fiber.Router) {
 	// --- Movies ---
 	movies := api.Group("/movies")
 
+	// Contract-shaped streaming ranking. It must precede /movies/:id: Fiber
+	// matches in registration order, so otherwise "streaming" is read as an id.
+	registerStreamingRoutes(movies)
+
 	movies.Get("/:id", handleGetMovie)
 	movies.Get("/:id/people", handleGetMoviePeople)
 	movies.Get("/:id/ratings", handleGetMovieRatingSummary)

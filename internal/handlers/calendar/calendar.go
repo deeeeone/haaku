@@ -29,7 +29,6 @@ func registerOpenAPIRoutes() {
 			Auth:    "required",
 			StatusCodes: map[int]string{
 				200: "Calendar entries",
-				400: "Invalid parameters",
 				401: "Unauthorized",
 			},
 		},
@@ -41,7 +40,6 @@ func registerOpenAPIRoutes() {
 			Auth:    "none",
 			StatusCodes: map[int]string{
 				200: "Calendar entries",
-				400: "Invalid start_date or days parameter",
 			},
 		},
 		{
@@ -52,7 +50,6 @@ func registerOpenAPIRoutes() {
 			Auth:    "required",
 			StatusCodes: map[int]string{
 				200: "Calendar entries",
-				400: "Invalid parameters",
 				401: "Unauthorized",
 			},
 		},
@@ -64,7 +61,6 @@ func registerOpenAPIRoutes() {
 			Auth:    "required",
 			StatusCodes: map[int]string{
 				200: "Calendar entries",
-				400: "Invalid parameters",
 				401: "Unauthorized",
 			},
 		},
@@ -76,7 +72,6 @@ func registerOpenAPIRoutes() {
 			Auth:    "required",
 			StatusCodes: map[int]string{
 				200: "Calendar entries",
-				400: "Invalid parameters",
 				401: "Unauthorized",
 			},
 		},
@@ -88,7 +83,6 @@ func registerOpenAPIRoutes() {
 			Auth:    "none",
 			StatusCodes: map[int]string{
 				200: "Calendar movie entries",
-				400: "Invalid start_date or days parameter",
 			},
 		},
 		{
@@ -99,7 +93,6 @@ func registerOpenAPIRoutes() {
 			Auth:    "required",
 			StatusCodes: map[int]string{
 				200: "Calendar movie entries",
-				400: "Invalid parameters",
 				401: "Unauthorized",
 			},
 		},
@@ -114,14 +107,17 @@ func registerOpenAPIRoutes() {
 func RegisterRoutes(api fiber.Router) {
 	calendars := api.Group("/calendars")
 
-	// Public: all shows
-	calendars.Get("/all/shows/:start_date/:days", handleCalendarShows)
+	// Contract-shaped show feeds for the two contract targets (my/all): the
+	// plain calendar plus new/premieres/finales. Trakt does not paginate a
+	// calendar, so these serve the bare contract array rather than the
+	// {items,page,limit,row_count} envelope the pre-existing routes used.
+	registerContractShowRoutes(calendars)
 
 	// Public: all movies
 	calendars.Get("/all/movies/:start_date/:days", handleCalendarMovies)
 
-	// Auth-required: my, friends, favorites, watched
-	calendars.Get("/my/shows/:start_date/:days", auth.AuthRequired(), handleCalendarShows)
+	// Auth-required: friends, favorites, watched (our own targets; they keep the
+	// paginated envelope because they are not part of the Trakt contract).
 	calendars.Get("/friends/shows/:start_date/:days", auth.AuthRequired(), handleCalendarShows)
 	calendars.Get("/favorites/shows/:start_date/:days", auth.AuthRequired(), handleCalendarShows)
 	calendars.Get("/watched/shows/:start_date/:days", auth.AuthRequired(), handleCalendarShows)
@@ -129,7 +125,10 @@ func RegisterRoutes(api fiber.Router) {
 	// Auth-required: my movies (watchlist + history, hidden excluded)
 	calendars.Get("/my/movies/:start_date/:days", auth.AuthRequired(), handleCalendarMovies)
 
-	// Contract-shaped release calendars (Trakt's /calendars/releases/hot/...).
+	// Contract-shaped release calendars: DVD/streaming, the merged media feed
+	// and the hot feeds.
+	registerReleaseCalendarRoutes(calendars)
+	registerMediaCalendarRoutes(calendars)
 	registerContractReleaseRoutes(calendars)
 }
 
@@ -168,30 +167,17 @@ type CalendarSeason struct {
 // Query params: type (new|premieres|finale), page, limit
 // Target is derived from the route path via c.Params.
 func handleCalendarShows(c *fiber.Ctx) error {
-	// Derive target from the URL path.
-	target := deriveTarget(c.Path())
-	// A contract-shaped route (e.g. /calendars/releases/hot/new/...) pins the
-	// target to the public "all" feed and the subtype via Locals instead of
-	// path segments we do not have.
-	if v, ok := c.Locals("calendar_target").(string); ok && v != "" {
-		target = v
-	}
+	target := calendarTarget(c)
 
-	startDateStr := c.Params("start_date")
-	daysStr := c.Params("days")
 	typeFilter := c.Query("type", "")
 	if v, ok := c.Locals("calendar_type").(string); ok && v != "" {
 		typeFilter = v
 	}
 
-	// Validate start_date.
-	startDate, err := time.Parse("2006-01-02", startDateStr)
+	startDate, days, err := parseCalendarWindow(c)
 	if err != nil {
-		return response.BadRequest(c, "invalid start_date format, expected YYYY-MM-DD")
+		return err
 	}
-
-	// Parse and clamp days.
-	days := clampDays(daysStr)
 	endDate := startDate.AddDate(0, 0, days)
 
 	// Validate type filter.
@@ -208,55 +194,148 @@ func handleCalendarShows(c *fiber.Ctx) error {
 		return response.ServiceUnavailable(c, "database unavailable")
 	}
 
+	contract, _ := c.Locals("calendar_contract").(bool)
 	page, limit := response.ParsePagination(c, 25)
 
-	// Build the base episode query.
+	var total int64
+	var episodes []database.Episode
+
+	if contract {
+		// The contract does not paginate a calendar: return every row in the
+		// window, ordered by air time.
+		query := episodeWindowQuery(db, target, userID, startDate, endDate)
+		if query == nil {
+			return c.JSON([]map[string]any{})
+		}
+		if err := episodeTypeQuery(query, typeFilter).
+			Order("e.aired_at ASC, e.episode_number ASC").
+			Find(&episodes).Error; err != nil {
+			fmt.Printf("calendar: database query error: %v\n", err)
+			return response.InternalError(c)
+		}
+		total = int64(len(episodes))
+	} else {
+		// Count and page are separate builders: a GORM finisher mutates the
+		// statement, so sharing one between Count and Find would stale it.
+		countQuery := episodeWindowQuery(db, target, userID, startDate, endDate)
+		if countQuery == nil {
+			return c.JSON(fiber.Map{
+				"items": []CalendarEntry{}, "page": page, "limit": limit, "row_count": 0,
+			})
+		}
+		if err := episodeTypeQuery(countQuery, typeFilter).Count(&total).Error; err != nil {
+			fmt.Printf("calendar: database count error: %v\n", err)
+			return response.InternalError(c)
+		}
+
+		pageQuery := episodeWindowQuery(db, target, userID, startDate, endDate)
+		if pageQuery == nil {
+			return c.JSON(fiber.Map{
+				"items": []CalendarEntry{}, "page": page, "limit": limit, "row_count": 0,
+			})
+		}
+		if err := episodeTypeQuery(pageQuery, typeFilter).
+			Order("e.aired_at ASC, e.episode_number ASC").
+			Offset((page - 1) * limit).
+			Limit(limit).
+			Find(&episodes).Error; err != nil {
+			fmt.Printf("calendar: database query error: %v\n", err)
+			return response.InternalError(c)
+		}
+	}
+
+	showMap, seasonMap := fetchEpisodeRelations(db, episodes)
+
+	// A contract-shaped request returns the contract's bare array of release
+	// entries; our own targets keep the paginated envelope.
+	if contract {
+		return c.JSON(contractReleaseEntries(episodes, showMap, seasonMap))
+	}
+
+	// Build response, merging season_number from seasons table.
+	resp := make([]CalendarEntry, 0, len(episodes))
+	for _, ep := range episodes {
+		show, ok := showMap[ep.ShowID]
+		if !ok {
+			continue
+		}
+
+		seasonNumber := 0
+		if season, ok := seasonMap[ep.SeasonID]; ok {
+			seasonNumber = season.SeasonNumber
+		}
+
+		resp = append(resp, CalendarEntry{
+			Episode: buildEpisode(&ep),
+			Show: CalendarShow{
+				Title: show.Title,
+				IDs:   buildShowIDs(&show),
+			},
+			Season: CalendarSeason{
+				Number: seasonNumber,
+			},
+		})
+	}
+
+	return c.JSON(fiber.Map{
+		"items":     resp,
+		"page":      page,
+		"limit":     limit,
+		"row_count": total,
+	})
+}
+
+// episodeWindowQuery builds the base episode query for a window and target.
+// It returns nil when a user-scoped target resolves to no shows, which every
+// caller renders as an empty result rather than querying episodes for nobody.
+func episodeWindowQuery(db *gorm.DB, target, userID string, startDate, endDate time.Time) *gorm.DB {
 	query := db.Table("episodes e").
 		Where("e.aired_at >= ? AND e.aired_at < ?",
 			startDate.Format("2006-01-02"),
 			endDate.Format("2006-01-02"))
 
-	// Apply type filter (requires season join for new/premieres).
-	switch typeFilter {
-	case "new":
-		query = query.Joins("JOIN seasons s ON s.id = e.season_id").
-			Where("s.season_number = 1 AND e.episode_number = 1")
-	case "premieres":
-		query = query.Joins("JOIN seasons s ON s.id = e.season_id").
-			Where("s.season_number > 1 AND e.episode_number = 1")
-	case "finale":
-		query = query.Where(`(e.season_id, e.episode_number) IN (
-			SELECT season_id, MAX(episode_number) FROM episodes GROUP BY season_id
-		)`)
-	}
-
-	// Apply target filter.
 	if target != "all" {
 		showIDs := getShowIDsForTarget(db, target, userID)
 		if len(showIDs) == 0 {
-			return c.JSON([]CalendarEntry{})
+			return nil
 		}
 		query = query.Where("e.show_id IN ?", showIDs)
 	}
+	return query
+}
 
-	// Count, then paginate.
-	var total int64
-	query.Count(&total)
-
-	var episodes []database.Episode
-	if err := query.
-		Order("e.aired_at ASC, e.episode_number ASC").
-		Offset((page - 1) * limit).
-		Limit(limit).
-		Find(&episodes).Error; err != nil {
-		fmt.Printf("calendar: database query error: %v\n", err)
-		return response.InternalError(c)
+// episodeTypeQuery applies the calendar's new/premieres/finale classification.
+//
+//	new       — season 1, episode 1 (a series premiere)
+//	premieres — episode 1 of any later season (a season premiere)
+//	finale    — the last episode of a season. "Last" is only claimed when the
+//	            season's recorded episode_count is known and this episode's
+//	            number reaches it: the highest episode we happen to hold is
+//	            not a finale when the season is still airing.
+func episodeTypeQuery(query *gorm.DB, typeFilter string) *gorm.DB {
+	switch typeFilter {
+	case "new":
+		return query.Joins("JOIN seasons s ON s.id = e.season_id").
+			Where("s.season_number = 1 AND e.episode_number = 1")
+	case "premieres":
+		return query.Joins("JOIN seasons s ON s.id = e.season_id").
+			Where("s.season_number > 1 AND e.episode_number = 1")
+	case "finale":
+		return query.Joins("JOIN seasons s ON s.id = e.season_id").
+			Where(`s.episode_count > 0
+				AND e.episode_number = s.episode_count
+				AND e.episode_number = (SELECT MAX(e2.episode_number) FROM episodes e2 WHERE e2.season_id = e.season_id)`)
+	default:
+		return query
 	}
+}
 
-	// Batch-fetch the shows and seasons referenced by this page in two
-	// `WHERE id IN (...)` queries, then map in memory — replacing the previous
-	// per-episode `db.First` (N+1) lookups for show and season.
-	var showIDs, seasonIDs []int64
+// fetchEpisodeRelations batch-fetches the shows and seasons referenced by a set
+// of episodes in two `WHERE id IN (...)` queries, replacing per-episode
+// lookups (N+1).
+func fetchEpisodeRelations(db *gorm.DB, episodes []database.Episode) (map[int64]database.Show, map[int64]database.Season) {
+	showIDs := make([]int64, 0, len(episodes))
+	seasonIDs := make([]int64, 0, len(episodes))
 	for _, ep := range episodes {
 		showIDs = append(showIDs, ep.ShowID)
 		seasonIDs = append(seasonIDs, ep.SeasonID)
@@ -281,50 +360,7 @@ func handleCalendarShows(c *fiber.Ctx) error {
 			}
 		}
 	}
-
-	// Build response, merging season_number from seasons table.
-	resp := make([]CalendarEntry, 0, len(episodes))
-	for _, ep := range episodes {
-		show, ok := showMap[ep.ShowID]
-		if !ok {
-			continue
-		}
-
-		seasonNumber := 0
-		if season, ok := seasonMap[ep.SeasonID]; ok {
-			seasonNumber = season.SeasonNumber
-		}
-
-		entry := CalendarEntry{
-			Episode: buildEpisode(&ep),
-			Show: CalendarShow{
-				Title: show.Title,
-				IDs:   buildShowIDs(&show),
-			},
-			Season: CalendarSeason{
-				Number: seasonNumber,
-			},
-		}
-		resp = append(resp, entry)
-	}
-
-	// A contract-shaped request returns the contract's bare array of release
-	// entries; our own calendar routes keep the paginated envelope. The headers go
-	// on either way — a client pages a bare array exactly as it pages an envelope,
-	// and this is the only place it can learn the total.
-	if contract, _ := c.Locals("calendar_contract").(bool); contract {
-		entries := contractReleaseEntries(episodes, showMap, seasonMap)
-		response.SetPaginationHeaders(c, page, limit, total, len(entries))
-		return c.JSON(entries)
-	}
-
-	// Return with pagination envelope.
-	return c.JSON(fiber.Map{
-		"items":     resp,
-		"page":      page,
-		"limit":     limit,
-		"row_count": total,
-	})
+	return showMap, seasonMap
 }
 
 // deriveTarget extracts the calendar target from the request path.
