@@ -83,6 +83,9 @@ def render():
       f"Served today: **{len(buckets['done'])}**.\n")
 
     w("## Out of scope (owner decisions, re-affirmed)\n")
+    w("These are **recorded, not forgotten**: each is one line in this table and one row")
+    w("in `parity.yaml`, so re-opening one later is a status change and a re-run, not a")
+    w("re-audit. They are declined for a stated reason, never to make a number look good.\n")
     if buckets["out"]:
         w("| Contract operation | Rationale |")
         w("|---|---|")

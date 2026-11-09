@@ -36,10 +36,6 @@ func registerStub66(api fiber.Router) {
 	// Upstream gethot; 200: array of {list_count,movie}; +23 query
 	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
 	api.Get("/v1/movies/hot", stubHandler(66, "GET /movies/hot", "stats/rankings engine (issue #66)"))
-	// GET /movies/boxoffice — blocked-data: No revenue/box-office columns exist and the TMDB ingest does not fetch them.
-	// Upstream getboxoffice; 200: array of {movie,revenue}; +1 query
-	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
-	api.Get("/v1/movies/boxoffice", stubHandler(66, "GET /movies/boxoffice", "No revenue/box-office columns exist and the TMDB ingest does not fetch them."))
 	// GET /shows/watched/{period} — blocked-engine: stats/rankings engine (issue #66)
 	// Upstream getwatched; 200: array of {collected_count,collector_count,play_count,show,watcher_count}; path: period; +23 query
 	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
@@ -114,14 +110,6 @@ func defsStub66() []openapi.RouteDef {
 			Tags:        []string{"Movies"},
 			Auth:        "none",
 			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #66) (#66)"},
-		},
-		{
-			Method:      "GET",
-			Path:        "/v1/movies/boxoffice",
-			Summary:     "Parity stub — not implemented (stats & rankings engine)",
-			Tags:        []string{"Movies"},
-			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — No revenue/box-office columns exist and the TMDB ingest does not fetch them. (#66)"},
 		},
 		{
 			Method:      "GET",

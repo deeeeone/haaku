@@ -11,9 +11,13 @@ path (modulo our `/v1` prefix), with a real 2xx — except the recommendation/re
 engine, which stays an honest `501 not_implemented` and graded `blocked-engine` by
 the owner's carve-out. Done is `go run ./cmd/parity`, not a PR count.
 
-Contract operations: **336**. Not yet served (**in scope**): **205**. Out by owner decision: **28**. Served today: **103**.
+Contract operations: **336**. Not yet served (**in scope**): **202**. Out by owner decision: **31**. Served today: **103**.
 
 ## Out of scope (owner decisions, re-affirmed)
+
+These are **recorded, not forgotten**: each is one line in this table and one row
+in `parity.yaml`, so re-opening one later is a status change and a re-run, not a
+re-audit. They are declined for a stated reason, never to make a number look good.
 
 | Contract operation | Rationale |
 |---|---|
@@ -21,6 +25,9 @@ Contract operations: **336**. Not yet served (**in scope**): **205**. Out by own
 | `DELETE /users/settings/plex/connect` | decision: Trakt's Plex integration and 'sync' product; haaku tracks via scrobbling, not a sync client |
 | `DELETE /users/syncs/{id}` | decision: Trakt's Plex integration and 'sync' product; haaku tracks via scrobbling, not a sync client |
 | `DELETE /younify/users/services/{service_id}` | decision: Trakt's proprietary cross-service linking product; a self-hosted tracker has nothing to link through it |
+| `GET /movies/boxoffice` | decision: Trakt's /movies/boxoffice is a weekend box-office chart; TMDB dropped box-office figures and carries only a lifetime `revenue` number, which is a different measurement. No honest source, so it is declined rather than filled with a number that is not the one the contract names. |
+| `GET /movies/{id}/sentiments` | decision: Trakt derives sentiments from a per-episode sentiment model over its whole comment corpus; nothing in a self-hosted instance produces that signal, and inventing a score is exactly the fabricated payload this manifest forbids. Declined, tracked here so it can be revisited if a scorer is ever built. |
+| `GET /shows/{id}/sentiments` | decision: same as /movies/{id}/sentiments — no sentiment scorer exists and none is planned, and a fabricated score is worse than an honest absence. |
 | `GET /team/` | decision: /team lists Trakt's staff; a self-hosted instance has no equivalent and no client depends on it. |
 | `GET /users/settings/plex/` | decision: Trakt's Plex integration and 'sync' product; haaku tracks via scrobbling, not a sync client |
 | `GET /users/settings/plex/servers` | decision: Trakt's Plex integration and 'sync' product; haaku tracks via scrobbling, not a sync client |
@@ -90,7 +97,6 @@ Contract operations: **336**. Not yet served (**in scope**): **205**. Out by own
 | `GET /media/popular` | blocked-engine | stats and rankings | #66 |
 | `GET /media/trending` | blocked-engine | stats and rankings | #66 |
 | `GET /movies/anticipated` | divergent | divergent shapes — serve the contract path | #104 |
-| `GET /movies/boxoffice` | blocked-data | stats and rankings | #66 |
 | `GET /movies/collected/{period}` | blocked-engine | stats and rankings | #66 |
 | `GET /movies/favorited/{period}` | out-of-scope | stats and rankings | #66 |
 | `GET /movies/hot` | blocked-engine | stats and rankings | #66 |
@@ -100,7 +106,6 @@ Contract operations: **336**. Not yet served (**in scope**): **205**. Out by own
 | `GET /movies/{id}/lists/{type}/{sort}` | blocked-engine | lists engine — per-item lists | #67 |
 | `GET /movies/{id}/related` | blocked-engine | related / recommendations (owner carve-out: stays 501) | #49 |
 | `GET /movies/{id}/releases/{country}` | blocked-data | TMDB metadata ingest | #68 |
-| `GET /movies/{id}/sentiments` | out-of-scope | TMDB metadata ingest | #68 |
 | `GET /movies/{id}/stats` | blocked-engine | per-item reads over stored data | #86 |
 | `GET /movies/{id}/studios` | blocked-data | TMDB metadata ingest | #68 |
 | `GET /movies/{id}/translations` | out-of-scope | TMDB metadata ingest | #68 |
@@ -149,7 +154,6 @@ Contract operations: **336**. Not yet served (**in scope**): **205**. Out by own
 | `GET /shows/{id}/seasons/{season}/videos` | blocked-data | TMDB metadata ingest | #68 |
 | `GET /shows/{id}/seasons/{season}/watching` | out-of-scope | TMDB metadata ingest | #68 |
 | `GET /shows/{id}/seasons/{season}/watchnow/justwatch_links/{country}` | out-of-scope | TMDB metadata ingest | #68 |
-| `GET /shows/{id}/sentiments` | out-of-scope | TMDB metadata ingest | #68 |
 | `GET /shows/{id}/stats` | blocked-engine | per-item reads over stored data | #86 |
 | `GET /shows/{id}/studios` | blocked-data | TMDB metadata ingest | #68 |
 | `GET /shows/{id}/translations` | out-of-scope | TMDB metadata ingest | #68 |
