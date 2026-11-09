@@ -15,6 +15,11 @@ CREATE TABLE IF NOT EXISTS user_reports (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- The reporter/target pair is a plain (non-partial) unique index on purpose: the
+-- report write is an INSERT ... ON CONFLICT (reporter_id, reported_user_id) DO
+-- UPDATE, and PostgreSQL can only infer an index for that conflict target when
+-- it is not partial (a partial index needs its predicate; see
+-- cmd/trakt-conformance/seed.go). Keep it plain or the upsert stops working.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_user_reports_reporter_target
     ON user_reports(reporter_id, reported_user_id);
 CREATE INDEX IF NOT EXISTS idx_user_reports_target ON user_reports(reported_user_id);

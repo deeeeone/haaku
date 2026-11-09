@@ -2,6 +2,7 @@ package users
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -331,10 +332,15 @@ func handleContractWatchedMovies(c *fiber.Ctx) error {
 		Order("watched_at ASC, id ASC").Find(&rows).Error; err != nil {
 		return response.InternalError(c)
 	}
+	mediaIDs := make([]int64, 0, len(rows))
+	for i := range rows {
+		mediaIDs = append(mediaIDs, rows[i].MediaID)
+	}
+	movies := loadMovieMap(db, mediaIDs)
 	out := map[string][]string{}
 	for i := range rows {
-		var m database.Movie
-		if db.First(&m, rows[i].MediaID).Error != nil {
+		m, found := movies[rows[i].MediaID]
+		if !found {
 			continue
 		}
 		slug, _ := contractshape.MovieIDs(&m)["slug"].(string)
@@ -363,22 +369,30 @@ func handleContractWatchedShows(c *fiber.Ctx) error {
 		return response.InternalError(c)
 	}
 	episodes := loadEpisodes(db, rows)
+	showIDs := make([]int64, 0, len(episodes))
+	seasonIDs := make([]int64, 0, len(episodes))
+	for _, ep := range episodes {
+		showIDs = append(showIDs, ep.ShowID)
+		seasonIDs = append(seasonIDs, ep.SeasonID)
+	}
+	shows := loadShowMap(db, showIDs)
+	seasons := loadSeasonMap(db, seasonIDs)
 	out := map[string]map[string]map[string][]string{}
 	for i := range rows {
 		ep, found := episodes[episodeKey(&rows[i])]
 		if !found {
 			continue
 		}
-		var show database.Show
-		if db.First(&show, ep.ShowID).Error != nil {
+		show, found := shows[ep.ShowID]
+		if !found {
 			continue
 		}
 		showSlug, _ := contractshape.ShowIDs(&show)["slug"].(string)
 		if showSlug == "" {
 			continue
 		}
-		var season database.Season
-		if db.First(&season, ep.SeasonID).Error != nil {
+		season, found := seasons[ep.SeasonID]
+		if !found {
 			continue
 		}
 		if out[showSlug] == nil {
@@ -406,34 +420,46 @@ func loadEpisodes(db *gorm.DB, rows []database.UserHistory) map[int64]database.E
 	for i := range rows {
 		ids = append(ids, episodeKey(&rows[i]))
 	}
-	out := map[int64]database.Episode{}
-	if len(ids) == 0 {
-		return out
-	}
-	var eps []database.Episode
-	if db.Where("id IN ?", ids).Find(&eps).Error != nil {
-		return out
-	}
-	for i := range eps {
-		out[eps[i].ID] = eps[i]
-	}
-	return out
+	return loadEpisodeMap(db, ids)
 }
 
-// watchedAggregate is one group of history rows for the same media item.
+// watchedAggregate is one aggregated row of /watched/{type}: the media key, the
+// history row that carries the newest watch, and the play count. The two int64s
+// are all that come back from SQL — the timestamp is read from the history row
+// itself, because an aggregate timestamp has no column type left for the
+// sqlite driver to decode.
 type watchedAggregate struct {
-	key        int64
-	plays      int
-	lastAt     time.Time
-	mediaType  string
-	showID     int64
-	seasonID   int64
-	episodeNum int
-	seasonNum  int
+	MediaKey  int64
+	HistoryID int64
+	Plays     int
+}
+
+// watchedTypeSQL returns the portable aggregation for one watched type: the
+// group key, the FROM clause (a join onto episodes for the episode-derived
+// types), and the WHERE clause with the user_id placeholder.
+func watchedTypeSQL(kind string) (keyExpr, from, where string) {
+	const episodeRows = "uh.user_id = ? AND uh.media_type = 'episode'"
+	const episodeJoin = "user_history uh JOIN episodes e ON e.id = COALESCE(uh.episode_id, uh.media_id)"
+	switch kind {
+	case "movie":
+		// A movie whose row is gone is not served (and so is not counted).
+		return "uh.media_id", "user_history uh",
+			"uh.user_id = ? AND uh.media_type = 'movie' AND EXISTS (SELECT 1 FROM movies m WHERE m.id = uh.media_id)"
+	case "show":
+		return "e.show_id", episodeJoin,
+			episodeRows + " AND EXISTS (SELECT 1 FROM shows s WHERE s.id = e.show_id)"
+	case "season":
+		return "e.season_id", episodeJoin,
+			episodeRows + " AND EXISTS (SELECT 1 FROM seasons sn WHERE sn.id = e.season_id)"
+	default: // episode
+		return "e.id", episodeJoin, episodeRows
+	}
 }
 
 // handleContractWatchedType serves /watched/{type} as the contract's aggregated
-// array (plays, last_watched_at, last_updated_at, and the media object).
+// array (plays, last_watched_at, last_updated_at, and the media object). The
+// aggregation, its ordering and the page window all run in SQL, so the cost is
+// one page of groups, not the account's whole history.
 func handleContractWatchedType(c *fiber.Ctx) error {
 	if err := validateExtended(c); err != nil {
 		return err
@@ -446,97 +472,76 @@ func handleContractWatchedType(c *fiber.Ctx) error {
 	if !ok {
 		return response.BadRequest(c, "invalid type")
 	}
-	page, limit := contractPage(c)
-
-	q := db.Where("user_id = ?", target.ID)
-	switch kind {
-	case "movie":
-		q = q.Where("media_type = ?", "movie")
-	case "episode":
-		q = q.Where("media_type = ?", "episode")
-	case "show", "season":
-		q = q.Where("media_type = ?", "episode")
-	default:
+	if kind != "movie" && kind != "episode" && kind != "show" && kind != "season" {
 		return response.BadRequest(c, "invalid type")
 	}
+	page, limit := contractPage(c)
 
-	var rows []database.UserHistory
-	if err := q.Order("watched_at DESC, id DESC").Find(&rows).Error; err != nil {
+	keyExpr, from, where := watchedTypeSQL(kind)
+
+	// One row per group: the newest history row of the group, its play count,
+	// ordered by that newest watch. ROW_NUMBER/COUNT are window functions, so
+	// only integers cross the driver boundary.
+	grouped := fmt.Sprintf(
+		"SELECT %s AS media_key, uh.id AS history_id, uh.watched_at, "+
+			"COUNT(*) OVER (PARTITION BY %s) AS plays, "+
+			"ROW_NUMBER() OVER (PARTITION BY %s ORDER BY uh.watched_at DESC, uh.id DESC) AS rn "+
+			"FROM %s WHERE %s",
+		keyExpr, keyExpr, keyExpr, from, where)
+	pageSQL := "SELECT media_key, history_id, plays FROM (" + grouped + ") g " +
+		"WHERE g.rn = 1 ORDER BY g.watched_at DESC, g.history_id DESC LIMIT ? OFFSET ?"
+
+	var groups []watchedAggregate
+	if err := db.Raw(pageSQL, target.ID, limit, pageOffset(page, limit)).Scan(&groups).Error; err != nil {
 		return response.InternalError(c)
 	}
 
-	eps := loadEpisodes(db, rows)
-	order := make([]int64, 0)
-	agg := map[int64]*watchedAggregate{}
-	for i := range rows {
-		key := rows[i].MediaID
-		mt := rows[i].MediaType
-		a := &watchedAggregate{mediaType: mt}
-		switch kind {
-		case "show":
-			ep, found := eps[episodeKey(&rows[i])]
-			if !found {
-				continue
-			}
-			key, a.showID, a.mediaType = ep.ShowID, ep.ShowID, "show"
-		case "season":
-			ep, found := eps[episodeKey(&rows[i])]
-			if !found {
-				continue
-			}
-			var season database.Season
-			if db.First(&season, ep.SeasonID).Error != nil {
-				continue
-			}
-			key, a.seasonID, a.seasonNum, a.mediaType = ep.SeasonID, ep.SeasonID, season.SeasonNumber, "season"
-		case "episode":
-			ep, found := eps[episodeKey(&rows[i])]
-			if found {
-				a.seasonID, a.episodeNum = ep.SeasonID, ep.EpisodeNumber
-			}
-		}
-		if a.key == 0 {
-			a.key = key
-		}
-		existing, seen := agg[key]
-		if !seen {
-			a.plays = 1
-			a.lastAt = rows[i].WatchedAt
-			agg[key] = a
-			order = append(order, key)
-			continue
-		}
-		existing.plays++
-		if rows[i].WatchedAt.After(existing.lastAt) {
-			existing.lastAt = rows[i].WatchedAt
-		}
+	var total int64
+	countSQL := fmt.Sprintf("SELECT COUNT(*) FROM (SELECT 1 FROM %s WHERE %s GROUP BY %s) g", from, where, keyExpr)
+	if err := db.Raw(countSQL, target.ID).Scan(&total).Error; err != nil {
+		return response.InternalError(c)
 	}
 
-	items := make([]map[string]any, 0, len(order))
-	for _, key := range order {
-		a := agg[key]
-		media, ok := contractMediaRow(db, a.mediaType, key)
-		if !ok {
+	// Hydrate only the page: the newest history row of each group (for the
+	// timestamps) and at most one query per media type.
+	historyIDs := make([]int64, 0, len(groups))
+	for i := range groups {
+		historyIDs = append(historyIDs, groups[i].HistoryID)
+	}
+	historyByID := map[int64]database.UserHistory{}
+	if len(historyIDs) > 0 {
+		var rows []database.UserHistory
+		if err := db.Where("id IN ?", historyIDs).Find(&rows).Error; err != nil {
+			return response.InternalError(c)
+		}
+		for i := range rows {
+			historyByID[rows[i].ID] = rows[i]
+		}
+	}
+	refs := make([]mediaRef, 0, len(groups))
+	for i := range groups {
+		refs = append(refs, mediaRef{Type: kind, ID: groups[i].MediaKey})
+	}
+	mediaByRef := contractMediaRows(db, refs)
+
+	items := make([]map[string]any, 0, len(groups))
+	for i := range groups {
+		media, found := mediaByRef[mediaRef{Type: kind, ID: groups[i].MediaKey}]
+		if !found {
+			continue
+		}
+		h, found := historyByID[groups[i].HistoryID]
+		if !found {
 			continue
 		}
 		items = append(items, map[string]any{
-			"plays":           a.plays,
-			"last_watched_at": contractshape.Timestamp(a.lastAt),
-			"last_updated_at": contractshape.Timestamp(a.lastAt),
-			a.mediaType:       media,
+			"plays":           groups[i].Plays,
+			"last_watched_at": contractshape.Timestamp(h.WatchedAt),
+			"last_updated_at": contractshape.Timestamp(h.WatchedAt),
+			kind:              media,
 		})
 	}
-
-	total := int64(len(items))
-	start := pageOffset(page, limit)
-	if start > len(items) {
-		start = len(items)
-	}
-	end := start + limit
-	if end > len(items) {
-		end = len(items)
-	}
-	return writeContractPage(c, items[start:end], page, limit, total, end-start)
+	return writeContractPage(c, items, page, limit, total, len(items))
 }
 
 // ---------------------------------------------------------------------------
@@ -562,6 +567,19 @@ func handleContractActivities(c *fiber.Ctx) error {
 
 	userIDs, err := activityUserIDs(db, target.ID, kind)
 	if err != nil {
+		return response.InternalError(c)
+	}
+	// The feed renders other accounts' rows, so each account is put through the
+	// same visibility decision the per-account routes enforce — otherwise a
+	// blocked, deleted or private account's watch history would be readable here
+	// even though /users/{id}/history refuses it. "history" is the section the
+	// rows themselves come from; "activity" is applied on top because this
+	// endpoint also exposes whether the account was active.
+	caller, _ := c.Locals("user_id").(string)
+	if userIDs, err = auth.VisibleUserIDs(db, caller, userIDs, "history"); err != nil {
+		return response.InternalError(c)
+	}
+	if userIDs, err = auth.VisibleUserIDs(db, caller, userIDs, "activity"); err != nil {
 		return response.InternalError(c)
 	}
 	if len(userIDs) == 0 {

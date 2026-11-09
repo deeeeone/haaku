@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/haaku-tv/haaku/internal/auth"
 	"github.com/haaku-tv/haaku/internal/contractshape"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // This file is the contract-shaped half of the public-profile read surface
@@ -79,52 +81,151 @@ func writeContractPage(c *fiber.Ctx, items any, page, limit int, total int64, co
 	return c.JSON(items)
 }
 
+// mediaRef identifies one media row the contract renders as an object.
+type mediaRef struct {
+	Type string
+	ID   int64
+}
+
 // contractMediaRow renders a media row in the contract's object shape. ok is
 // false when the row a user row points at no longer exists; the caller omits the
 // dangling item rather than fabricating a placeholder.
 func contractMediaRow(db *gorm.DB, mediaType string, mediaID int64) (map[string]any, bool) {
-	switch mediaType {
-	case "movie":
-		var m database.Movie
-		if db.First(&m, mediaID).Error != nil {
-			return nil, false
-		}
-		return contractshape.Movie(&m), true
-	case "show":
-		var s database.Show
-		if db.First(&s, mediaID).Error != nil {
-			return nil, false
-		}
-		return contractshape.Show(&s), true
-	case "episode":
-		var e database.Episode
-		if db.First(&e, mediaID).Error != nil {
-			return nil, false
-		}
-		return contractshape.Episode(&e, seasonNumber(&e)), true
-	case "season":
-		var s database.Season
-		if db.First(&s, mediaID).Error != nil {
-			return nil, false
-		}
-		return contractshape.Season(&s), true
-	default:
-		return nil, false
-	}
+	ref := mediaRef{Type: mediaType, ID: mediaID}
+	row, ok := contractMediaRows(db, []mediaRef{ref})[ref]
+	return row, ok
 }
 
-// seasonNumber returns the parent season's number for an episode, or 0 when the
-// season row is gone (contractshape.Episode emits 0 rather than guessing).
-func seasonNumber(e *database.Episode) int {
-	db, err := database.GetDB()
-	if err != nil {
-		return 0
+// contractMediaRows renders a set of media references with at most one query
+// per media type (plus one for the seasons an episode page needs), so a read
+// that references many rows is not one query per row. References whose row is
+// gone are absent from the result, exactly as contractMediaRow reports ok=false.
+func contractMediaRows(db *gorm.DB, refs []mediaRef) map[mediaRef]map[string]any {
+	out := make(map[mediaRef]map[string]any, len(refs))
+	byType := map[string][]int64{}
+	for _, ref := range refs {
+		if ref.ID != 0 {
+			byType[ref.Type] = append(byType[ref.Type], ref.ID)
+		}
 	}
-	var season database.Season
-	if db.First(&season, e.SeasonID).Error != nil {
-		return 0
+
+	movies := loadMovieMap(db, byType["movie"])
+	shows := loadShowMap(db, byType["show"])
+	seasons := loadSeasonMap(db, byType["season"])
+	episodes := loadEpisodeMap(db, byType["episode"])
+
+	episodeSeasons := make([]int64, 0, len(episodes))
+	for _, ep := range episodes {
+		episodeSeasons = append(episodeSeasons, ep.SeasonID)
 	}
-	return season.SeasonNumber
+	for id, season := range loadSeasonMap(db, episodeSeasons) {
+		seasons[id] = season
+	}
+
+	for _, ref := range refs {
+		switch ref.Type {
+		case "movie":
+			if m, ok := movies[ref.ID]; ok {
+				out[ref] = contractshape.Movie(&m)
+			}
+		case "show":
+			if s, ok := shows[ref.ID]; ok {
+				out[ref] = contractshape.Show(&s)
+			}
+		case "episode":
+			if e, ok := episodes[ref.ID]; ok {
+				out[ref] = contractshape.Episode(&e, seasons[e.SeasonID].SeasonNumber)
+			}
+		case "season":
+			if s, ok := seasons[ref.ID]; ok {
+				out[ref] = contractshape.Season(&s)
+			}
+		}
+	}
+	return out
+}
+
+// loadMovieMap batch-loads movies by id.
+func loadMovieMap(db *gorm.DB, ids []int64) map[int64]database.Movie {
+	out := make(map[int64]database.Movie, len(ids))
+	ids = uniqueIDs(ids)
+	if len(ids) == 0 {
+		return out
+	}
+	var rows []database.Movie
+	if db.Where("id IN ?", ids).Find(&rows).Error != nil {
+		return out
+	}
+	for i := range rows {
+		out[rows[i].ID] = rows[i]
+	}
+	return out
+}
+
+// loadShowMap batch-loads shows by id.
+func loadShowMap(db *gorm.DB, ids []int64) map[int64]database.Show {
+	out := make(map[int64]database.Show, len(ids))
+	ids = uniqueIDs(ids)
+	if len(ids) == 0 {
+		return out
+	}
+	var rows []database.Show
+	if db.Where("id IN ?", ids).Find(&rows).Error != nil {
+		return out
+	}
+	for i := range rows {
+		out[rows[i].ID] = rows[i]
+	}
+	return out
+}
+
+// loadSeasonMap batch-loads seasons by id.
+func loadSeasonMap(db *gorm.DB, ids []int64) map[int64]database.Season {
+	out := make(map[int64]database.Season, len(ids))
+	ids = uniqueIDs(ids)
+	if len(ids) == 0 {
+		return out
+	}
+	var rows []database.Season
+	if db.Where("id IN ?", ids).Find(&rows).Error != nil {
+		return out
+	}
+	for i := range rows {
+		out[rows[i].ID] = rows[i]
+	}
+	return out
+}
+
+// loadEpisodeMap batch-loads episodes by id.
+func loadEpisodeMap(db *gorm.DB, ids []int64) map[int64]database.Episode {
+	out := make(map[int64]database.Episode, len(ids))
+	ids = uniqueIDs(ids)
+	if len(ids) == 0 {
+		return out
+	}
+	var rows []database.Episode
+	if db.Where("id IN ?", ids).Find(&rows).Error != nil {
+		return out
+	}
+	for i := range rows {
+		out[rows[i].ID] = rows[i]
+	}
+	return out
+}
+
+// uniqueIDs drops duplicates and zero ids so an IN list stays small and never
+// matches the zero row.
+func uniqueIDs(ids []int64) []int64 {
+	out := make([]int64, 0, len(ids))
+	seen := make(map[int64]bool, len(ids))
+	for _, id := range ids {
+		if id == 0 || seen[id] {
+			continue
+		}
+		seen[id] = true
+		out = append(out, id)
+	}
+	return out
 }
 
 // contractHistoryRow renders one user_history row in the contract's history
@@ -407,10 +508,13 @@ func handleContractSavedFilters(c *fiber.Ctx) error {
 	}
 
 	items := make([]map[string]any, 0, len(rows))
+	offset := pageOffset(page, limit)
 	for i := range rows {
 		path, queryString := savedFilterPathQuery(rows[i].Filter)
 		items = append(items, map[string]any{
-			"rank":       i + 1,
+			// rank is absolute across pages, not per page: the contract's rank
+			// is the filter's position in the whole saved set.
+			"rank":       offset + i + 1,
 			"id":         rows[i].ID,
 			"name":       rows[i].Name,
 			"path":       path,
@@ -599,21 +703,20 @@ func handleReportUser(c *fiber.Ctx) error {
 		Reason:         body.Reason,
 		Message:        body.Message,
 	}
-	// One row per reporter per target; re-reporting updates the reason.
-	var existing database.UserReport
-	err := db.Where("reporter_id = ? AND reported_user_id = ?", caller, target.ID).First(&existing).Error
-	switch {
-	case err == nil:
-		existing.Reason = report.Reason
-		existing.Message = report.Message
-		if err := db.Save(&existing).Error; err != nil {
-			return response.InternalError(c)
-		}
-	case errors.Is(err, gorm.ErrRecordNotFound):
-		if err := db.Create(&report).Error; err != nil {
-			return response.InternalError(c)
-		}
-	default:
+	// One row per reporter per target: the insert is atomic against the plain
+	// unique index on (reporter_id, reported_user_id), so a duplicate (a
+	// re-report, or two concurrent first reports) updates the row instead of
+	// answering a 500 from the unique violation. The index is NOT partial, so
+	// PostgreSQL can infer it from the column list (a partial index could not —
+	// see cmd/trakt-conformance/seed.go).
+	if err := db.Clauses(clause.OnConflict{
+		Columns: []clause.Column{{Name: "reporter_id"}, {Name: "reported_user_id"}},
+		DoUpdates: clause.Assignments(map[string]any{
+			"reason":     report.Reason,
+			"message":    report.Message,
+			"updated_at": time.Now(),
+		}),
+	}).Create(&report).Error; err != nil {
 		return response.InternalError(c)
 	}
 
