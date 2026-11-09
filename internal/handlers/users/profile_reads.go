@@ -89,6 +89,12 @@ func RegisterProfileReadRoutes(api fiber.Router) {
 	// resolve to in the :id routes below.
 	users := api.Group("/users", auth.OptionalAuth())
 
+	// Contract-shaped per-type reads (literal path segments). Registered first
+	// so /:id/history/movies and friends are not swallowed by the parameterised
+	// /:id/history/:media_type routes below.
+	registerContractMediaReads(users)
+	registerContractCollectionReads(users)
+
 	// Caller's own likes: static "me" paths, registered before :id/likes below.
 	users.Get("/me/likes/comments", auth.AuthRequired(), handleMyLikedComments)
 	users.Get("/me/likes/lists", auth.AuthRequired(), handleMyLikedLists)

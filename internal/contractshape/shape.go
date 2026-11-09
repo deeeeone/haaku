@@ -115,6 +115,26 @@ func SeasonIDs(s *database.Season) map[string]any {
 	return map[string]any{"trakt": s.ID}
 }
 
+// Season renders a season in the contract's season object shape. The contract
+// requires number and ids; aired_episodes is emitted from the row.
+func Season(s *database.Season) map[string]any {
+	images := map[string]any{}
+	if s.Images != nil {
+		images = map[string]any(s.Images)
+	}
+	return map[string]any{
+		"number":         s.SeasonNumber,
+		"ids":            SeasonIDs(s),
+		"aired_episodes": s.EpisodeCount,
+		"episode_count":  s.EpisodeCount,
+		"title":          nil,
+		"overview":       nil,
+		"first_aired":    Date(s.AiredAt),
+		"updated_at":     Timestamp(s.UpdatedAt),
+		"images":         images,
+	}
+}
+
 // ListIDs builds the contract ids object for a list.
 func ListIDs(l *database.List) map[string]any {
 	slug := l.Slug

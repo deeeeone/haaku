@@ -1013,9 +1013,9 @@ sections:
         status: out-of-scope
         rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
       - trakt: "GET /users/blocked"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/blocked"
+        status: implemented
+        rationale: "Landed: the caller's user_blocks rows in the contract {blocked_at,user} shape; auth-required (no target profile to filter)."
       - trakt: "GET /users/hidden/dropped"
         ours: ""
         status: out-of-scope
@@ -1029,9 +1029,9 @@ sections:
         status: implemented
         rationale: "Served at GET /v1/users/hidden/{section}; the path shape matches the contract."
       - trakt: "GET /users/reactions/comments"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/reactions/comments"
+        status: implemented
+        rationale: "Landed: the caller's comment_reactions joined to their comments, contract {reacted_at,reaction,type,comment} shape."
       - trakt: "GET /users/requests/"
         ours: ""
         status: out-of-scope
@@ -1041,9 +1041,9 @@ sections:
         status: out-of-scope
         rationale: "deferred: the follow-request workflow, deferred with the optional shared social server (#54)"
       - trakt: "GET /users/saved_filters/{section}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/saved_filters/{section}"
+        status: implemented
+        rationale: "Landed: saved_filters rows for the caller and section; path/query derived from the stored filter map."
       - trakt: "GET /users/settings/plex/"
         ours: ""
         status: out-of-scope
@@ -1077,29 +1077,32 @@ sections:
         status: out-of-scope
         rationale: "decision: Trakt's Plex integration and 'sync' product; haaku tracks via scrobbling, not a sync client"
       - trakt: "GET /users/{id}/"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/{id}"
+        status: implemented
+        rationale: "Landed: the public profile carries the contract's required username/private/deleted/ids plus joined_at/about/images; PrivacyFilterSection(profile)-gated."
       - trakt: "GET /users/{id}/favorites/comments/{sort}"
-        ours: ""
         status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        rationale: "deferred: haaku stores comment likes and reactions but no favorite-a-comment relation, so there is no honest payload; tracked with the list/comment engine (#67)."
       - trakt: "GET /users/{id}/favorites/media/{sort}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/{id}/favorites/media/{sort}"
+        status: divergent
+        rationale: "Served for the storable favorite types (movies, shows, seasons, episodes) with the contract's {rank,id,listed_at,type,movie|show|season|episode} shape."
+        compat: "sort values rank|added|listed|title|released are served; other sort values 400 rather than being silently ignored. PrivacyFilter-gated."
       - trakt: "GET /users/{id}/favorites/movies/{sort}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/{id}/favorites/movies/{sort}"
+        status: divergent
+        rationale: "Served from user_favorites rows with the contract's movie object."
+        compat: "sort values rank|added|listed|title|released served; others 400. PrivacyFilter-gated."
       - trakt: "GET /users/{id}/favorites/shows/{sort}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/{id}/favorites/shows/{sort}"
+        status: divergent
+        rationale: "Served from user_favorites rows with the contract's show object."
+        compat: "sort values rank|added|listed|title|released served; others 400. PrivacyFilter-gated."
       - trakt: "GET /users/{id}/favorites/{type}/{sort_by}/{sort_how}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/{id}/favorites/{type}/{sort_by}/{sort_how}"
+        status: divergent
+        rationale: "Served for type movies|shows|seasons|episodes (and all) from user_favorites."
+        compat: "sort_by rank|added|listed|title|released and sort_how asc|desc served; other sort_by values 400. PrivacyFilter-gated."
       - trakt: "GET /users/{id}/followers"
         ours: "GET /v1/users/{id}/followers"
         status: implemented
@@ -1113,29 +1116,35 @@ sections:
         status: implemented
         rationale: "Served at GET /v1/users/{id}/friends; the path shape matches the contract."
       - trakt: "GET /users/{id}/history/episodes"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/{id}/history/episodes"
+        status: divergent
+        rationale: "Served from user_history episode rows with the contract's {id,watched_at,action,type,episode} shape."
+        compat: "page/limit/extended/start_at/end_at/start_date/end_date served; the catalogue filters (watchnow, genres, years, ratings, runtimes, countries, statuses, certifications, parental_*) are ignored. PrivacyFilterSection(history)-gated."
       - trakt: "GET /users/{id}/history/episodes/{item_id}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/{id}/history/episodes/{item_id}"
+        status: divergent
+        rationale: "Served for a numeric local episode id; the contract's per-item shape."
+        compat: "numeric episode id served; ?id_type= external episode ids (imdb/tmdb/tvdb) are not stored. PrivacyFilterSection(history)-gated."
       - trakt: "GET /users/{id}/history/movies"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/{id}/history/movies"
+        status: divergent
+        rationale: "Served from user_history movie rows with the contract's {id,watched_at,action,type,movie} shape."
+        compat: "page/limit/extended/start_at/end_at/start_date/end_date served; catalogue filters (watchnow, genres, years, ratings, runtimes, ...) are ignored. PrivacyFilterSection(history)-gated."
       - trakt: "GET /users/{id}/history/movies/{item_id}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/{id}/history/movies/{item_id}"
+        status: divergent
+        rationale: "Served; {item_id} resolves a numeric id, slug, or ?id_type= external movie id."
+        compat: "catalogue filters ignored; time-window params served. PrivacyFilterSection(history)-gated."
       - trakt: "GET /users/{id}/history/shows"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/{id}/history/shows"
+        status: divergent
+        rationale: "Served from user_history episode rows with the contract's episode shape."
+        compat: "catalogue filters ignored; page/limit/extended/time-window served. PrivacyFilterSection(history)-gated."
       - trakt: "GET /users/{id}/history/shows/{item_id}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/{id}/history/shows/{item_id}"
+        status: divergent
+        rationale: "Served: resolves a show by numeric id, slug or ?id_type= and returns its episodes' history."
+        compat: "catalogue filters ignored. PrivacyFilterSection(history)-gated."
       - trakt: "GET /users/{id}/lists"
         ours: "GET /v1/users/{id}/lists"
         status: implemented
@@ -1185,25 +1194,24 @@ sections:
         status: out-of-scope
         rationale: "decision: Trakt's Year/Month-in-Review are proprietary aggregates over its whole user base; we do not reproduce them"
       - trakt: "GET /users/{id}/ratings/episodes"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/{id}/ratings/episodes"
+        status: implemented
+        rationale: "Landed: user_ratings episode rows in the contract shape; PrivacyFilterSection(ratings)-gated."
       - trakt: "GET /users/{id}/ratings/movies"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/{id}/ratings/movies"
+        status: implemented
+        rationale: "Landed: user_ratings movie rows in the contract shape; PrivacyFilterSection(ratings)-gated."
       - trakt: "GET /users/{id}/ratings/shows"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/{id}/ratings/shows"
+        status: implemented
+        rationale: "Landed: user_ratings show rows in the contract shape; PrivacyFilterSection(ratings)-gated."
       - trakt: "GET /users/{id}/ratings/{type}/{rating}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/{id}/ratings/{type}/{rating}"
+        status: implemented
+        rationale: "Landed: user_ratings filtered by media type (movies|shows|episodes|seasons|all) and rating 1-10; PrivacyFilterSection(ratings)-gated."
       - trakt: "GET /users/{id}/smart-list-drafts"
-        ours: ""
         status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        rationale: "deferred: smart_lists stores filters but no draft/confidence columns, so convertible_count/confidence cannot be served honestly; tracked by #67."
       - trakt: "GET /users/{id}/smart-lists"
         ours: ""
         status: out-of-scope
@@ -1217,33 +1225,38 @@ sections:
         status: implemented
         rationale: "Served at GET /v1/users/{id}/stats; the path shape matches the contract."
       - trakt: "GET /users/{id}/watched/movies"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/{id}/watched/movies"
+        status: implemented
+        rationale: "Landed: movie slug -> watched dates map from user_history; PrivacyFilterSection(history)-gated."
       - trakt: "GET /users/{id}/watched/shows"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/{id}/watched/shows"
+        status: divergent
+        rationale: "Served: show -> season -> episode -> watched dates map from user_history."
+        compat: "specials and season_numbers query params are ignored; PrivacyFilterSection(history)-gated."
       - trakt: "GET /users/{id}/watched/{type}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/{id}/watched/{type}"
+        status: divergent
+        rationale: "Served for type movies|shows|seasons|episodes as the contract's aggregated {plays,last_watched_at,last_updated_at,media} array."
+        compat: "hidden/specials/count_specials query params are ignored; PrivacyFilterSection(history)-gated."
       - trakt: "GET /users/{id}/watchlist/comments/{sort}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/{id}/watchlist/comments/{sort}"
+        status: implemented
+        rationale: "Landed: comments on the movies/shows in the user's watchlist; all four sort values (newest|oldest|likes|replies) served; PrivacyFilter-gated."
       - trakt: "GET /users/{id}/watchlist/movie,show/{sort}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/{id}/watchlist/movie,show/{sort}"
+        status: divergent
+        rationale: "Served for movie+show watchlist rows in the contract shape."
+        compat: "sort values rank|added|listed|title|released served; others 400. PrivacyFilter-gated."
       - trakt: "GET /users/{id}/watchlist/movies/{sort}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/{id}/watchlist/movies/{sort}"
+        status: divergent
+        rationale: "Served from user_watchlist movie rows in the contract shape."
+        compat: "sort values rank|added|listed|title|released served; others 400. PrivacyFilter-gated."
       - trakt: "GET /users/{id}/watchlist/shows/{sort}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/{id}/watchlist/shows/{sort}"
+        status: divergent
+        rationale: "Served from user_watchlist show rows in the contract shape."
+        compat: "sort values rank|added|listed|title|released served; others 400. PrivacyFilter-gated."
       - trakt: "GET /users/{id}/yir/all"
         ours: ""
         status: out-of-scope
@@ -1261,9 +1274,10 @@ sections:
         status: out-of-scope
         rationale: "decision: Trakt's Year/Month-in-Review are proprietary aggregates over its whole user base; we do not reproduce them"
       - trakt: "GET /users/{id}/{type}/activities"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "GET /v1/users/{id}/{type}/activities"
+        status: divergent
+        rationale: "Served for type friends|followers|following: recent user_history events by those accounts, contract {id,activity_at,action,user,media} shape."
+        compat: "the catalogue filters (watchnow, genres, years, ratings, ...) are ignored; PrivacyFilterSection(activity)-gated."
       - trakt: "GET /younify/connections"
         ours: ""
         status: out-of-scope
@@ -1489,9 +1503,9 @@ sections:
         status: out-of-scope
         rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
       - trakt: "POST /users/{id}/report"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "POST /v1/users/{id}/report"
+        status: implemented
+        rationale: "Landed: writes a user_reports row (reason spam|adult|language|other + message); PrivacyFilter-gated, self-report is 400."
       - trakt: "POST /users/{id}/smart-lists"
         ours: ""
         status: out-of-scope
@@ -1533,9 +1547,9 @@ sections:
         status: out-of-scope
         rationale: "deferred: the remaining sync write/reorder surface; the read side is tracked by #71 and #100"
       - trakt: "PUT /users/settings"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the public-profile read surface we have not built yet; see #100"
+        ours: "PUT /v1/users/settings"
+        status: implemented
+        rationale: "Landed: the contract PUT /users/settings is mounted at /v1/users/settings and answers with the GET settings envelope; user name/about/location/private and the account/browsing/sharing/limits blobs are persisted."
       - trakt: "PUT /users/settings/plex/"
         ours: ""
         status: out-of-scope

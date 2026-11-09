@@ -55,6 +55,11 @@ func RegisterRoutes(api fiber.Router) {
 
 	// /users/:id routes (public, privacy-filtered). The profile read is gated by
 	// users.settings.privacy.profile in addition to is_private/blocks.
+	// Caller-owned contract endpoints (/users/blocked, /users/saved_filters/...,
+	// PUT /users/settings) are static at this depth, so they MUST be registered
+	// before the /:id route or "blocked" is captured as a user id.
+	registerAccountContractRoutes(users)
+
 	// The contract spells the caller's settings /users/settings; register it
 	// before /:id so "settings" is not captured as a user id.
 	users.Get("/settings", auth.AuthRequired(), handleContractSettings)
@@ -270,7 +275,14 @@ func handleGetUser(c *fiber.Ctx) error {
 	}
 	resp.RecentActivity = []interface{}{}
 
-	return c.JSON(resp)
+	// The contract's profile object (GET /users/{id}/) requires username,
+	// private, deleted and ids. Those are additive fields on the existing
+	// response, so current consumers keep the shape they already read.
+	out := struct {
+		PublicProfileResponse
+		contractProfileFields
+	}{resp, contractProfileFieldsFor(user)}
+	return c.JSON(out)
 }
 
 // handleGetSettings returns the current user's settings.
