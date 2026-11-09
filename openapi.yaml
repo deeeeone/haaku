@@ -1784,6 +1784,25 @@ paths:
             operationId: _v1_certifications_movies_GET
             responses:
                 "200":
+                    content:
+                        application/json:
+                            schema:
+                                additionalProperties:
+                                    items:
+                                        properties:
+                                            description:
+                                                type: string
+                                            name:
+                                                type: string
+                                            slug:
+                                                type: string
+                                        required:
+                                            - name
+                                            - slug
+                                            - description
+                                        type: object
+                                    type: array
+                                type: object
                     description: Movie certifications keyed by country code
                 "400":
                     content:
@@ -1827,6 +1846,10 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
+                "502":
+                    description: TMDB returned no usable catalog
+                "503":
+                    description: TMDB client unavailable
             security: []
             summary: List movie certifications grouped by country
             tags:
@@ -1836,6 +1859,25 @@ paths:
             operationId: _v1_certifications_shows_GET
             responses:
                 "200":
+                    content:
+                        application/json:
+                            schema:
+                                additionalProperties:
+                                    items:
+                                        properties:
+                                            description:
+                                                type: string
+                                            name:
+                                                type: string
+                                            slug:
+                                                type: string
+                                        required:
+                                            - name
+                                            - slug
+                                            - description
+                                        type: object
+                                    type: array
+                                type: object
                     description: Show certifications keyed by country code
                 "400":
                     content:
@@ -1879,6 +1921,10 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
+                "502":
+                    description: TMDB returned no usable catalog
+                "503":
+                    description: TMDB client unavailable
             security: []
             summary: List show certifications grouped by country
             tags:

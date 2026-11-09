@@ -8923,7 +8923,15 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        [key: string]: {
+                            description: string;
+                            name: string;
+                            slug: string;
+                        }[];
+                    };
+                };
             };
             /** @description invalid request */
             400: {
@@ -8987,6 +8995,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
+            };
+            /** @description TMDB returned no usable catalog */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description TMDB client unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -9004,7 +9026,15 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": {
+                        [key: string]: {
+                            description: string;
+                            name: string;
+                            slug: string;
+                        }[];
+                    };
+                };
             };
             /** @description invalid request */
             400: {
@@ -9068,6 +9098,20 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
+            };
+            /** @description TMDB returned no usable catalog */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description TMDB client unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
