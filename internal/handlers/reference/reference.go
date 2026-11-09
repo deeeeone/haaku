@@ -68,23 +68,29 @@ func registerOpenAPIRoutes() {
 			},
 		},
 		{
-			Method:  "GET",
-			Path:    "/v1/certifications/movies",
-			Summary: "List movie certifications grouped by country",
-			Tags:    []string{"Reference"},
-			Auth:    "none",
+			Method:       "GET",
+			Path:         "/v1/certifications/movies",
+			Summary:      "List movie certifications grouped by country",
+			Tags:         []string{"Reference"},
+			Auth:         "none",
+			ResponseType: certificationCatalogSchema(),
 			StatusCodes: map[int]string{
 				200: "Movie certifications keyed by country code",
+				502: "TMDB returned no usable catalog",
+				503: "TMDB client unavailable",
 			},
 		},
 		{
-			Method:  "GET",
-			Path:    "/v1/certifications/shows",
-			Summary: "List show certifications grouped by country",
-			Tags:    []string{"Reference"},
-			Auth:    "none",
+			Method:       "GET",
+			Path:         "/v1/certifications/shows",
+			Summary:      "List show certifications grouped by country",
+			Tags:         []string{"Reference"},
+			Auth:         "none",
+			ResponseType: certificationCatalogSchema(),
 			StatusCodes: map[int]string{
 				200: "Show certifications keyed by country code",
+				502: "TMDB returned no usable catalog",
+				503: "TMDB client unavailable",
 			},
 		},
 		{
@@ -472,6 +478,28 @@ type CertificationOption struct {
 // mapped to that country's certification values.
 type CertificationCatalog map[string][]CertificationOption
 
+// certificationCatalogSchema is the OpenAPI shape of CertificationCatalog: an
+// object keyed by a lowercase country code, each value an array of
+// {name, slug, description} options. It matches what the handler emits so the
+// generated spec does not have to describe the response as untyped.
+func certificationCatalogSchema() map[string]interface{} {
+	return map[string]interface{}{
+		"type": "object",
+		"additionalProperties": map[string]interface{}{
+			"type": "array",
+			"items": map[string]interface{}{
+				"type":     "object",
+				"required": []string{"name", "slug", "description"},
+				"properties": map[string]interface{}{
+					"name":        map[string]interface{}{"type": "string"},
+					"slug":        map[string]interface{}{"type": "string"},
+					"description": map[string]interface{}{"type": "string"},
+				},
+			},
+		},
+	}
+}
+
 // certificationCatalog converts TMDB's certifications response into Trakt's
 // country-keyed catalog. Country codes are lowercased (`US` → `us`) and each
 // entry carries TMDB's certification as name, its meaning as description, and a
@@ -538,6 +566,13 @@ func serveCertificationCatalog(c *fiber.Ctx, mediaType string) error {
 	}
 
 	catalog = certificationCatalog(resp)
+	// The contract's catalog requires the `us` entry, so a response without it
+	// is not a catalog we can serve. Answer 502 and cache nothing: caching it
+	// would keep serving an unsupported document for the whole TTL.
+	if _, ok := catalog["us"]; !ok {
+		log.Printf("[reference] TMDB certification/%s response has no US entry; refusing to cache", mediaType)
+		return response.WriteError(c, fiber.StatusBadGateway, "upstream_error", "TMDB returned no usable certification catalog")
+	}
 	setCache(c, key, catalog)
 	return c.JSON(catalog)
 }

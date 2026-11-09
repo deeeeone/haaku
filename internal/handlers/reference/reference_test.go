@@ -193,3 +193,44 @@ func TestCertificationLiteralRoutesServe(t *testing.T) {
 		t.Errorf("shows unexpectedly has a gb group: %v", shows)
 	}
 }
+
+// TestCertificationCatalogWithoutUSIsBadGateway pins the cache guard: the
+// contract's catalog requires the `us` entry, so an upstream response without
+// one must not be cached and served. It answers 502 instead — the same status
+// the handler already uses when the upstream call itself fails.
+func TestCertificationCatalogWithoutUSIsBadGateway(t *testing.T) {
+	t.Setenv("TMDB_API_KEY", "test-token-for-fake-tmdb")
+
+	fake := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		// A well-formed TMDB payload that simply has no US group, e.g. a
+		// regional outage. Before the guard this was cached and served as 200.
+		_, _ = io.WriteString(w, `{"certifications":{"GB":[{"certification":"15","meaning":"Suitable for 15 years and over","order":5}]}}`)
+	}))
+	defer fake.Close()
+
+	client, err := getTMDBClient()
+	if err != nil {
+		t.Fatalf("getTMDBClient: %v", err)
+	}
+	client.SetBaseURL(fake.URL)
+	t.Cleanup(func() {
+		tmdbOnce = sync.Once{}
+		tmdbClient, tmdbClientErr = nil, nil
+	})
+
+	app := fiber.New()
+	RegisterRoutes(app.Group("/v1"))
+
+	for _, path := range []string{"/v1/certifications/movies", "/v1/certifications/shows"} {
+		req := httptest.NewRequest(http.MethodGet, path, nil)
+		resp, err := app.Test(req, 5000)
+		if err != nil {
+			t.Fatalf("GET %s: %v", path, err)
+		}
+		_ = resp.Body.Close()
+		if resp.StatusCode != http.StatusBadGateway {
+			t.Errorf("GET %s: status %d, want 502 for a catalog with no us entry", path, resp.StatusCode)
+		}
+	}
+}
