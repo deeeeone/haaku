@@ -391,6 +391,25 @@ type TranslationData struct {
 
 // --- Watch providers (v3) ---
 
+// WatchProvidersCatalogue is TMDB's watch-provider catalogue for one media
+// type (GET /watch/providers/{movie,tv}). Unlike the per-title watch/providers
+// payload, every entry carries its display priority in EVERY country TMDB
+// knows it in, which is what lets one request fill the country-filtered
+// /watchnow/sources catalogue.
+type WatchProvidersCatalogue struct {
+	Results []WatchProviderCatalogueEntry `json:"results"`
+}
+
+// WatchProviderCatalogueEntry is one provider in the catalogue. DisplayPriorities
+// is keyed by upper-case ISO 3166-1 country code.
+type WatchProviderCatalogueEntry struct {
+	DisplayPriorities map[string]int `json:"display_priorities"`
+	DisplayPriority   int            `json:"display_priority"`
+	LogoPath          string         `json:"logo_path"`
+	ProviderName      string         `json:"provider_name"`
+	ProviderID        int            `json:"provider_id"`
+}
+
 // WatchProvidersResponse is the TMDB v3 watch/providers response.
 type WatchProvidersResponse struct {
 	ID      int                         `json:"id"`

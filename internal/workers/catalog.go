@@ -123,6 +123,21 @@ func metadataWorker() Worker {
 				},
 			},
 			{
+				// 03:30 UTC daily — materialise movie_releases from the release
+				// metadata already stored on each title. No provider call, so it
+				// is cheap and can run often enough that a title ingested before
+				// the table existed is queryable by the next morning.
+				Schedule: "30 3 * * *",
+				Describe: "movie_releases backfill: materialise dated releases from stored metadata",
+				Run: func(ctx context.Context, d Deps) error {
+					if d.DB == nil {
+						return errors.New("metadata: a database is required")
+					}
+					_, err := metadata.BackfillMovieReleases(ctx, d.DB, 500)
+					return err
+				},
+			},
+			{
 				// 04:00 UTC on Sundays — a bulk refresh of the local media
 				// cache that would be wasteful daily.
 				Schedule: "0 4 * * 0",
@@ -132,6 +147,19 @@ func metadataWorker() Worker {
 						return errors.New("metadata: a TMDB client and a database are required")
 					}
 					return metadata.Backfill(ctx, d.TMDB, d.DB, metadata.BackfillPages())
+				},
+			},
+			{
+				// 04:30 UTC daily — refresh the watch-now provider catalogue.
+				// The catalogue changes slowly; once a day keeps /watchnow/sources
+				// current without a per-request provider call.
+				Schedule: "30 4 * * *",
+				Describe: "TMDB watch-provider catalogue refresh for /watchnow/sources",
+				Run: func(ctx context.Context, d Deps) error {
+					if d.TMDB == nil || d.DB == nil {
+						return errors.New("metadata: a TMDB client and a database are required")
+					}
+					return metadata.RefreshWatchNowSources(ctx, d.TMDB, d.DB)
 				},
 			},
 		},

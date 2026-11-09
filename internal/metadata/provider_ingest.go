@@ -90,25 +90,44 @@ func IngestMovie(db *gorm.DB, m *tmdb.Movie, supplement *tvdb.MovieExtended) (*d
 	}
 	record.Slug = ensureSlug(db, "movie", record.Slug, record.Title, record.TmdbID, yearOf(record.Released), idOfMovie(existing))
 
-	if existing == nil {
-		if err := db.Create(&record).Error; err != nil {
-			return nil, fmt.Errorf("insert movie tmdb=%d (%s): %w", m.ID, m.Title, err)
+	// The row, its external-id lookup and its dated-release rows are ONE
+	// write: a movie whose metadata carries releases but whose movie_releases
+	// rows are missing would silently vanish from the DVD/streaming
+	// calendars. The transaction keeps the two views of the same TMDB payload
+	// atomic.
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		if existing == nil {
+			if err := tx.Create(&record).Error; err != nil {
+				return fmt.Errorf("insert movie tmdb=%d (%s): %w", m.ID, m.Title, err)
+			}
+			slog.Debug("[ingest] created movie", "tmdb_id", m.ID, "title", m.Title)
+		} else {
+			record.ID = existing.ID
+			record.CreatedAt = existing.CreatedAt
+			if err := tx.Save(&record).Error; err != nil {
+				return fmt.Errorf("update movie tmdb=%d (%s): %w", m.ID, m.Title, err)
+			}
+			slog.Debug("[ingest] updated movie", "tmdb_id", m.ID, "id", record.ID, "title", m.Title)
 		}
-		slog.Debug("[ingest] created movie", "tmdb_id", m.ID, "title", m.Title)
-	} else {
-		record.ID = existing.ID
-		record.CreatedAt = existing.CreatedAt
-		if err := db.Save(&record).Error; err != nil {
-			return nil, fmt.Errorf("update movie tmdb=%d (%s): %w", m.ID, m.Title, err)
-		}
-		slog.Debug("[ingest] updated movie", "tmdb_id", m.ID, "id", record.ID, "title", m.Title)
-	}
 
-	if err := upsertExternalIDs(db, "movie", record.ID, map[string]string{
-		"tmdb": strconv.Itoa(record.TmdbID),
-		"tvdb": optionalID(record.TvdbID),
-		"imdb": record.ImdbID,
-		"slug": record.Slug,
+		if err := upsertExternalIDs(tx, "movie", record.ID, map[string]string{
+			"tmdb": strconv.Itoa(record.TmdbID),
+			"tvdb": optionalID(record.TvdbID),
+			"imdb": record.ImdbID,
+			"slug": record.Slug,
+		}); err != nil {
+			return err
+		}
+
+		// A nil pointer means this payload did not carry release_dates (the
+		// synthetic change-feed record); leave the stored rows alone rather
+		// than replacing them with nothing.
+		if m.ReleaseDates != nil {
+			if err := ReplaceMovieReleases(tx, record.ID, ReleasesFromTMDB(m.ReleaseDates)); err != nil {
+				return err
+			}
+		}
+		return nil
 	}); err != nil {
 		return nil, err
 	}

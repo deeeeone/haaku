@@ -363,6 +363,18 @@ func (c *Client) GetShowCredits(id int) (*CreditsResponse, error) {
 	return decode[CreditsResponse](resp)
 }
 
+// GetWatchProviderCatalogue returns TMDB's provider catalogue for one media
+// type: "movie" or "tv". It deliberately does NOT pass watch_region, because
+// the unfiltered payload carries each provider's per-country display
+// priorities — the country availability the /watchnow/sources routes serve.
+func (c *Client) GetWatchProviderCatalogue(mediaType string) (*WatchProvidersCatalogue, error) {
+	resp, err := c.doV3("GET", "/watch/providers/"+mediaType, nil)
+	if err != nil {
+		return nil, err
+	}
+	return decode[WatchProvidersCatalogue](resp)
+}
+
 // GetMovieWatchProviders returns streaming/rent/buy availability for a movie (v3).
 // GetMovieTranslations returns every translation TMDB carries for a movie.
 func (c *Client) GetMovieTranslations(movieID int) (*TranslationsResponse, error) {

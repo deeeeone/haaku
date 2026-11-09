@@ -333,7 +333,19 @@ func HydrateMovieExtras(db *gorm.DB, client *tmdb.Client, movie *database.Movie)
 
 	merged := mergeJSONMaps(movie.Metadata, patch)
 	if len(patch) > 0 {
-		if err := storeMetadata(db, &database.Movie{}, movie.ID, merged); err != nil {
+		// The metadata blob and the queryable release rows are written in the
+		// same transaction (issue #69): the calendars read the rows, the
+		// contract reads the blob, and the two must always agree.
+		err := db.Transaction(func(tx *gorm.DB) error {
+			if err := storeMetadata(tx, &database.Movie{}, movie.ID, merged); err != nil {
+				return err
+			}
+			if record.ReleaseDates != nil {
+				return ReplaceMovieReleases(tx, movie.ID, ReleasesFromTMDB(record.ReleaseDates))
+			}
+			return nil
+		})
+		if err != nil {
 			return movie.Metadata, err
 		}
 	}
