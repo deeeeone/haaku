@@ -7,10 +7,12 @@ package sync
 
 import (
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/haaku-tv/haaku/internal/contractshape"
 	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/handlers/shared"
 	"github.com/haaku-tv/haaku/internal/response"
 
 	"github.com/gofiber/fiber/v2"
@@ -201,7 +203,7 @@ func progressSort(c *fiber.Ctx, rows []*showProgressRow) error {
 	sortBy := c.Query("sort_by", "last_watched_at")
 	how := c.Query("sort_how", "desc")
 	if how != "asc" && how != "desc" {
-		return response.BadRequest(c, "sort_how must be asc or desc")
+		return response.BadRequest(c, "sort_how must be one of: asc, desc")
 	}
 	less := func(a, b *showProgressRow) bool { return false }
 	switch sortBy {
@@ -229,7 +231,7 @@ func progressSort(c *fiber.Ctx, rows []*showProgressRow) error {
 	case "aired":
 		less = func(a, b *showProgressRow) bool { return a.aired < b.aired }
 	default:
-		return response.BadRequest(c, "unsupported sort_by; supported: last_watched_at, title, aired")
+		return response.BadRequest(c, "sort_by must be one of: aired, last_watched_at, title")
 	}
 	sort.SliceStable(rows, func(i, j int) bool {
 		if how == "desc" {
@@ -303,23 +305,17 @@ func handleUpNext(c *fiber.Ctx) error {
 // GET /sync/progress/up_next_nitro
 // ============================================================================
 
-// nitroUnsupportedFilters are query params the contract documents that our
-// store cannot narrow by. Rather than accept-and-ignore them we reject the
-// request (the manifest grades this row divergent, naming what is served).
-var nitroUnsupportedFilters = []string{
-	"watchnow", "genres", "subgenres", "years", "ratings", "start_date",
-	"end_date", "runtimes", "countries", "statuses", "certifications",
-	"parental_nudity", "parental_violence", "parental_profanity",
-	"parental_alcohol", "parental_frightening", "parental_include_unrated",
-}
-
+// handleUpNextNitro serves the intent-filtered up-next variant. Catalogue
+// filters narrow by the show's stored columns in SQL before progress is
+// computed; a filter the store cannot evaluate is a 400, never ignored.
 func handleUpNextNitro(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 
-	for _, q := range nitroUnsupportedFilters {
-		if c.Query(q) != "" {
-			return response.BadRequest(c, "filter "+q+" is not supported")
-		}
+	filter, ok := shared.ParseCatalogueFilter(c,
+		shared.FilterGenres, shared.FilterYears, shared.FilterRatings,
+		shared.FilterStatuses, shared.FilterCertifications)
+	if !ok {
+		return nil
 	}
 
 	intent := c.Query("intent", "all")
@@ -327,6 +323,15 @@ func handleUpNextNitro(c *fiber.Ctx) error {
 	case "all", "continue", "start", "completed":
 	default:
 		return response.BadRequest(c, "intent must be one of all, continue, start, completed")
+	}
+
+	start, hasStart, ok := nitroDate(c.Query("start_date"))
+	if !ok {
+		return response.BadRequest(c, "start_date must be formatted YYYY-MM-DD")
+	}
+	end, hasEnd, ok := nitroDate(c.Query("end_date"))
+	if !ok {
+		return response.BadRequest(c, "end_date must be formatted YYYY-MM-DD")
 	}
 
 	db, dbErr := database.GetDB()
@@ -359,6 +364,18 @@ func handleUpNextNitro(c *fiber.Ctx) error {
 		}
 	} else {
 		showIDs, err = historyShowIDs(db, userID)
+		if err != nil {
+			return response.InternalError(c)
+		}
+	}
+
+	showClause, showArgs := filter.ShowWhere("shows")
+	showIDs, err = narrowShowIDs(db, showIDs, showClause, showArgs)
+	if err != nil {
+		return response.InternalError(c)
+	}
+	if hasStart || hasEnd {
+		showIDs, err = historyWindowShowIDs(db, userID, showIDs, start, end, hasStart, hasEnd)
 		if err != nil {
 			return response.InternalError(c)
 		}
@@ -400,6 +417,53 @@ func handleUpNextNitro(c *fiber.Ctx) error {
 	}
 	response.SetPaginationHeaders(c, page, limit, total, len(out))
 	return c.JSON(out)
+}
+
+// nitroDate parses the contract's YYYY-MM-DD window bounds. The second result
+// says a value was supplied; the third says it parsed.
+func nitroDate(raw string) (time.Time, bool, bool) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return time.Time{}, false, true
+	}
+	t, err := time.Parse("2006-01-02", raw)
+	if err != nil {
+		return time.Time{}, false, false
+	}
+	return t, true, true
+}
+
+// narrowShowIDs keeps the show ids that satisfy a SQL predicate over the shows
+// table, so a catalogue filter never has to be re-applied in Go.
+func narrowShowIDs(db *gorm.DB, ids []int64, clause string, args []any) ([]int64, error) {
+	if len(ids) == 0 || clause == "" {
+		return ids, nil
+	}
+	var out []int64
+	err := db.Model(&database.Show{}).Where("id IN ?", ids).Where(clause, args...).Pluck("id", &out).Error
+	return out, err
+}
+
+// historyWindowShowIDs keeps shows with at least one watched episode inside the
+// requested date window. The window narrows the input set; it cannot invent a
+// watch for a show the caller has not watched.
+func historyWindowShowIDs(db *gorm.DB, userID string, ids []int64, start, end time.Time, hasStart, hasEnd bool) ([]int64, error) {
+	if len(ids) == 0 {
+		return ids, nil
+	}
+	q := db.Table("user_history uh").
+		Joins("JOIN episodes e ON e.id = COALESCE(uh.episode_id, uh.media_id)").
+		Where("uh.user_id = ? AND uh.media_type = 'episode' AND e.show_id IN ?", userID, ids).
+		Distinct("e.show_id")
+	if hasStart {
+		q = q.Where("uh.watched_at >= ?", start)
+	}
+	if hasEnd {
+		q = q.Where("uh.watched_at < ?", end.Add(24*time.Hour))
+	}
+	var out []int64
+	err := q.Pluck("e.show_id", &out).Error
+	return out, err
 }
 
 // ============================================================================

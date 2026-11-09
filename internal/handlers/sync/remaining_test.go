@@ -302,10 +302,25 @@ func TestUpNextNitroIntentAndFilters(t *testing.T) {
 		t.Fatalf("intent=continue: expected 1 in-progress show, got %d", len(items))
 	}
 
-	// An unsupported narrowing filter is rejected rather than ignored.
-	status, _ = doJSON(t, app, http.MethodGet, "/v1/sync/progress/up_next_nitro?genres=drama", "")
+	// A catalogue filter is applied, not ignored: the seeded show carries no
+	// genres, so filtering by one narrows it out of the result set.
+	status, raw = doJSON(t, app, http.MethodGet, "/v1/sync/progress/up_next_nitro?intent=continue&genres=drama", "")
+	if status != http.StatusOK {
+		t.Fatalf("genres filter: expected 200, got %d (%s)", status, raw)
+	}
+	if items := decodeArray(t, raw); len(items) != 0 {
+		t.Errorf("genres=drama should narrow out the genreless show, got %d items", len(items))
+	}
+
+	// A declared filter this store cannot evaluate is a 400, never a 200 that
+	// quietly returns everything.
+	status, _ = doJSON(t, app, http.MethodGet, "/v1/sync/progress/up_next_nitro?countries=us", "")
 	if status != http.StatusBadRequest {
-		t.Errorf("genres filter: expected 400, got %d", status)
+		t.Errorf("countries filter: expected 400, got %d", status)
+	}
+	status, _ = doJSON(t, app, http.MethodGet, "/v1/sync/progress/up_next_nitro?runtimes=30-60", "")
+	if status != http.StatusBadRequest {
+		t.Errorf("runtimes filter (not a shows column): expected 400, got %d", status)
 	}
 }
 

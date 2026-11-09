@@ -6,6 +6,7 @@ import (
 	"github.com/haaku-tv/haaku/internal/auth"
 	"github.com/haaku-tv/haaku/internal/contractshape"
 	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/handlers/shared"
 	"github.com/haaku-tv/haaku/internal/openapi"
 	"github.com/haaku-tv/haaku/internal/response"
 
@@ -131,7 +132,7 @@ func handleContractFavorites(c *fiber.Ctx) error {
 	}
 	order, oerr := ContractMediaOrder(c, "favorited_at")
 	if oerr != nil {
-		return oerr
+		return response.BadRequest(c, oerr.Error())
 	}
 	userID := c.Locals("user_id").(string)
 	db, dbErr := database.GetDB()
@@ -170,7 +171,7 @@ func handleContractWatchlist(c *fiber.Ctx) error {
 	}
 	order, oerr := ContractMediaOrder(c, "listed_at")
 	if oerr != nil {
-		return oerr
+		return response.BadRequest(c, oerr.Error())
 	}
 	userID := c.Locals("user_id").(string)
 	db, dbErr := database.GetDB()
@@ -244,40 +245,26 @@ func handleContractRatings(c *fiber.Ctx) error {
 
 // contractMediaOrder maps the contract's sort_by/sort_how segments onto SQL
 // ordering. Only values the store can actually order by are accepted; anything
-// else is a 400 rather than a silently ignored segment.
+// else returns an error naming the accepted values (the handler turns it into a
+// 400), never a silently different ordering.
 func ContractMediaOrder(c *fiber.Ctx, timeCol string) (string, error) {
-	sortBy := c.Params("sort_by")
-	how := c.Params("sort_how")
-	if how != "asc" && how != "desc" {
-		return "", response.BadRequest(c, "sort_how must be asc or desc")
-	}
-
 	movie := func(col string) string {
 		return "(SELECT m." + col + " FROM movies m WHERE m.id = media_id)"
 	}
 	show := func(col string) string {
 		return "(SELECT s." + col + " FROM shows s WHERE s.id = media_id)"
 	}
-	switch sortBy {
-	case "rank":
-		return "rank " + how + ", id " + how, nil
-	case "added", "listed":
-		return timeCol + " " + how + ", id " + how, nil
-	case "title":
-		return "COALESCE(" + movie("title") + "," + show("title") + ") " + how + ", media_type " + how + ", media_id " + how, nil
-	case "popularity":
-		return "COALESCE(" + movie("popularity") + "," + show("popularity") + ") " + how, nil
-	case "released":
-		return "COALESCE(" + movie("released") + "," + show("first_aired") + ") " + how, nil
-	case "runtime":
-		return "COALESCE(" + movie("runtime") + ",0) " + how, nil
-	case "votes":
-		return "COALESCE(" + movie("rating_count") + "," + show("rating_count") + ") " + how, nil
-	case "percentage":
-		return "COALESCE(" + movie("rating_avg") + "," + show("rating_avg") + ") " + how, nil
-	case "random":
-		return "RANDOM()", nil
-	default:
-		return "", response.BadRequest(c, "invalid sort_by")
+	fields := map[string]shared.OrderField{
+		"rank":       {Expr: "rank"},
+		"added":      {Expr: timeCol},
+		"listed":     {Expr: timeCol},
+		"title":      {Expr: "COALESCE(" + movie("title") + "," + show("title") + ")"},
+		"popularity": {Expr: "COALESCE(" + movie("popularity") + "," + show("popularity") + ")"},
+		"released":   {Expr: "COALESCE(" + movie("released") + "," + show("first_aired") + ")"},
+		"runtime":    {Expr: "COALESCE(" + movie("runtime") + ",0)"},
+		"votes":      {Expr: "COALESCE(" + movie("rating_count") + "," + show("rating_count") + ")"},
+		"percentage": {Expr: "COALESCE(" + movie("rating_avg") + "," + show("rating_avg") + ")"},
+		"random":     {Expr: "RANDOM()", Fixed: true},
 	}
+	return shared.SQLOrder(c.Params("sort_by"), c.Params("sort_how"), fields, "asc", "id")
 }

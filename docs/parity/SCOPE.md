@@ -11,7 +11,7 @@ path (modulo our `/v1` prefix), with a real 2xx — except the recommendation/re
 engine, which stays an honest `501 not_implemented` and graded `blocked-engine` by
 the owner's carve-out. Done is `go run ./cmd/parity`, not a PR count.
 
-Contract operations: **336**. Not yet served (**in scope**): **141**. Out by owner decision: **31**. Served today: **164**.
+Contract operations: **336**. Not yet served (**in scope**): **119**. Out by owner decision: **31**. Served today: **186**.
 
 ## Out of scope (owner decisions, re-affirmed)
 
@@ -117,9 +117,7 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /shows/{id}/lists/{type}/{sort}` | blocked-engine | lists engine — per-item lists | #67 |
 | `GET /shows/{id}/related` | blocked-engine | related / recommendations (owner carve-out: stays 501) | #49 |
 | `GET /shows/{id}/seasons/{season}` | divergent | divergent shapes — serve the contract path | #104 |
-| `GET /shows/{id}/seasons/{season}/comments/{sort}` | divergent | TMDB metadata ingest | #68 |
 | `GET /shows/{id}/seasons/{season}/episodes/{episode}` | divergent | divergent shapes — serve the contract path | #104 |
-| `GET /shows/{id}/seasons/{season}/episodes/{episode}/comments/{sort}` | divergent | TMDB metadata ingest | #68 |
 | `GET /shows/{id}/seasons/{season}/episodes/{episode}/people` | blocked-data | TMDB metadata ingest | #68 |
 | `GET /shows/{id}/seasons/{season}/episodes/{episode}/ratings` | out-of-scope | per-item reads over stored data | #86 |
 | `GET /shows/{id}/seasons/{season}/episodes/{episode}/stats` | out-of-scope | per-item reads over stored data | #86 |
@@ -147,38 +145,18 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /sync/collection/minimal/movies` | divergent | remaining sync reads and writes | #106 |
 | `GET /sync/collection/minimal/shows` | divergent | remaining sync reads and writes | #106 |
 | `GET /sync/collection/{type}` | divergent | remaining sync reads and writes | #106 |
-| `GET /sync/favorites/{type}/{sort_by}/{sort_how}` | divergent | remaining sync reads and writes | #106 |
-| `GET /sync/progress/up_next` | divergent | remaining sync reads and writes | #106 |
-| `GET /sync/progress/up_next_nitro` | divergent | remaining sync reads and writes | #106 |
-| `GET /sync/progress/watched` | divergent | remaining sync reads and writes | #106 |
 | `GET /sync/watchlist/{type}/{sort_by}/{sort_how}` | divergent | remaining sync reads and writes | #106 |
 | `GET /users/hidden/dropped` | out-of-scope | per-section hidden item lists | #108 |
 | `GET /users/hidden/progress_watched` | out-of-scope | per-section hidden item lists | #108 |
 | `GET /users/requests/` | out-of-scope | follow requests (blocked on #54) | #110 |
 | `GET /users/requests/following` | out-of-scope | follow requests (blocked on #54) | #110 |
-| `GET /users/{id}/favorites/comments/{sort}` | divergent | public-profile read surface | #103 |
-| `GET /users/{id}/favorites/media/{sort}` | divergent | public-profile read surface | #103 |
-| `GET /users/{id}/favorites/movies/{sort}` | divergent | public-profile read surface | #103 |
-| `GET /users/{id}/favorites/shows/{sort}` | divergent | public-profile read surface | #103 |
-| `GET /users/{id}/favorites/{type}/{sort_by}/{sort_how}` | divergent | public-profile read surface | #103 |
-| `GET /users/{id}/history/episodes` | divergent | public-profile read surface | #103 |
 | `GET /users/{id}/history/episodes/{item_id}` | divergent | public-profile read surface | #103 |
-| `GET /users/{id}/history/movies` | divergent | public-profile read surface | #103 |
-| `GET /users/{id}/history/movies/{item_id}` | divergent | public-profile read surface | #103 |
-| `GET /users/{id}/history/shows` | divergent | public-profile read surface | #103 |
-| `GET /users/{id}/history/shows/{item_id}` | divergent | public-profile read surface | #103 |
 | `GET /users/{id}/lists/collaborations` | divergent | list management — writes, items, smart lists | #105 |
 | `GET /users/{id}/lists/{list_id}/comments/{sort}` | divergent | list management — writes, items, smart lists | #105 |
 | `GET /users/{id}/lists/{list_id}/items/{type}/{sort_by}/{sort_how}` | divergent | list management — writes, items, smart lists | #105 |
 | `GET /users/{id}/lists/{list_id}/smart-list-draft` | divergent | list management — writes, items, smart lists | #105 |
 | `GET /users/{id}/smart-list-drafts` | divergent | public-profile read surface | #103 |
-| `GET /users/{id}/watched/shows` | divergent | public-profile read surface | #103 |
-| `GET /users/{id}/watched/{type}` | divergent | public-profile read surface | #103 |
-| `GET /users/{id}/watchlist/movie,show/{sort}` | divergent | public-profile read surface | #103 |
-| `GET /users/{id}/watchlist/movies/{sort}` | divergent | public-profile read surface | #103 |
-| `GET /users/{id}/watchlist/shows/{sort}` | divergent | public-profile read surface | #103 |
 | `GET /users/{id}/watchlist/{type}/{sort_by}/{sort_how}` | divergent | public-profile read surface | #103 |
-| `GET /users/{id}/{type}/activities` | divergent | public-profile read surface | #103 |
 | `GET /watchnow/sources` | blocked-data | calendars and Watch Now data | #69 |
 | `GET /watchnow/sources/{countryCode}` | blocked-data | calendars and Watch Now data | #69 |
 | `POST /comments/` | out-of-scope | comment moderation, reactions and the note item read | #107 |
@@ -269,6 +247,8 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /shows/{id}/progress/watched` | `GET /v1/shows/{id}/progress/watched` |
 | `GET /shows/{id}/ratings` | `GET /v1/shows/{id}/ratings` |
 | `GET /shows/{id}/seasons` | `GET /v1/shows/{id}/seasons` |
+| `GET /shows/{id}/seasons/{season}/comments/{sort}` | `GET /v1/shows/{id}/seasons/{season}/comments/{sort}` |
+| `GET /shows/{id}/seasons/{season}/episodes/{episode}/comments/{sort}` | `GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/comments/{sort}` |
 | `GET /shows/{id}/seasons/{season}/episodes/{episode}/lists/{type}/{sort}` | `GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/lists/{type}/{sort}` |
 | `GET /shows/{id}/seasons/{season}/ratings` | `GET /v1/shows/{id}/seasons/{season}/ratings` |
 | `GET /shows/{id}/seasons/{season}/stats` | `GET /v1/shows/{id}/seasons/{season}/stats` |
@@ -278,11 +258,15 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /smart-lists/{list_id}/items` | `GET /v1/smart-lists/{id}/items` |
 | `GET /sync/collection/movies` | `GET /v1/sync/collection/movies` |
 | `GET /sync/collection/shows` | `GET /v1/sync/collection/shows` |
+| `GET /sync/favorites/{type}/{sort_by}/{sort_how}` | `GET /v1/sync/favorites/{type}/{sort_by}/{sort_how}` |
 | `GET /sync/history/{type}/{id}` | `GET /v1/sync/history/{media_type}/{media_id}` |
 | `GET /sync/last_activities` | `GET /v1/sync/last_activities` |
 | `GET /sync/playback` | `GET /v1/sync/playback` |
 | `GET /sync/playback/episodes` | `GET /v1/sync/playback/episodes` |
 | `GET /sync/playback/movies` | `GET /v1/sync/playback/movies` |
+| `GET /sync/progress/up_next` | `GET /v1/sync/progress/up_next` |
+| `GET /sync/progress/up_next_nitro` | `GET /v1/sync/progress/up_next_nitro` |
+| `GET /sync/progress/watched` | `GET /v1/sync/progress/watched` |
 | `GET /sync/ratings/{type}/{rating}` | `GET /v1/sync/ratings/{type}/{rating}` |
 | `GET /sync/watched/{type}` | `GET /v1/sync/watched/{type}` |
 | `GET /users/blocked` | `GET /v1/users/blocked` |
@@ -293,10 +277,20 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /users/{id}/` | `GET /v1/users/{id}` |
 | `GET /users/{id}/collection/{type}` | `GET /v1/users/{id}/collection/{media_type}` |
 | `GET /users/{id}/comments/{comment_type}/{type}` | `GET /v1/users/{id}/comments/{comment_type}/{media_type}` |
+| `GET /users/{id}/favorites/comments/{sort}` | `GET /v1/users/{id}/favorites/comments/{sort}` |
+| `GET /users/{id}/favorites/media/{sort}` | `GET /v1/users/{id}/favorites/media/{sort}` |
+| `GET /users/{id}/favorites/movies/{sort}` | `GET /v1/users/{id}/favorites/movies/{sort}` |
+| `GET /users/{id}/favorites/shows/{sort}` | `GET /v1/users/{id}/favorites/shows/{sort}` |
+| `GET /users/{id}/favorites/{type}/{sort_by}/{sort_how}` | `GET /v1/users/{id}/favorites/{type}/{sort_by}/{sort_how}` |
 | `GET /users/{id}/followers` | `GET /v1/users/{id}/followers` |
 | `GET /users/{id}/following` | `GET /v1/users/{id}/following` |
 | `GET /users/{id}/friends` | `GET /v1/users/{id}/friends` |
 | `GET /users/{id}/history/` | `GET /v1/users/{id}/history` |
+| `GET /users/{id}/history/episodes` | `GET /v1/users/{id}/history/episodes` |
+| `GET /users/{id}/history/movies` | `GET /v1/users/{id}/history/movies` |
+| `GET /users/{id}/history/movies/{item_id}` | `GET /v1/users/{id}/history/movies/{item_id}` |
+| `GET /users/{id}/history/shows` | `GET /v1/users/{id}/history/shows` |
+| `GET /users/{id}/history/shows/{item_id}` | `GET /v1/users/{id}/history/shows/{item_id}` |
 | `GET /users/{id}/history/{type}/{item_id}` | `GET /v1/users/{id}/history/{media_type}/{media_id}` |
 | `GET /users/{id}/likes/{type}` | `GET /v1/users/{id}/likes/comments` |
 | `GET /users/{id}/lists` | `GET /v1/users/{id}/lists` |
@@ -316,8 +310,14 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /users/{id}/smart-lists/{list_id}/` | `GET /v1/users/{id}/smart-lists/{list_id}/` |
 | `GET /users/{id}/stats` | `GET /v1/users/{id}/stats` |
 | `GET /users/{id}/watched/movies` | `GET /v1/users/{id}/watched/movies` |
+| `GET /users/{id}/watched/shows` | `GET /v1/users/{id}/watched/shows` |
+| `GET /users/{id}/watched/{type}` | `GET /v1/users/{id}/watched/{type}` |
 | `GET /users/{id}/watching` | `GET /v1/users/{id}/watching` |
 | `GET /users/{id}/watchlist/comments/{sort}` | `GET /v1/users/{id}/watchlist/comments/{sort}` |
+| `GET /users/{id}/watchlist/movie,show/{sort}` | `GET /v1/users/{id}/watchlist/movie,show/{sort}` |
+| `GET /users/{id}/watchlist/movies/{sort}` | `GET /v1/users/{id}/watchlist/movies/{sort}` |
+| `GET /users/{id}/watchlist/shows/{sort}` | `GET /v1/users/{id}/watchlist/shows/{sort}` |
+| `GET /users/{id}/{type}/activities` | `GET /v1/users/{id}/{type}/activities` |
 | `POST /checkin` | `POST /v1/checkin` |
 | `POST /comments/{id}/like` | `POST /v1/comments/{id}/like` |
 | `POST /comments/{id}/replies` | `POST /v1/comments/{id}/replies` |

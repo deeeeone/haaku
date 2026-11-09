@@ -48,6 +48,7 @@ func profileTestDB(t *testing.T) *gorm.DB {
 		&database.UserWatchlist{},
 		&database.UserRating{},
 		&database.UserNote{},
+		&database.UserHidden{},
 		&database.Comment{},
 		&database.CommentLike{},
 		&database.List{},
@@ -87,7 +88,7 @@ func profileTestDB(t *testing.T) *gorm.DB {
 	// being exactly the rows this test seeds.
 	for _, table := range []string{
 		"users", "user_follows", "user_blocks", "user_history", "user_collection",
-		"user_watchlist", "user_ratings", "user_notes", "comments", "comment_likes",
+		"user_watchlist", "user_ratings", "user_notes", "user_hidden", "comments", "comment_likes",
 		"lists", "list_likes", "scrobble_sessions", "external_ids", "movies", "shows",
 	} {
 		if err := db.Exec("DELETE FROM " + table).Error; err != nil {

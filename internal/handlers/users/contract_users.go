@@ -91,7 +91,7 @@ func handleContractUserWatchlist(c *fiber.Ctx) error {
 
 	order, oerr := sync.ContractMediaOrder(c, "listed_at")
 	if oerr != nil {
-		return oerr
+		return response.BadRequest(c, oerr.Error())
 	}
 
 	target, db, ok := profileTarget(c)

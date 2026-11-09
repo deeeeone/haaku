@@ -11,6 +11,7 @@ import (
 	"github.com/haaku-tv/haaku/internal/contractshape"
 	"github.com/haaku-tv/haaku/internal/database"
 	"github.com/haaku-tv/haaku/internal/handlers/media"
+	"github.com/haaku-tv/haaku/internal/handlers/shared"
 	"github.com/haaku-tv/haaku/internal/openapi"
 	"github.com/haaku-tv/haaku/internal/response"
 
@@ -143,6 +144,16 @@ func handleContractHistoryList(kind string) fiber.Handler {
 			q = q.Where("media_type = ?", "movie")
 		default: // show and episode histories are the stored episode rows
 			q = q.Where("media_type = ?", "episode")
+		}
+		filter, ok := shared.ParseCatalogueFilter(c,
+			shared.FilterGenres, shared.FilterYears, shared.FilterRatings,
+			shared.FilterRuntimes, shared.FilterStatuses, shared.FilterCertifications)
+		if !ok {
+			return nil
+		}
+		clause, args := filter.HistoryMediaWhere(db)
+		if clause != "" {
+			q = q.Where(clause, args...)
 		}
 		q = applyHistoryWindow(q, c)
 
@@ -399,6 +410,9 @@ func handleContractWatchedShows(c *fiber.Ctx) error {
 		return nil
 	}
 	specials := queryBool(c, "specials")
+	if v := strings.ToLower(strings.TrimSpace(c.Query("season_numbers"))); v == "false" || v == "0" {
+		return response.BadRequest(c, "season_numbers=false is not supported: seasons have no stored slug, so the keys are always season numbers")
+	}
 
 	var rows []database.UserHistory
 	if err := db.Where("user_id = ? AND media_type = ?", target.ID, "episode").
@@ -476,8 +490,11 @@ type watchedAggregate struct {
 
 // watchedTypeSQL returns the portable aggregation for one watched type: the
 // group key, the FROM clause (a join onto episodes for the episode-derived
-// types), and the WHERE clause with the user_id placeholder.
-func watchedTypeSQL(kind string, specials bool) (keyExpr, from, where string) {
+// types), the WHERE clause with one user_id placeholder (plus a second for the
+// season/episode branches when hidden rows are excluded), and the play-count
+// expression. countSpecials=false with specials included keeps season 0 in the
+// list but out of the play count.
+func watchedTypeSQL(kind string, specials, hidden, countSpecials bool) (keyExpr, from, where, plays string) {
 	const episodeRows = "uh.user_id = ? AND uh.media_type = 'episode'"
 	const episodeJoin = "user_history uh JOIN episodes e ON e.id = COALESCE(uh.episode_id, uh.media_id)"
 	// Season 0 holds specials; the contract omits them unless specials=true.
@@ -485,20 +502,46 @@ func watchedTypeSQL(kind string, specials bool) (keyExpr, from, where string) {
 	if !specials {
 		specialFilter = " AND e.season_id NOT IN (SELECT id FROM seasons WHERE season_number = 0)"
 	}
+	// hidden=false is the contract default: a hidden item is left out. `hidden`
+	// names hidden seasons (the calendar's per-season switch), so only the
+	// season-scoped branches below apply it; a movie or show hidden from the
+	// calendar still appears in the item aggregates.
+	hiddenFilter := func(mediaTypeExpr, mediaIDExpr string) string {
+		if hidden {
+			return ""
+		}
+		return " AND NOT EXISTS (SELECT 1 FROM user_hidden h WHERE h.user_id = ? AND h.media_type = '" +
+			mediaTypeExpr + "' AND h.media_id = " + mediaIDExpr + ")"
+	}
 	switch kind {
 	case "movie":
 		// A movie whose row is gone is not served (and so is not counted).
 		return "uh.media_id", "user_history uh",
-			"uh.user_id = ? AND uh.media_type = 'movie' AND EXISTS (SELECT 1 FROM movies m WHERE m.id = uh.media_id)"
+			"uh.user_id = ? AND uh.media_type = 'movie' AND EXISTS (SELECT 1 FROM movies m WHERE m.id = uh.media_id)",
+			"COUNT(*)"
 	case "show":
 		return "e.show_id", episodeJoin,
-			episodeRows + " AND EXISTS (SELECT 1 FROM shows s WHERE s.id = e.show_id)" + specialFilter
+			episodeRows + " AND EXISTS (SELECT 1 FROM shows s WHERE s.id = e.show_id)" + specialFilter,
+			playCountExpr(specials, countSpecials)
 	case "season":
 		return "e.season_id", episodeJoin,
-			episodeRows + " AND EXISTS (SELECT 1 FROM seasons sn WHERE sn.id = e.season_id)" + specialFilter
-	default: // episode
-		return "e.id", episodeJoin, episodeRows + specialFilter
+			episodeRows + " AND EXISTS (SELECT 1 FROM seasons sn WHERE sn.id = e.season_id)" + specialFilter +
+				hiddenFilter("season", "e.season_id"),
+			playCountExpr(specials, countSpecials)
+	default: // episode; a hidden season hides its episodes (user_hidden keys seasons)
+		return "e.id", episodeJoin,
+			episodeRows + specialFilter + hiddenFilter("season", "e.season_id"),
+			playCountExpr(specials, countSpecials)
 	}
+}
+
+// playCountExpr counts every row, or excludes specials when the contract's
+// count_specials=false is combined with specials=true.
+func playCountExpr(specials, countSpecials bool) string {
+	if specials && !countSpecials {
+		return "SUM(CASE WHEN e.season_id IN (SELECT id FROM seasons WHERE season_number = 0) THEN 0 ELSE 1 END)"
+	}
+	return "COUNT(*)"
 }
 
 // handleContractWatchedType serves /watched/{type} as the contract's aggregated
@@ -522,29 +565,41 @@ func handleContractWatchedType(c *fiber.Ctx) error {
 	}
 	page, limit := contractPage(c)
 	specials := queryBool(c, "specials")
+	hidden := queryBool(c, "hidden")
+	countSpecials := true
+	if v := strings.ToLower(strings.TrimSpace(c.Query("count_specials"))); v == "false" || v == "0" {
+		countSpecials = false
+	}
 
-	keyExpr, from, where := watchedTypeSQL(kind, specials)
+	keyExpr, from, where, playsExpr := watchedTypeSQL(kind, specials, hidden, countSpecials)
 
 	// One row per group: the newest history row of the group, its play count,
 	// ordered by that newest watch. ROW_NUMBER/COUNT are window functions, so
 	// only integers cross the driver boundary.
 	grouped := fmt.Sprintf(
 		"SELECT %s AS media_key, uh.id AS history_id, uh.watched_at, "+
-			"COUNT(*) OVER (PARTITION BY %s) AS plays, "+
+			"%s OVER (PARTITION BY %s) AS plays, "+
 			"ROW_NUMBER() OVER (PARTITION BY %s ORDER BY uh.watched_at DESC, uh.id DESC) AS rn "+
 			"FROM %s WHERE %s",
-		keyExpr, keyExpr, keyExpr, from, where)
+		keyExpr, playsExpr, keyExpr, keyExpr, from, where)
 	pageSQL := "SELECT media_key, history_id, plays FROM (" + grouped + ") g " +
 		"WHERE g.rn = 1 ORDER BY g.watched_at DESC, g.history_id DESC LIMIT ? OFFSET ?"
 
+	// The WHERE clause carries the user id once, and a second time for the
+	// hidden-row subquery — which only the season-scoped branches emit.
+	whereArgs := []any{target.ID}
+	if !hidden && (kind == "season" || kind == "episode") {
+		whereArgs = append(whereArgs, target.ID)
+	}
+
 	var groups []watchedAggregate
-	if err := db.Raw(pageSQL, target.ID, limit, pageOffset(page, limit)).Scan(&groups).Error; err != nil {
+	if err := db.Raw(pageSQL, append(append([]any{}, whereArgs...), limit, pageOffset(page, limit))...).Scan(&groups).Error; err != nil {
 		return response.InternalError(c)
 	}
 
 	var total int64
 	countSQL := fmt.Sprintf("SELECT COUNT(*) FROM (SELECT 1 FROM %s WHERE %s GROUP BY %s) g", from, where, keyExpr)
-	if err := db.Raw(countSQL, target.ID).Scan(&total).Error; err != nil {
+	if err := db.Raw(countSQL, whereArgs...).Scan(&total).Error; err != nil {
 		return response.InternalError(c)
 	}
 
@@ -611,6 +666,21 @@ func handleContractActivities(c *fiber.Ctx) error {
 	}
 	page, limit := contractPage(c)
 
+	// Validate the filters before the account resolution: an unsupported
+	// filter is a 400 for every caller, including one with no visible friends,
+	// and no database work runs ahead of rejecting bad input.
+	for _, p := range []string{"ignore_watched", "ignore_collected", "ignore_watchlisted"} {
+		if c.Query(p) != "" {
+			return response.BadRequest(c, "filter "+p+" is not supported on the activities feed")
+		}
+	}
+	filter, ok := shared.ParseCatalogueFilter(c,
+		shared.FilterGenres, shared.FilterYears, shared.FilterRatings,
+		shared.FilterRuntimes, shared.FilterStatuses, shared.FilterCertifications)
+	if !ok {
+		return nil
+	}
+
 	userIDs, err := activityUserIDs(db, target.ID, kind)
 	if err != nil {
 		return response.InternalError(c)
@@ -633,6 +703,10 @@ func handleContractActivities(c *fiber.Ctx) error {
 	}
 
 	q := db.Where("user_id IN ?", userIDs)
+	clause, args := filter.HistoryMediaWhere(db)
+	if clause != "" {
+		q = q.Where(clause, args...)
+	}
 	q = applyActivityWindow(q, c)
 	var total int64
 	if err := q.Model(&database.UserHistory{}).Count(&total).Error; err != nil {
