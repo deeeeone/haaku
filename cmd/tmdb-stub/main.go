@@ -104,6 +104,17 @@ var routes = []route{
 		{"certification":"PG-13","meaning":"Parents strongly cautioned","order":3},
 		{"certification":"R","meaning":"Restricted","order":4}],"GB":[
 		{"certification":"12A","meaning":"Suitable for 12 and over","order":3}]}}`},
+	// The older per-media certification trees. The reference handler reads these
+	// (not the combined configuration tree above), so the catalogue rows for
+	// /certifications/movies and /certifications/shows depend on them.
+	{regexp.MustCompile(`^/3/certification/movie/list$`), `{"certifications":{"US":[
+		{"certification":"PG-13","meaning":"Parents strongly cautioned","order":3},
+		{"certification":"R","meaning":"Restricted","order":4}],"GB":[
+		{"certification":"12A","meaning":"Suitable for 12 and over","order":3}]}}`},
+	{regexp.MustCompile(`^/3/certification/tv/list$`), `{"certifications":{"US":[
+		{"certification":"TV-14","meaning":"Parents strongly cautioned","order":5},
+		{"certification":"TV-MA","meaning":"Mature audiences","order":6}],"GB":[
+		{"certification":"15","meaning":"Suitable only for 15 years and over","order":4}]}}`},
 	{regexp.MustCompile(`^/3/configuration/countries$`), `[{"iso_3166_1":"US","english_name":"United States"},{"iso_3166_1":"GB","english_name":"United Kingdom"}]`},
 	{regexp.MustCompile(`^/3/configuration/languages$`), `[{"iso_639_1":"en","english_name":"English","name":"English"},{"iso_639_1":"fr","english_name":"French","name":"Francais"}]`},
 	{regexp.MustCompile(`^/3/configuration/primary_translations$`), `["en","fr","es"]`},
