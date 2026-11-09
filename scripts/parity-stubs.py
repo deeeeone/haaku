@@ -8,6 +8,7 @@ for that endpoint. Rows no group issue owns are attributed to #4 itself and
 listed in the run output.
 """
 import collections
+import importlib.util
 import glob
 import json
 import re
@@ -75,21 +76,49 @@ def ours_path(trakt):
 doc = yaml.safe_load(MANIFEST.read_text())
 
 # ---- owner mapping ----------------------------------------------------------
-# Baked in so the script runs from a clean checkout: each blocked row's owning
-# sub-issue of #4 (49 for the related/recommendations rows, which belong to that
-# issue rather than a parity group).
-OWNER = {'GET /calendars/all/dvd/{start_date}/{days}': 69, 'GET /calendars/all/streaming/{start_date}/{days}': 69, 'GET /calendars/releases/hot/{start_date}/{days}': 69, 'GET /media/trending': 66, 'GET /media/popular': 66, 'GET /movies/watched/{period}': 66, 'GET /movies/played/{period}': 66, 'GET /movies/collected/{period}': 66, 'GET /movies/hot': 66, 'GET /movies/streaming/{period}': 69, 'GET /movies/boxoffice': 69, 'GET /movies/{id}/related': 49, 'GET /movies/{id}/releases/{country}': 68, 'GET /movies/{id}/videos': 68, 'GET /movies/{id}/studios': 68, 'GET /movies/{id}/lists/{type}/{sort}': 67, 'GET /movies/{id}/stats': 66, 'GET /movies/{id}/watching': 66, 'GET /shows/watched/{period}': 66, 'GET /shows/played/{period}': 66, 'GET /shows/collected/{period}': 66, 'GET /shows/hot': 66, 'GET /shows/streaming/{period}': 69, 'GET /shows/{id}/related': 49, 'GET /shows/{id}/videos': 68, 'GET /shows/{id}/studios': 68, 'GET /shows/{id}/certifications': 68, 'GET /shows/{id}/progress/watched/reset': 66, 'GET /shows/{id}/lists/{type}/{sort}': 67, 'GET /shows/{id}/stats': 66, 'GET /shows/{id}/watching': 66, 'GET /shows/{id}/seasons/{season}/people': 68, 'GET /shows/{id}/seasons/{season}/videos': 68, 'GET /shows/{id}/seasons/{s}/episodes/{e}/people': 68, 'GET /shows/{id}/seasons/{s}/episodes/{e}/videos': 68, 'GET /people/{id}/lists/{type}/{sort}': 67, 'DELETE /recommendations/movies/{id}': 49, 'DELETE /recommendations/shows/{id}': 49, 'GET /sync/collection/episodes': 71, 'GET /sync/watchlist/seasons': 71, 'GET /sync/watchlist/episodes': 71, 'GET /watchnow/sources': 69, 'GET /watchnow/sources/{countryCode}': 69, 'GET /watchnow/justwatch_links/{country}': 69, 'POST /search': 70, 'GET /search/recent': 70, 'GET /search/recent_by_id/{type}': 70}
-owner = dict(OWNER)
+# By path rule, so a reshape cannot strand a row (see scripts/parity-owners.py).
+_po = importlib.util.spec_from_file_location(
+    "parity_owners", Path(__file__).resolve().parent / "parity-owners.py")
+_pm = importlib.util.module_from_spec(_po)
+_po.loader.exec_module(_pm)
+owner_for = _pm.owner_for
+
+# Routes another package already mounts answer for themselves — their 501 (or 200)
+# is already in the registry, and registering a second handler for the same
+# path+method would shadow the real def in the spec (that is what made the
+# contract diff see `removed-status-code 200` on /movies/{id}/stats).
+_CLAIMED = set()   # (METHOD, path-with-{} params) another package already mounts
+
+
+def _shape(p):
+    return re.sub(r"[:{][a-z0-9_]+\}?", "{}", p)
+
+
+for _f in WT.rglob("*.go"):
+    if "paritystub" in str(_f) or _f.name.endswith("_test.go"):
+        continue
+    _t = _f.read_text()
+    for _m in re.finditer(r'api\.(Get|Post|Put|Patch|Delete)\(\s*"(/v1/[^"]+)"', _t):
+        _CLAIMED.add((_m.group(1).upper(), _shape(_m.group(2))))
+    for _m in re.finditer(r'Method:\s*"(\w+)"[^}]*?Path:\s*"(/v1/[^"]+)"', _t, re.S):
+        _CLAIMED.add((_m.group(1).upper(), _shape(_m.group(2))))
+    for _m in re.finditer(r'Path:\s*"(/v1/[^"]+)"[^}]*?Method:\s*"(\w+)"', _t, re.S):
+        _CLAIMED.add((_m.group(2).upper(), _shape(_m.group(1))))
+
 
 targets, unowned = [], []
 for sec in doc["sections"]:
     for r in sec["rows"] or []:
-        if (r.get("ours") or "").strip() or r["status"] not in ("blocked-engine", "blocked-data"):
+        if r["status"] not in ("blocked-engine", "blocked-data"):
             continue
+        if not (r.get("trakt") or "").strip():
+            continue   # custom-surface row: its route is the owning package's
         reason = " ".join(str(r.get("engine") or r.get("needs") or r.get("rationale", "")).split())
-        o = owner.get(r["trakt"])
+        o = owner_for(r["trakt"])
         if o is None:
             unowned.append(r["trakt"])
+        if (r["trakt"].split()[0].upper(), _shape(ours_path(r["trakt"]))) in _CLAIMED:
+            continue   # already registered by its own package: its 501/200 is the answer
         targets.append((r["trakt"], ours_path(r["trakt"]), r["status"], reason, o, sec["name"]))
 
 if not targets:
@@ -250,7 +279,7 @@ for line in lines:
     if m2 and cur:
         val = m2.group(2).strip().strip('"').strip("'")
         hit = [t for t in targets if t[0] == cur]
-        if hit and not val:
+        if hit and (not val or val != hit[0][0].split()[0] + " " + hit[0][1]):
             out.append(f"{m2.group(1)}ours: {go_str(hit[0][0].split()[0] + chr(32) + hit[0][1])}")
             stubbed += 1
             continue

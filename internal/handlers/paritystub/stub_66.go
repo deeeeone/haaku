@@ -12,46 +12,54 @@ import (
 // that haaku does not serve yet. Each answers an honest 501 naming the blocker and the
 // tracking issue, so a Trakt client gets a real answer instead of a 404.
 func registerStub66(api fiber.Router) {
-	// GET /media/trending — blocked-engine: rankings/stats engine (issue #5)
+	// GET /media/trending — blocked-engine: stats/rankings engine (issue #66)
 	// Upstream gettrending; 200: array of {movie,show,watchers}; +24 query
 	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
-	api.Get("/v1/media/trending", stubHandler(66, "GET /media/trending", "rankings/stats engine (issue #5)"))
-	// GET /media/popular — blocked-engine: rankings/stats engine (issue #5)
+	api.Get("/v1/media/trending", stubHandler(66, "GET /media/trending", "stats/rankings engine (issue #66)"))
+	// GET /media/popular — blocked-engine: stats/rankings engine (issue #66)
 	// Upstream getpopular; +24 query
 	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
-	api.Get("/v1/media/popular", stubHandler(66, "GET /media/popular", "rankings/stats engine (issue #5)"))
-	// GET /movies/watched/{period} — blocked-engine: stats/rankings engine (issue #5)
+	api.Get("/v1/media/popular", stubHandler(66, "GET /media/popular", "stats/rankings engine (issue #66)"))
+	// GET /movies/watched/{period} — blocked-engine: stats/rankings engine (issue #66)
 	// Upstream getwatched; 200: array of {collected_count,movie,play_count,watcher_count}; path: period; +6 query
 	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
-	api.Get("/v1/movies/watched/:period", stubHandler(66, "GET /movies/watched/{period}", "stats/rankings engine (issue #5)"))
-	// GET /movies/played/{period} — blocked-engine: stats/rankings engine (issue #5)
+	api.Get("/v1/movies/watched/:period", stubHandler(66, "GET /movies/watched/{period}", "stats/rankings engine (issue #66)"))
+	// GET /movies/played/{period} — blocked-engine: stats/rankings engine (issue #66)
 	// Upstream getplayed; 200: array of {collected_count,movie,play_count,watcher_count}; path: period; +6 query
 	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
-	api.Get("/v1/movies/played/:period", stubHandler(66, "GET /movies/played/{period}", "stats/rankings engine (issue #5)"))
-	// GET /movies/collected/{period} — blocked-engine: stats/rankings engine (issue #5)
+	api.Get("/v1/movies/played/:period", stubHandler(66, "GET /movies/played/{period}", "stats/rankings engine (issue #66)"))
+	// GET /movies/collected/{period} — blocked-engine: stats/rankings engine (issue #66)
 	// Upstream getcollected; 200: array of {collected_count,movie,play_count,watcher_count}; path: period; +6 query
 	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
-	api.Get("/v1/movies/collected/:period", stubHandler(66, "GET /movies/collected/{period}", "stats/rankings engine (issue #5)"))
-	// GET /movies/hot — blocked-engine: stats/rankings engine (issue #5)
+	api.Get("/v1/movies/collected/:period", stubHandler(66, "GET /movies/collected/{period}", "stats/rankings engine (issue #66)"))
+	// GET /movies/hot — blocked-engine: stats/rankings engine (issue #66)
 	// Upstream gethot; 200: array of {list_count,movie}; +23 query
 	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
-	api.Get("/v1/movies/hot", stubHandler(66, "GET /movies/hot", "stats/rankings engine (issue #5)"))
-	// GET /shows/watched/{period} — blocked-engine: stats/rankings engine (issue #5)
+	api.Get("/v1/movies/hot", stubHandler(66, "GET /movies/hot", "stats/rankings engine (issue #66)"))
+	// GET /movies/boxoffice — blocked-data: No revenue/box-office columns exist and the TMDB ingest does not fetch them.
+	// Upstream getboxoffice; 200: array of {movie,revenue}; +1 query
+	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
+	api.Get("/v1/movies/boxoffice", stubHandler(66, "GET /movies/boxoffice", "No revenue/box-office columns exist and the TMDB ingest does not fetch them."))
+	// GET /shows/watched/{period} — blocked-engine: stats/rankings engine (issue #66)
 	// Upstream getwatched; 200: array of {collected_count,collector_count,play_count,show,watcher_count}; path: period; +23 query
 	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
-	api.Get("/v1/shows/watched/:period", stubHandler(66, "GET /shows/watched/{period}", "stats/rankings engine (issue #5)"))
-	// GET /shows/played/{period} — blocked-engine: stats/rankings engine (issue #5)
+	api.Get("/v1/shows/watched/:period", stubHandler(66, "GET /shows/watched/{period}", "stats/rankings engine (issue #66)"))
+	// GET /shows/played/{period} — blocked-engine: stats/rankings engine (issue #66)
 	// Upstream getplayed; 200: array of {collected_count,collector_count,play_count,show,watcher_count}; path: period; +23 query
 	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
-	api.Get("/v1/shows/played/:period", stubHandler(66, "GET /shows/played/{period}", "stats/rankings engine (issue #5)"))
-	// GET /shows/collected/{period} — blocked-engine: stats/rankings engine (issue #5)
+	api.Get("/v1/shows/played/:period", stubHandler(66, "GET /shows/played/{period}", "stats/rankings engine (issue #66)"))
+	// GET /shows/collected/{period} — blocked-engine: stats/rankings engine (issue #66)
 	// Upstream getcollected; 200: array of {collected_count,collector_count,play_count,show,watcher_count}; path: period; +23 query
 	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
-	api.Get("/v1/shows/collected/:period", stubHandler(66, "GET /shows/collected/{period}", "stats/rankings engine (issue #5)"))
-	// GET /shows/hot — blocked-engine: stats/rankings engine (issue #5)
+	api.Get("/v1/shows/collected/:period", stubHandler(66, "GET /shows/collected/{period}", "stats/rankings engine (issue #66)"))
+	// GET /shows/hot — blocked-engine: stats/rankings engine (issue #66)
 	// Upstream gethot; 200: array of {list_count,show}; +23 query
 	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
-	api.Get("/v1/shows/hot", stubHandler(66, "GET /shows/hot", "stats/rankings engine (issue #5)"))
+	api.Get("/v1/shows/hot", stubHandler(66, "GET /shows/hot", "stats/rankings engine (issue #66)"))
+	// DELETE /shows/{id}/progress/watched/reset — blocked-engine: stats/rankings engine (issue #66)
+	// Upstream deleteundoReset; path: id
+	// Tracked in #66: https://github.com/haaku-tv/haaku/issues/66
+	api.Delete("/v1/shows/:id/progress/watched/reset", stubHandler(66, "DELETE /shows/{id}/progress/watched/reset", "stats/rankings engine (issue #66)"))
 }
 
 // defsStub66 is the registry entry for each stub above. The 501 in
@@ -65,7 +73,7 @@ func defsStub66() []openapi.RouteDef {
 			Summary:     "Parity stub — not implemented (stats & rankings engine)",
 			Tags:        []string{"Media"},
 			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — rankings/stats engine (issue #5) (#66)"},
+			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #66) (#66)"},
 		},
 		{
 			Method:      "GET",
@@ -73,7 +81,7 @@ func defsStub66() []openapi.RouteDef {
 			Summary:     "Parity stub — not implemented (stats & rankings engine)",
 			Tags:        []string{"Media"},
 			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — rankings/stats engine (issue #5) (#66)"},
+			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #66) (#66)"},
 		},
 		{
 			Method:      "GET",
@@ -81,7 +89,7 @@ func defsStub66() []openapi.RouteDef {
 			Summary:     "Parity stub — not implemented (stats & rankings engine)",
 			Tags:        []string{"Movies"},
 			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #5) (#66)"},
+			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #66) (#66)"},
 		},
 		{
 			Method:      "GET",
@@ -89,7 +97,7 @@ func defsStub66() []openapi.RouteDef {
 			Summary:     "Parity stub — not implemented (stats & rankings engine)",
 			Tags:        []string{"Movies"},
 			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #5) (#66)"},
+			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #66) (#66)"},
 		},
 		{
 			Method:      "GET",
@@ -97,7 +105,7 @@ func defsStub66() []openapi.RouteDef {
 			Summary:     "Parity stub — not implemented (stats & rankings engine)",
 			Tags:        []string{"Movies"},
 			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #5) (#66)"},
+			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #66) (#66)"},
 		},
 		{
 			Method:      "GET",
@@ -105,7 +113,15 @@ func defsStub66() []openapi.RouteDef {
 			Summary:     "Parity stub — not implemented (stats & rankings engine)",
 			Tags:        []string{"Movies"},
 			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #5) (#66)"},
+			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #66) (#66)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/movies/boxoffice",
+			Summary:     "Parity stub — not implemented (stats & rankings engine)",
+			Tags:        []string{"Movies"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — No revenue/box-office columns exist and the TMDB ingest does not fetch them. (#66)"},
 		},
 		{
 			Method:      "GET",
@@ -113,7 +129,7 @@ func defsStub66() []openapi.RouteDef {
 			Summary:     "Parity stub — not implemented (stats & rankings engine)",
 			Tags:        []string{"Shows"},
 			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #5) (#66)"},
+			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #66) (#66)"},
 		},
 		{
 			Method:      "GET",
@@ -121,7 +137,7 @@ func defsStub66() []openapi.RouteDef {
 			Summary:     "Parity stub — not implemented (stats & rankings engine)",
 			Tags:        []string{"Shows"},
 			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #5) (#66)"},
+			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #66) (#66)"},
 		},
 		{
 			Method:      "GET",
@@ -129,7 +145,7 @@ func defsStub66() []openapi.RouteDef {
 			Summary:     "Parity stub — not implemented (stats & rankings engine)",
 			Tags:        []string{"Shows"},
 			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #5) (#66)"},
+			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #66) (#66)"},
 		},
 		{
 			Method:      "GET",
@@ -137,7 +153,15 @@ func defsStub66() []openapi.RouteDef {
 			Summary:     "Parity stub — not implemented (stats & rankings engine)",
 			Tags:        []string{"Shows"},
 			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #5) (#66)"},
+			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #66) (#66)"},
+		},
+		{
+			Method:      "DELETE",
+			Path:        "/v1/shows/{id}/progress/watched/reset",
+			Summary:     "Parity stub — not implemented (stats & rankings engine)",
+			Tags:        []string{"Shows"},
+			Auth:        "required",
+			StatusCodes: map[int]string{501: "Not implemented — stats/rankings engine (issue #66) (#66)"},
 		},
 	}
 }

@@ -31,6 +31,7 @@ trap 'rm -f "$current"' EXIT
 # Excludes anything under web/ (the frontend has its own tooling).
 git ls-files -z '*.go' | while IFS= read -r -d '' f; do
   case "$f" in web/*) continue ;; esac
+  [ -f "$f" ] || continue   # staged deletion: still in the index, no lines to count
   n="$(wc -l <"$f")"
   if [ "$n" -gt "$SOFT_LIMIT" ]; then
     printf '%s\t%s\n' "$n" "$f"

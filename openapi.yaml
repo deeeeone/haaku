@@ -980,9 +980,9 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: Not implemented — movies carries a single released DATE; there is no dvd/digital/physical date column, so a DVD calend (#4)
+                    description: Not implemented — movies carries a single released DATE; there is no dvd/digital/physical date column, so a DVD calend (#69)
             security: []
-            summary: Parity stub — not implemented (parity tracker)
+            summary: Parity stub — not implemented (calendars & Watch Now data)
             tags:
                 - Calendars
     /v1/calendars/{target}/streaming/{start_date}/{days}:
@@ -1032,9 +1032,9 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: Not implemented — No streaming-release date is stored; watch providers live in movies.metadata per title (TMDB), not a (#4)
+                    description: Not implemented — No streaming-release date is stored; watch providers live in movies.metadata per title (TMDB), not a (#69)
             security: []
-            summary: Parity stub — not implemented (parity tracker)
+            summary: Parity stub — not implemented (calendars & Watch Now data)
             tags:
                 - Calendars
     /v1/calendars/all/movies/{start_date}/{days}:
@@ -3984,7 +3984,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: 'Not implemented — rankings/stats engine (issue #5) (#66)'
+                    description: 'Not implemented — stats/rankings engine (issue #66) (#66)'
             security: []
             summary: Parity stub — not implemented (stats & rankings engine)
             tags:
@@ -4082,7 +4082,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: 'Not implemented — rankings/stats engine (issue #5) (#66)'
+                    description: 'Not implemented — stats/rankings engine (issue #66) (#66)'
             security: []
             summary: Parity stub — not implemented (stats & rankings engine)
             tags:
@@ -4287,6 +4287,58 @@ paths:
             summary: Get lists containing a movie
             tags:
                 - Movies
+    /v1/movies/{id}/lists/{type}/{sort}:
+        get:
+            operationId: _v1_movies_id_lists_type_sort_GET
+            responses:
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+                "501":
+                    description: 'Not implemented — lists engine (issue #67) (#67)'
+            security: []
+            summary: Parity stub — not implemented (lists engine)
+            tags:
+                - Movies
     /v1/movies/{id}/people:
         get:
             operationId: _v1_movies_id_people_GET
@@ -4438,7 +4490,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: 'Not implemented — recommendations engine (issue #5) (#49)'
+                    description: 'Not implemented — recommendations engine (issue #49) (#49)'
             security: []
             summary: Parity stub — not implemented (item-to-item related/recommendation engine)
             tags:
@@ -4890,9 +4942,9 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: Not implemented — No revenue/box-office columns exist and the TMDB ingest does not fetch them. (#69)
+                    description: Not implemented — No revenue/box-office columns exist and the TMDB ingest does not fetch them. (#66)
             security: []
-            summary: Parity stub — not implemented (calendars & Watch Now data)
+            summary: Parity stub — not implemented (stats & rankings engine)
             tags:
                 - Movies
     /v1/movies/collected/{period}:
@@ -4942,7 +4994,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: 'Not implemented — stats/rankings engine (issue #5) (#66)'
+                    description: 'Not implemented — stats/rankings engine (issue #66) (#66)'
             security: []
             summary: Parity stub — not implemented (stats & rankings engine)
             tags:
@@ -4994,7 +5046,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: 'Not implemented — stats/rankings engine (issue #5) (#66)'
+                    description: 'Not implemented — stats/rankings engine (issue #66) (#66)'
             security: []
             summary: Parity stub — not implemented (stats & rankings engine)
             tags:
@@ -5046,7 +5098,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: 'Not implemented — stats/rankings engine (issue #5) (#66)'
+                    description: 'Not implemented — stats/rankings engine (issue #66) (#66)'
             security: []
             summary: Parity stub — not implemented (stats & rankings engine)
             tags:
@@ -5404,7 +5456,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: 'Not implemented — stats/rankings engine (issue #5) (#66)'
+                    description: 'Not implemented — stats/rankings engine (issue #66) (#66)'
             security: []
             summary: Parity stub — not implemented (stats & rankings engine)
             tags:
@@ -5950,7 +6002,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: 'Not implemented — lists engine (issue #5) (#67)'
+                    description: 'Not implemented — lists engine (issue #67) (#67)'
             security: []
             summary: Parity stub — not implemented (lists engine)
             tags:
@@ -6204,7 +6256,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: 'Not implemented — recommendations engine (issue #5) (#49)'
+                    description: 'Not implemented — recommendations engine (issue #49) (#49)'
             security:
                 - apiKey: []
                 - oauth: []
@@ -6308,7 +6360,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: 'Not implemented — recommendations engine (issue #5) (#49)'
+                    description: 'Not implemented — recommendations engine (issue #49) (#49)'
             security:
                 - apiKey: []
                 - oauth: []
@@ -6621,59 +6673,6 @@ paths:
             summary: Full-text search across movies, shows, episodes, people, and lists
             tags:
                 - Search
-        post:
-            operationId: _v1_search_POST
-            responses:
-                "400":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
-                "401":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: unauthorized
-                "404":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
-                "409":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: conflict
-                "422":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: unprocessable
-                "429":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: rate limited
-                "500":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: internal server error
-                "501":
-                    description: Not implemented — Persisting a recent search needs a recent-searches table, which does not exist (search is stateless  (#70)
-            security:
-                - apiKey: []
-                - oauth: []
-            summary: Parity stub — not implemented (search engine)
-            tags:
-                - Search
     /v1/search/exact:
         get:
             operationId: _v1_search_exact_GET
@@ -6763,8 +6762,8 @@ paths:
             tags:
                 - Search
     /v1/search/recent:
-        get:
-            operationId: _v1_search_recent_GET
+        post:
+            operationId: _v1_search_recent_POST
             responses:
                 "400":
                     content:
@@ -6809,7 +6808,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: Not implemented — No recent-searches store exists to read back. (#70)
+                    description: Not implemented — Persisting a recent search needs a recent-searches table, which does not exist (search is stateless  (#70)
             security:
                 - apiKey: []
                 - oauth: []
@@ -6863,11 +6862,11 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: Not implemented — Same missing store; the Trakt id-keyed variant too. (#4)
+                    description: Not implemented — Same missing store; the Trakt id-keyed variant too. (#70)
             security:
                 - apiKey: []
                 - oauth: []
-            summary: Parity stub — not implemented (parity tracker)
+            summary: Parity stub — not implemented (search engine)
             tags:
                 - Search
     /v1/seasons/{id}:
@@ -7360,6 +7359,58 @@ paths:
             summary: Get lists containing a show
             tags:
                 - Shows
+    /v1/shows/{id}/lists/{type}/{sort}:
+        get:
+            operationId: _v1_shows_id_lists_type_sort_GET
+            responses:
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+                "501":
+                    description: 'Not implemented — lists engine (issue #67) (#67)'
+            security: []
+            summary: Parity stub — not implemented (lists engine)
+            tags:
+                - Shows
     /v1/shows/{id}/next_episode:
         get:
             operationId: _v1_shows_id_next_episode_GET
@@ -7601,11 +7652,11 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: 'Not implemented — stats/rankings engine (issue #5) (#4)'
+                    description: 'Not implemented — stats/rankings engine (issue #66) (#66)'
             security:
                 - apiKey: []
                 - oauth: []
-            summary: Parity stub — not implemented (parity tracker)
+            summary: Parity stub — not implemented (stats & rankings engine)
             tags:
                 - Shows
         post:
@@ -7752,7 +7803,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: 'Not implemented — recommendations engine (issue #5) (#49)'
+                    description: 'Not implemented — recommendations engine (issue #49) (#49)'
             security: []
             summary: Parity stub — not implemented (item-to-item related/recommendation engine)
             tags:
@@ -8148,9 +8199,9 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: Not implemented — Episode credits are not ingested (credits table is written for movie/show only). (#4)
+                    description: Not implemented — Episode credits are not ingested (credits table is written for movie/show only). (#68)
             security: []
-            summary: Parity stub — not implemented (parity tracker)
+            summary: Parity stub — not implemented (TMDB metadata ingest)
             tags:
                 - Shows
     /v1/shows/{id}/seasons/{season}/episodes/{episode}/translations/{lang}:
@@ -8248,9 +8299,9 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: Not implemented — No videos table and no TMDB video ingest. (#4)
+                    description: Not implemented — No videos table and no TMDB video ingest. (#68)
             security: []
-            summary: Parity stub — not implemented (parity tracker)
+            summary: Parity stub — not implemented (TMDB metadata ingest)
             tags:
                 - Shows
     /v1/shows/{id}/seasons/{season}/people:
@@ -8756,7 +8807,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: 'Not implemented — stats/rankings engine (issue #5) (#66)'
+                    description: 'Not implemented — stats/rankings engine (issue #66) (#66)'
             security: []
             summary: Parity stub — not implemented (stats & rankings engine)
             tags:
@@ -8808,7 +8859,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: 'Not implemented — stats/rankings engine (issue #5) (#66)'
+                    description: 'Not implemented — stats/rankings engine (issue #66) (#66)'
             security: []
             summary: Parity stub — not implemented (stats & rankings engine)
             tags:
@@ -8860,7 +8911,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: 'Not implemented — stats/rankings engine (issue #5) (#66)'
+                    description: 'Not implemented — stats/rankings engine (issue #66) (#66)'
             security: []
             summary: Parity stub — not implemented (stats & rankings engine)
             tags:
@@ -9218,7 +9269,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
                 "501":
-                    description: 'Not implemented — stats/rankings engine (issue #5) (#66)'
+                    description: 'Not implemented — stats/rankings engine (issue #66) (#66)'
             security: []
             summary: Parity stub — not implemented (stats & rankings engine)
             tags:
@@ -13881,58 +13932,6 @@ paths:
             summary: Create smart list
             tags:
                 - Lists
-    /v1/watchnow/justwatch_links/{country}:
-        get:
-            operationId: _v1_watchnow_justwatch_links_country_GET
-            responses:
-                "400":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
-                "401":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: unauthorized
-                "404":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
-                "409":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: conflict
-                "422":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: unprocessable
-                "429":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: rate limited
-                "500":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: internal server error
-                "501":
-                    description: Not implemented — No JustWatch link/deeplink data is stored anywhere. (#69)
-            security: []
-            summary: Parity stub — not implemented (calendars & Watch Now data)
-            tags:
-                - WatchNow
     /v1/watchnow/sources:
         get:
             operationId: _v1_watchnow_sources_GET

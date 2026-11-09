@@ -12,22 +12,22 @@ import (
 // that haaku does not serve yet. Each answers an honest 501 naming the blocker and the
 // tracking issue, so a Trakt client gets a real answer instead of a 404.
 func registerStub49(api fiber.Router) {
-	// GET /movies/{id}/related — blocked-engine: recommendations engine (issue #5)
+	// GET /movies/{id}/related — blocked-engine: recommendations engine (issue #49)
 	// Upstream getrelated; 200: array of {after_credits,available_translations,certification,colors,comment_count,country,during_credits,genres,homepage,ids,images,language,languages,original_title,overview,rating,released,runtime,social_ids,status,subgenres,tagline,title,trailer,updated_at,votes,year}; path: id; +4 query
 	// Tracked in #49: https://github.com/haaku-tv/haaku/issues/49
-	api.Get("/v1/movies/:id/related", stubHandler(49, "GET /movies/{id}/related", "recommendations engine (issue #5)"))
-	// GET /shows/{id}/related — blocked-engine: recommendations engine (issue #5)
+	api.Get("/v1/movies/:id/related", stubHandler(49, "GET /movies/{id}/related", "recommendations engine (issue #49)"))
+	// GET /shows/{id}/related — blocked-engine: recommendations engine (issue #49)
 	// Upstream getrelated; 200: array of {aired_episodes,airs,available_translations,certification,colors,comment_count,country,ending,first_aired,genres,homepage,ids,images,language,languages,last_aired,network,original_title,overview,rating,runtime,social_ids,status,subgenres,tagline,title,total_runtime,trailer,updated_at,votes,year}; path: id; +4 query
 	// Tracked in #49: https://github.com/haaku-tv/haaku/issues/49
-	api.Get("/v1/shows/:id/related", stubHandler(49, "GET /shows/{id}/related", "recommendations engine (issue #5)"))
-	// DELETE /recommendations/movies/{id} — blocked-engine: recommendations engine (issue #5)
+	api.Get("/v1/shows/:id/related", stubHandler(49, "GET /shows/{id}/related", "recommendations engine (issue #49)"))
+	// DELETE /recommendations/movies/{id} — blocked-engine: recommendations engine (issue #49)
 	// Upstream deletehide; path: id
 	// Tracked in #49: https://github.com/haaku-tv/haaku/issues/49
-	api.Delete("/v1/recommendations/movies/:id", stubHandler(49, "DELETE /recommendations/movies/{id}", "recommendations engine (issue #5)"))
-	// DELETE /recommendations/shows/{id} — blocked-engine: recommendations engine (issue #5)
+	api.Delete("/v1/recommendations/movies/:id", stubHandler(49, "DELETE /recommendations/movies/{id}", "recommendations engine (issue #49)"))
+	// DELETE /recommendations/shows/{id} — blocked-engine: recommendations engine (issue #49)
 	// Upstream deletehide; path: id
 	// Tracked in #49: https://github.com/haaku-tv/haaku/issues/49
-	api.Delete("/v1/recommendations/shows/:id", stubHandler(49, "DELETE /recommendations/shows/{id}", "recommendations engine (issue #5)"))
+	api.Delete("/v1/recommendations/shows/:id", stubHandler(49, "DELETE /recommendations/shows/{id}", "recommendations engine (issue #49)"))
 }
 
 // defsStub49 is the registry entry for each stub above. The 501 in
@@ -41,7 +41,7 @@ func defsStub49() []openapi.RouteDef {
 			Summary:     "Parity stub — not implemented (item-to-item related/recommendation engine)",
 			Tags:        []string{"Movies"},
 			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — recommendations engine (issue #5) (#49)"},
+			StatusCodes: map[int]string{501: "Not implemented — recommendations engine (issue #49) (#49)"},
 		},
 		{
 			Method:      "GET",
@@ -49,7 +49,7 @@ func defsStub49() []openapi.RouteDef {
 			Summary:     "Parity stub — not implemented (item-to-item related/recommendation engine)",
 			Tags:        []string{"Shows"},
 			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — recommendations engine (issue #5) (#49)"},
+			StatusCodes: map[int]string{501: "Not implemented — recommendations engine (issue #49) (#49)"},
 		},
 		{
 			Method:      "DELETE",
@@ -57,7 +57,7 @@ func defsStub49() []openapi.RouteDef {
 			Summary:     "Parity stub — not implemented (item-to-item related/recommendation engine)",
 			Tags:        []string{"Recommendations"},
 			Auth:        "required",
-			StatusCodes: map[int]string{501: "Not implemented — recommendations engine (issue #5) (#49)"},
+			StatusCodes: map[int]string{501: "Not implemented — recommendations engine (issue #49) (#49)"},
 		},
 		{
 			Method:      "DELETE",
@@ -65,7 +65,7 @@ func defsStub49() []openapi.RouteDef {
 			Summary:     "Parity stub — not implemented (item-to-item related/recommendation engine)",
 			Tags:        []string{"Recommendations"},
 			Auth:        "required",
-			StatusCodes: map[int]string{501: "Not implemented — recommendations engine (issue #5) (#49)"},
+			StatusCodes: map[int]string{501: "Not implemented — recommendations engine (issue #49) (#49)"},
 		},
 	}
 }

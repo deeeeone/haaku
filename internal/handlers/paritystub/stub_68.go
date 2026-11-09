@@ -44,6 +44,14 @@ func registerStub68(api fiber.Router) {
 	// Upstream getvideos; 200: array of {country,language,official,published_at,site,size,title,type,url}; path: id,season
 	// Tracked in #68: https://github.com/haaku-tv/haaku/issues/68
 	api.Get("/v1/shows/:id/seasons/:season/videos", stubHandler(68, "GET /shows/{id}/seasons/{season}/videos", "No videos table and no TMDB video ingest."))
+	// GET /shows/{id}/seasons/{season}/episodes/{episode}/people — blocked-data: Episode credits are not ingested (credits table is written for movie/show only).
+	// Upstream getpeople; 200: {cast,crew,guest_stars}; path: id,season,episode; +1 query
+	// Tracked in #68: https://github.com/haaku-tv/haaku/issues/68
+	api.Get("/v1/shows/:id/seasons/:season/episodes/:episode/people", stubHandler(68, "GET /shows/{id}/seasons/{season}/episodes/{episode}/people", "Episode credits are not ingested (credits table is written for movie/show only)."))
+	// GET /shows/{id}/seasons/{season}/episodes/{episode}/videos — blocked-data: No videos table and no TMDB video ingest.
+	// Upstream getvideos; 200: array of {country,language,official,published_at,site,size,title,type,url}; path: id,season,episode
+	// Tracked in #68: https://github.com/haaku-tv/haaku/issues/68
+	api.Get("/v1/shows/:id/seasons/:season/episodes/:episode/videos", stubHandler(68, "GET /shows/{id}/seasons/{season}/episodes/{episode}/videos", "No videos table and no TMDB video ingest."))
 }
 
 // defsStub68 is the registry entry for each stub above. The 501 in
@@ -110,6 +118,22 @@ func defsStub68() []openapi.RouteDef {
 		{
 			Method:      "GET",
 			Path:        "/v1/shows/{id}/seasons/{season}/videos",
+			Summary:     "Parity stub — not implemented (TMDB metadata ingest)",
+			Tags:        []string{"Shows"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — No videos table and no TMDB video ingest. (#68)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/shows/{id}/seasons/{season}/episodes/{episode}/people",
+			Summary:     "Parity stub — not implemented (TMDB metadata ingest)",
+			Tags:        []string{"Shows"},
+			Auth:        "none",
+			StatusCodes: map[int]string{501: "Not implemented — Episode credits are not ingested (credits table is written for movie/show only). (#68)"},
+		},
+		{
+			Method:      "GET",
+			Path:        "/v1/shows/{id}/seasons/{season}/episodes/{episode}/videos",
 			Summary:     "Parity stub — not implemented (TMDB metadata ingest)",
 			Tags:        []string{"Shows"},
 			Auth:        "none",

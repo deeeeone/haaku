@@ -43,7 +43,6 @@ func RegisterRoutes(api fiber.Router) {
 	registerStub69(api)
 	registerStub70(api)
 	registerStub71(api)
-	registerStubTracker(api)
 }
 
 // routeDefs is every stub's registry entry, in a stable order.
@@ -56,6 +55,5 @@ func routeDefs() []openapi.RouteDef {
 	all = append(all, defsStub69()...)
 	all = append(all, defsStub70()...)
 	all = append(all, defsStub71()...)
-	all = append(all, defsStubTracker()...)
 	return all
 }
