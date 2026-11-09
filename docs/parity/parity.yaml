@@ -157,7 +157,7 @@ sections:
       - trakt: "GET /movies/{id}/stats"
         ours: "GET /v1/movies/{id}/stats"
         status: implemented
-        rationale: "Direct aggregates over user_history, user_collection, user_ratings, comments, list_items and user_favorites - no engine or materialised table needed. recommended is 0 because nothing stores a recommendation."
+        rationale: "Direct aggregates over user_history, user_collection, user_ratings, comments, list_items and user_favorites - no engine or materialised table needed. recommended mirrors favorited, which is what Trakt renamed it to."
       - trakt: "GET /movies/{id}/watching"
         ours: "GET /v1/movies/{id}/watching"
         status: blocked-engine
@@ -259,7 +259,7 @@ sections:
       - trakt: "GET /shows/{id}/stats"
         ours: "GET /v1/shows/{id}/stats"
         status: implemented
-        rationale: "Direct aggregates over the show's episode history plus user_collection, user_ratings, comments, list_items and user_favorites; includes collected_episodes. recommended is 0 because nothing stores a recommendation."
+        rationale: "Direct aggregates over the show's episode history plus user_collection, user_ratings, comments, list_items and user_favorites; includes collected_episodes. recommended mirrors favorited, which is what Trakt renamed it to."
       - trakt: "GET /shows/{id}/watching"
         ours: "GET /v1/shows/{id}/watching"
         status: blocked-engine

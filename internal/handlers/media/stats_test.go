@@ -157,7 +157,7 @@ func TestMovieStats(t *testing.T) {
 
 	want := statsPayload{
 		Watchers: 2, Plays: 3, Collectors: 1, Comments: 1,
-		Lists: 1, Votes: 1, Favorited: 1, Recommended: 0,
+		Lists: 1, Votes: 1, Favorited: 1, Recommended: 1,
 	}
 	if got := decodeStats(t, resp); !reflect.DeepEqual(got, want) {
 		t.Errorf("stats = %+v, want %+v", got, want)
@@ -193,7 +193,7 @@ func TestShowStats(t *testing.T) {
 	collected := int64(2)
 	want := statsPayload{
 		Watchers: 2, Plays: 3, Collectors: 1, CollectedEpisodes: &collected,
-		Comments: 1, Lists: 1, Votes: 1, Favorited: 1, Recommended: 0,
+		Comments: 1, Lists: 1, Votes: 1, Favorited: 1, Recommended: 1,
 	}
 	if got := decodeStats(t, resp); !reflect.DeepEqual(got, want) {
 		t.Errorf("stats = %+v, want %+v", got, want)

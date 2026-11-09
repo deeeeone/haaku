@@ -49,8 +49,9 @@ func queryMovieStats(db *gorm.DB, movieID int64) (*StatsResponse, error) {
 		Distinct("user_id").Count(&stats.Favorited).Error; err != nil {
 		return nil, fmt.Errorf("count favorited: %w", err)
 	}
-	// Recommended stays 0: nothing in the store records "a user recommended
-	// this title", so there is no count to make. Recorded in the parity row.
+	// Trakt renamed "recommendations" to favorites, so its recommended count
+	// is the favorites count.
+	stats.Recommended = stats.Favorited
 
 	return stats, nil
 }
@@ -105,7 +106,9 @@ func queryShowStats(db *gorm.DB, showID int64) (*StatsResponse, error) {
 		Distinct("user_id").Count(&stats.Favorited).Error; err != nil {
 		return nil, fmt.Errorf("count favorited: %w", err)
 	}
-	// Recommended stays 0 for shows for the same reason as movies.
+	// Trakt renamed "recommendations" to favorites, so its recommended count
+	// is the favorites count.
+	stats.Recommended = stats.Favorited
 
 	return stats, nil
 }
