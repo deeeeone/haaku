@@ -77,7 +77,7 @@ func queryMediaStats(db *gorm.DB, mediaType string, mediaID int64) (*StatsRespon
 	if stats.Comments, err = countMediaRows(db, &database.Comment{}, mediaType, mediaID); err != nil {
 		return nil, err
 	}
-	if stats.Lists, err = countMediaRows(db, &database.ListItem{}, mediaType, mediaID); err != nil {
+	if stats.Lists, err = countVisibleListItems(db, mediaType, mediaID); err != nil {
 		return nil, err
 	}
 	if stats.Votes, err = countMediaRows(db, &database.UserRating{}, mediaType, mediaID); err != nil {
@@ -119,6 +119,22 @@ func countRows(db *gorm.DB, model interface{}, mediaType string, mediaID int64) 
 // countRows.
 func countMediaRows(db *gorm.DB, model interface{}, mediaType string, mediaID int64) (int64, error) {
 	return countRows(db, model, mediaType, mediaID)
+}
+
+// countVisibleListItems counts the lists that contain the item and that any
+// reader may open. A private list is visible only to its owner, so counting its
+// items would leak to every reader of /stats that a private list holds this
+// item. list_items carries no user column, so the privacy gate has to come from
+// the owning list: join and keep only public/link_only. Columns are qualified
+// because both tables have an `id` (and lists also has `user_id`).
+func countVisibleListItems(db *gorm.DB, mediaType string, mediaID int64) (int64, error) {
+	var n int64
+	err := db.Model(&database.ListItem{}).
+		Joins("JOIN lists ON lists.id = list_items.list_id").
+		Where("list_items.media_type = ? AND list_items.media_id = ?", mediaType, mediaID).
+		Where("lists.privacy IN ?", []string{"public", "link_only"}).
+		Count(&n).Error
+	return n, err
 }
 
 // countShowWatchers counts distinct users who watched any episode of the show.

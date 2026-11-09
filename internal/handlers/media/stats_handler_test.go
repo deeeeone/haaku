@@ -276,3 +276,56 @@ func TestMovieAndShowStatsNotFound(t *testing.T) {
 		_ = resp.Body.Close()
 	}
 }
+
+// TestMovieStatsListsCountOnlyReadableLists pins the privacy rule behind the
+// `lists` count. Before the fix the count was every list_items row, so a movie
+// held in a private list was reported as "in 2 lists" to anyone reading /stats —
+// which discloses that the private list contains it. Only public and link_only
+// lists are readable by a non-owner, so only those may be counted.
+func TestMovieStatsListsCountOnlyReadableLists(t *testing.T) {
+	db := setupStatsDB(t)
+	now := time.Now().UTC()
+
+	movie := database.Movie{Title: "Listed", TmdbID: 7301}
+	if err := db.Create(&movie).Error; err != nil {
+		t.Fatalf("seed movie: %v", err)
+	}
+
+	addList := func(slug, privacy string) {
+		t.Helper()
+		l := database.List{UserID: "owner", Name: slug, Slug: slug, Privacy: privacy, CreatedAt: now, UpdatedAt: now}
+		if err := db.Create(&l).Error; err != nil {
+			t.Fatalf("seed %s list: %v", privacy, err)
+		}
+		if err := db.Create(&database.ListItem{
+			ListID: l.ID, MediaType: "movie", MediaID: movie.ID, Rank: 1, AddedBy: "owner", AddedAt: now,
+		}).Error; err != nil {
+			t.Fatalf("seed %s list item: %v", privacy, err)
+		}
+	}
+
+	// One public list and one private list holding the same movie.
+	addList("public-list", "public")
+	addList("private-list", "private")
+
+	app := makeStatsApp()
+	path := "/v1/movies/" + strconv.FormatInt(movie.ID, 10) + "/stats"
+
+	resp := getStats(t, app, path)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+	if body := decodeStats(t, resp); body.Lists != 1 {
+		t.Errorf("lists = %d, want 1: the private list must not be counted (one public list holds the movie)", body.Lists)
+	}
+
+	// A link_only list is readable by a non-owner too, so it does count.
+	addList("link-list", "link_only")
+	resp = getStats(t, app, path)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+	if body := decodeStats(t, resp); body.Lists != 2 {
+		t.Errorf("lists = %d, want 2: public + link_only hold the movie", body.Lists)
+	}
+}

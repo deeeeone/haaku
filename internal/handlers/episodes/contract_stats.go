@@ -125,7 +125,9 @@ func handleContractEpisodeStats(c *fiber.Ctx) error {
 		return response.InternalError(c)
 	}
 	if err := db.Model(&database.ListItem{}).
-		Where("media_type = ? AND media_id = ?", "episode", episode.ID).
+		Joins("JOIN lists ON lists.id = list_items.list_id").
+		Where("list_items.media_type = ? AND list_items.media_id = ?", "episode", episode.ID).
+		Where("lists.privacy IN ?", []string{"public", "link_only"}).
 		Count(&lists).Error; err != nil {
 		return response.InternalError(c)
 	}

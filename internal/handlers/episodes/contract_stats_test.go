@@ -127,6 +127,57 @@ func TestContractEpisodeStats(t *testing.T) {
 	})
 }
 
+// TestContractEpisodeStatsListsCountOnlyReadableLists pins the privacy rule for
+// the episode `lists` count. The fixture puts episode 1 in one public list; a
+// second, private list holding the same episode must not raise the count, since
+// that would tell every reader of the stats route that the private list contains
+// it. A link_only list is readable by non-owners, so it does count.
+func TestContractEpisodeStatsListsCountOnlyReadableLists(t *testing.T) {
+	db := setupTestDB(t)
+	showID, epIDs := seedNestedFixture(t, db)
+	now := time.Now().UTC()
+
+	addList := func(slug, privacy string) {
+		t.Helper()
+		l := database.List{UserID: "owner", Name: slug, Slug: slug, Privacy: privacy, CreatedAt: now, UpdatedAt: now}
+		if err := db.Create(&l).Error; err != nil {
+			t.Fatalf("seed %s list: %v", privacy, err)
+		}
+		if err := db.Create(&database.ListItem{
+			ListID: l.ID, MediaType: "episode", MediaID: epIDs[0], Rank: 1, AddedBy: "owner", AddedAt: now,
+		}).Error; err != nil {
+			t.Fatalf("seed %s list item: %v", privacy, err)
+		}
+	}
+
+	addList("nested-private", "private")
+
+	app := makeEpisodesApp()
+	path := "/v1/shows/" + strconv.FormatInt(showID, 10) + "/seasons/1/episodes/1/stats"
+
+	resp := doGET(t, app, path)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+	var body struct {
+		Lists int64 `json:"lists"`
+	}
+	decodeBody(t, resp, &body)
+	if body.Lists != 1 {
+		t.Errorf("lists = %d, want 1: the private list must not be counted", body.Lists)
+	}
+
+	addList("nested-link", "link_only")
+	resp = doGET(t, app, path)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+	decodeBody(t, resp, &body)
+	if body.Lists != 2 {
+		t.Errorf("lists = %d, want 2: public + link_only hold the episode", body.Lists)
+	}
+}
+
 func TestContractEpisodeRatings(t *testing.T) {
 	db := setupTestDB(t)
 	showID, _ := seedNestedFixture(t, db)
