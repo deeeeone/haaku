@@ -138,7 +138,8 @@ if unowned:
 
 
 def fiber_path(p):
-    return re.sub(r"\{([a-z0-9_]+)\}", r":\1", p)
+    # Parameter names are not always lowercase: the contract has {countryCode}.
+    return re.sub(r"\{([A-Za-z0-9_]+)\}", r":\1", p)
 
 
 def auth_for(trakt):
@@ -254,12 +255,14 @@ agg = ["// Package paritystub registers a 501 stub for every Trakt endpoint haak
        "\t}",
        "}",
        "",
-       "// RegisterRoutes wires every parity stub. It is called FIRST in httpapi.RegisterRoutes",
-       "// so a static stub segment (`/v1/movies/watched/{period}`) is matched before the",
-       "// `{id}` routes that would otherwise swallow it.",
-       "func RegisterRoutes(api fiber.Router) {"]
+       "// RegisterRoutes wires every parity stub. It is called FIRST in httpapi.RegisterRoutes,",
+       "// on the app root (the generated paths already carry /v1), so a static stub segment",
+       "// (`/v1/smart-lists/templates`) is matched before the `{id}` routes; newStubRouter",
+       "// skips a stub whose path a real handler already serves.",
+       "func RegisterRoutes(api fiber.Router) {",
+       "\tw := newStubRouter(api)"]
 for issue in sorted(by_issue, key=lambda i: (i is None, i)):
-    agg.append(f"\tregister{stub_name(issue)}(api)")
+    agg.append(f"\tregister{stub_name(issue)}(w)")
 agg += ["}", "", "// routeDefs is every stub's registry entry, in a stable order.",
         "func routeDefs() []openapi.RouteDef {", "\tvar all []openapi.RouteDef"]
 for issue in sorted(by_issue, key=lambda i: (i is None, i)):

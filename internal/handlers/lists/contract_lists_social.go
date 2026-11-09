@@ -82,6 +82,9 @@ func contractSetLike(c *fiber.Ctx, like bool) error {
 		cacheTx := cache.NewCacheTransaction()
 		if like {
 			res := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&database.ListLike{ListID: list.ID, UserID: uid})
+			if res.Error != nil {
+				return nil, res.Error
+			}
 			if res.RowsAffected > 0 {
 				if err := tx.Model(&database.List{}).Where("id = ?", list.ID).
 					UpdateColumn("like_count", gorm.Expr("like_count + 1")).Error; err != nil {
@@ -91,6 +94,9 @@ func contractSetLike(c *fiber.Ctx, like bool) error {
 			}
 		} else {
 			res := tx.Where("list_id = ? AND user_id = ?", list.ID, uid).Delete(&database.ListLike{})
+			if res.Error != nil {
+				return nil, res.Error
+			}
 			if res.RowsAffected > 0 {
 				if err := tx.Model(&database.List{}).Where("id = ?", list.ID).
 					UpdateColumn("like_count", gorm.Expr("GREATEST(like_count - 1, 0)")).Error; err != nil {

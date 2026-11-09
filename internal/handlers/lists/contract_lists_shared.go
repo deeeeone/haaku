@@ -115,5 +115,7 @@ func contractListObject(db *gorm.DB, l *database.List) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return contractshape.List(l, users[l.UserID]), nil
+	obj := contractshape.List(l, users[l.UserID])
+	obj["item_count"] = itemCount
+	return obj, nil
 }

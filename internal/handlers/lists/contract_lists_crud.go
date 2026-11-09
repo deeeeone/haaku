@@ -1,6 +1,9 @@
 package lists
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"errors"
 	"strconv"
 	"strings"
 	"time"
@@ -88,15 +91,8 @@ func handleContractCreateList(c *fiber.Ctx) error {
 
 	if err := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
 		cacheTx := cache.NewCacheTransaction()
-		if err := tx.Create(&list).Error; err != nil {
-			if strings.Contains(err.Error(), "duplicate") || strings.Contains(err.Error(), "unique") {
-				list.Slug = slug + "-" + strconv.FormatInt(time.Now().Unix(), 10)
-				if err := tx.Create(&list).Error; err != nil {
-					return nil, err
-				}
-			} else {
-				return nil, err
-			}
+		if err := createListWithUniqueSlug(tx, &list, slug); err != nil {
+			return nil, err
 		}
 		bumpUserVersion(cacheTx, uid)
 		if err := contractPublish(tx, outbox.EventListCreated, uid, map[string]any{
@@ -114,6 +110,62 @@ func handleContractCreateList(c *fiber.Ctx) error {
 		return response.InternalError(c)
 	}
 	return c.Status(fiber.StatusCreated).JSON(obj)
+}
+
+// contractListSlugAttempts bounds the duplicate-slug retry. A collision means
+// the same user already has a list with this name; a random suffix resolves it,
+// and five tries is far past the point where a real conflict could survive.
+const contractListSlugAttempts = 5
+
+// isDuplicateSlugError reports whether err is a uniqueness violation. Both
+// drivers are matched by message so this stays portable between sqlite (the
+// handler suite) and PostgreSQL (production).
+func isDuplicateSlugError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, gorm.ErrDuplicatedKey) {
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "duplicate") || strings.Contains(msg, "unique")
+}
+
+// slugSuffix returns a short random suffix. A timestamp is not enough: two
+// creates in the same second would pick the same one and collide again.
+func slugSuffix() string {
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		return strconv.FormatInt(time.Now().UnixNano(), 36)
+	}
+	return hex.EncodeToString(b)
+}
+
+// createListWithUniqueSlug inserts list, retrying with a random slug suffix on a
+// duplicate. Every attempt runs under its own savepoint because PostgreSQL
+// aborts the whole transaction on a failed statement: without rolling back to a
+// savepoint taken before the insert, the retry always fails with "current
+// transaction is aborted", which sqlite (no such state) never shows. list.ID is
+// reset so the retry inserts a fresh row rather than reusing a stale id.
+func createListWithUniqueSlug(tx *gorm.DB, list *database.List, base string) error {
+	for attempt := 0; ; attempt++ {
+		savepoint := "create_list_slug_" + strconv.Itoa(attempt)
+		if err := tx.SavePoint(savepoint).Error; err != nil {
+			return err
+		}
+		list.ID = 0
+		err := tx.Create(list).Error
+		if err == nil {
+			return nil
+		}
+		if !isDuplicateSlugError(err) || attempt >= contractListSlugAttempts {
+			return err
+		}
+		if rerr := tx.RollbackTo(savepoint).Error; rerr != nil {
+			return rerr
+		}
+		list.Slug = base + "-" + slugSuffix()
+	}
 }
 
 func handleContractGetList(c *fiber.Ctx) error {

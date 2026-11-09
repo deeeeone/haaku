@@ -49,6 +49,14 @@ import (
 func RegisterRoutes(app *fiber.App) {
 	api := app.Group("/v1")
 
+	// Parity stubs FIRST, on the app root rather than the /v1 group: the
+	// generated routes already carry the /v1 prefix (scripts/parity-stubs.py
+	// mounts from the contract path), so registering them on the group produced
+	// /v1/v1/... and every stub was unreachable. First so a static stub segment
+	// like /v1/smart-lists/templates is matched before the {id} routes; the
+	// package skips any stub whose path a real handler already serves.
+	paritystub.RegisterRoutes(app)
+
 	// Health (excluded from rate limits — hot path)
 	app.Get("/healthz", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "ok"})
@@ -191,11 +199,6 @@ func RegisterRoutes(app *fiber.App) {
 	// /v1/movies/{trending,popular} and /v1/shows/{trending,popular} unreachable.
 	// internal/httpapi's TestNoStaticRouteIsShadowed guards the general rule: at a
 	// given depth, static paths must be registered before parameterised ones.
-	// Parity stubs FIRST: every Trakt endpoint we do not serve yet answers 501 here.
-	// They must be registered before the parameterised routes below, or a static stub
-	// segment like /v1/movies/watched/{period} is swallowed by /v1/movies/{id}.
-	paritystub.RegisterRoutes(api)
-
 	discovery.RegisterRoutes(api)
 
 	// Media read endpoints (Phase 1: T1.5)

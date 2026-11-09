@@ -97,7 +97,7 @@ func RegisterManagementContractRoutes(api fiber.Router) {
 	api.Get("/users/:id/lists/collaborations", auth.AuthRequired(), handleContractCollaborations)
 	api.Post("/users/:id/lists/reorder", auth.AuthRequired(), handleContractReorderUserLists)
 
-	api.Get("/users/:id/lists/:list_id/", handleContractGetList)
+	api.Get("/users/:id/lists/:list_id/", auth.OptionalAuth(), handleContractGetList)
 	api.Put("/users/:id/lists/:list_id/", auth.AuthRequired(), handleContractUpdateList)
 	api.Delete("/users/:id/lists/:list_id/", auth.AuthRequired(), handleContractDeleteList)
 
@@ -111,24 +111,24 @@ func RegisterManagementContractRoutes(api fiber.Router) {
 	// Item reads. The static CSV forms are registered before the generic
 	// {type}/{sort_by}/{sort_how} route; they are at different depths, so both
 	// are reachable.
-	api.Get("/users/:id/lists/:list_id/items/movie", handleContractListItemsMovie)
-	api.Get("/users/:id/lists/:list_id/items/show", handleContractListItemsShow)
-	api.Get("/users/:id/lists/:list_id/items/movie,show", handleContractListItemsMovieShow)
-	api.Get("/users/:id/lists/:list_id/items/movie,show,season,episode", handleContractListItemsAll)
-	api.Get("/users/:id/lists/:list_id/items/:type/:sort_by/:sort_how", handleContractListItemsTyped)
+	api.Get("/users/:id/lists/:list_id/items/movie", auth.OptionalAuth(), handleContractListItemsMovie)
+	api.Get("/users/:id/lists/:list_id/items/show", auth.OptionalAuth(), handleContractListItemsShow)
+	api.Get("/users/:id/lists/:list_id/items/movie,show", auth.OptionalAuth(), handleContractListItemsMovieShow)
+	api.Get("/users/:id/lists/:list_id/items/movie,show,season,episode", auth.OptionalAuth(), handleContractListItemsAll)
+	api.Get("/users/:id/lists/:list_id/items/:type/:sort_by/:sort_how", auth.OptionalAuth(), handleContractListItemsTyped)
 
-	api.Get("/lists/:id/items/movie", handleContractListItemsMovie)
-	api.Get("/lists/:id/items/show", handleContractListItemsShow)
-	api.Get("/lists/:id/items/movie,show", handleContractListItemsMovieShow)
-	api.Get("/lists/:id/items/movie,show,episode,season", handleContractListItemsAll)
-	api.Get("/lists/:id/items/:type/:sort_by/:sort_how", handleContractListItemsTyped)
+	api.Get("/lists/:id/items/movie", auth.OptionalAuth(), handleContractListItemsMovie)
+	api.Get("/lists/:id/items/show", auth.OptionalAuth(), handleContractListItemsShow)
+	api.Get("/lists/:id/items/movie,show", auth.OptionalAuth(), handleContractListItemsMovieShow)
+	api.Get("/lists/:id/items/movie,show,episode,season", auth.OptionalAuth(), handleContractListItemsAll)
+	api.Get("/lists/:id/items/:type/:sort_by/:sort_how", auth.OptionalAuth(), handleContractListItemsTyped)
 
 	// Social.
-	api.Get("/users/:id/lists/:list_id/likes", handleContractListLikes)
+	api.Get("/users/:id/lists/:list_id/likes", auth.OptionalAuth(), handleContractListLikes)
 	api.Post("/users/:id/lists/:list_id/like", auth.AuthRequired(), handleContractLikeList)
 	api.Delete("/users/:id/lists/:list_id/like", auth.AuthRequired(), handleContractUnlikeList)
-	api.Get("/users/:id/lists/:list_id/comments/:sort", handleContractListComments)
-	api.Get("/lists/:id/comments/:sort", handleContractListComments)
+	api.Get("/users/:id/lists/:list_id/comments/:sort", auth.OptionalAuth(), handleContractListComments)
+	api.Get("/lists/:id/comments/:sort", auth.OptionalAuth(), handleContractListComments)
 	api.Post("/users/:id/lists/:list_id/report", auth.AuthRequired(), handleContractReportList)
 	api.Post("/lists/:id/report", auth.AuthRequired(), handleContractReportList)
 

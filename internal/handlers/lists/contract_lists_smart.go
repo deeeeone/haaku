@@ -184,7 +184,17 @@ func handleContractUpdateSmartList(c *fiber.Ctx) error {
 		updates["name"] = strings.TrimSpace(req.Name)
 	}
 	if req.Filters != nil || req.Source != "" || req.MediaType != "" {
-		updates["filters"] = contractSmartListFilters(req)
+		// Merge into the stored blob instead of replacing it: a request that
+		// changes only source must not wipe media_type (or every other filter),
+		// and omitting source/media_type must preserve the stored values.
+		next := database.JSONMap{}
+		for k, v := range sl.Filters {
+			next[k] = v
+		}
+		for k, v := range contractSmartListFilters(req) {
+			next[k] = v
+		}
+		updates["filters"] = next
 	}
 	if len(updates) == 0 {
 		return response.BadRequest(c, "no fields to update")
@@ -244,6 +254,20 @@ func smartListMediaType(t string) (string, bool) {
 	return "", false
 }
 
+// intersectSmartListMediaType intersects the type a client asked for with the
+// type the smart list was saved with. "" means "both"; a conflict between two
+// specific types is reported as incompatible rather than silently widened.
+func intersectSmartListMediaType(requested, saved string) (string, bool) {
+	switch {
+	case requested == "":
+		return saved, true
+	case saved == "" || saved == requested:
+		return requested, true
+	default:
+		return "", false
+	}
+}
+
 func handleContractSmartListItems(c *fiber.Ctx) error {
 	uid := userID(c)
 	if uid == "" {
@@ -268,11 +292,28 @@ func handleContractSmartListItems(c *fiber.Ctx) error {
 		return response.Forbidden(c, "you do not have access to this smart list")
 	}
 
-	mediaType, ok := smartListMediaType(c.Params("type"))
+	requested, ok := smartListMediaType(c.Params("type"))
 	if !ok {
-		return response.BadRequest(c, "type must be one of movie, show, season, episode, movies, shows, media")
+		return response.BadRequest(c, "type must be one of movie, show, movies, shows, media")
 	}
+	// The saved media_type is part of the smart list's definition: a request
+	// for the broad "media" form must not widen a movies-only list into shows.
+	saved := ""
+	if raw, ok := sl.Filters["media_type"]; ok {
+		if s, ok := raw.(string); ok {
+			if mt, ok := smartListMediaType(s); ok {
+				saved = mt
+			}
+		}
+	}
+	mediaType, compatible := intersectSmartListMediaType(requested, saved)
 	page, limit := response.ParsePagination(c, 25)
+	if !compatible {
+		// The two constraints have no common media type: an empty page is the
+		// honest answer, not a 400 (the request itself is valid).
+		response.SetPaginationHeaders(c, page, limit, 0, 0)
+		return c.JSON([]map[string]any{})
+	}
 	results, total, qerr := resolveSmartListQuery(db, sl.Filters, uid, mediaType, c.Params("sort_by"), page, limit)
 	if qerr != nil {
 		return response.InternalError(c)

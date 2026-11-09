@@ -43,6 +43,13 @@ func contractTestDB(t *testing.T) *gorm.DB {
 	}
 	models = append(models, database.ListModels()...)
 	models = append(models, &database.ListCollaborator{}, &database.ContentReport{})
+	// On a real PostgreSQL that Goose already migrated (the dev-pg recipe) the
+	// schema is authoritative: AutoMigrate would try to retype tsvector columns
+	// and fail. sqlite keeps building its own schema with AutoMigrate.
+	if os.Getenv("DATABASE_URL") != "" && db.Migrator().HasTable(&database.List{}) {
+		database.SetDBForTest(t, db)
+		return db
+	}
 	if err := db.AutoMigrate(models...); err != nil {
 		t.Fatalf("migrate test DB: %v", err)
 	}
@@ -145,16 +152,18 @@ func seedContractUser(t *testing.T, db *gorm.DB, id string) {
 func seedContractMedia(t *testing.T, db *gorm.DB) {
 	t.Helper()
 	now := time.Now()
-	if err := db.Create(&database.Movie{ID: 1, TmdbID: 603, Slug: "the-matrix", Title: "The Matrix", Metadata: database.JSONMap{}, CreatedAt: now, UpdatedAt: now}).Error; err != nil {
+	// Media ids are deliberately different from list-item ids, so a handler
+	// that returns the media id in the item "id" field is visible immediately.
+	if err := db.Create(&database.Movie{ID: 11, TmdbID: 603, Slug: "the-matrix", Title: "The Matrix", Metadata: database.JSONMap{}, CreatedAt: now, UpdatedAt: now}).Error; err != nil {
 		t.Fatalf("seed movie: %v", err)
 	}
-	if err := db.Create(&database.Show{ID: 1, TmdbID: 1399, Slug: "the-show", Title: "The Show", Metadata: database.JSONMap{}, CreatedAt: now, UpdatedAt: now}).Error; err != nil {
+	if err := db.Create(&database.Show{ID: 22, TmdbID: 1399, Slug: "the-show", Title: "The Show", Metadata: database.JSONMap{}, CreatedAt: now, UpdatedAt: now}).Error; err != nil {
 		t.Fatalf("seed show: %v", err)
 	}
-	if err := db.Create(&database.ExternalID{MediaType: "movie", MediaID: 1, Source: "tmdb", ExternalID: "603"}).Error; err != nil {
+	if err := db.Create(&database.ExternalID{MediaType: "movie", MediaID: 11, Source: "tmdb", ExternalID: "603"}).Error; err != nil {
 		t.Fatalf("seed movie external id: %v", err)
 	}
-	if err := db.Create(&database.ExternalID{MediaType: "show", MediaID: 1, Source: "tmdb", ExternalID: "1399"}).Error; err != nil {
+	if err := db.Create(&database.ExternalID{MediaType: "show", MediaID: 22, Source: "tmdb", ExternalID: "1399"}).Error; err != nil {
 		t.Fatalf("seed show external id: %v", err)
 	}
 }
@@ -230,18 +239,15 @@ func TestContractListRoundTrip(t *testing.T) {
 		t.Fatalf("items/show = %v, want one show", showItems)
 	}
 
-	// Reorder by the stored item id: the show first, then the movie.
+	// Reorder using exactly the ids the read returned: the show first, then
+	// the movie. That is the only way to catch the item id being filled from
+	// the media row instead of the list_items row.
 	movieItemID := int64(movieItems[0]["id"].(float64))
 	showItemID := int64(showItems[0]["id"].(float64))
-	// ids above are media ids; re-fetch the join to learn the list_item ids.
-	var items []database.ListItem
-	db.Where("list_id = ?", listID).Order("media_type").Find(&items)
-	if len(items) != 2 {
-		t.Fatalf("stored items = %d, want 2", len(items))
+	if movieItemID == 11 || showItemID == 22 {
+		t.Fatalf("item ids %d/%d are the media ids, want the list_items ids", movieItemID, showItemID)
 	}
-	order := []int64{items[1].ID, items[0].ID}
-	_ = movieItemID
-	_ = showItemID
+	order := []int64{showItemID, movieItemID}
 	status, raw = contractDo(t, app, "owner", http.MethodPost, listPath+"/items/reorder", map[string]any{"rank": order})
 	if status != http.StatusOK {
 		t.Fatalf("reorder: want 200, got %d (%s)", status, raw)
@@ -254,6 +260,14 @@ func TestContractListRoundTrip(t *testing.T) {
 	db.Where("list_id = ? AND rank = 0", listID).First(&first)
 	if first.ID != order[0] {
 		t.Errorf("rank 0 item = %d, want %d", first.ID, order[0])
+	}
+	if first.MediaType != "show" {
+		t.Errorf("rank 0 item type = %q, want show (the id we sent first)", first.MediaType)
+	}
+	// The summary read must report the real item count, not the shape default.
+	_, raw = contractDo(t, app, "owner", http.MethodGet, listPath+"/", nil)
+	if got := decode(t, raw)["item_count"].(float64); got != 2 {
+		t.Errorf("summary item_count = %v, want 2", got)
 	}
 
 	// Remove the movie by tmdb reference.

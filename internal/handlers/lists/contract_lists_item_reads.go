@@ -172,7 +172,7 @@ func contractListItemObjects(db *gorm.DB, items []database.ListItem) ([]map[stri
 		it := &items[i]
 		obj := map[string]any{
 			"rank":      it.Rank,
-			"id":        it.MediaID,
+			"id":        it.ID,
 			"listed_at": contractshape.Timestamp(it.AddedAt),
 			"notes":     contractshape.NullableString(it.Notes),
 			"type":      it.MediaType,
