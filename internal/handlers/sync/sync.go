@@ -216,11 +216,9 @@ type historyEpisode struct {
 	WatchedAt string `json:"watched_at,omitempty"`
 }
 
-type idsObj struct {
-	TMDB int    `json:"tmdb"`
-	TVDB int    `json:"tvdb,omitempty"`
-	IMDB string `json:"imdb,omitempty"`
-}
+// idsObj is the external-id set a sync request addresses media by; it lives in
+// ids.go with its decoder, which accepts both the string ids this API serves
+// and the numeric ones Trakt-shaped clients send.
 
 type historyAddResponse struct {
 	Added struct {
