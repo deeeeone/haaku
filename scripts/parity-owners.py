@@ -100,12 +100,21 @@ GROUP_NAME = {
 }
 
 
-def group_for(trakt, status=None):
-    # A divergent row is a shape fix, not a feature: the data is served, only the
-    # path or the params differ. They are one cross-cutting slice (the same thin
-    # alias route plus nested-id resolution, all touching the shared registry), so
-    # they go to their own group rather than being scattered across the engines.
-    if status == "divergent":
+def group_for(trakt, status=None, ours=None):
+    # A divergent row is either a PATH divergence or a PARAM divergence, and the
+    # two have different owners.
+    #
+    # Path divergence (our route lives somewhere else entirely - a flat season
+    # where the contract nests it under the show) is one cross-cutting slice: the
+    # same thin alias route plus nested-id resolution, all touching the shared
+    # registry. That is DIVERGENT's job.
+    #
+    # Param divergence (we serve the contract's path and answer, but not every
+    # documented sort or filter) is a gap in that endpoint's own handler, so the
+    # domain group owns it. Routing those to DIVERGENT used to move 23 of 25
+    # divergent rows into a group whose issue is about registering routes - a lane
+    # would open #104 and find work belonging to the profile lane.
+    if status == "divergent" and _path_diverges(trakt, ours):
         return "DIVERGENT"
     path = trakt.split(" ", 1)[1] if " " in trakt else trakt
     for pat, group in RULES:
@@ -114,12 +123,36 @@ def group_for(trakt, status=None):
     return None
 
 
-def owner_for(trakt, status=None):
+def owner_for(trakt, status=None, ours=None):
     """The issue a row is tracked on — a stub file is named `stub_<this>.go`."""
-    group = group_for(trakt, status)
+    group = group_for(trakt, status, ours)
     if group is None:
         return None
     return GROUP_NAME.get(group, (None,))[0] or group
+
+
+_PARAM = re.compile(r"\{[^}]+\}")
+
+
+def _shape(path):
+    """The path with every parameter collapsed, so id and media_type compare."""
+    return _PARAM.sub("{}", path.strip())
+
+
+def _path_diverges(trakt, ours):
+    """True when our route does not answer at the contract's path shape.
+
+    `ours` is the path we actually serve (with our /v1 prefix). A row whose path
+    matches once the prefix and the parameter names are normalised diverges only
+    in its parameters, and that endpoint's own handler owns the gap.
+    """
+    if not ours:
+        return False
+    want = _shape(trakt.split(" ", 1)[1] if " " in trakt else trakt)
+    have = _shape(ours.split(" ", 1)[1] if " " in ours else ours)
+    if have.startswith("/v1"):
+        have = have[len("/v1"):]
+    return want != have
 
 
 def _load():
@@ -133,7 +166,7 @@ def _load():
 
 def _row(section, r):
     t = (r.get("trakt") or "").strip()
-    group = group_for(t, r["status"])
+    group = group_for(t, r["status"], r.get("ours") or "")
     return {"trakt": t, "section": section, "status": r["status"],
             "ours": r.get("ours") or "",
             "blocker": " ".join(str(r.get("engine") or r.get("needs") or "").split()),
