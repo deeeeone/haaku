@@ -345,8 +345,8 @@ func (p Problem) String() string {
 //     ("deferred:");
 //  3. anything named in the ours column must be a registered route;
 //  4. a registered route that answers 501 can only be recorded as
-//     blocked-engine — and every such route must be recorded somewhere, so a
-//     new fabricated-looking 501 cannot slip in unmeasured;
+//     blocked-engine or blocked-data — and every such route must be recorded
+//     somewhere, so a new fabricated-looking 501 cannot slip in unmeasured;
 //  5. a registered route that serves can only be graded implemented or
 //     divergent (a custom non-Trakt route: out-of-scope).
 func Check(m *Manifest, rs RouteSet) []Problem {
@@ -436,9 +436,13 @@ func Check(m *Manifest, rs RouteSet) []Problem {
 				add(r.Line, "%s points at %s, which is not in the route registry", r.label(), key)
 			case rs.NotImplemented[key]:
 				recorded501[key] = true
-				if r.Status != StatusBlockedEngine {
+				// A 501 route can be blocked on an engine OR on data we do not
+				// store: both leave a registered route that answers honestly, and
+				// the stub package registers one for every such row. What the rule
+				// forbids is calling a 501 route implemented or divergent.
+				if r.Status != StatusBlockedEngine && r.Status != StatusBlockedData {
 					add(r.Line,
-						"%s answers 501 not_implemented, so %s can only be blocked-engine, not %s",
+						"%s answers 501 not_implemented, so %s can only be blocked-engine or blocked-data, not %s",
 						key, r.label(), r.Status)
 				}
 			case extra:

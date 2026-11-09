@@ -18,6 +18,7 @@ import (
 	"github.com/haaku-tv/haaku/internal/handlers/media"
 	"github.com/haaku-tv/haaku/internal/handlers/notes"
 	"github.com/haaku-tv/haaku/internal/handlers/notifications"
+	"github.com/haaku-tv/haaku/internal/handlers/paritystub"
 	"github.com/haaku-tv/haaku/internal/handlers/progress"
 	"github.com/haaku-tv/haaku/internal/handlers/recommendations"
 	"github.com/haaku-tv/haaku/internal/handlers/reference"
@@ -185,6 +186,11 @@ func RegisterRoutes(app *fiber.App) {
 	// /v1/movies/{trending,popular} and /v1/shows/{trending,popular} unreachable.
 	// internal/httpapi's TestNoStaticRouteIsShadowed guards the general rule: at a
 	// given depth, static paths must be registered before parameterised ones.
+	// Parity stubs FIRST: every Trakt endpoint we do not serve yet answers 501 here.
+	// They must be registered before the parameterised routes below, or a static stub
+	// segment like /v1/movies/watched/{period} is swallowed by /v1/movies/{id}.
+	paritystub.RegisterRoutes(api)
+
 	discovery.RegisterRoutes(api)
 
 	// Media read endpoints (Phase 1: T1.5)
