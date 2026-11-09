@@ -2,7 +2,7 @@
 # These files are already over the 800-line soft limit and may only shrink.
 # Regenerate deliberately: scripts/check-size.sh --update
 1870	internal/handlers/sync/sync.go
-1677	internal/handlers/lists/lists.go
+1672	internal/handlers/lists/lists.go
 1067	internal/handlers/comments/comments.go
 858	internal/handlers/recommendations/recommendations.go
 825	_tests_/metadata_test.go

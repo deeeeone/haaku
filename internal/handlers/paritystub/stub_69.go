@@ -39,7 +39,7 @@ func registerStub69(api fiber.Router) {
 	// GET /watchnow/sources/{countryCode} — blocked-data: Same gap: no catalogue to filter by country.
 	// Upstream getcountry; path: countryCode
 	// Tracked in #69: https://github.com/haaku-tv/haaku/issues/69
-	api.Get("/v1/watchnow/sources/{countryCode}", stubHandler(69, "GET /watchnow/sources/{countryCode}", "Same gap: no catalogue to filter by country."))
+	api.Get("/v1/watchnow/sources/:countryCode", stubHandler(69, "GET /watchnow/sources/{countryCode}", "Same gap: no catalogue to filter by country."))
 }
 
 // defsStub69 is the registry entry for each stub above. The 501 in

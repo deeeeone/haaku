@@ -134,11 +134,6 @@ func bumpUserVersion(cacheTx *cache.CacheTransaction, userID string) {
 	})
 }
 
-// advisoryListLock serializes concurrent writes to a list.
-func advisoryListLock(tx *gorm.DB, listID int64) error {
-	return tx.Exec("SELECT pg_advisory_xact_lock(hashtext(?))", fmt.Sprintf("list:%d", listID)).Error
-}
-
 // ============================================================================
 // LIST CRUD
 // ============================================================================
