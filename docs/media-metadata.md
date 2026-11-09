@@ -58,7 +58,12 @@ supplement is optional by definition.
    catalogue is returned with no provider call. Authentication is required
    because it writes. `id_type` defaults to **tmdb**; a `tvdb` or `imdb` id is
    mapped to its TMDB record through `/find` first, so a TVDB-keyed client keeps
-   working.
+   working — with one measured gap. `/find`'s own contract lists `tvdb_id` as a
+   source for **TV shows, seasons and episodes, not for movies**, so
+   `type=movie&id_type=tvdb` is answerable only from the local catalogue: a movie
+   already ingested resolves through its row, and a movie the catalogue has never
+   seen answers 404. TVDB's own `MovieExtended` record names the TMDB id, so the
+   gap is closable with a TVDB call — it is not closed yet (#97).
 3. Everything else (watchlist, watching, ratings, comments) addresses media by
    its local row. Those endpoints resolve incoming ids through
    `database.ResolveIDRefs`, which accepts **tmdb, tvdb or imdb** — preferring
