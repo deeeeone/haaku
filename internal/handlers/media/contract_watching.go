@@ -56,6 +56,57 @@ func registerContractWatchingRoutes(api fiber.Router) {
 	api.Get("/shows/:id/seasons/:season/episodes/:episode/watching", auth.OptionalAuth(), handleEpisodeWatching)
 }
 
+// serveMovieWatching answers GET /v1/movies/{id}/watching: the users whose
+// newest live scrobble session names the movie. The session source and privacy
+// gate are the same ones the season/episode and per-user routes use.
+func serveMovieWatching(c *fiber.Ctx) error {
+	_, id, err := ResolveIDAs(c, c.Params("id"), "movie")
+	if err != nil {
+		return err
+	}
+	db, dbErr := database.GetDB()
+	if dbErr != nil {
+		return response.InternalError(c, "database unavailable")
+	}
+	return serveWatchingUsers(c, db, liveSessionsQuery(db).
+		Where("media_type = ? AND media_id = ?", "movie", id))
+}
+
+// serveShowWatching answers GET /v1/shows/{id}/watching. A session names the
+// show directly, one of its seasons, or one of its episodes; all three forms
+// are the same live activity.
+func serveShowWatching(c *fiber.Ctx) error {
+	_, showID, err := ResolveIDAs(c, c.Params("id"), "show")
+	if err != nil {
+		return err
+	}
+	db, dbErr := database.GetDB()
+	if dbErr != nil {
+		return response.InternalError(c, "database unavailable")
+	}
+
+	var seasonIDs, episodeIDs []int64
+	if err := db.Model(&database.Season{}).Where("show_id = ?", showID).Pluck("id", &seasonIDs).Error; err != nil {
+		return response.InternalError(c, "database query error")
+	}
+	if err := db.Model(&database.Episode{}).Where("show_id = ?", showID).Pluck("id", &episodeIDs).Error; err != nil {
+		return response.InternalError(c, "database query error")
+	}
+
+	where := "(media_type = ? AND media_id = ?)"
+	args := []any{"show", showID}
+	if len(seasonIDs) > 0 {
+		where += " OR season_id IN ?"
+		args = append(args, seasonIDs)
+	}
+	if len(episodeIDs) > 0 {
+		where += " OR episode_id IN ? OR (media_type = ? AND media_id IN ?)"
+		args = append(args, episodeIDs, "episode", episodeIDs)
+	}
+
+	return serveWatchingUsers(c, db, liveSessionsQuery(db).Where(where, args...))
+}
+
 // handleSeasonWatching serves GET /v1/shows/{id}/seasons/{season}/watching.
 func handleSeasonWatching(c *fiber.Ctx) error {
 	_, season, db, err := loadSeasonRow(c)

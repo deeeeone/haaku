@@ -53,6 +53,13 @@ func RegisterRoutes(api fiber.Router) {
 	// Contract-shaped anticipated feeds — static "/anticipated" must precede
 	// media's parameterised /movies/:id and /shows/:id.
 	registerContractAnticipatedRoutes(api)
+
+	// Period rankings, hot, and the merged cross-type feeds (issue #66). Every
+	// static segment here (watched, played, collected, favorited, hot, media)
+	// must be registered before media's parameterised /movies/:id and
+	// /shows/:id routes.
+	registerRankingRoutes(api)
+	registerMediaRankingRoutes(api)
 }
 
 // ---------------------------------------------------------------------------

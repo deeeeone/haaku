@@ -27,7 +27,7 @@ func registerOpenAPIRoutes() {
 		{Method: "GET", Path: "/v1/movies/{id}/ratings", Summary: "Get ratings for a movie", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "Rating summary"}},
 		{Method: "GET", Path: "/v1/movies/{id}/stats", Summary: "Get stats for a movie", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "Stats"}},
 		{Method: "GET", Path: "/v1/movies/{id}/lists", Summary: "Get lists containing a movie", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "Lists"}},
-		{Method: "GET", Path: "/v1/movies/{id}/watching", Summary: "Users watching a movie right now", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "Watching", 501: "Not implemented (requires activity engine)"}},
+		{Method: "GET", Path: "/v1/movies/{id}/watching", Summary: "Users watching a movie right now", Tags: []string{"Movies"}, Auth: "none", StatusCodes: map[int]string{200: "Watching"}},
 		{Method: "GET", Path: "/v1/movies/{id}/comments/{sort}", Summary: "Get comments for a movie, sorted (newest, oldest, likes, replies, trending)", Tags: []string{"Movies"}, Auth: "optional", StatusCodes: map[int]string{200: "Comments", 400: "Invalid sort", 404: "Movie not found"}},
 
 		// Shows
@@ -40,7 +40,7 @@ func registerOpenAPIRoutes() {
 		{Method: "GET", Path: "/v1/shows/{id}/ratings", Summary: "Get ratings for a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Rating summary"}},
 		{Method: "GET", Path: "/v1/shows/{id}/stats", Summary: "Get stats for a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Stats"}},
 		{Method: "GET", Path: "/v1/shows/{id}/lists", Summary: "Get lists containing a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Lists"}},
-		{Method: "GET", Path: "/v1/shows/{id}/watching", Summary: "Users watching a show right now", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Watching", 501: "Not implemented (requires activity engine)"}},
+		{Method: "GET", Path: "/v1/shows/{id}/watching", Summary: "Users watching a show right now", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Watching"}},
 		{Method: "GET", Path: "/v1/shows/{id}/next_episode", Summary: "Get the next scheduled episode for a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Next episode", 204: "No next episode", 404: "Show not found"}},
 		{Method: "GET", Path: "/v1/shows/{id}/last_episode", Summary: "Get the most recently aired episode for a show", Tags: []string{"Shows"}, Auth: "none", StatusCodes: map[int]string{200: "Last episode", 204: "No aired episode", 404: "Show not found"}},
 		{Method: "GET", Path: "/v1/shows/{id}/comments/{sort}", Summary: "Get comments for a show, sorted (newest, oldest, likes, replies, trending)", Tags: []string{"Shows"}, Auth: "optional", StatusCodes: map[int]string{200: "Comments", 400: "Invalid sort", 404: "Show not found"}},
@@ -219,9 +219,7 @@ func handleGetMovieStats(c *fiber.Ctx) error {
 }
 
 func handleGetMovieWatching(c *fiber.Ctx) error {
-	// Users currently watching require scrobble/activity wiring (not landed).
-	// Fails closed with 501 rather than return a fabricated empty array.
-	return response.NotImplemented(c, "watching requires the activity engine, which is not implemented")
+	return serveMovieWatching(c)
 }
 
 // ---------------------------------------------------------------------------
@@ -499,9 +497,7 @@ func handleGetShowStats(c *fiber.Ctx) error {
 }
 
 func handleGetShowWatching(c *fiber.Ctx) error {
-	// Users currently watching require scrobble/activity wiring (not landed).
-	// Fails closed with 501 rather than return a fabricated empty array.
-	return response.NotImplemented(c, "watching requires the activity engine, which is not implemented")
+	return serveShowWatching(c)
 }
 
 // handleGetShowNextEpisode returns the next scheduled episode for a show: the
