@@ -1011,8 +1011,8 @@ sections:
         rationale: "Computed from user_history + episodes; a caught-up show is excluded."
       - trakt: "GET /sync/progress/up_next_nitro"
         ours: "GET /v1/sync/progress/up_next_nitro"
-        status: implemented
-        compat: "serves intent=all|continue|start|completed with the same progress object as up_next; genres, years, ratings, statuses and certifications narrow the show set in SQL and start_date/end_date narrow the watched window; watchnow, subgenres, runtimes, countries and parental_* answer 400 naming the accepted set."
+        status: divergent
+        compat: "serves intent=all|continue|start|completed with the same progress object as up_next; genres, years, ratings, statuses and certifications narrow the show set in SQL and start_date/end_date narrow the watched window; watchnow, subgenres, runtimes, countries and parental_* have no stored column and are ignored, so the response is a superset and X-Haaku-Ignored-Filters names them."
         rationale: "A distinct intent-filtered variant, not an alias of up_next."
       - trakt: "GET /sync/progress/watched"
         ours: "GET /v1/sync/progress/watched"
@@ -1130,9 +1130,9 @@ sections:
         rationale: "Served at GET /v1/users/{id}/friends; the path shape matches the contract."
       - trakt: "GET /users/{id}/history/episodes"
         ours: "GET /v1/users/{id}/history/episodes"
-        status: implemented
+        status: divergent
         rationale: "Served from user_history episode rows with the contract's required {id,watched_at,action,type,episode,show} shape."
-        compat: "page/limit/extended/start_date/end_date/start_at/end_at served; genres, years, ratings, runtimes, statuses and certifications filter the episode and its parent show in SQL; watchnow, subgenres, countries and parental_* answer 400 naming the accepted set."
+        compat: "page/limit/extended/start_date/end_date/start_at/end_at served; genres, years, ratings, runtimes, statuses and certifications filter the episode and its parent show in SQL; watchnow, subgenres, countries and parental_* have no stored column and are ignored (superset; X-Haaku-Ignored-Filters names them)."
       - trakt: "GET /users/{id}/history/episodes/{item_id}"
         ours: "GET /v1/users/{id}/history/episodes/{item_id}"
         status: divergent
@@ -1140,9 +1140,9 @@ sections:
         compat: "numeric episode id served; ?id_type= external episode ids (imdb/tmdb/tvdb) are not stored. PrivacyFilterSection(history)-gated."
       - trakt: "GET /users/{id}/history/movies"
         ours: "GET /v1/users/{id}/history/movies"
-        status: implemented
+        status: divergent
         rationale: "Served from user_history movie rows with the contract's required {id,watched_at,action,type,movie} shape."
-        compat: "page/limit/extended/start_date/end_date/start_at/end_at served; genres, years, ratings, runtimes, statuses and certifications filter the movie in SQL; watchnow, subgenres, countries and parental_* answer 400 naming the accepted set."
+        compat: "page/limit/extended/start_date/end_date/start_at/end_at served; genres, years, ratings, runtimes, statuses and certifications filter the movie in SQL; watchnow, subgenres, countries and parental_* have no stored column and are ignored (superset; X-Haaku-Ignored-Filters names them)."
       - trakt: "GET /users/{id}/history/movies/{item_id}"
         ours: "GET /v1/users/{id}/history/movies/{item_id}"
         status: implemented
@@ -1150,9 +1150,9 @@ sections:
         compat: "start_at/end_at bound the stored watched_at range on this movie's rows; the contract declares no catalogue filters on this operation."
       - trakt: "GET /users/{id}/history/shows"
         ours: "GET /v1/users/{id}/history/shows"
-        status: implemented
+        status: divergent
         rationale: "Served from user_history episode rows with the contract's required {episode,show} shape; each row carries the episode and its parent show."
-        compat: "page/limit/extended/start_date/end_date/start_at/end_at served; genres, years, ratings, runtimes, statuses and certifications filter the episode and its parent show in SQL; watchnow, subgenres, countries and parental_* answer 400 naming the accepted set."
+        compat: "page/limit/extended/start_date/end_date/start_at/end_at served; genres, years, ratings, runtimes, statuses and certifications filter the episode and its parent show in SQL; watchnow, subgenres, countries and parental_* have no stored column and are ignored (superset; X-Haaku-Ignored-Filters names them)."
       - trakt: "GET /users/{id}/history/shows/{item_id}"
         ours: "GET /v1/users/{id}/history/shows/{item_id}"
         status: implemented
@@ -1263,19 +1263,19 @@ sections:
         rationale: "Landed: comments on the movies/shows in the user's watchlist; all four sort values (newest|oldest|likes|replies) served; PrivacyFilter-gated."
       - trakt: "GET /users/{id}/watchlist/movie,show/{sort}"
         ours: "GET /v1/users/{id}/watchlist/movie,show/{sort}"
-        status: implemented
+        status: divergent
         rationale: "Served for movie+show watchlist rows in the contract's item shape, with the catalogue filters applied in SQL."
-        compat: "sort rank|added|listed|title|released served; genres, years, ratings, statuses and certifications narrow the media in SQL and hide/ignore_* are applied; watchnow, subgenres, runtimes, countries and parental_* answer 400."
+        compat: "sort rank|added|listed|title|released served; genres, years, ratings, statuses and certifications narrow the media in SQL and hide/ignore_* are applied; watchnow, subgenres, runtimes, countries and parental_* have no stored column and are ignored (superset; X-Haaku-Ignored-Filters names them)."
       - trakt: "GET /users/{id}/watchlist/movies/{sort}"
         ours: "GET /v1/users/{id}/watchlist/movies/{sort}"
-        status: implemented
+        status: divergent
         rationale: "Served from user_watchlist movie rows in the contract's required {rank,id,listed_at,type,movie} shape, filtered in SQL."
-        compat: "sort rank|added|listed|title|released served; genres, years, ratings, runtimes, statuses and certifications plus hide/ignore_* applied; watchnow, subgenres, countries and parental_* answer 400."
+        compat: "sort rank|added|listed|title|released served; genres, years, ratings, runtimes, statuses and certifications plus hide/ignore_* applied; watchnow, subgenres, countries and parental_* have no stored column and are ignored (superset; X-Haaku-Ignored-Filters names them)."
       - trakt: "GET /users/{id}/watchlist/shows/{sort}"
         ours: "GET /v1/users/{id}/watchlist/shows/{sort}"
-        status: implemented
+        status: divergent
         rationale: "Served from user_watchlist show rows in the contract's required {rank,id,listed_at,type,show} shape, filtered in SQL."
-        compat: "sort rank|added|listed|title|released served; genres, years, ratings, statuses and certifications plus hide/ignore_* applied; runtimes (shows have no runtime column), watchnow, subgenres, countries and parental_* answer 400."
+        compat: "sort rank|added|listed|title|released served; genres, years, ratings, statuses and certifications plus hide/ignore_* applied; runtimes (shows have no runtime column), watchnow, subgenres, countries and parental_* have no stored column and are ignored (superset; X-Haaku-Ignored-Filters names them)."
       - trakt: "GET /users/{id}/yir/all"
         ours: ""
         status: out-of-scope
@@ -1294,9 +1294,9 @@ sections:
         rationale: "decision: Trakt's Year/Month-in-Review are proprietary aggregates over its whole user base; we do not reproduce them"
       - trakt: "GET /users/{id}/{type}/activities"
         ours: "GET /v1/users/{id}/{type}/activities"
-        status: implemented
+        status: divergent
         rationale: "Served for type friends|followers|following: recent user_history events by those accounts, contract {id,activity_at,action,user,media} shape."
-        compat: "the 7-day default window is served from stored watched_at and start_date/end_date narrow it; genres, years, ratings, runtimes, statuses and certifications filter the media in SQL; watchnow, subgenres, countries, parental_* and ignore_watched/collected/watchlisted answer 400."
+        compat: "the 7-day default window is served from stored watched_at and start_date/end_date narrow it; genres, years, ratings, runtimes, statuses and certifications filter the media in SQL; watchnow, subgenres, countries and parental_* have no stored column and are ignored (superset; X-Haaku-Ignored-Filters names them); ignore_watched/collected/watchlisted answer 400."
       - trakt: "GET /younify/connections"
         ours: ""
         status: out-of-scope

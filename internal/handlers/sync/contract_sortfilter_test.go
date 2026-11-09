@@ -50,6 +50,11 @@ func TestProgressSortRejectionsNameAccepted(t *testing.T) {
 	if status != http.StatusBadRequest {
 		t.Fatalf("up_next bogus sort: status %d (%s)", status, body)
 	}
+	// The body must be the error envelope, not the payload the handler would
+	// have written had it carried on after answering 400.
+	if !strings.Contains(string(body), "invalid_request") {
+		t.Errorf("up_next 400 body is not the error envelope: %s", body)
+	}
 	if !strings.Contains(string(body), "last_watched_at") {
 		t.Errorf("up_next 400 body does not name accepted sorts: %s", body)
 	}

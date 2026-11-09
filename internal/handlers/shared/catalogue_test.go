@@ -1,6 +1,7 @@
 package shared
 
 import (
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -28,6 +29,14 @@ func testDB(t *testing.T) *gorm.DB {
 // media collections' full capability set, and returns the handler's status.
 func parseRequest(t *testing.T, path string) int {
 	t.Helper()
+	status, _, _ := parseRequestFull(t, path)
+	return status
+}
+
+// parseRequestFull also returns the body and the ignored-filters header, so a
+// test can prove an unstored parameter was ignored rather than applied.
+func parseRequestFull(t *testing.T, path string) (int, string, string) {
+	t.Helper()
 	app := fiber.New()
 	app.Get("/x", func(c *fiber.Ctx) error {
 		if _, ok := ParseCatalogueFilter(c, FilterGenres, FilterYears, FilterRatings, FilterRuntimes, FilterStatuses, FilterCertifications); !ok {
@@ -41,7 +50,15 @@ func parseRequest(t *testing.T, path string) int {
 	if err != nil {
 		t.Fatalf("request %s: %v", path, err)
 	}
-	return res.StatusCode
+	body := ""
+	if res.Body != nil {
+		var buf strings.Builder
+		if _, err := io.Copy(&buf, res.Body); err != nil {
+			t.Fatalf("read body %s: %v", path, err)
+		}
+		body = buf.String()
+	}
+	return res.StatusCode, body, res.Header.Get(IgnoredFiltersHeader)
 }
 
 // TestGenreMembershipDoesNotFanOut is the count-fan-out guard: a movie carrying
@@ -115,11 +132,16 @@ func TestSelectorsNeverDefaultSilently(t *testing.T) {
 	}
 }
 
-// TestParseNeverLetsAFilterThroughUnchecked covers the three refusal paths and
-// the computable path.
-func TestParseNeverLetsAFilterThroughUnchecked(t *testing.T) {
-	if got := parseRequest(t, "/x?countries=us&genres=drama"); got != 400 {
-		t.Fatalf("countries (unstored) status = %d, want 400", got)
+// TestParseRefusesBadValuesAndIgnoresUnstored covers the rule at the top of
+// filters.go: a malformed value of a supported filter is a 400, an unstored but
+// documented parameter is ignored (200) and named in the response header.
+func TestParseRefusesBadValuesAndIgnoresUnstored(t *testing.T) {
+	status, body, header := parseRequestFull(t, "/x?countries=us&genres=drama")
+	if status != 200 {
+		t.Fatalf("countries (unstored) status = %d, want 200 (%s)", status, body)
+	}
+	if header != "countries" {
+		t.Errorf("%s = %q, want countries", IgnoredFiltersHeader, header)
 	}
 	if got := parseRequest(t, "/x?years=nope"); got != 400 {
 		t.Fatalf("malformed years status = %d, want 400", got)
