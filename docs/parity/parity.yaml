@@ -47,17 +47,17 @@ sections:
         status: implemented
         rationale: "Serves real rows from movies.released inside the window (calendar.handleCalendarMovies), paginated; the Trakt-shaped path and params are identical."
       - trakt: "GET /calendars/{target}/dvd/{start_date}/{days}"
-        ours: "GET /v1/calendars/{target}/dvd/{start_date}/{days}"
-        status: blocked-data
-        rationale: "movies carries a single released DATE; there is no dvd/digital/physical date column, so a DVD calendar cannot be answered without inventing dates."
+        ours: "GET /v1/calendars/all/dvd/{start_date}/{days}"
+        status: implemented
+        rationale: "Served from movie_releases.physical rows (written by ingest and hydration in the same transaction as the movie metadata); one row per movie using its earliest physical release in the window, honouring ?countries=, with /all and authenticated /my mounts."
       - trakt: "GET /calendars/{target}/streaming/{start_date}/{days}"
-        ours: "GET /v1/calendars/{target}/streaming/{start_date}/{days}"
-        status: blocked-data
-        rationale: "No streaming-release date is stored; watch providers live in movies.metadata per title (TMDB), not as dated releases."
+        ours: "GET /v1/calendars/all/streaming/{start_date}/{days}"
+        status: implemented
+        rationale: "Same release-table query on movie_releases.digital; a movie's earliest digital date in the window (or in ?countries=), one row per movie."
       - trakt: "GET /calendars/releases/hot/{start_date}/{days}"
         ours: "GET /v1/calendars/releases/hot/{start_date}/{days}"
-        status: blocked-data
-        rationale: "No unified release feed: 'hot' mixes theatrical, streaming and episode releases in one ranked list; we store only movies.released and episodes.aired_at, with no cross-medium ranking."
+        status: implemented
+        rationale: "Merges movies.released and episodes.aired_at in the window and orders by distinct users with the title on watchlist/collection/history inside that window (shows include users with any episode history); titles with no signal are excluded."
       - trakt: "GET /calendars/releases/hot/new/{start_date}/{days}"
         ours: "GET /v1/calendars/releases/hot/new/{start_date}/{days}"
         status: implemented
@@ -69,7 +69,7 @@ sections:
       - trakt: "GET /calendars/releases/hot/finales/{start_date}/{days}"
         ours: "GET /v1/calendars/releases/hot/finales/{start_date}/{days}"
         status: implemented
-        rationale: "Served at Trakt's path from the episode calendar pinned to ?type=finale (last episode of each season)."
+        rationale: "Served at Trakt's path from the episode calendar pinned to ?type=finale; a finale is only claimed when seasons.episode_count is known and the episode reaches it, so an incomplete season is not mislabelled."
   - name: "Media"
     rows:
       - trakt: "GET /media/trending"
@@ -110,8 +110,8 @@ sections:
         engine: "stats/rankings engine (issue #66)"
       - trakt: "GET /movies/streaming/{period}"
         ours: "GET /v1/movies/streaming/{period}"
-        status: blocked-data
-        rationale: "Trakt's streaming list is driven by streaming release dates, which we do not store (see /calendars/all/streaming)."
+        status: implemented
+        rationale: "Movies with a movie_releases.digital date in the period (daily=today, weekly=7 days, monthly=30), ranked by distinct user_history watchers in that same period; delta is null because no previous rank is stored."
       - trakt: "GET /movies/boxoffice"
         ours: ""
         status: out-of-scope
@@ -191,7 +191,7 @@ sections:
       - trakt: "GET /shows/streaming/{period}"
         ours: "GET /v1/shows/streaming/{period}"
         status: blocked-data
-        rationale: "Driven by streaming release dates, which are not stored (see /calendars/all/streaming)."
+        rationale: "STOP (no honest source): TMDB has no dated streaming-release feed for shows — its watch-provider catalogue is undated country availability, so a show's streaming period cannot be derived without inventing a date."
       - trakt: "GET /shows/updates/id/{start_date}"
         ours: "GET /v1/shows/updates/id/{start_date}"
         status: implemented
@@ -493,12 +493,12 @@ sections:
     rows:
       - trakt: "GET /watchnow/sources"
         ours: "GET /v1/watchnow/sources"
-        status: blocked-data
-        rationale: "There is no provider catalogue table: providers are TMDB per-title metadata (metadata JSONB), with no stable id list or country mapping to serve."
+        status: implemented
+        rationale: "Served from the watchnow_sources table, refreshed from TMDB's /watch/providers/{movie,tv} catalogue (provider name, logo, per-country display priority) by the metadata worker; one record keyed by lower-case country code."
       - trakt: "GET /watchnow/sources/{countryCode}"
         ours: "GET /v1/watchnow/sources/{countryCode}"
-        status: blocked-data
-        rationale: "Same gap: no catalogue to filter by country."
+        status: implemented
+        rationale: "Same table filtered to the requested country; an unknown or non-2-letter code returns an empty array, never a fabricated provider."
   - name: "Team"
     rows:
       - trakt: "GET /team/"
@@ -708,25 +708,25 @@ sections:
         status: out-of-scope
         rationale: "decision: Trakt's proprietary cross-service linking product; a self-hosted tracker has nothing to link through it"
       - trakt: "GET /calendars/{target}/media/{start_date}/{days}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: DVD, streaming and release calendars blocked on release data (#69)"
+        ours: "GET /v1/calendars/all/media/{start_date}/{days}"
+        status: implemented
+        rationale: "Merges movies.released with episodes.aired_at in one date-ordered stream, with ?type=movie|show filtering and /all and authenticated /my mounts."
       - trakt: "GET /calendars/{target}/shows/finales/{start_date}/{days}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: DVD, streaming and release calendars blocked on release data (#69)"
+        ours: "GET /v1/calendars/all/shows/finales/{start_date}/{days}"
+        status: implemented
+        rationale: "Served from the shared show calendar pinned to the finale classification at Trakt's literal all/my paths."
       - trakt: "GET /calendars/{target}/shows/new/{start_date}/{days}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: DVD, streaming and release calendars blocked on release data (#69)"
+        ours: "GET /v1/calendars/all/shows/new/{start_date}/{days}"
+        status: implemented
+        rationale: "Served from the shared show calendar pinned to S01E01 at Trakt's literal all/my paths."
       - trakt: "GET /calendars/{target}/shows/premieres/{start_date}/{days}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: DVD, streaming and release calendars blocked on release data (#69)"
+        ours: "GET /v1/calendars/all/shows/premieres/{start_date}/{days}"
+        status: implemented
+        rationale: "Served from the shared show calendar pinned to episode 1 of a later season at Trakt's literal all/my paths."
       - trakt: "GET /calendars/{target}/shows/{start_date}/{days}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: DVD, streaming and release calendars blocked on release data (#69)"
+        ours: "GET /v1/calendars/all/shows/{start_date}/{days}"
+        status: implemented
+        rationale: "The plain show calendar is now served as the contract's bare release array at Trakt's literal all/my paths; the paginated envelope remains on our own friends/favorites/watched targets."
       - trakt: "GET /certifications/movies"
         ours: ""
         status: out-of-scope

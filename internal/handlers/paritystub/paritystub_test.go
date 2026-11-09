@@ -29,11 +29,10 @@ func newStubApp() *fiber.App {
 func TestStubsAnswer501NamingTheTracker(t *testing.T) {
 	app := newStubApp()
 	for _, path := range []string{
-		"/v1/media/trending",                       // #66
-		"/v1/movies/watched/30d",                   // #66 — static segment over /movies/:id
-		"/v1/shows/1/related",                      // #49
-		"/v1/calendars/all/dvd/2026-11-01/7",       // #69, {target} template
-		"/v1/calendars/all/streaming/2026-11-01/7", // #69
+		"/v1/media/trending",      // #66
+		"/v1/movies/watched/30d",  // #66 — static segment over /movies/:id
+		"/v1/shows/1/related",     // #49
+		"/v1/shows/streaming/30d", // #69 — the DVD/streaming calendars are real routes now
 	} {
 		resp, err := app.Test(httptest.NewRequest(http.MethodGet, path, nil))
 		if err != nil {

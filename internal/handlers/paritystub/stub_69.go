@@ -12,34 +12,10 @@ import (
 // that haaku does not serve yet. Each answers an honest 501 naming the blocker and the
 // tracking issue, so a Trakt client gets a real answer instead of a 404.
 func registerStub69(api fiber.Router) {
-	// GET /calendars/{target}/dvd/{start_date}/{days} — blocked-data: movies carries a single released DATE; there is no dvd/digital/physical date column, so a DVD calendar cannot be answered without inventing dates.
-	// Upstream getdvdReleases; 200: array of {movie,released}; path: target,start_date,days; +21 query
-	// Tracked in #69: https://github.com/haaku-tv/haaku/issues/69
-	api.Get("/v1/calendars/:target/dvd/:start_date/:days", stubHandler(69, "GET /calendars/{target}/dvd/{start_date}/{days}", "movies carries a single released DATE; there is no dvd/digital/physical date column, so a DVD calendar cannot be answered without inventing dates."))
-	// GET /calendars/{target}/streaming/{start_date}/{days} — blocked-data: No streaming-release date is stored; watch providers live in movies.metadata per title (TMDB), not as dated releases.
-	// Upstream getstreaming; 200: array of {movie,released}; path: target,start_date,days; +21 query
-	// Tracked in #69: https://github.com/haaku-tv/haaku/issues/69
-	api.Get("/v1/calendars/:target/streaming/:start_date/:days", stubHandler(69, "GET /calendars/{target}/streaming/{start_date}/{days}", "No streaming-release date is stored; watch providers live in movies.metadata per title (TMDB), not as dated releases."))
-	// GET /calendars/releases/hot/{start_date}/{days} — blocked-data: No unified release feed: 'hot' mixes theatrical, streaming and episode releases in one ranked list; we store only movies.released and episodes.aired_at, with no cross-medium ranking.
-	// Upstream getreleasesHot; 200: array of {episode,first_aired,movie,released,show}; path: start_date,days; +20 query
-	// Tracked in #69: https://github.com/haaku-tv/haaku/issues/69
-	api.Get("/v1/calendars/releases/hot/:start_date/:days", stubHandler(69, "GET /calendars/releases/hot/{start_date}/{days}", "No unified release feed: 'hot' mixes theatrical, streaming and episode releases in one ranked list; we store only movies.released and episodes.aired_at, with no cross-medium ranking."))
-	// GET /movies/streaming/{period} — blocked-data: Trakt's streaming list is driven by streaming release dates, which we do not store (see /calendars/all/streaming).
-	// Upstream getstreaming; 200: array of {delta,movie,rank}; path: period; +23 query
-	// Tracked in #69: https://github.com/haaku-tv/haaku/issues/69
-	api.Get("/v1/movies/streaming/:period", stubHandler(69, "GET /movies/streaming/{period}", "Trakt's streaming list is driven by streaming release dates, which we do not store (see /calendars/all/streaming)."))
-	// GET /shows/streaming/{period} — blocked-data: Driven by streaming release dates, which are not stored (see /calendars/all/streaming).
+	// GET /shows/streaming/{period} — blocked-data: STOP (no honest source): TMDB has no dated streaming-release feed for shows — its watch-provider catalogue is undated country availability, so a show's streaming period cannot be derived without inventing a date.
 	// Upstream getstreaming; 200: array of {delta,rank,show}; path: period; +23 query
 	// Tracked in #69: https://github.com/haaku-tv/haaku/issues/69
-	api.Get("/v1/shows/streaming/:period", stubHandler(69, "GET /shows/streaming/{period}", "Driven by streaming release dates, which are not stored (see /calendars/all/streaming)."))
-	// GET /watchnow/sources — blocked-data: There is no provider catalogue table: providers are TMDB per-title metadata (metadata JSONB), with no stable id list or country mapping to serve.
-	// Upstream getall
-	// Tracked in #69: https://github.com/haaku-tv/haaku/issues/69
-	api.Get("/v1/watchnow/sources", stubHandler(69, "GET /watchnow/sources", "There is no provider catalogue table: providers are TMDB per-title metadata (metadata JSONB), with no stable id list or country mapping to serve."))
-	// GET /watchnow/sources/{countryCode} — blocked-data: Same gap: no catalogue to filter by country.
-	// Upstream getcountry; path: countryCode
-	// Tracked in #69: https://github.com/haaku-tv/haaku/issues/69
-	api.Get("/v1/watchnow/sources/:countryCode", stubHandler(69, "GET /watchnow/sources/{countryCode}", "Same gap: no catalogue to filter by country."))
+	api.Get("/v1/shows/streaming/:period", stubHandler(69, "GET /shows/streaming/{period}", "STOP (no honest source): TMDB has no dated streaming-release feed for shows — its watch-provider catalogue is undated country availability, so a show's streaming period cannot be derived without inventing a date."))
 }
 
 // defsStub69 is the registry entry for each stub above. The 501 in
@@ -49,59 +25,11 @@ func defsStub69() []openapi.RouteDef {
 	return []openapi.RouteDef{
 		{
 			Method:      "GET",
-			Path:        "/v1/calendars/{target}/dvd/{start_date}/{days}",
-			Summary:     "Parity stub — not implemented (calendars & Watch Now data)",
-			Tags:        []string{"Calendars"},
-			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — movies carries a single released DATE; there is no dvd/digital/physical date column, so a DVD calend (#69)"},
-		},
-		{
-			Method:      "GET",
-			Path:        "/v1/calendars/{target}/streaming/{start_date}/{days}",
-			Summary:     "Parity stub — not implemented (calendars & Watch Now data)",
-			Tags:        []string{"Calendars"},
-			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — No streaming-release date is stored; watch providers live in movies.metadata per title (TMDB), not a (#69)"},
-		},
-		{
-			Method:      "GET",
-			Path:        "/v1/calendars/releases/hot/{start_date}/{days}",
-			Summary:     "Parity stub — not implemented (calendars & Watch Now data)",
-			Tags:        []string{"Calendars"},
-			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — No unified release feed: 'hot' mixes theatrical, streaming and episode releases in one ranked list;  (#69)"},
-		},
-		{
-			Method:      "GET",
-			Path:        "/v1/movies/streaming/{period}",
-			Summary:     "Parity stub — not implemented (calendars & Watch Now data)",
-			Tags:        []string{"Movies"},
-			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — Trakt's streaming list is driven by streaming release dates, which we do not store (see /calendars/a (#69)"},
-		},
-		{
-			Method:      "GET",
 			Path:        "/v1/shows/streaming/{period}",
 			Summary:     "Parity stub — not implemented (calendars & Watch Now data)",
 			Tags:        []string{"Shows"},
 			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — Driven by streaming release dates, which are not stored (see /calendars/all/streaming). (#69)"},
-		},
-		{
-			Method:      "GET",
-			Path:        "/v1/watchnow/sources",
-			Summary:     "Parity stub — not implemented (calendars & Watch Now data)",
-			Tags:        []string{"WatchNow"},
-			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — There is no provider catalogue table: providers are TMDB per-title metadata (metadata JSONB), with n (#69)"},
-		},
-		{
-			Method:      "GET",
-			Path:        "/v1/watchnow/sources/{countryCode}",
-			Summary:     "Parity stub — not implemented (calendars & Watch Now data)",
-			Tags:        []string{"WatchNow"},
-			Auth:        "none",
-			StatusCodes: map[int]string{501: "Not implemented — Same gap: no catalogue to filter by country. (#69)"},
+			StatusCodes: map[int]string{501: "Not implemented — STOP (no honest source): TMDB has no dated streaming-release feed for shows — its watch-provider cat (#69)"},
 		},
 	}
 }

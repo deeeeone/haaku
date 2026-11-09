@@ -11,7 +11,7 @@ path (modulo our `/v1` prefix), with a real 2xx — except the recommendation/re
 engine, which stays an honest `501 not_implemented` and graded `blocked-engine` by
 the owner's carve-out. Done is `go run ./cmd/parity`, not a PR count.
 
-Contract operations: **336**. Not yet served (**in scope**): **141**. Out by owner decision: **31**. Served today: **163**.
+Contract operations: **336**. Not yet served (**in scope**): **130**. Out by owner decision: **31**. Served today: **174**.
 
 ## Out of scope (owner decisions, re-affirmed)
 
@@ -67,14 +67,6 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `DELETE /users/{id}/lists/{list_id}/` | out-of-scope | list management — writes, items, smart lists | #105 |
 | `DELETE /users/{id}/lists/{list_id}/like` | out-of-scope | list management — writes, items, smart lists | #105 |
 | `DELETE /users/{id}/smart-lists/{list_id}/` | out-of-scope | list management — writes, items, smart lists | #105 |
-| `GET /calendars/releases/hot/{start_date}/{days}` | blocked-data | calendars and Watch Now data | #69 |
-| `GET /calendars/{target}/dvd/{start_date}/{days}` | blocked-data | calendars and Watch Now data | #69 |
-| `GET /calendars/{target}/media/{start_date}/{days}` | out-of-scope | calendars and Watch Now data | #69 |
-| `GET /calendars/{target}/shows/finales/{start_date}/{days}` | out-of-scope | calendars and Watch Now data | #69 |
-| `GET /calendars/{target}/shows/new/{start_date}/{days}` | out-of-scope | calendars and Watch Now data | #69 |
-| `GET /calendars/{target}/shows/premieres/{start_date}/{days}` | out-of-scope | calendars and Watch Now data | #69 |
-| `GET /calendars/{target}/shows/{start_date}/{days}` | out-of-scope | calendars and Watch Now data | #69 |
-| `GET /calendars/{target}/streaming/{start_date}/{days}` | blocked-data | calendars and Watch Now data | #69 |
 | `GET /certifications/movies` | out-of-scope | reference-data certification enums | #109 |
 | `GET /certifications/shows` | out-of-scope | reference-data certification enums | #109 |
 | `GET /comments/recent/{comment_type}/{type}` | out-of-scope | comment moderation, reactions and the note item read | #107 |
@@ -93,7 +85,6 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /movies/favorited/{period}` | out-of-scope | stats and rankings | #66 |
 | `GET /movies/hot` | blocked-engine | stats and rankings | #66 |
 | `GET /movies/played/{period}` | blocked-engine | stats and rankings | #66 |
-| `GET /movies/streaming/{period}` | blocked-data | calendars and Watch Now data | #69 |
 | `GET /movies/watched/{period}` | blocked-engine | stats and rankings | #66 |
 | `GET /movies/{id}/related` | blocked-engine | related / recommendations (owner carve-out: stays 501) | #49 |
 | `GET /movies/{id}/watching` | blocked-engine | stats and rankings | #66 |
@@ -165,8 +156,6 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /users/{id}/watchlist/shows/{sort}` | divergent | public-profile read surface | #103 |
 | `GET /users/{id}/watchlist/{type}/{sort_by}/{sort_how}` | divergent | public-profile read surface | #103 |
 | `GET /users/{id}/{type}/activities` | divergent | public-profile read surface | #103 |
-| `GET /watchnow/sources` | blocked-data | calendars and Watch Now data | #69 |
-| `GET /watchnow/sources/{countryCode}` | blocked-data | calendars and Watch Now data | #69 |
 | `POST /comments/` | out-of-scope | comment moderation, reactions and the note item read | #107 |
 | `POST /comments/{id}/reactions/{reaction_type}` | out-of-scope | comment moderation, reactions and the note item read | #107 |
 | `POST /lists/{id}/report` | out-of-scope | list management — writes, items, smart lists | #105 |
@@ -212,7 +201,15 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /calendars/releases/hot/finales/{start_date}/{days}` | `GET /v1/calendars/releases/hot/finales/{start_date}/{days}` |
 | `GET /calendars/releases/hot/new/{start_date}/{days}` | `GET /v1/calendars/releases/hot/new/{start_date}/{days}` |
 | `GET /calendars/releases/hot/premieres/{start_date}/{days}` | `GET /v1/calendars/releases/hot/premieres/{start_date}/{days}` |
+| `GET /calendars/releases/hot/{start_date}/{days}` | `GET /v1/calendars/releases/hot/{start_date}/{days}` |
+| `GET /calendars/{target}/dvd/{start_date}/{days}` | `GET /v1/calendars/all/dvd/{start_date}/{days}` |
+| `GET /calendars/{target}/media/{start_date}/{days}` | `GET /v1/calendars/all/media/{start_date}/{days}` |
 | `GET /calendars/{target}/movies/{start_date}/{days}` | `GET /v1/calendars/all/movies/{start_date}/{days}` |
+| `GET /calendars/{target}/shows/finales/{start_date}/{days}` | `GET /v1/calendars/all/shows/finales/{start_date}/{days}` |
+| `GET /calendars/{target}/shows/new/{start_date}/{days}` | `GET /v1/calendars/all/shows/new/{start_date}/{days}` |
+| `GET /calendars/{target}/shows/premieres/{start_date}/{days}` | `GET /v1/calendars/all/shows/premieres/{start_date}/{days}` |
+| `GET /calendars/{target}/shows/{start_date}/{days}` | `GET /v1/calendars/all/shows/{start_date}/{days}` |
+| `GET /calendars/{target}/streaming/{start_date}/{days}` | `GET /v1/calendars/all/streaming/{start_date}/{days}` |
 | `GET /certifications/{type}` | `GET /v1/certifications/{type}` |
 | `GET /comments/trending/{comment_type}/{type}` | `GET /v1/comments/trending/{comment_type}/{type}` |
 | `GET /comments/{id}` | `GET /v1/comments/{id}` |
@@ -232,6 +229,7 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /media/anticipated` | `GET /v1/media/anticipated` |
 | `GET /movies/anticipated` | `GET /v1/movies/anticipated` |
 | `GET /movies/popular` | `GET /v1/movies/popular` |
+| `GET /movies/streaming/{period}` | `GET /v1/movies/streaming/{period}` |
 | `GET /movies/trending` | `GET /v1/movies/trending` |
 | `GET /movies/updates/id/{start_date}` | `GET /v1/movies/updates/id/{start_date}` |
 | `GET /movies/updates/{start_date}` | `GET /v1/movies/updates/{start_date}` |
@@ -331,6 +329,8 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /users/{id}/watched/movies` | `GET /v1/users/{id}/watched/movies` |
 | `GET /users/{id}/watching` | `GET /v1/users/{id}/watching` |
 | `GET /users/{id}/watchlist/comments/{sort}` | `GET /v1/users/{id}/watchlist/comments/{sort}` |
+| `GET /watchnow/sources` | `GET /v1/watchnow/sources` |
+| `GET /watchnow/sources/{countryCode}` | `GET /v1/watchnow/sources/{countryCode}` |
 | `POST /checkin` | `POST /v1/checkin` |
 | `POST /comments/{id}/like` | `POST /v1/comments/{id}/like` |
 | `POST /comments/{id}/replies` | `POST /v1/comments/{id}/replies` |
