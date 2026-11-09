@@ -41,7 +41,7 @@ def group_label(group):
 
 def contract_ops():
     """Every (method, path) the vendored contract publishes."""
-    doc = json.loads(CONTRACT.read_text())
+    doc = json.loads(CONTRACT.read_text(encoding="utf-8"))
     ops = []
     for path, item in doc["paths"].items():
         for method in item:
@@ -115,13 +115,16 @@ def render():
 def main():
     text = render()
     if "--check" in sys.argv:
-        current = OUT.read_text() if OUT.exists() else ""
+        current = OUT.read_text(encoding="utf-8", newline="") if OUT.exists() else ""
         if current != text:
             print("docs/parity/SCOPE.md is stale — run python3 scripts/parity-scope.py")
             return 1
         print("docs/parity/SCOPE.md is current")
         return 0
-    OUT.write_text(text)
+    # newline="" so the bytes written are exactly the bytes compared: write_text
+    # would otherwise translate "\n" to os.linesep and --check would report drift
+    # on Windows for a file it had just written.
+    OUT.write_text(text, encoding="utf-8", newline="")
     print(f"wrote {OUT.relative_to(ROOT)} ({len(text.splitlines())} lines)")
     return 0
 

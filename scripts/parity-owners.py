@@ -123,7 +123,7 @@ def owner_for(trakt, status=None):
 
 
 def _load():
-    doc = yaml.safe_load(MANIFEST.read_text())
+    doc = yaml.safe_load(MANIFEST.read_text(encoding="utf-8"))
     for sec in doc["sections"]:
         for r in sec["rows"] or []:
             if not (r.get("trakt") or "").strip():
