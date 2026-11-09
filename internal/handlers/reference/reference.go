@@ -68,6 +68,32 @@ func registerOpenAPIRoutes() {
 			},
 		},
 		{
+			Method:       "GET",
+			Path:         "/v1/certifications/movies",
+			Summary:      "List movie certifications grouped by country",
+			Tags:         []string{"Reference"},
+			Auth:         "none",
+			ResponseType: certificationCatalogSchema(),
+			StatusCodes: map[int]string{
+				200: "Movie certifications keyed by country code",
+				502: "TMDB returned no usable catalog",
+				503: "TMDB client unavailable",
+			},
+		},
+		{
+			Method:       "GET",
+			Path:         "/v1/certifications/shows",
+			Summary:      "List show certifications grouped by country",
+			Tags:         []string{"Reference"},
+			Auth:         "none",
+			ResponseType: certificationCatalogSchema(),
+			StatusCodes: map[int]string{
+				200: "Show certifications keyed by country code",
+				502: "TMDB returned no usable catalog",
+				503: "TMDB client unavailable",
+			},
+		},
+		{
 			Method:  "GET",
 			Path:    "/v1/certifications/{type}",
 			Summary: "List certifications grouped by country for movies or shows",
@@ -93,6 +119,11 @@ func RegisterRoutes(api fiber.Router) {
 	ref.Get("/languages/:type", handleLanguages)
 	ref.Get("/countries/:type", handleCountries)
 	ref.Get("/networks", handleNetworks)
+	// Static segments must be registered before the parameterised route at the
+	// same depth, or /certifications/:type shadows both and Fiber never reaches
+	// them (TestNoStaticRouteIsShadowed guards the class).
+	ref.Get("/certifications/movies", handleMovieCertifications)
+	ref.Get("/certifications/shows", handleShowCertifications)
 	ref.Get("/certifications/:type", handleCertifications)
 }
 
@@ -424,5 +455,124 @@ func handleCertifications(c *fiber.Ctx) error {
 }
 
 // ---------------------------------------------------------------------------
-// Local error helpers (mirror httpapi exported variants for convenience)
+// Certification enums served at Trakt's literal paths
 // ---------------------------------------------------------------------------
+//
+// Trakt serves /certifications/movies and /certifications/shows as an object
+// keyed by lowercase country code, each holding the certification values a
+// client offers in a filter UI: {name, slug, description}. The values come from
+// the SAME source the /certifications/{type} reference handler already reads —
+// TMDB's /certification/{movie,tv}/list — so nothing is hardcoded here. TMDB
+// supplies the per-country enum (`certification`) and its human explanation
+// (`meaning`, which is Trakt's `description`); the slug is a deterministic
+// lowercase/hyphenated form of the name, exactly as Trakt's own slugs are.
+
+// CertificationOption is one certification value at Trakt's literal-path shape.
+type CertificationOption struct {
+	Name        string `json:"name"`
+	Slug        string `json:"slug"`
+	Description string `json:"description"`
+}
+
+// CertificationCatalog is Trakt's response envelope: country code (lowercase)
+// mapped to that country's certification values.
+type CertificationCatalog map[string][]CertificationOption
+
+// certificationCatalogSchema is the OpenAPI shape of CertificationCatalog: an
+// object keyed by a lowercase country code, each value an array of
+// {name, slug, description} options. It matches what the handler emits so the
+// generated spec does not have to describe the response as untyped.
+func certificationCatalogSchema() map[string]interface{} {
+	return map[string]interface{}{
+		"type": "object",
+		"additionalProperties": map[string]interface{}{
+			"type": "array",
+			"items": map[string]interface{}{
+				"type":     "object",
+				"required": []string{"name", "slug", "description"},
+				"properties": map[string]interface{}{
+					"name":        map[string]interface{}{"type": "string"},
+					"slug":        map[string]interface{}{"type": "string"},
+					"description": map[string]interface{}{"type": "string"},
+				},
+			},
+		},
+	}
+}
+
+// certificationCatalog converts TMDB's certifications response into Trakt's
+// country-keyed catalog. Country codes are lowercased (`US` → `us`) and each
+// entry carries TMDB's certification as name, its meaning as description, and a
+// slug derived from the name. Empty certification names are skipped so a client
+// never sees a value it cannot filter by.
+func certificationCatalog(resp *tmdb.CertificationsResponse) CertificationCatalog {
+	out := make(CertificationCatalog, len(resp.Certifications))
+	for country, certs := range resp.Certifications {
+		opts := make([]CertificationOption, 0, len(certs))
+		for _, ct := range certs {
+			name := strings.TrimSpace(ct.Certification)
+			if name == "" {
+				continue
+			}
+			opts = append(opts, CertificationOption{
+				Name:        name,
+				Slug:        slugify(name),
+				Description: ct.Meaning,
+			})
+		}
+		out[strings.ToLower(country)] = opts
+	}
+	return out
+}
+
+// handleMovieCertifications serves GET /v1/certifications/movies.
+func handleMovieCertifications(c *fiber.Ctx) error {
+	return serveCertificationCatalog(c, "movies")
+}
+
+// handleShowCertifications serves GET /v1/certifications/shows.
+func handleShowCertifications(c *fiber.Ctx) error {
+	return serveCertificationCatalog(c, "shows")
+}
+
+// serveCertificationCatalog fetches one media type's certifications from TMDB,
+// shapes them as Trakt's country-keyed catalog, and caches the result. It is a
+// sibling of handleCertifications (the {type} route) rather than a shared path
+// because the two routes deliberately expose different envelopes: the generic
+// route returns the pre-existing array of country groups, while the literal
+// Trakt routes return the contract's country-keyed object.
+func serveCertificationCatalog(c *fiber.Ctx, mediaType string) error {
+	key := cacheKey("certification-catalog", mediaType)
+
+	var catalog CertificationCatalog
+	if hit, _ := getCached(c, key, &catalog); hit {
+		return c.JSON(catalog)
+	}
+
+	client, err := getTMDBClient()
+	if err != nil {
+		return response.WriteError(c, fiber.StatusServiceUnavailable, "tmdb_unavailable", "TMDB client unavailable")
+	}
+
+	var resp *tmdb.CertificationsResponse
+	if mediaType == "movies" {
+		resp, err = client.GetMovieCertifications()
+	} else {
+		resp, err = client.GetTVCertifications()
+	}
+	if err != nil {
+		log.Printf("[reference] TMDB certification/%s error: %v", mediaType, err)
+		return response.WriteError(c, fiber.StatusBadGateway, "upstream_error", "Failed to fetch certifications from TMDB")
+	}
+
+	catalog = certificationCatalog(resp)
+	// The contract's catalog requires the `us` entry, so a response without it
+	// is not a catalog we can serve. Answer 502 and cache nothing: caching it
+	// would keep serving an unsupported document for the whole TTL.
+	if _, ok := catalog["us"]; !ok {
+		log.Printf("[reference] TMDB certification/%s response has no US entry; refusing to cache", mediaType)
+		return response.WriteError(c, fiber.StatusBadGateway, "upstream_error", "TMDB returned no usable certification catalog")
+	}
+	setCache(c, key, catalog)
+	return c.JSON(catalog)
+}

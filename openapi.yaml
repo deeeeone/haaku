@@ -1779,6 +1779,172 @@ paths:
             summary: List certifications grouped by country for movies or shows
             tags:
                 - Reference
+    /v1/certifications/movies:
+        get:
+            operationId: _v1_certifications_movies_GET
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                additionalProperties:
+                                    items:
+                                        properties:
+                                            description:
+                                                type: string
+                                            name:
+                                                type: string
+                                            slug:
+                                                type: string
+                                        required:
+                                            - name
+                                            - slug
+                                            - description
+                                        type: object
+                                    type: array
+                                type: object
+                    description: Movie certifications keyed by country code
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+                "502":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: TMDB returned no usable catalog
+                "503":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: TMDB client unavailable
+            security: []
+            summary: List movie certifications grouped by country
+            tags:
+                - Reference
+    /v1/certifications/shows:
+        get:
+            operationId: _v1_certifications_shows_GET
+            responses:
+                "200":
+                    content:
+                        application/json:
+                            schema:
+                                additionalProperties:
+                                    items:
+                                        properties:
+                                            description:
+                                                type: string
+                                            name:
+                                                type: string
+                                            slug:
+                                                type: string
+                                        required:
+                                            - name
+                                            - slug
+                                            - description
+                                        type: object
+                                    type: array
+                                type: object
+                    description: Show certifications keyed by country code
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+                "502":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: TMDB returned no usable catalog
+                "503":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: TMDB client unavailable
+            security: []
+            summary: List show certifications grouped by country
+            tags:
+                - Reference
     /v1/checkin:
         delete:
             operationId: _v1_checkin_DELETE
