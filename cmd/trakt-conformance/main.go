@@ -8,7 +8,8 @@
 //
 // Request side: for each graded operation it sends a request built from the
 // contract's own path params, query params (extended/page/limit and every
-// operation-specific filter), request body and headers.
+// operation-specific filter), request body and headers. Every fixture-backed
+// value comes from the seed's id file, never a literal a case hopes exists.
 //
 // Response side: it validates the served payload against the contract's
 // response schema at every level (types, required sets, nullability, the ids
@@ -17,6 +18,10 @@
 // *convention*, not a contract statement: the vendored document declares no
 // response headers at all, so that check is labelled as a convention in the
 // output rather than presented as contract-derived.
+//
+// Every failure carries its cause — status, header, field, envelope, empty, or
+// harness. A `harness` failure means the fixture/case side is wrong and must be
+// fixed before the failure list is quoted as a defect count.
 //
 // Usage:
 //
@@ -125,16 +130,25 @@ func seed(fixturesPath string) error {
 	if err := writeFixtures(fixturesPath, fx); err != nil {
 		return err
 	}
-	fmt.Printf("seeded fixtures: movie=%d show=%d season=%d episode=%d list=%d comment=%d user=%s\n",
-		fx.MovieID, fx.ShowID, fx.SeasonID, fx.EpisodeID, fx.ListID, fx.CommentID, fx.UserID)
+	fmt.Printf("seeded fixtures: movie=%d show=%d season=%d episode=%d list=%d smart-list=%d comment=%d user=%s target=%s client=%s\n",
+		fx.MovieID, fx.ShowID, fx.SeasonID, fx.EpisodeID, fx.ListID, fx.SmartListID, fx.CommentID,
+		fx.UserID, fx.TargetUserID, fx.AppClientID)
 	return nil
 }
+
+// violation is one failed assertion, classified by cause.
+type violation struct {
+	Kind string // status | header | field | envelope | empty | harness
+	Msg  string
+}
+
+func (v violation) String() string { return "[" + v.Kind + "] " + v.Msg }
 
 // result is one operation's outcome.
 type result struct {
 	Op     string
-	Status string // PASS | FAIL | NO-CASE | OUT-OF-SCOPE
-	Detail []string
+	Status string // PASS | FAIL | NO-CASE
+	Detail []violation
 }
 
 func conform(cfg config) error {
@@ -163,8 +177,15 @@ func conform(cfg config) error {
 	if err != nil {
 		return err
 	}
+	// A real device grant is process-local in the API, so it cannot be written
+	// by the seed process; create and authorize one through the public flow
+	// before any case runs.
+	if err := client.bootstrapOAuth(); err != nil {
+		return fmt.Errorf("oauth bootstrap: %w", err)
+	}
 
 	var results []result
+	var cases []Case
 	pass, fail, noCase := 0, 0, 0
 	var gradedKeys []string
 	for k := range sc.Graded {
@@ -175,12 +196,13 @@ func conform(cfg config) error {
 	for _, key := range gradedKeys {
 		row := sc.Graded[key]
 		op := findOp(allOps, key)
-		c := generateCase(doc, op, row, routes, fx)
+		c := generateCase(doc, op, row, routes, client.fx)
 		if c.NoCaseReason != "" {
 			noCase++
-			results = append(results, result{Op: key, Status: "NO-CASE", Detail: []string{c.NoCaseReason}})
+			results = append(results, result{Op: key, Status: "NO-CASE", Detail: []violation{{Kind: "harness", Msg: c.NoCaseReason}}})
 			continue
 		}
+		cases = append(cases, c)
 		detail := client.runCase(c)
 		if len(detail) == 0 {
 			pass++
@@ -205,22 +227,44 @@ func conform(cfg config) error {
 
 	// Request-side probes (issue #88): malformed vs wrong-shape vs flexible ids.
 	probeResults := client.runProbes()
+	// Response-side injection probes: rename a field in a real payload and
+	// delete one; both must fail validation. A gate that has never failed is
+	// not a gate.
+	injectionResults := client.runInjectionProbes(cases, results)
 
 	printTable(results)
-	printProbes(probeResults)
+	printProbes("request-side probes (issue #88)", probeResults)
+	printProbes("response-side injection probes (#102)", injectionResults)
 
-	fmt.Printf("\n%d of %d graded operations conformant (%d operations in the contract)\n", pass, len(gradedKeys), len(allOps))
-	fmt.Printf("graded operations: %d  (pass %d, fail %d, no case %d)\n", len(gradedKeys), pass, fail, noCase)
+	byCause := map[string]int{}
+	for _, r := range results {
+		if r.Status != "FAIL" {
+			continue
+		}
+		seen := map[string]bool{}
+		for _, d := range r.Detail {
+			if !seen[d.Kind] {
+				seen[d.Kind] = true
+				byCause[d.Kind]++
+			}
+		}
+	}
+	fmt.Printf("\n%d of %d graded operations conformant\n", pass, len(gradedKeys))
+	fmt.Printf("graded operations: %d  (conformant %d, failing %d, no case %d)\n", len(gradedKeys), pass, fail, noCase)
+	fmt.Printf("failures by cause: status=%d header=%d field=%d envelope=%d empty=%d harness=%d\n",
+		byCause["status"], byCause["header"], byCause["field"], byCause["envelope"], byCause["empty"], byCause["harness"])
 	fmt.Printf("not graded (out of scope): %d\n", outOfScope)
 	if failed := countFailed(probeResults); failed > 0 {
 		fmt.Printf("request-side probes failed: %d\n", failed)
 	}
-
+	if failed := countFailed(injectionResults); failed > 0 {
+		fmt.Printf("injection probes failed: %d\n", failed)
+	}
 	if n := reportDefects(results); n > 0 {
 		fmt.Printf("defects found: %d (listed above; these become follow-up issues, not drive-by fixes)\n", n)
 	}
 
-	hardFail := fail > 0 || countFailed(probeResults) > 0
+	hardFail := fail > 0 || countFailed(probeResults) > 0 || countFailed(injectionResults) > 0
 	if cfg.strict && noCase > 0 {
 		hardFail = true
 	}
@@ -245,7 +289,7 @@ func printTable(results []result) {
 	for _, r := range results {
 		detail := ""
 		if len(r.Detail) > 0 {
-			detail = r.Detail[0]
+			detail = r.Detail[0].String()
 			if len(r.Detail) > 1 {
 				detail = fmt.Sprintf("%s (+%d more)", detail, len(r.Detail)-1)
 			}
@@ -254,12 +298,12 @@ func printTable(results []result) {
 	}
 }
 
-func printProbes(results []result) {
-	fmt.Printf("\nrequest-side probes (issue #88):\n")
+func printProbes(title string, results []result) {
+	fmt.Printf("\n%s:\n", title)
 	for _, r := range results {
 		detail := ""
 		if len(r.Detail) > 0 {
-			detail = r.Detail[0]
+			detail = r.Detail[0].String()
 		}
 		fmt.Printf("  %-40s %-6s %s\n", truncate(r.Op, 40), r.Status, detail)
 	}
@@ -277,14 +321,14 @@ func countFailed(results []result) int {
 
 func reportDefects(results []result) int {
 	n := 0
-	fmt.Printf("\n--- defects (operation: field/value that failed) ---\n")
+	fmt.Printf("\n--- defects (operation: cause field/value that failed) ---\n")
 	for _, r := range results {
 		if r.Status != "FAIL" {
 			continue
 		}
 		n++
 		for _, d := range r.Detail {
-			fmt.Printf("  %s: %s\n", r.Op, d)
+			fmt.Printf("  %s: %s\n", r.Op, d.String())
 		}
 	}
 	return n
@@ -361,8 +405,8 @@ func (c *client) login() (string, error) {
 	return out.Session.Token, nil
 }
 
-// runCase sends one case and returns the violations it found (empty = PASS).
-func (c *client) runCase(cs Case) []string {
+// sendCase performs one case and returns status, headers and raw body.
+func (c *client) sendCase(cs Case) (int, http.Header, []byte, error) {
 	u := c.base + cs.Path
 	if len(cs.Query) > 0 {
 		u += "?" + cs.Query.Encode()
@@ -373,7 +417,7 @@ func (c *client) runCase(cs Case) []string {
 	}
 	req, err := http.NewRequest(cs.Method, u, body)
 	if err != nil {
-		return []string{"build request: " + err.Error()}
+		return 0, nil, nil, err
 	}
 	for k, v := range c.headers {
 		req.Header.Set(k, v)
@@ -383,13 +427,22 @@ func (c *client) runCase(cs Case) []string {
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return []string{"request failed: " + err.Error()}
+		return 0, nil, nil, err
 	}
 	defer func() { _ = resp.Body.Close() }()
 	raw, _ := io.ReadAll(resp.Body)
+	return resp.StatusCode, resp.Header, raw, nil
+}
 
-	var problems []string
-	code := fmt.Sprintf("%d", resp.StatusCode)
+// runCase sends one case and returns the violations it found (empty = PASS).
+func (c *client) runCase(cs Case) []violation {
+	status, hdr, raw, err := c.sendCase(cs)
+	if err != nil {
+		return []violation{{Kind: "harness", Msg: "request failed: " + err.Error()}}
+	}
+
+	var problems []violation
+	code := fmt.Sprintf("%d", status)
 	declared := false
 	for _, ok := range cs.SuccessCodes {
 		if code == ok {
@@ -398,14 +451,16 @@ func (c *client) runCase(cs Case) []string {
 		}
 	}
 	if !declared {
-		return []string{fmt.Sprintf("status %d is not a contract 2xx %v: %s", resp.StatusCode, cs.SuccessCodes, truncate(strings.TrimSpace(string(raw)), 200))}
+		return []violation{{Kind: "status", Msg: fmt.Sprintf("status %d is not a contract 2xx %v: %s", status, cs.SuccessCodes, truncate(strings.TrimSpace(string(raw)), 200))}}
 	}
 
-	// The contract's pagination headers, where the response is a list.
-	if strings.HasPrefix(code, "2") && looksLikePagination(cs) {
+	// The contract's pagination headers, where the response is a list. This is
+	// a Trakt convention, not a contract statement: the vendored document
+	// declares no response headers at all.
+	if looksLikePagination(cs) {
 		for _, h := range []string{"X-Pagination-Page", "X-Pagination-Limit", "X-Pagination-Total-Pages", "X-Pagination-Total-Items", "X-Pagination-Items-Count"} {
-			if resp.Header.Get(h) == "" {
-				problems = append(problems, "missing header "+h)
+			if hdr.Get(h) == "" {
+				problems = append(problems, violation{Kind: "header", Msg: "missing header " + h + " (convention)"})
 			}
 		}
 	}
@@ -415,18 +470,52 @@ func (c *client) runCase(cs Case) []string {
 	}
 	var value any
 	if err := json.Unmarshal(raw, &value); err != nil {
-		return append(problems, "response is not JSON: "+err.Error())
+		return append(problems, violation{Kind: "envelope", Msg: "response is not JSON: " + err.Error()})
 	}
-	if schema := cs.Schemas[code]; schema != nil {
-		problems = append(problems, c.doc.Validate(schema, value)...)
+	schema := cs.Schemas[code]
+	if schema != nil {
+		for _, msg := range c.doc.Validate(schema, value) {
+			problems = append(problems, violation{Kind: classify(msg), Msg: msg})
+		}
+	}
+	// An empty array cannot prove a field set. Report it instead of letting the
+	// case pass because there was nothing to validate.
+	if arr, ok := value.([]any); ok && len(arr) == 0 && schemaIsArray(schema) {
+		problems = append(problems, violation{Kind: "empty", Msg: "empty array: list assertion had no fixture row to validate"})
 	}
 	// Errors must still be a JSON object envelope.
-	if isErrorCode(resp.StatusCode) {
+	if isErrorCode(status) {
 		if _, ok := value.(map[string]any); !ok {
-			problems = append(problems, "error body is not a JSON object envelope")
+			problems = append(problems, violation{Kind: "envelope", Msg: "error body is not a JSON object envelope"})
 		}
 	}
 	return problems
+}
+
+// classify names the cause of one validation message.
+func classify(msg string) string {
+	switch {
+	case strings.HasPrefix(msg, "missing header "):
+		return "header"
+	case strings.HasPrefix(msg, "status "):
+		return "status"
+	case strings.Contains(msg, "response is not JSON"),
+		strings.Contains(msg, "not a JSON object envelope"):
+		return "envelope"
+	case strings.HasPrefix(msg, "empty array"):
+		return "empty"
+	case strings.HasPrefix(msg, "$"):
+		return "field"
+	default:
+		return "field"
+	}
+}
+
+func schemaIsArray(schema map[string]any) bool {
+	if schema == nil {
+		return false
+	}
+	return contract.TypeName(schema) == "array"
 }
 
 func isErrorCode(code int) bool {
@@ -448,6 +537,84 @@ func looksLikePagination(cs Case) bool {
 	return false
 }
 
+// --- injection probes -------------------------------------------------------
+
+// runInjectionProbes proves the response validator still fails when a real
+// payload lies: it takes a passing case's live body, renames one required field
+// and separately deletes one, and asserts Validate reports a violation for
+// each. If either mutation passes, the gate cannot detect that class of defect.
+func (c *client) runInjectionProbes(cases []Case, results []result) []result {
+	status := map[string]string{}
+	for _, r := range results {
+		status[r.Op] = r.Status
+	}
+	var out []result
+	for _, cs := range cases {
+		if cs.Method != "GET" || status[cs.Op] != "PASS" {
+			continue
+		}
+		code, _, raw, err := c.sendCase(cs)
+		if err != nil || len(raw) == 0 {
+			continue
+		}
+		schema := cs.Schemas[fmt.Sprintf("%d", code)]
+		if schema == nil {
+			continue
+		}
+		var value any
+		if err := json.Unmarshal(raw, &value); err != nil {
+			continue
+		}
+		obj, ok := value.(map[string]any)
+		if !ok || len(c.doc.Validate(schema, obj)) > 0 {
+			continue
+		}
+		field := ""
+		for _, name := range c.doc.RequiredNames(schema) {
+			if _, ok := obj[name]; ok {
+				field = name
+				break
+			}
+		}
+		if field == "" {
+			continue
+		}
+
+		renamed := cloneMap(obj)
+		renamed[field+"_renamed"] = renamed[field]
+		delete(renamed, field)
+		out = append(out, probeVerdict("rename "+cs.Op+" required field "+field,
+			len(c.doc.Validate(schema, renamed)) > 0))
+
+		deleted := cloneMap(obj)
+		delete(deleted, field)
+		out = append(out, probeVerdict("delete "+cs.Op+" required field "+field,
+			len(c.doc.Validate(schema, deleted)) > 0))
+		break
+	}
+	if len(out) == 0 {
+		out = append(out, result{Op: "injection probes", Status: "FAIL",
+			Detail: []violation{{Kind: "harness", Msg: "no passing object-shaped case was available to mutate"}}})
+	}
+	return out
+}
+
+func probeVerdict(name string, caught bool) result {
+	if caught {
+		return result{Op: name, Status: "PASS"}
+	}
+	return result{Op: name, Status: "FAIL",
+		Detail: []violation{{Kind: "harness", Msg: "mutation was not detected — the validator cannot fail this way"}}}
+}
+
+func cloneMap(m map[string]any) map[string]any {
+	out := make(map[string]any, len(m))
+	for k, v := range m {
+		out[k] = v
+	}
+	return out
+}
+
 // runProbes exercises the request-side behaviour issue #88 fixed: a malformed
 // body keeps the syntax message, a valid-JSON-wrong-shape body names the field,
 // and a numeric id sent as a string is accepted.
@@ -456,17 +623,17 @@ func (c *client) runProbes() []result {
 	probes := []struct {
 		name string
 		body string
-		want func(status int, msg string) []string
+		want func(status int, msg string) []violation
 	}{
 		{
 			name: "malformed JSON -> syntax message",
 			body: `{"movies":[`,
-			want: func(status int, msg string) []string {
+			want: func(status int, msg string) []violation {
 				if status != 400 {
-					return []string{fmt.Sprintf("status %d, want 400", status)}
+					return []violation{{Kind: "status", Msg: fmt.Sprintf("status %d, want 400", status)}}
 				}
 				if msg != "invalid JSON body" {
-					return []string{fmt.Sprintf("message %q, want the syntax message", msg)}
+					return []violation{{Kind: "field", Msg: fmt.Sprintf("message %q, want the syntax message", msg)}}
 				}
 				return nil
 			},
@@ -474,12 +641,12 @@ func (c *client) runProbes() []result {
 		{
 			name: "wrong-shape JSON -> field named",
 			body: `{"movies":{"ids":{"tmdb":550}}}`,
-			want: func(status int, msg string) []string {
+			want: func(status int, msg string) []violation {
 				if status != 400 {
-					return []string{fmt.Sprintf("status %d, want 400", status)}
+					return []violation{{Kind: "status", Msg: fmt.Sprintf("status %d, want 400", status)}}
 				}
 				if msg == "invalid JSON body" {
-					return []string{"a shape failure reported a syntax failure"}
+					return []violation{{Kind: "field", Msg: "a shape failure reported a syntax failure"}}
 				}
 				return nil
 			},
@@ -487,9 +654,9 @@ func (c *client) runProbes() []result {
 		{
 			name: "numeric id as string -> accepted",
 			body: fmt.Sprintf(`{"movies":[{"ids":{"tmdb":"%d"}}]}`, c.fx.MovieTMDB),
-			want: func(status int, msg string) []string {
+			want: func(status int, msg string) []violation {
 				if status == 400 && msg == "invalid JSON body" {
-					return []string{"a numeric string id was rejected as malformed JSON"}
+					return []violation{{Kind: "field", Msg: "a numeric string id was rejected as malformed JSON"}}
 				}
 				return nil
 			},
