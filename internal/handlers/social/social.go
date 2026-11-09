@@ -45,9 +45,15 @@ func RegisterRoutes(api fiber.Router) {
 	api.Delete("/users/:id/follow", auth.AuthRequired(), handleUnfollow)
 
 	// /v1/users/:id/followers, /following, /friends (public reads)
-	api.Get("/users/:id/followers", handleListFollowers)
-	api.Get("/users/:id/following", handleListFollowing)
-	api.Get("/users/:id/friends", handleListFriends)
+	// The three :id reads are "Auth: optional" in the contract: they resolve
+	// the "me" alias, which needs whoever is asking recorded in the request —
+	// auth.OptionalAuth is what records it. Without it the routes fall back to
+	// whatever middleware ran earlier (the anti-abuse limiter calls
+	// auth.AttemptAuth, but the limiter can be switched off), and
+	// /v1/users/me/followers has no caller to resolve "me" to.
+	api.Get("/users/:id/followers", auth.OptionalAuth(), handleListFollowers)
+	api.Get("/users/:id/following", auth.OptionalAuth(), handleListFollowing)
+	api.Get("/users/:id/friends", auth.OptionalAuth(), handleListFriends)
 
 	// /v1/users/me/follow_requests
 	api.Get("/users/me/follow_requests", auth.AuthRequired(), handleListFollowRequests)
@@ -108,7 +114,11 @@ func handleFollow(c *fiber.Ctx) error {
 	if !ok || followerID == "" {
 		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
 	}
-	targetID := c.Params("id")
+	// ":id" accepts "me" like every other /v1/users/{id}/... route. Resolved
+	// before the self-check below, so /v1/users/me/follow answers 400
+	// invalid_request instead of 404 "user not found" — the account exists; the
+	// request is simply pointed at its own owner.
+	targetID := auth.ResolveTargetID(c, "id")
 
 	if targetID == "" || targetID == followerID {
 		return response.BadRequest(c, "invalid target user id")
@@ -201,9 +211,12 @@ func handleUnfollow(c *fiber.Ctx) error {
 	if !ok || followerID == "" {
 		return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
 	}
-	targetID := c.Params("id")
+	targetID := auth.ResolveTargetID(c, "id")
 
-	if targetID == "" {
+	if targetID == "" || targetID == followerID {
+		// Includes the "me" alias resolving to the caller: you cannot unfollow
+		// yourself, and answering 400 says so instead of the 404 "not following
+		// this user" that a raw "me" lookup used to produce.
 		return response.BadRequest(c, "invalid target user id")
 	}
 
@@ -247,20 +260,36 @@ func handleUnfollow(c *fiber.Ctx) error {
 // ---------------------------------------------------------------------------
 
 // handleListFollowers lists followers of a user.
+//
+// The ":id" path parameter accepts the "me" alias, like every other
+// /v1/users/{id}/... route. Reading the raw parameter here (without
+// ResolveTargetID) made /v1/users/me/followers look up a user literally named
+// "me" and answer 404 "user not found" to a signed-in caller asking for their
+// own followers.
 func handleListFollowers(c *fiber.Ctx) error {
-	targetID := c.Params("id")
+	targetID := auth.ResolveTargetID(c, "id")
+	if targetID == "" {
+		return unidentifiedTarget(c)
+	}
 	return listFollowRelations(c, targetID, "followers")
 }
 
-// handleListFollowing lists users a user is following.
+// handleListFollowing lists users a user is following. ":id" accepts "me".
 func handleListFollowing(c *fiber.Ctx) error {
-	targetID := c.Params("id")
+	targetID := auth.ResolveTargetID(c, "id")
+	if targetID == "" {
+		return unidentifiedTarget(c)
+	}
 	return listFollowRelations(c, targetID, "following")
 }
 
-// handleListFriends lists mutual follows (friends), paginated per §7.
+// handleListFriends lists mutual follows (friends), paginated per §7. ":id"
+// accepts "me".
 func handleListFriends(c *fiber.Ctx) error {
-	targetID := c.Params("id")
+	targetID := auth.ResolveTargetID(c, "id")
+	if targetID == "" {
+		return unidentifiedTarget(c)
+	}
 
 	db, err := database.GetDB()
 	if err != nil {
@@ -298,6 +327,15 @@ func handleListFriends(c *fiber.Ctx) error {
 	}
 	response.SetPaginationHeaders(c, page, limit, total, len(users))
 	return c.JSON(users)
+}
+
+// unidentifiedTarget answers a "me" path parameter when nobody is signed in.
+// auth.ResolveTargetID returns "" only for that case (any other value comes
+// back verbatim, and a ":id" segment is always present), and the caller's own
+// id is what "me" means — so the honest answer is 401, not the 404 that
+// "account does not exist" would give a signed-out client.
+func unidentifiedTarget(c *fiber.Ctx) error {
+	return response.WriteError(c, fiber.StatusUnauthorized, "unauthorized", "authentication required")
 }
 
 // listFollowRelations returns followers or following for a user, paginated

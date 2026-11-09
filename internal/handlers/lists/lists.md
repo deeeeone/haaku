@@ -7,7 +7,10 @@ Implements lists, list items, likes, comments, popular/trending, and smart lists
 **List CRUD**
 - `GET /users/{id}/lists` — user's lists, privacy-filtered (public+link_only for non-owners) and
   profile-gated: `auth.AuthRequired()` then `auth.PrivacyFilter("id")`, so a private profile's
-  lists are 403 to a stranger (404 on a block in either direction / unknown user).
+  lists are 403 to a stranger (404 on a block in either direction / unknown user). `{id}` accepts
+  the `me` alias (`auth.ResolveTargetID`): `/users/me/lists` is the caller's own lists *including
+  their private ones*, which is what the owner branch means — read raw, "me" was treated as a
+  stranger's id and only the public ones came back.
 - `POST /users/me/lists` — create (slug generated from name + user-id prefix, collision → timestamp suffix).
 - `GET /lists/{id}` — by numeric ID **or slug**; 403 for private lists.
 - `PUT /lists/{id}` / `DELETE /lists/{id}` — owner-only; advisory-locked cache-tx writes.

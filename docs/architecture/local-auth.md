@@ -184,6 +184,25 @@ Admin means `users.is_admin` or the `ADMIN_USER_IDS` allowlist — a moderator i
 not an admin (`auth.RequireAdmin`, 403 otherwise). Every response uses the
 standard `{"error":{"code","message"}}` envelope.
 
+## The user surface in local mode
+
+Everything under `/v1/users/...` is mode-agnostic: it reads identity from
+`c.Locals("user_id")`, which a local session fills exactly like a Clerk token,
+and every `/v1/users/{id}/...` route accepts the `me` alias
+(`auth.ResolveTargetID`). Two of those surfaces are shaped by Clerk, and local
+mode has to answer both honestly:
+
+- **Account deletion (`DELETE /v1/users/me`)** — clerk mode deletes the Clerk
+  account first, because Clerk owns identity there. Local mode calls no
+  third-party service (above): the account this server issued is deleted, and
+  its credential, sessions and one-time tokens go with the wipe
+  (`internal/database/user_delete.go`).
+- **API keys (`/v1/users/me/api_keys`)** — still stored in Clerk
+  `unsafe_metadata` and still resolved by scanning Clerk users, so a local
+  instance cannot mint one. Tracked separately; a self-hosted instance needs a
+  local store before its clients (Jellyfin, the Trakt-compatible path) can
+  authenticate with `tk_` keys.
+
 ## Contract for the frontend
 
 - **Transport is a bearer token, not a cookie.** Store the `session.token` from
