@@ -15,7 +15,7 @@ func registerStub70(api fiber.Router) {
 	// POST /search — blocked-data: Persisting a recent search needs a recent-searches table, which does not exist (search is stateless today).
 	// Upstream: no exact path match — see docs/parity/reconciliation.md
 	// Tracked in #70: https://github.com/haaku-tv/haaku/issues/70
-	api.Get("/v1/search", stubHandler(70, "POST /search", "Persisting a recent search needs a recent-searches table, which does not exist (search is stateless today)."))
+	api.Post("/v1/search", stubHandler(70, "POST /search", "Persisting a recent search needs a recent-searches table, which does not exist (search is stateless today)."))
 	// GET /search/recent — blocked-data: No recent-searches store exists to read back.
 	// Upstream: no exact path match — see docs/parity/reconciliation.md
 	// Tracked in #70: https://github.com/haaku-tv/haaku/issues/70

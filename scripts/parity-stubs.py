@@ -135,6 +135,16 @@ def go_str(s):
     return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
+# The stub must be registered with the row's own HTTP method. Registering every
+# stub as GET put a GET on /v1/search for the POST /search row, shadowing the real
+# route — caught by TestNoStaticRouteIsShadowed.
+VERBS = {"get": "Get", "post": "Post", "put": "Put", "patch": "Patch", "delete": "Delete"}
+
+
+def verb(trakt):
+    return VERBS[trakt.split(" ", 1)[0].lower()]
+
+
 def stub_name(issue):
     return f"Stub{issue}" if issue else "StubTracker"
 
@@ -162,7 +172,7 @@ for issue, rows in sorted(by_issue.items(), key=lambda kv: (kv[0] is None, kv[0]
         L += [f"\t// {trakt} — {status}: {reason}",
               f"\t// {upstream_note(trakt)}",
               f"\t// Tracked in #{link(issue)}: https://github.com/haaku-tv/haaku/issues/{link(issue)}",
-              f"\tapi.Get({go_str(fiber_path(p))}, stubHandler({link(issue)}, {go_str(trakt)}, {go_str(reason)}))"]
+              f"\tapi.{verb(trakt)}({go_str(fiber_path(p))}, stubHandler({link(issue)}, {go_str(trakt)}, {go_str(reason)}))"]
     L += ["}", "",
           f"// defs{stub_name(issue)} is the registry entry for each stub above. The 501 in",
           "// StatusCodes is what makes the route grade as blocked-* in the parity manifest and",

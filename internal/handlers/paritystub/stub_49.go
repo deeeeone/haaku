@@ -23,11 +23,11 @@ func registerStub49(api fiber.Router) {
 	// DELETE /recommendations/movies/{id} — blocked-engine: recommendations engine (issue #5)
 	// Upstream deletehide; path: id
 	// Tracked in #49: https://github.com/haaku-tv/haaku/issues/49
-	api.Get("/v1/recommendations/movies/:id", stubHandler(49, "DELETE /recommendations/movies/{id}", "recommendations engine (issue #5)"))
+	api.Delete("/v1/recommendations/movies/:id", stubHandler(49, "DELETE /recommendations/movies/{id}", "recommendations engine (issue #5)"))
 	// DELETE /recommendations/shows/{id} — blocked-engine: recommendations engine (issue #5)
 	// Upstream deletehide; path: id
 	// Tracked in #49: https://github.com/haaku-tv/haaku/issues/49
-	api.Get("/v1/recommendations/shows/:id", stubHandler(49, "DELETE /recommendations/shows/{id}", "recommendations engine (issue #5)"))
+	api.Delete("/v1/recommendations/shows/:id", stubHandler(49, "DELETE /recommendations/shows/{id}", "recommendations engine (issue #5)"))
 }
 
 // defsStub49 is the registry entry for each stub above. The 501 in

@@ -23,7 +23,7 @@ func registerStubTracker(api fiber.Router) {
 	// DELETE /shows/{id}/progress/watched/reset — blocked-engine: stats/rankings engine (issue #5)
 	// Upstream deleteundoReset; path: id
 	// Tracked in #4: https://github.com/haaku-tv/haaku/issues/4
-	api.Get("/v1/shows/:id/progress/watched/reset", stubHandler(4, "DELETE /shows/{id}/progress/watched/reset", "stats/rankings engine (issue #5)"))
+	api.Delete("/v1/shows/:id/progress/watched/reset", stubHandler(4, "DELETE /shows/{id}/progress/watched/reset", "stats/rankings engine (issue #5)"))
 	// GET /shows/{id}/seasons/{season}/episodes/{episode}/people — blocked-data: Episode credits are not ingested (credits table is written for movie/show only).
 	// Upstream getpeople; 200: {cast,crew,guest_stars}; path: id,season,episode; +1 query
 	// Tracked in #4: https://github.com/haaku-tv/haaku/issues/4
