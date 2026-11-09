@@ -12,10 +12,10 @@ import (
 // handleMediaResolve handles GET /v1/media/resolve.
 //
 // This is the ingest-on-demand door, and it is what makes the search page
-// usable end to end: /v1/search answers with live TVDB results that are NOT in
+// usable end to end: /v1/search answers with live TMDB results that are NOT in
 // the local catalogue yet, and every other endpoint addresses media by its
 // local row id (watchlist, watching, ratings, comments). Resolving fetches the
-// TVDB record, merges the TMDB supplement, writes the movie/show with its
+// TMDB record, merges the TVDB supplement, writes the movie/show with its
 // seasons and episodes, and returns the canonical row in the same shape
 // /v1/movies/{id} returns — so the client just navigates.
 //
@@ -28,11 +28,15 @@ func handleMediaResolve(c *fiber.Ctx) error {
 		return badRequest(c, "type must be one of: movie, show")
 	}
 
-	idType := strings.ToLower(strings.TrimSpace(c.Query("id_type", "tvdb")))
+	// The default follows the provider that is primary: a live search hit
+	// carries a tmdb id, so that is what a client that does not say otherwise
+	// is resolving. tvdb and imdb stay accepted — every sync endpoint still
+	// speaks them, and a TVDB-keyed media server reports its ids to us.
+	idType := strings.ToLower(strings.TrimSpace(c.Query("id_type", "tmdb")))
 	switch idType {
-	case "tvdb", "tmdb", "imdb":
+	case "tmdb", "tvdb", "imdb":
 	default:
-		return badRequest(c, "id_type must be one of: tvdb, tmdb, imdb")
+		return badRequest(c, "id_type must be one of: tmdb, tvdb, imdb")
 	}
 
 	externalID := strings.TrimSpace(c.Query("id"))

@@ -62,7 +62,7 @@ func newFakeTMDB(t *testing.T) *tmdb.Client {
 // (/shows/{id}/seasons/{n}/episodes) returned nothing for a show the worker had
 // just imported.
 func TestBackfillAttachesEpisodesToTheirSeason(t *testing.T) {
-	db := setupTVDBTestDB(t)
+	db := setupProviderTestDB(t)
 	client := newFakeTMDB(t)
 
 	// Seed a decoy season FIRST so the seasons sequence is ahead of the shows
@@ -148,7 +148,7 @@ func TestBackfillUsesV3Paths(t *testing.T) {
 	}
 	client.SetBaseURL(srv.URL)
 
-	db := setupTVDBTestDB(t)
+	db := setupProviderTestDB(t)
 	if err := metadata.Backfill(context.Background(), client, db, 1); err != nil {
 		t.Fatalf("Backfill: %v", err)
 	}

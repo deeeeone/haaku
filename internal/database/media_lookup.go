@@ -53,8 +53,8 @@ func (r IDRef) Empty() bool { return r.TMDB <= 0 && r.TVDB <= 0 && r.IMDB == "" 
 // carry their ids on the row and have NO external_ids entry, which is exactly
 // the case a watchlist add used to fail on.
 //
-// Ids are tried in the order tvdb, tmdb, imdb: the TVDB id is haaku's primary
-// identity, so when a client sends several and they disagree, the TVDB one
+// Ids are tried in the order tmdb, tvdb, imdb: the TMDB id is haaku's primary
+// identity, so when a client sends several and they disagree, the TMDB one
 // decides. Unresolvable refs are simply absent from the returned map; callers
 // treat an absent key as "not found".
 func ResolveIDRefs(db *gorm.DB, refs []IDRef) (map[IDRef]MediaRef, error) {
@@ -84,19 +84,37 @@ func ResolveIDRefs(db *gorm.DB, refs []IDRef) (map[IDRef]MediaRef, error) {
 	return result, nil
 }
 
-// LookupMediaByTVDBIDs returns the local media ids already held for a set of
-// tvdb ids of ONE media type, keyed by tvdb id. It is the membership check a
+// LookupMediaByTMDBIDs returns the local media ids already held for a set of
+// tmdb ids of ONE media type, keyed by tmdb id. It is the membership check a
 // live provider search runs so a result can say "already in your library"
 // without a query per hit.
+func LookupMediaByTMDBIDs(db *gorm.DB, mediaType string, tmdbIDs []int) (map[int]int64, error) {
+	return lookupMediaByColumn(db, mediaType, true, tmdbIDs)
+}
+
+// LookupMediaByTVDBIDs returns the local media ids already held for a set of
+// tvdb ids of ONE media type, keyed by tvdb id.
 func LookupMediaByTVDBIDs(db *gorm.DB, mediaType string, tvdbIDs []int) (map[int]int64, error) {
-	found := make(map[int]int64, len(tvdbIDs))
-	if db == nil || len(tvdbIDs) == 0 {
+	return lookupMediaByColumn(db, mediaType, false, tvdbIDs)
+}
+
+// lookupMediaByColumn is the shared body of the two membership checks: the ids
+// on the media rows are the fast path, and the external_ids table is the
+// fallback for rows ingested before that column existed.
+func lookupMediaByColumn(db *gorm.DB, mediaType string, byTmdb bool, externalIDs []int) (map[int]int64, error) {
+	found := make(map[int]int64, len(externalIDs))
+	if db == nil || len(externalIDs) == 0 {
 		return found, nil
 	}
 
-	ids := make([]int, 0, len(tvdbIDs))
-	keys := make([]string, 0, len(tvdbIDs))
-	for _, id := range tvdbIDs {
+	column, source := "tvdb_id", "tvdb"
+	if byTmdb {
+		column, source = "tmdb_id", "tmdb"
+	}
+
+	ids := make([]int, 0, len(externalIDs))
+	keys := make([]string, 0, len(externalIDs))
+	for _, id := range externalIDs {
 		if id > 0 {
 			ids = append(ids, id)
 			keys = append(keys, strconv.Itoa(id))
@@ -118,22 +136,28 @@ func LookupMediaByTVDBIDs(db *gorm.DB, mediaType string, tvdbIDs []int) (map[int
 
 	var rows []struct {
 		ID     int64
+		TmdbID int
 		TvdbID int
 	}
-	if err := db.Model(table).Select("id", "tvdb_id").Where("tvdb_id IN ?", ids).Scan(&rows).Error; err != nil {
-		return nil, fmt.Errorf("lookup %s by tvdb id: %w", mediaType, err)
+	if err := db.Model(table).Select("id", "tmdb_id", "tvdb_id").
+		Where(column+" IN ?", ids).Scan(&rows).Error; err != nil {
+		return nil, fmt.Errorf("lookup %s by %s: %w", mediaType, column, err)
 	}
 	for _, row := range rows {
-		found[row.TvdbID] = row.ID
+		key := row.TvdbID
+		if byTmdb {
+			key = row.TmdbID
+		}
+		found[key] = row.ID
 	}
 
-	// Titles ingested before the tvdb_id column existed are only findable
-	// through their external_ids row.
+	// Titles ingested before the id column existed are only findable through
+	// their external_ids row.
 	var exts []ExternalID
 	if err := db.Model(&ExternalID{}).
-		Where("media_type = ? AND source = ? AND external_id IN ?", mediaType, "tvdb", keys).
+		Where("media_type = ? AND source = ? AND external_id IN ?", mediaType, source, keys).
 		Find(&exts).Error; err != nil {
-		return nil, fmt.Errorf("lookup %s external ids by tvdb id: %w", mediaType, err)
+		return nil, fmt.Errorf("lookup %s external ids by %s: %w", mediaType, source, err)
 	}
 	for _, ext := range exts {
 		id, err := strconv.Atoi(ext.ExternalID)
@@ -286,15 +310,15 @@ func appendRef(refs []MediaRef, media MediaRef) []MediaRef {
 	return append(refs, media)
 }
 
-// lookup resolves one ref, preferring the TVDB id, then TMDB, then IMDb.
+// lookup resolves one ref, preferring the TMDB id, then TVDB, then IMDb.
 func (i *idIndex) lookup(ref IDRef) (MediaRef, bool) {
-	if ref.TVDB > 0 {
-		if media, ok := pickRef(i.tvdb[ref.TVDB], ref.MediaType); ok {
+	if ref.TMDB > 0 {
+		if media, ok := pickRef(i.tmdb[ref.TMDB], ref.MediaType); ok {
 			return media, true
 		}
 	}
-	if ref.TMDB > 0 {
-		if media, ok := pickRef(i.tmdb[ref.TMDB], ref.MediaType); ok {
+	if ref.TVDB > 0 {
+		if media, ok := pickRef(i.tvdb[ref.TVDB], ref.MediaType); ok {
 			return media, true
 		}
 	}

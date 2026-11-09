@@ -58,11 +58,16 @@ type Config struct {
 
 	// External services
 	//
-	// TMDB is the one credential an instance must hold: it supplies the
-	// catalogue's identity links, ratings, popularity, artwork and the
-	// backfill. TVDB is an optional enrichment source — with no key the
-	// server still starts, and the TVDB-backed search/resolve paths degrade
-	// to catalogue-only results instead of failing the process.
+	// TMDB is the PRIMARY metadata provider: it supplies the catalogue's
+	// identity (tmdb_id), titles, overviews, genres, artwork, seasons,
+	// episodes and people, the live search results, and the backfill. It is
+	// required — without the token there is nothing to ingest.
+	//
+	// TVDB is a SUPPLEMENTARY source: it supplies the tvdb id link every
+	// TVDB-keyed media server speaks, plus certification, trailer, slug and
+	// artwork fallbacks for the titles TMDB leaves blank. It is optional —
+	// with no key the server still starts, and the supplement is simply
+	// absent.
 	TVDBAPIKey string // TheTVDB v4 API key (thetvdb.com → dashboard), optional
 	TVDBPIN    string // optional subscriber PIN, for projects that require one
 	// TMDBAPIToken is a TMDB v4 read-access token; sent as Authorization
@@ -166,10 +171,10 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("TMDB_API_KEY environment variable is required (TMDB v4 read token)")
 	}
 
-	// TVDB is optional. Without a key the TVDB-backed paths (live search and
-	// resolve) report the provider as unavailable and the catalogue-only
-	// answers still work, so a missing key is a degradation, not a boot
-	// failure.
+	// TVDB is optional. Without a key the tvdb id link and the supplement's
+	// fallbacks (certification, trailer, slug, artwork) are absent and every
+	// resolve still succeeds on TMDB alone, so a missing key is a degradation,
+	// not a boot failure.
 
 	// At-rest encryption root (issue #16 §2). The server must not run without a
 	// usable key: stored secrets would be unreadable, and a short key would be

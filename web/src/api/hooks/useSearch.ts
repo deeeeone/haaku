@@ -2,7 +2,7 @@
  * Search hooks — powered by TanStack Query
  *
  * Search answers from two places: the local catalogue and, for anything it does
- * not hold, TVDB's live name search. Both are rendered into the same shape; the
+ * not hold, TMDB's live search. Both are rendered into the same shape; the
  * difference is `source`/`in_catalog`, and a live hit has to be resolved
  * through /v1/media/resolve before it can be navigated to or watchlisted.
  */
@@ -89,7 +89,7 @@ export function normalizeSearchResult(result: SearchResult): SearchResult {
 // ─── Hooks ─────────────────────────────────────────────────────────────
 
 /**
- * Full-text search with filters: catalogue first, live TVDB results to fill.
+ * Full-text search with filters: catalogue first, live TMDB results to fill.
  * Debounced at the call site (useSearchBar handles 300ms debounce).
  */
 export function useSearch(params: SearchParams | null) {
@@ -163,16 +163,16 @@ export function useLookup(idType: string, id: string) {
 
 export interface ResolveParams {
   type: 'movie' | 'show'
-  /** The external id the search result carried (TVDB by default). */
+  /** The external id the search result carried (TMDB by default). */
   id: string
-  idType?: 'tvdb' | 'tmdb' | 'imdb'
+  idType?: 'tmdb' | 'tvdb' | 'imdb'
 }
 
 /**
  * useResolveMedia turns a live search hit into a canonical local record.
  *
  * Every other endpoint — watchlisting, watching, rating — addresses media by
- * its local row, and a live TVDB result has no row yet. This ingests it (the
+ * its local row, and a live TMDB result has no row yet. This ingests it (the
  * server call is idempotent, so calling it again for a title already resolved
  * costs nothing but a lookup) and returns the media in the same shape the
  * media endpoints do, so the caller can navigate straight there.
@@ -191,7 +191,7 @@ export function useResolveMedia() {
     mutationFn: async ({
       type,
       id,
-      idType = 'tvdb',
+      idType = 'tmdb',
     }: ResolveParams): Promise<ResolvedMedia> => {
       if (!apiClient) throw new Error('Not authenticated')
       const res = await apiClient.GET('/v1/media/resolve', {

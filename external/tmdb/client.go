@@ -2,6 +2,7 @@ package tmdb
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +11,15 @@ import (
 	"strings"
 	"time"
 )
+
+// ErrNotFound is what a 404 from TMDB wraps. TMDB answers 404 both for a record
+// that does not exist and for a route the tree does not carry, so callers that
+// need to tell "no such title" (a 404 envelope) apart from "could not be asked"
+// (a 502) test this rather than reading the message.
+var ErrNotFound = errors.New("tmdb: not found")
+
+// IsNotFound reports whether err is TMDB's own "no such record".
+func IsNotFound(err error) bool { return errors.Is(err, ErrNotFound) }
 
 // v3BaseURL is the TMDB API root this client addresses. Everything in this
 // package — details, search, changes, popular/trending, credits, configuration
@@ -89,6 +99,10 @@ func (c *Client) do(method, path string, params url.Values) (*http.Response, err
 		_ = resp.Body.Close()
 		return nil, fmt.Errorf("tmdb rate limited (429) on %s", path)
 	}
+	if resp.StatusCode == http.StatusNotFound {
+		_ = resp.Body.Close()
+		return nil, fmt.Errorf("%w: %s", ErrNotFound, path)
+	}
 	if resp.StatusCode >= 400 {
 		body, _ := io.ReadAll(resp.Body)
 		_ = resp.Body.Close()
@@ -109,7 +123,11 @@ func decode[T any](resp *http.Response) (*T, error) {
 // --- API methods ---
 
 func (c *Client) GetMovie(id int) (*Movie, error) {
-	resp, err := c.do("GET", fmt.Sprintf("/movie/%d", id), nil)
+	// The appended sub-resources are what make TMDB a complete PRIMARY record
+	// rather than a name-and-poster lookup: external ids (the IMDb and, for
+	// shows, TVDB links), release dates (the certification) and videos (the
+	// trailer). One call, not four.
+	resp, err := c.do("GET", fmt.Sprintf("/movie/%d", id), url.Values{"append_to_response": {appendMovie}})
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +135,7 @@ func (c *Client) GetMovie(id int) (*Movie, error) {
 }
 
 func (c *Client) GetShow(id int) (*Show, error) {
-	resp, err := c.do("GET", fmt.Sprintf("/tv/%d", id), nil)
+	resp, err := c.do("GET", fmt.Sprintf("/tv/%d", id), url.Values{"append_to_response": {appendShow}})
 	if err != nil {
 		return nil, err
 	}
@@ -157,6 +175,40 @@ func (c *Client) SearchMulti(query string, page int) (*SearchResult, error) {
 		return nil, err
 	}
 	return decode[SearchResult](resp)
+}
+
+// SearchMovie and SearchTV are the type-scoped halves of SearchMulti. They are
+// what a `type=movie` (or `type=show`) search uses: /search/multi takes no type
+// filter, so asking it for one type and dropping the rest would return short
+// pages that a client is told are full.
+//
+// They return the same Title shape as /search/multi (TMDB's movie and TV search
+// payloads differ only in `title` vs `name`), with MediaType filled in because
+// neither response carries it.
+func (c *Client) SearchMovie(query string, page int) (*Paginated[Title], error) {
+	return c.searchTyped("/search/movie", "movie", query, page)
+}
+
+func (c *Client) SearchTV(query string, page int) (*Paginated[Title], error) {
+	return c.searchTyped("/search/tv", "show", query, page)
+}
+
+func (c *Client) searchTyped(path, mediaType, query string, page int) (*Paginated[Title], error) {
+	p := url.Values{}
+	p.Set("query", query)
+	p.Set("page", fmt.Sprintf("%d", page))
+	resp, err := c.do("GET", path, p)
+	if err != nil {
+		return nil, err
+	}
+	result, err := decode[Paginated[Title]](resp)
+	if err != nil {
+		return nil, err
+	}
+	for i := range result.Results {
+		result.Results[i].MediaType = mediaType
+	}
+	return result, nil
 }
 
 func (c *Client) GetMovieChanges(page int, since string) (*ChangeFeed[ChangeEntry], error) {

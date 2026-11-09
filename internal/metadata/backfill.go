@@ -101,7 +101,7 @@ func backfillPopularMovies(ctx context.Context, c *tmdb.Client, db *gorm.DB, max
 			}
 
 			// Ingest the movie.
-			if _, err := IngestMovie(db, movie); err != nil {
+			if _, err := IngestMovie(db, movie, nil); err != nil {
 				slog.Error("[backfill] movie ingest failed, skipping",
 					"tmdb_id", item.ID, "title", movie.Title, "error", err)
 				skipped++
@@ -154,21 +154,18 @@ func backfillPopularTV(ctx context.Context, c *tmdb.Client, db *gorm.DB, maxPage
 				skipped++
 				continue
 			}
-
-			// Ingest the show.
-			dbShow, err := IngestShow(db, show)
-			if err != nil {
-				slog.Error("[backfill] show ingest failed, skipping",
-					"tmdb_id", item.ID, "title", show.Name, "error", err)
-				skipped++
-				continue
+			if err := ctx.Err(); err != nil {
+				return err
 			}
 
-			// Fetch full season details (including episodes) for each season.
+			// Fetch every season's episodes, including season 0: specials are
+			// stored (Trakt-shaped clients expect a season 0) and excluded from
+			// the show's totals by the ingest, which derives those from the
+			// season rows it writes. A season whose fetch fails is skipped
+			// rather than failing the show; its absence then shows up honestly
+			// in a lower episode count.
+			seasons := make([]tmdb.Season, 0, len(show.Seasons))
 			for _, seasonSummary := range show.Seasons {
-				if seasonSummary.SeasonNumber == 0 {
-					continue // Skip specials season for backfill efficiency.
-				}
 				if err := ctx.Err(); err != nil {
 					return err
 				}
@@ -182,26 +179,19 @@ func backfillPopularTV(ctx context.Context, c *tmdb.Client, db *gorm.DB, maxPage
 						"tmdb_show_id", show.ID, "season", seasonSummary.SeasonNumber, "error", err)
 					continue
 				}
+				seasons = append(seasons, *seasonDetail)
+			}
 
-				// Ingest the season record. Its id is the season_id the episodes
-				// hang off — passing the SHOW id here (as this did) puts every
-				// episode of every season under one bogus season row, which breaks
-				// /shows/{id}/seasons/{n}/episodes and every season-level count.
-				dbSeason, err := IngestSeason(db, dbShow.ID, show.ID, seasonSummary)
-				if err != nil {
-					slog.Error("[backfill] season ingest failed",
-						"show_id", dbShow.ID, "season", seasonSummary.SeasonNumber, "error", err)
-					continue
-				}
-
-				// Batch ingest episodes.
-				if len(seasonDetail.Episodes) > 0 {
-					if err := IngestEpisodesBatch(db, dbSeason.ID, dbShow.ID,
-						seasonDetail.Episodes); err != nil {
-						slog.Error("[backfill] episode batch ingest failed",
-							"show_id", dbShow.ID, "season", seasonSummary.SeasonNumber, "error", err)
-					}
-				}
+			// Ingest the show, its seasons and its episodes in one call. The
+			// seasons hang off the SHOW id, which is what makes
+			// /shows/{id}/seasons/{n}/episodes and the season-level counts
+			// work (an earlier version passed the show id as the season id,
+			// putting every episode of every season under one bogus row).
+			if _, err := IngestShow(db, show, seasons, nil); err != nil {
+				slog.Error("[backfill] show ingest failed, skipping",
+					"tmdb_id", item.ID, "title", show.Name, "error", err)
+				skipped++
+				continue
 			}
 
 			total++
@@ -250,7 +240,7 @@ func backfillTrending(ctx context.Context, c *tmdb.Client, db *gorm.DB, maxPages
 							"tmdb_id", item.ID, "error", err)
 						continue
 					}
-					if _, err := IngestMovie(db, movie); err != nil {
+					if _, err := IngestMovie(db, movie, nil); err != nil {
 						slog.Error("[backfill] trending movie ingest failed",
 							"tmdb_id", item.ID, "error", err)
 					}
@@ -261,7 +251,10 @@ func backfillTrending(ctx context.Context, c *tmdb.Client, db *gorm.DB, maxPages
 							"tmdb_id", item.ID, "error", err)
 						continue
 					}
-					if _, err := IngestShow(db, show); err != nil {
+					// Trending walks the show's own record only; the season
+					// walk is the popular-TV stage's job, and doubling it here
+					// would re-fetch the same seasons twice per run.
+					if _, err := IngestShow(db, show, nil, nil); err != nil {
 						slog.Error("[backfill] trending TV ingest failed",
 							"tmdb_id", item.ID, "error", err)
 					}

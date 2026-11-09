@@ -13,178 +13,25 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-// IngestMovie creates or updates a movie record from TMDB data.
-// Idempotent: checks tmdb_id existence, updates if changed, inserts if new.
-func IngestMovie(db *gorm.DB, m *tmdb.Movie) (*database.Movie, error) {
-	now := time.Now()
-	metadata := toJSONMap(m)
-	images := map[string]any{
-		"poster_path":   m.PosterPath,
-		"backdrop_path": m.BackdropPath,
-	}
-	genres := genreNames(m.Genres)
-
-	record := database.Movie{
-		TmdbID:        m.ID,
-		ImdbID:        m.IMDBID,
-		Title:         m.Title,
-		OriginalTitle: m.OriginalTitle,
-		Tagline:       m.Tagline,
-		Overview:      m.Overview,
-		Runtime:       m.Runtime,
-		Status:        m.Status,
-		Popularity:    m.Popularity,
-		RatingAvg:     m.VoteAverage,
-		RatingCount:   m.VoteCount,
-		Genres:        genres,
-		Language:      m.Language,
-		Images:        images,
-		Metadata:      metadata,
-		Adult:         m.Adult,
-		LastSyncedAt:  &now,
-	}
-
-	if m.ReleaseDate != "" {
-		parsed := parseDate(m.ReleaseDate)
-		record.Released = parsed
-	}
-
-	var existing database.Movie
-	result := db.Where("tmdb_id = ?", m.ID).First(&existing)
-	if result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
-			if err := db.Create(&record).Error; err != nil {
-				return nil, fmt.Errorf("insert movie %d (%s): %w", m.ID, m.Title, err)
-			}
-			slog.Debug("[ingest] created movie", "tmdb_id", m.ID, "title", m.Title)
-			return &record, nil
-		}
-		return nil, fmt.Errorf("lookup movie %d: %w", m.ID, result.Error)
-	}
-
-	// Existing record — check if anything changed.
-	if movieChanged(&existing, &record) {
-		record.ID = existing.ID
-		record.CreatedAt = existing.CreatedAt
-		if err := db.Save(&record).Error; err != nil {
-			return nil, fmt.Errorf("update movie %d (%s): %w", m.ID, m.Title, err)
-		}
-		slog.Debug("[ingest] updated movie", "tmdb_id", m.ID, "title", m.Title)
-	} else {
-		slog.Debug("[ingest] movie unchanged", "tmdb_id", m.ID, "title", m.Title)
-		record = existing
-	}
-
-	return &record, nil
-}
-
-// movieChanged returns true if the key fields differ between the existing
-// DB record and the incoming TMDB data.
-func movieChanged(existing, incoming *database.Movie) bool {
-	return existing.Title != incoming.Title ||
-		existing.Overview != incoming.Overview ||
-		existing.Status != incoming.Status ||
-		existing.Runtime != incoming.Runtime ||
-		existing.Popularity != incoming.Popularity ||
-		existing.RatingAvg != incoming.RatingAvg ||
-		existing.RatingCount != incoming.RatingCount ||
-		existing.Adult != incoming.Adult ||
-		existing.Tagline != incoming.Tagline ||
-		existing.ImdbID != incoming.ImdbID ||
-		existing.OriginalTitle != incoming.OriginalTitle
-}
-
-// IngestShow creates or updates a show record and its seasons/episodes
-// from TMDB data. Idempotent.
-func IngestShow(db *gorm.DB, s *tmdb.Show) (*database.Show, error) {
-	now := time.Now()
-	metadata := toJSONMap(s)
-	images := map[string]any{
-		"poster_path":   s.PosterPath,
-		"backdrop_path": s.BackdropPath,
-	}
-	genres := genreNames(s.Genres)
-	network := ""
-	if len(s.Networks) > 0 {
-		network = s.Networks[0].Name
-	}
-
-	record := database.Show{
-		TmdbID:        s.ID,
-		ImdbID:        s.IMDBID,
-		Title:         s.Name,
-		OriginalTitle: s.OriginalName,
-		Overview:      s.Overview,
-		EpisodeCount:  s.EpisodesCount,
-		SeasonCount:   s.SeasonsCount,
-		Network:       network,
-		Status:        s.Status,
-		Popularity:    s.Popularity,
-		RatingAvg:     s.VoteAverage,
-		RatingCount:   s.VoteCount,
-		Genres:        genres,
-		Language:      s.Language,
-		Images:        images,
-		Metadata:      metadata,
-		Adult:         s.Adult,
-		LastSyncedAt:  &now,
-	}
-
-	if s.FirstAirDate != "" {
-		record.FirstAired = parseDate(s.FirstAirDate)
-	}
-	if s.LastAirDate != "" {
-		record.LastAired = parseDate(s.LastAirDate)
-	}
-
-	var existing database.Show
-	result := db.Where("tmdb_id = ?", s.ID).First(&existing)
-	if result.Error != nil {
-		if result.Error == gorm.ErrRecordNotFound {
-			if err := db.Create(&record).Error; err != nil {
-				return nil, fmt.Errorf("insert show %d (%s): %w", s.ID, s.Name, err)
-			}
-			slog.Debug("[ingest] created show", "tmdb_id", s.ID, "title", s.Name)
-			return &record, nil
-		}
-		return nil, fmt.Errorf("lookup show %d: %w", s.ID, result.Error)
-	}
-
-	if showChanged(&existing, &record) {
-		record.ID = existing.ID
-		record.CreatedAt = existing.CreatedAt
-		if err := db.Save(&record).Error; err != nil {
-			return nil, fmt.Errorf("update show %d (%s): %w", s.ID, s.Name, err)
-		}
-		slog.Debug("[ingest] updated show", "tmdb_id", s.ID, "title", s.Name)
-	} else {
-		slog.Debug("[ingest] show unchanged", "tmdb_id", s.ID, "title", s.Name)
-		record = existing
-	}
-
-	return &record, nil
-}
-
-func showChanged(existing, incoming *database.Show) bool {
-	return existing.Title != incoming.Title ||
-		existing.Overview != incoming.Overview ||
-		existing.Status != incoming.Status ||
-		existing.EpisodeCount != incoming.EpisodeCount ||
-		existing.SeasonCount != incoming.SeasonCount ||
-		existing.Network != incoming.Network ||
-		existing.Popularity != incoming.Popularity ||
-		existing.RatingAvg != incoming.RatingAvg ||
-		existing.RatingCount != incoming.RatingCount ||
-		existing.Adult != incoming.Adult ||
-		existing.ImdbID != incoming.ImdbID ||
-		existing.OriginalTitle != incoming.OriginalTitle
-}
+// This file holds the record-level writers that are NOT part of the movie/show
+// composite ingest in provider_ingest.go: a season on its own, an episode, a
+// batch of episodes, a person, and a credit set. IngestMovie/IngestShow own the
+// whole title (row, ids, artwork, seasons and episodes) and call IngestSeason /
+// IngestEpisodesBatch for the structural half; the person and credit writers are
+// the pieces issue #68 wires into the resolve path.
 
 // IngestSeason creates or updates a season record. Idempotent.
+//
+// TMDB's season detail carries a poster path and an air date, but a caller that
+// only has the show's season SUMMARY may hold neither, and db.Save writes every
+// column — so an existing row's artwork and air date are carried forward rather
+// than blanked when the incoming value is empty.
 func IngestSeason(db *gorm.DB, showID int64, tmdbShowID int, s tmdb.SeasonSummary) (*database.Season, error) {
 	now := time.Now()
-	images := map[string]any{
-		"poster_path": s.PosterPath,
+	images := map[string]any{}
+	if s.PosterPath != "" {
+		images["poster_path"] = s.PosterPath
+		images["poster"] = tmdb.ImageURL(s.PosterPath, tmdb.ImageSizePoster)
 	}
 
 	record := database.Season{
@@ -212,7 +59,14 @@ func IngestSeason(db *gorm.DB, showID int64, tmdbShowID int, s tmdb.SeasonSummar
 		return nil, fmt.Errorf("lookup season show=%d season=%d: %w", showID, s.SeasonNumber, result.Error)
 	}
 
-	if seasonChanged(&existing, &record) {
+	if len(images) == 0 {
+		record.Images = existing.Images
+	}
+	if record.AiredAt == nil {
+		record.AiredAt = existing.AiredAt
+	}
+
+	if seasonChanged(&existing, &record) || !sameJSONMap(existing.Images, record.Images) || !sameDate(existing.AiredAt, record.AiredAt) {
 		record.ID = existing.ID
 		record.CreatedAt = existing.CreatedAt
 		if err := db.Save(&record).Error; err != nil {
@@ -231,12 +85,33 @@ func seasonChanged(existing, incoming *database.Season) bool {
 	return existing.EpisodeCount != incoming.EpisodeCount
 }
 
+// sameJSONMap reports whether two image maps carry the same values. A Go map
+// cannot be compared with ==, and comparing the rendered form is enough here:
+// the maps are small, flat and built by this package.
+func sameJSONMap(a, b database.JSONMap) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for key, value := range a {
+		other, ok := b[key]
+		if !ok || fmt.Sprint(other) != fmt.Sprint(value) {
+			return false
+		}
+	}
+	return true
+}
+
+// sameDate compares two optional dates by the day they name.
+func sameDate(a, b *database.Date) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return a.Equal(b.Time)
+}
+
 // IngestEpisode creates or updates an episode record. Idempotent.
 func IngestEpisode(db *gorm.DB, seasonID, showID int64, ep tmdb.EpisodeDetail) (*database.Episode, error) {
 	now := time.Now()
-	images := map[string]any{
-		"still_path": ep.StillPath,
-	}
 
 	record := database.Episode{
 		SeasonID:      seasonID,
@@ -245,7 +120,7 @@ func IngestEpisode(db *gorm.DB, seasonID, showID int64, ep tmdb.EpisodeDetail) (
 		Title:         ep.Name,
 		Overview:      ep.Overview,
 		Runtime:       ep.Runtime,
-		Images:        images,
+		Images:        episodeImages(ep.StillPath),
 		LastSyncedAt:  &now,
 	}
 	if ep.AirDate != "" {
@@ -287,6 +162,24 @@ func episodeChanged(existing, incoming *database.Episode) bool {
 		existing.Runtime != incoming.Runtime
 }
 
+// episodeImages builds an episode's image set from a TMDB still path. The path
+// is kept raw for clients that build TMDB URLs themselves, and joined into
+// `still` — and into `poster`, which is the key the web app's episode cards and
+// the season page read for an episode's thumbnail (the media response passes
+// the map through untouched).
+func episodeImages(stillPath string) database.JSONMap {
+	images := database.JSONMap{}
+	if stillPath == "" {
+		return images
+	}
+	still := tmdb.ImageURL(stillPath, tmdb.ImageSizeStill)
+	images["still_path"] = stillPath
+	images["still"] = still
+	images["still_url"] = still
+	images["poster"] = still
+	return images
+}
+
 // IngestEpisodesBatch creates or updates a batch of episodes efficiently.
 // Uses upsert (ON CONFLICT) via GORM's Clauses.
 func IngestEpisodesBatch(db *gorm.DB, seasonID, showID int64, eps []tmdb.EpisodeDetail) error {
@@ -304,10 +197,8 @@ func IngestEpisodesBatch(db *gorm.DB, seasonID, showID int64, eps []tmdb.Episode
 			Title:         ep.Name,
 			Overview:      ep.Overview,
 			Runtime:       ep.Runtime,
-			Images: map[string]any{
-				"still_path": ep.StillPath,
-			},
-			LastSyncedAt: &now,
+			Images:        episodeImages(ep.StillPath),
+			LastSyncedAt:  &now,
 		}
 		if ep.AirDate != "" {
 			r.AiredAt = parseDate(ep.AirDate)

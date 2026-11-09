@@ -17,9 +17,13 @@ export interface Ids {
   trakt: number
   slug: string
   imdb?: string
+  // tmdb is haaku's PRIMARY media id: TMDB is the media source the catalogue
+  // is ingested from and searched against, so a client should send it whenever
+  // it has one.
   tmdb?: number
-  // tvdb is haaku's PRIMARY media id: TVDB is the media source the catalogue
-  // is ingested from, so a client should send it whenever it has one.
+  // tvdb is the SUPPLEMENTARY link. It is still accepted by every endpoint that
+  // takes ids (a TVDB-keyed media server reports tvdb ids), but it is no longer
+  // the id a live search hit carries.
   tvdb?: string
   // id is the canonical API field name; the media endpoints serialise
   // `{id, slug, tmdb, imdb, tvdb}` and the hooks normalise it to `trakt`.
@@ -160,10 +164,10 @@ export type SearchType =
 export interface SearchResult {
   type: SearchType
   score: number
-  // source is "catalog" for a title the instance already holds and "tvdb" for
+  // source is "catalog" for a title the instance already holds and "tmdb" for
   // a live provider hit that has not been ingested yet. A provider hit must be
-  // resolved (POST /v1/media/resolve) before it can be watched or watchlisted.
-  source?: 'catalog' | 'tvdb'
+  // resolved (GET /v1/media/resolve) before it can be watched or watchlisted.
+  source?: 'catalog' | 'tmdb'
   movie?: Movie
   show?: Show
   episode?: Episode
