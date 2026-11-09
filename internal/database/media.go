@@ -175,13 +175,17 @@ func (Show) TableName() string { return "shows" }
 
 // Season belongs to a show.
 type Season struct {
-	ID           int64      `gorm:"primaryKey" json:"id"`
-	ShowID       int64      `gorm:"index" json:"show_id"`
-	TmdbShowID   int        `json:"tmdb_show_id"`
-	SeasonNumber int        `json:"season_number"`
-	EpisodeCount int        `json:"episode_count"`
-	AiredAt      *Date      `json:"aired_at,omitempty"`
-	Images       JSONMap    `gorm:"type:jsonb;default:'{}'" json:"images"`
+	ID           int64   `gorm:"primaryKey" json:"id"`
+	ShowID       int64   `gorm:"index" json:"show_id"`
+	TmdbShowID   int     `json:"tmdb_show_id"`
+	SeasonNumber int     `json:"season_number"`
+	EpisodeCount int     `json:"episode_count"`
+	AiredAt      *Date   `json:"aired_at,omitempty"`
+	Images       JSONMap `gorm:"type:jsonb;default:'{}'" json:"images"`
+	// Metadata holds TMDB sub-resources that are not columns (issue #68):
+	// `videos` and the `credits` fetch marker. The credits themselves live in
+	// the credits table under media_type 'season'.
+	Metadata     JSONMap    `gorm:"type:jsonb;default:'{}'" json:"metadata"`
 	LastSyncedAt *time.Time `json:"last_synced_at,omitempty"`
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
@@ -191,20 +195,23 @@ func (Season) TableName() string { return "seasons" }
 
 // Episode belongs to a season and show.
 type Episode struct {
-	ID             int64      `gorm:"primaryKey" json:"id"`
-	SeasonID       int64      `gorm:"uniqueIndex:idx_episode_show_season_ep,priority:2" json:"season_id"`
-	ShowID         int64      `gorm:"uniqueIndex:idx_episode_show_season_ep,priority:1" json:"show_id"`
-	EpisodeNumber  int        `gorm:"uniqueIndex:idx_episode_show_season_ep,priority:3" json:"episode_number"`
-	AbsoluteNumber *int       `json:"absolute_number,omitempty"`
-	Title          string     `json:"title"`
-	Overview       string     `json:"overview,omitempty"`
-	Runtime        int        `json:"runtime,omitempty"`
-	AiredAt        *Date      `json:"aired_at,omitempty"`
-	Images         JSONMap    `gorm:"type:jsonb;default:'{}'" json:"images"`
-	SearchVector   string     `gorm:"->" json:"-"`
-	LastSyncedAt   *time.Time `json:"last_synced_at,omitempty"`
-	CreatedAt      time.Time  `json:"created_at"`
-	UpdatedAt      time.Time  `json:"updated_at"`
+	ID             int64   `gorm:"primaryKey" json:"id"`
+	SeasonID       int64   `gorm:"uniqueIndex:idx_episode_show_season_ep,priority:2" json:"season_id"`
+	ShowID         int64   `gorm:"uniqueIndex:idx_episode_show_season_ep,priority:1" json:"show_id"`
+	EpisodeNumber  int     `gorm:"uniqueIndex:idx_episode_show_season_ep,priority:3" json:"episode_number"`
+	AbsoluteNumber *int    `json:"absolute_number,omitempty"`
+	Title          string  `json:"title"`
+	Overview       string  `json:"overview,omitempty"`
+	Runtime        int     `json:"runtime,omitempty"`
+	AiredAt        *Date   `json:"aired_at,omitempty"`
+	Images         JSONMap `gorm:"type:jsonb;default:'{}'" json:"images"`
+	// Metadata holds `videos` and the `credits` fetch marker (issue #68); the
+	// credits themselves live in the credits table under media_type 'episode'.
+	Metadata     JSONMap    `gorm:"type:jsonb;default:'{}'" json:"metadata"`
+	SearchVector string     `gorm:"->" json:"-"`
+	LastSyncedAt *time.Time `json:"last_synced_at,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
 }
 
 func (Episode) TableName() string { return "episodes" }

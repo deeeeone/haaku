@@ -100,6 +100,9 @@ func RegisterRoutes(api fiber.Router) {
 	people.Get("/:id/shows", handleGetPersonShows)
 	people.Get("/:id/lists/:type/:sort", handleGetPersonListsByTypeSort)
 
+	// --- TMDB metadata sub-resources (issue #68) ---
+	RegisterMetadataRoutes(api)
+
 	// --- Translation & alias routes ---
 	RegisterTranslationRoutes(api)
 }

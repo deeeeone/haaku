@@ -65,6 +65,12 @@ func IngestSeason(db *gorm.DB, showID int64, tmdbShowID int, s tmdb.SeasonSummar
 	if record.AiredAt == nil {
 		record.AiredAt = existing.AiredAt
 	}
+	// metadata carries the hydrated videos/credits marker; db.Save writes every
+	// column, so a re-ingest must carry the stored blob forward rather than
+	// blanking it (issue #68).
+	if len(record.Metadata) == 0 {
+		record.Metadata = existing.Metadata
+	}
 
 	if seasonChanged(&existing, &record) || !sameJSONMap(existing.Images, record.Images) || !sameDate(existing.AiredAt, record.AiredAt) {
 		record.ID = existing.ID
@@ -145,6 +151,9 @@ func IngestEpisode(db *gorm.DB, seasonID, showID int64, ep tmdb.EpisodeDetail) (
 	if episodeChanged(&existing, &record) {
 		record.ID = existing.ID
 		record.CreatedAt = existing.CreatedAt
+		if len(record.Metadata) == 0 {
+			record.Metadata = existing.Metadata
+		}
 		if err := db.Save(&record).Error; err != nil {
 			return nil, fmt.Errorf("update episode s%de%d for show %d: %w",
 				ep.SeasonNumber, ep.EpisodeNumber, showID, err)
@@ -288,8 +297,11 @@ func personChanged(existing, incoming *database.Person) bool {
 }
 
 // IngestCredits upserts credits (cast + crew) for a media item.
-// Deletes existing credits for this media item before inserting new ones
-// to keep the credit set fresh.
+//
+// Each credit's TMDB person is ingested first, because a credit row with
+// PersonID 0 has nobody to render: the people read skips it. The existing set
+// for this media item is replaced, so a credit list TMDB no longer carries does
+// not linger. mediaType is "movie", "show", "season" or "episode".
 func IngestCredits(db *gorm.DB, mediaType string, mediaID int64, credits *tmdb.CreditsResponse) error {
 	if credits == nil {
 		return nil
@@ -305,8 +317,12 @@ func IngestCredits(db *gorm.DB, mediaType string, mediaID int64, credits *tmdb.C
 
 	// Cast
 	for _, c := range credits.Cast {
+		personID, err := ingestCreditPerson(db, c.ID, c.Name, c.ProfilePath, c.Gender, c.KnownForDepartment, c.Adult)
+		if err != nil {
+			return err
+		}
 		records = append(records, database.Credit{
-			PersonID:   0, // We don't always have the internal person ID yet
+			PersonID:   personID,
 			MediaType:  mediaType,
 			MediaID:    mediaID,
 			CreditType: "cast",
@@ -317,8 +333,12 @@ func IngestCredits(db *gorm.DB, mediaType string, mediaID int64, credits *tmdb.C
 
 	// Crew
 	for _, c := range credits.Crew {
+		personID, err := ingestCreditPerson(db, c.ID, c.Name, c.ProfilePath, c.Gender, c.KnownForDepartment, c.Adult)
+		if err != nil {
+			return err
+		}
 		records = append(records, database.Credit{
-			PersonID:   0,
+			PersonID:   personID,
 			MediaType:  mediaType,
 			MediaID:    mediaID,
 			CreditType: "crew",
@@ -338,6 +358,27 @@ func IngestCredits(db *gorm.DB, mediaType string, mediaID int64, credits *tmdb.C
 		"cast", len(credits.Cast), "crew", len(credits.Crew))
 
 	return nil
+}
+
+// ingestCreditPerson upserts the person behind a credit and returns the local
+// row id. A credit TMDB gives no id for cannot be linked, so it keeps the old
+// PersonID 0 and the people read skips it rather than rendering a ghost.
+func ingestCreditPerson(db *gorm.DB, tmdbID int, name, profilePath string, gender int, knownForDepartment string, adult bool) (int64, error) {
+	if tmdbID <= 0 || name == "" {
+		return 0, nil
+	}
+	person, err := IngestPerson(db, &tmdb.Person{
+		ID:                 tmdbID,
+		Name:               name,
+		ProfilePath:        profilePath,
+		Gender:             gender,
+		KnownForDepartment: knownForDepartment,
+		Adult:              adult,
+	})
+	if err != nil {
+		return 0, fmt.Errorf("ingest credit person %d (%s): %w", tmdbID, name, err)
+	}
+	return person.ID, nil
 }
 
 // --- helpers ---

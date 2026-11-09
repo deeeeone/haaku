@@ -5125,6 +5125,8 @@ paths:
         get:
             operationId: _v1_movies_id_releases_country_GET
             responses:
+                "200":
+                    description: Releases
                 "400":
                     content:
                         application/json:
@@ -5167,10 +5169,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented — movies has one released DATE; per-country release types (theatrical/digital/physical) are not modell (#68)
             security: []
-            summary: Parity stub — not implemented (TMDB metadata ingest)
+            summary: Get all movie releases for a country (or all)
             tags:
                 - Movies
     /v1/movies/{id}/report:
@@ -5273,6 +5273,8 @@ paths:
         get:
             operationId: _v1_movies_id_studios_GET
             responses:
+                "200":
+                    description: Studios
                 "400":
                     content:
                         application/json:
@@ -5315,10 +5317,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented — No production-company table; TMDB company ids are not ingested. (#68)
             security: []
-            summary: Parity stub — not implemented (TMDB metadata ingest)
+            summary: Get all studios for a movie
             tags:
                 - Movies
     /v1/movies/{id}/translations/{lang}:
@@ -5373,6 +5373,8 @@ paths:
         get:
             operationId: _v1_movies_id_videos_GET
             responses:
+                "200":
+                    description: Videos
                 "400":
                     content:
                         application/json:
@@ -5415,10 +5417,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented — No videos table and no TMDB video ingest, so there is nothing to serve. (#68)
             security: []
-            summary: Parity stub — not implemented (TMDB metadata ingest)
+            summary: Get all videos for a movie
             tags:
                 - Movies
     /v1/movies/{id}/watch:
@@ -7951,6 +7951,8 @@ paths:
         get:
             operationId: _v1_shows_id_certifications_GET
             responses:
+                "200":
+                    description: Certifications
                 "400":
                     content:
                         application/json:
@@ -7993,10 +7995,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented — shows.certification is a single value; Trakt returns certifications keyed by country, which is not m (#68)
             security: []
-            summary: Parity stub — not implemented (TMDB metadata ingest)
+            summary: Get all show certifications, one per country
             tags:
                 - Shows
     /v1/shows/{id}/comments/{sort}:
@@ -8980,6 +8980,8 @@ paths:
         get:
             operationId: _v1_shows_id_seasons_season_episodes_episode_people_GET
             responses:
+                "200":
+                    description: People
                 "400":
                     content:
                         application/json:
@@ -9022,10 +9024,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented — Episode credits are not ingested (credits table is written for movie/show only). (#68)
             security: []
-            summary: Parity stub — not implemented (TMDB metadata ingest)
+            summary: Get all cast and crew for an episode
             tags:
                 - Shows
     /v1/shows/{id}/seasons/{season}/episodes/{episode}/translations/{lang}:
@@ -9080,6 +9080,8 @@ paths:
         get:
             operationId: _v1_shows_id_seasons_season_episodes_episode_videos_GET
             responses:
+                "200":
+                    description: Videos
                 "400":
                     content:
                         application/json:
@@ -9122,10 +9124,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented — No videos table and no TMDB video ingest. (#68)
             security: []
-            summary: Parity stub — not implemented (TMDB metadata ingest)
+            summary: Get all videos for an episode
             tags:
                 - Shows
     /v1/shows/{id}/seasons/{season}/lists/{type}/{sort}:
@@ -9176,6 +9176,8 @@ paths:
         get:
             operationId: _v1_shows_id_seasons_season_people_GET
             responses:
+                "200":
+                    description: People
                 "400":
                     content:
                         application/json:
@@ -9218,10 +9220,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: 'Not implemented — Season credits are not ingested: the credits table takes a media_type, but only movie/show credits a (#68)'
             security: []
-            summary: Parity stub — not implemented (TMDB metadata ingest)
+            summary: Get all cast and crew for a season
             tags:
                 - Shows
     /v1/shows/{id}/seasons/{season}/ratings:
@@ -9412,6 +9412,8 @@ paths:
         get:
             operationId: _v1_shows_id_seasons_season_videos_GET
             responses:
+                "200":
+                    description: Videos
                 "400":
                     content:
                         application/json:
@@ -9454,10 +9456,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented — No videos table and no TMDB video ingest. (#68)
             security: []
-            summary: Parity stub — not implemented (TMDB metadata ingest)
+            summary: Get all videos for a season
             tags:
                 - Shows
     /v1/shows/{id}/stats:
@@ -9516,6 +9516,8 @@ paths:
         get:
             operationId: _v1_shows_id_studios_GET
             responses:
+                "200":
+                    description: Studios
                 "400":
                     content:
                         application/json:
@@ -9558,10 +9560,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented — No production-company table; shows.network is a network, not the studio list Trakt returns. (#68)
             security: []
-            summary: Parity stub — not implemented (TMDB metadata ingest)
+            summary: Get all studios for a show
             tags:
                 - Shows
     /v1/shows/{id}/translations/{lang}:
@@ -9616,6 +9616,8 @@ paths:
         get:
             operationId: _v1_shows_id_videos_GET
             responses:
+                "200":
+                    description: Videos
                 "400":
                     content:
                         application/json:
@@ -9658,10 +9660,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented — No videos table and no TMDB video ingest. (#68)
             security: []
-            summary: Parity stub — not implemented (TMDB metadata ingest)
+            summary: Get all videos for a show
             tags:
                 - Shows
     /v1/shows/{id}/watch:

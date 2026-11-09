@@ -127,12 +127,12 @@ sections:
         engine: "recommendations engine (issue #49)"
       - trakt: "GET /movies/{id}/releases/{country}"
         ours: "GET /v1/movies/{id}/releases/{country}"
-        status: blocked-data
-        rationale: "movies has one released DATE; per-country release types (theatrical/digital/physical) are not modelled."
+        status: implemented
+        rationale: "TMDB release_dates are stored in movies.metadata.releases as {country,certification,release_date,release_type,note}; /{country} filters and /all returns every country."
       - trakt: "GET /movies/{id}/videos"
         ours: "GET /v1/movies/{id}/videos"
-        status: blocked-data
-        rationale: "No videos table and no TMDB video ingest, so there is nothing to serve."
+        status: implemented
+        rationale: "TMDB videos are stored in movies.metadata.videos and served as the contract video array (YouTube/Vimeo watch URLs, lower-case type); older rows hydrate once on first read."
       - trakt: "GET /movies/{id}/comments/{sort}"
         ours: "GET /v1/movies/{id}/comments/{sort}"
         status: implemented
@@ -143,8 +143,8 @@ sections:
         rationale: "decision: Trakt derives sentiments from a per-episode sentiment model over its whole comment corpus; nothing in a self-hosted instance produces that signal, and inventing a score is exactly the fabricated payload this manifest forbids. Declined, tracked here so it can be revisited if a scorer is ever built."
       - trakt: "GET /movies/{id}/studios"
         ours: "GET /v1/movies/{id}/studios"
-        status: blocked-data
-        rationale: "No production-company table; TMDB company ids are not ingested."
+        status: implemented
+        rationale: "TMDB production_companies are stored in movies.metadata.studios and served as contract studio objects with a stable local trakt id and the tmdb id."
       - trakt: "GET /movies/{id}/watchnow/{country}"
         ours: "GET /v1/movies/{id}/watchnow/{country}"
         status: implemented
@@ -203,8 +203,8 @@ sections:
         engine: "recommendations engine (issue #49)"
       - trakt: "GET /shows/{id}/videos"
         ours: "GET /v1/shows/{id}/videos"
-        status: blocked-data
-        rationale: "No videos table and no TMDB video ingest."
+        status: implemented
+        rationale: "TMDB videos are stored in shows.metadata.videos and served as the contract video array; older rows hydrate once on first read."
       - trakt: "GET /shows/{id}/comments/{sort}"
         ours: "GET /v1/shows/{id}/comments/{sort}"
         status: implemented
@@ -215,12 +215,12 @@ sections:
         rationale: "decision: same as /movies/{id}/sentiments — no sentiment scorer exists and none is planned, and a fabricated score is worse than an honest absence."
       - trakt: "GET /shows/{id}/studios"
         ours: "GET /v1/shows/{id}/studios"
-        status: blocked-data
-        rationale: "No production-company table; shows.network is a network, not the studio list Trakt returns."
+        status: implemented
+        rationale: "TMDB production_companies are stored in shows.metadata.studios and served as contract studio objects; shows.network stays a network, which is a different field."
       - trakt: "GET /shows/{id}/certifications"
         ours: "GET /v1/shows/{id}/certifications"
-        status: blocked-data
-        rationale: "shows.certification is a single value; Trakt returns certifications keyed by country, which is not modelled."
+        status: implemented
+        rationale: "TMDB content_ratings are stored in shows.metadata.certifications and served as the contract's {certification,country} rows."
       - trakt: "GET /shows/{id}/next_episode"
         ours: "GET /v1/shows/{id}/next_episode"
         status: implemented
@@ -296,12 +296,12 @@ sections:
         rationale: "Served at Trakt's path: show+season resolves to our season row, then public lists storing that season are ranked; official/watchlist/favorites return a computed [] with 200."
       - trakt: "GET /shows/{id}/seasons/{season}/people"
         ours: "GET /v1/shows/{id}/seasons/{season}/people"
-        status: blocked-data
-        rationale: "Season credits are not ingested: the credits table takes a media_type, but only movie/show credits are written today."
+        status: implemented
+        rationale: "Season credits are fetched once from TMDB's season credits append, written to the credits table as media_type='season', and served in the contract people shape."
       - trakt: "GET /shows/{id}/seasons/{season}/videos"
         ours: "GET /v1/shows/{id}/seasons/{season}/videos"
-        status: blocked-data
-        rationale: "No videos table and no TMDB video ingest."
+        status: implemented
+        rationale: "Season videos are fetched once from TMDB's season videos append, stored in seasons.metadata.videos, and served as the contract video array."
       - trakt: "GET /shows/{id}/seasons/{season}/episodes/{episode}/comments/{sort}"
         ours: "GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/comments/{sort}"
         status: implemented
@@ -313,12 +313,12 @@ sections:
         rationale: "Served at Trakt's path: show+season+episode resolves to our episode row, then lists containing it are filtered by kind and sort and returned in the contract's list shape."
       - trakt: "GET /shows/{id}/seasons/{season}/episodes/{episode}/people"
         ours: "GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/people"
-        status: blocked-data
-        rationale: "Episode credits are not ingested (credits table is written for movie/show only)."
+        status: implemented
+        rationale: "Episode guest stars and crew are fetched once from TMDB's episode credits append, written as media_type='episode', and served in the contract people shape."
       - trakt: "GET /shows/{id}/seasons/{season}/episodes/{episode}/videos"
         ours: "GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/videos"
-        status: blocked-data
-        rationale: "No videos table and no TMDB video ingest."
+        status: implemented
+        rationale: "Episode videos are fetched once from TMDB's episode videos append, stored in episodes.metadata.videos, and served as the contract video array."
   - name: "People"
     rows:
       - trakt: "GET /people/{id}/lists/{type}/{sort}"

@@ -15,6 +15,7 @@ import (
 
 	"github.com/haaku-tv/haaku/external/tmdb"
 	"github.com/haaku-tv/haaku/external/tvdb"
+	"github.com/haaku-tv/haaku/internal/contractshape"
 	"github.com/haaku-tv/haaku/internal/database"
 
 	"gorm.io/gorm"
@@ -486,6 +487,19 @@ func movieMetadata(m *tmdb.Movie, supplement *tvdb.MovieExtended) database.JSONM
 	if supplement != nil {
 		metadata["tvdb"] = toJSONMap(supplement)
 	}
+	// The contract sub-resources are stored in the same blob, already in the
+	// shape a read serves (issue #68). A nil pointer means this payload did not
+	// carry the object; leaving the key out lets an earlier value survive the
+	// merge of a thinner record.
+	if m.Videos != nil {
+		metadata[KeyVideos] = contractshape.Videos(VideosFromTMDB(m.Videos.Results))
+	}
+	if m.ProductionCompanies != nil {
+		metadata[KeyStudios] = contractshape.Studios(StudiosFromTMDB(m.ProductionCompanies))
+	}
+	if m.ReleaseDates != nil {
+		metadata[KeyReleases] = contractshape.Releases(ReleasesFromTMDB(m.ReleaseDates))
+	}
 	return metadata
 }
 
@@ -494,6 +508,15 @@ func showMetadata(s *tmdb.Show, supplement *tvdb.SeriesExtended) database.JSONMa
 	metadata := database.JSONMap{"tmdb": toJSONMap(s)}
 	if supplement != nil {
 		metadata["tvdb"] = toJSONMap(supplement)
+	}
+	if s.Videos != nil {
+		metadata[KeyVideos] = contractshape.Videos(VideosFromTMDB(s.Videos.Results))
+	}
+	if s.ProductionCompanies != nil {
+		metadata[KeyStudios] = contractshape.Studios(StudiosFromTMDB(s.ProductionCompanies))
+	}
+	if s.ContentRatings != nil {
+		metadata[KeyCertifications] = contractshape.Certifications(CertificationsFromTMDB(s.ContentRatings))
 	}
 	return metadata
 }

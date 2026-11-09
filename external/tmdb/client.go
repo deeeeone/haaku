@@ -158,6 +158,47 @@ func (c *Client) GetSeason(showID, seasonNum int) (*Season, error) {
 	return s, nil
 }
 
+// GetSeasonExtras is GetSeason plus the two appended sub-resources the Trakt
+// season surface needs (issue #68): the season's videos and its aggregate
+// cast/crew. It is a separate method because the structural season walk during
+// a show ingest must stay cheap; only a read that needs videos or people pays
+// for them.
+func (c *Client) GetSeasonExtras(showID, seasonNum int) (*Season, error) {
+	resp, err := c.do("GET", fmt.Sprintf("/tv/%d/season/%d", showID, seasonNum),
+		url.Values{"append_to_response": {appendSeason}})
+	if err != nil {
+		return nil, err
+	}
+	s, err := decode[Season](resp)
+	if err != nil {
+		return nil, err
+	}
+	for i := range s.Episodes {
+		s.Episodes[i].ShowID = showID
+	}
+	return s, nil
+}
+
+// GetEpisodeExtras fetches one episode with its videos and credits appended.
+// TMDB has no all-episodes video endpoint, so an episode's videos cost this one
+// request; the season payload carries the same episode's guest_stars and crew,
+// but not its videos.
+func (c *Client) GetEpisodeExtras(showID, seasonNum, episodeNum int) (*EpisodeDetail, error) {
+	resp, err := c.do("GET",
+		fmt.Sprintf("/tv/%d/season/%d/episode/%d", showID, seasonNum, episodeNum),
+		url.Values{"append_to_response": {appendEpisode}})
+	if err != nil {
+		return nil, err
+	}
+	ep, err := decode[EpisodeDetail](resp)
+	if err != nil {
+		return nil, err
+	}
+	ep.ShowID = showID
+	ep.SeasonNumber = seasonNum
+	return ep, nil
+}
+
 func (c *Client) GetPerson(id int) (*Person, error) {
 	resp, err := c.do("GET", fmt.Sprintf("/person/%d", id), nil)
 	if err != nil {
