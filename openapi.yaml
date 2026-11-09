@@ -5203,6 +5203,8 @@ paths:
         get:
             operationId: _v1_media_popular_GET
             responses:
+                "200":
+                    description: Popular media
                 "400":
                     content:
                         application/json:
@@ -5245,10 +5247,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: 'Not implemented — stats/rankings engine (issue #66) (#66)'
             security: []
-            summary: Parity stub — not implemented (stats & rankings engine)
+            summary: Popular movies and shows merged into one feed
             tags:
                 - Media
     /v1/media/resolve:
@@ -5301,6 +5301,8 @@ paths:
         get:
             operationId: _v1_media_trending_GET
             responses:
+                "200":
+                    description: Trending media
                 "400":
                     content:
                         application/json:
@@ -5343,10 +5345,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: 'Not implemented — stats/rankings engine (issue #66) (#66)'
             security: []
-            summary: Parity stub — not implemented (stats & rankings engine)
+            summary: Trending movies and shows merged into one feed
             tags:
                 - Media
     /v1/movies/{id}:
@@ -6193,8 +6193,6 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented (requires activity engine)
             security: []
             summary: Users watching a movie right now
             tags:
@@ -6357,6 +6355,8 @@ paths:
         get:
             operationId: _v1_movies_collected_period_GET
             responses:
+                "200":
+                    description: Ranked items
                 "400":
                     content:
                         application/json:
@@ -6399,16 +6399,68 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: 'Not implemented — stats/rankings engine (issue #66) (#66)'
             security: []
-            summary: Parity stub — not implemented (stats & rankings engine)
+            summary: Most collected movies in a period (daily|weekly|monthly|yearly|all)
+            tags:
+                - Movies
+    /v1/movies/favorited/{period}:
+        get:
+            operationId: _v1_movies_favorited_period_GET
+            responses:
+                "200":
+                    description: Ranked items
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Most favorited movies in a period (daily|weekly|monthly|yearly|all)
             tags:
                 - Movies
     /v1/movies/hot:
         get:
             operationId: _v1_movies_hot_GET
             responses:
+                "200":
+                    description: Hot items
                 "400":
                     content:
                         application/json:
@@ -6451,16 +6503,16 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: 'Not implemented — stats/rankings engine (issue #66) (#66)'
             security: []
-            summary: Parity stub — not implemented (stats & rankings engine)
+            summary: Currently hot movies (activity in the last 24 hours)
             tags:
                 - Movies
     /v1/movies/played/{period}:
         get:
             operationId: _v1_movies_played_period_GET
             responses:
+                "200":
+                    description: Ranked items
                 "400":
                     content:
                         application/json:
@@ -6503,10 +6555,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: 'Not implemented — stats/rankings engine (issue #66) (#66)'
             security: []
-            summary: Parity stub — not implemented (stats & rankings engine)
+            summary: Most played movies in a period (daily|weekly|monthly|yearly|all)
             tags:
                 - Movies
     /v1/movies/popular:
@@ -6819,6 +6869,8 @@ paths:
         get:
             operationId: _v1_movies_watched_period_GET
             responses:
+                "200":
+                    description: Ranked items
                 "400":
                     content:
                         application/json:
@@ -6861,10 +6913,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: 'Not implemented — stats/rankings engine (issue #66) (#66)'
             security: []
-            summary: Parity stub — not implemented (stats & rankings engine)
+            summary: Most watched movies in a period (daily|weekly|monthly|yearly|all)
             tags:
                 - Movies
     /v1/networks:
@@ -9175,6 +9225,8 @@ paths:
         delete:
             operationId: _v1_shows_id_progress_watched_reset_DELETE
             responses:
+                "204":
+                    description: Reset removed
                 "400":
                     content:
                         application/json:
@@ -9182,11 +9234,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: invalid request
                 "401":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: unauthorized
+                    description: Unauthorized
                 "404":
                     content:
                         application/json:
@@ -9217,19 +9265,17 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: 'Not implemented — stats/rankings engine (issue #66) (#66)'
             security:
                 - apiKey: []
                 - oauth: []
-            summary: Parity stub — not implemented (stats & rankings engine)
+            summary: Undo a watched-progress reset for one show
             tags:
                 - Shows
         post:
             operationId: _v1_shows_id_progress_watched_reset_POST
             responses:
                 "200":
-                    description: Progress after reset
+                    description: The reset point
                 "400":
                     content:
                         application/json:
@@ -9239,7 +9285,11 @@ paths:
                 "401":
                     description: Unauthorized
                 "404":
-                    description: Show not found
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
                 "409":
                     content:
                         application/json:
@@ -9267,7 +9317,7 @@ paths:
             security:
                 - apiKey: []
                 - oauth: []
-            summary: Reset the caller's watched-episode history for one show (ratings/collection untouched)
+            summary: Record a watched-progress reset point for one show (history is kept)
             tags:
                 - Shows
     /v1/shows/{id}/ratings:
@@ -10810,8 +10860,6 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented (requires activity engine)
             security: []
             summary: Users watching a show right now
             tags:
@@ -10920,6 +10968,8 @@ paths:
         get:
             operationId: _v1_shows_collected_period_GET
             responses:
+                "200":
+                    description: Ranked items
                 "400":
                     content:
                         application/json:
@@ -10962,16 +11012,68 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: 'Not implemented — stats/rankings engine (issue #66) (#66)'
             security: []
-            summary: Parity stub — not implemented (stats & rankings engine)
+            summary: Most collected shows in a period (daily|weekly|monthly|yearly|all)
+            tags:
+                - Shows
+    /v1/shows/favorited/{period}:
+        get:
+            operationId: _v1_shows_favorited_period_GET
+            responses:
+                "200":
+                    description: Ranked items
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Most favorited shows in a period (daily|weekly|monthly|yearly|all)
             tags:
                 - Shows
     /v1/shows/hot:
         get:
             operationId: _v1_shows_hot_GET
             responses:
+                "200":
+                    description: Hot items
                 "400":
                     content:
                         application/json:
@@ -11014,16 +11116,16 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: 'Not implemented — stats/rankings engine (issue #66) (#66)'
             security: []
-            summary: Parity stub — not implemented (stats & rankings engine)
+            summary: Currently hot shows (activity in the last 24 hours)
             tags:
                 - Shows
     /v1/shows/played/{period}:
         get:
             operationId: _v1_shows_played_period_GET
             responses:
+                "200":
+                    description: Ranked items
                 "400":
                     content:
                         application/json:
@@ -11066,10 +11168,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: 'Not implemented — stats/rankings engine (issue #66) (#66)'
             security: []
-            summary: Parity stub — not implemented (stats & rankings engine)
+            summary: Most played shows in a period (daily|weekly|monthly|yearly|all)
             tags:
                 - Shows
     /v1/shows/popular:
@@ -11382,6 +11482,8 @@ paths:
         get:
             operationId: _v1_shows_watched_period_GET
             responses:
+                "200":
+                    description: Ranked items
                 "400":
                     content:
                         application/json:
@@ -11424,10 +11526,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: 'Not implemented — stats/rankings engine (issue #66) (#66)'
             security: []
-            summary: Parity stub — not implemented (stats & rankings engine)
+            summary: Most watched shows in a period (daily|weekly|monthly|yearly|all)
             tags:
                 - Shows
     /v1/smart-lists/{id}:

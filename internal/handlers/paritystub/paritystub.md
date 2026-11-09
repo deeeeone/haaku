@@ -7,10 +7,10 @@ Registers a route for **every Trakt endpoint haaku does not serve yet** — ever
 an honest `501 not_implemented` naming the blocker and the issue that tracks it:
 
 ```
-GET /v1/movies/watched/30d
-{"error":{"code":"not_implemented","message":"GET /movies/watched/{period} is not
- implemented yet: stats/rankings engine (issue #5) (tracked in #66 —
- https://github.com/haaku-tv/haaku/issues/66)"}}
+GET /v1/shows/streaming/30d
+{"error":{"code":"not_implemented","message":"GET /shows/streaming/{period} is
+ not implemented yet: STOP (no honest source) (tracked in #69 —
+ https://github.com/haaku-tv/haaku/issues/69)"}}
 ```
 
 Before this package those paths answered `404`, which reads as "this endpoint does
@@ -48,7 +48,7 @@ the stubs into the owning packages instead.
 
 | Piece | Status |
 |---|---|
-| One stub per blocked manifest row (41 routes) | Done |
+| One stub per blocked manifest row | Done |
 | Per-route comment + runtime message naming the tracking issue | Done |
 | `501` in every RouteDef, so the spec and the manifest agree | Done |
 | `make parity-check` grades each stub as `blocked-*`, never `implemented` | Done |

@@ -1436,7 +1436,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Parity stub — not implemented (stats & rankings engine) */
+        /** Popular movies and shows merged into one feed */
         get: operations["_v1_media_popular_GET"];
         put?: never;
         post?: never;
@@ -1470,7 +1470,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Parity stub — not implemented (stats & rankings engine) */
+        /** Trending movies and shows merged into one feed */
         get: operations["_v1_media_trending_GET"];
         put?: never;
         post?: never;
@@ -1827,8 +1827,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Parity stub — not implemented (stats & rankings engine) */
+        /** Most collected movies in a period (daily|weekly|monthly|yearly|all) */
         get: operations["_v1_movies_collected_period_GET"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/movies/favorited/{period}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Most favorited movies in a period (daily|weekly|monthly|yearly|all) */
+        get: operations["_v1_movies_favorited_period_GET"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1844,7 +1861,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Parity stub — not implemented (stats & rankings engine) */
+        /** Currently hot movies (activity in the last 24 hours) */
         get: operations["_v1_movies_hot_GET"];
         put?: never;
         post?: never;
@@ -1861,7 +1878,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Parity stub — not implemented (stats & rankings engine) */
+        /** Most played movies in a period (daily|weekly|monthly|yearly|all) */
         get: operations["_v1_movies_played_period_GET"];
         put?: never;
         post?: never;
@@ -1980,7 +1997,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Parity stub — not implemented (stats & rankings engine) */
+        /** Most watched movies in a period (daily|weekly|monthly|yearly|all) */
         get: operations["_v1_movies_watched_period_GET"];
         put?: never;
         post?: never;
@@ -2783,9 +2800,9 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Reset the caller's watched-episode history for one show (ratings/collection untouched) */
+        /** Record a watched-progress reset point for one show (history is kept) */
         post: operations["_v1_shows_id_progress_watched_reset_POST"];
-        /** Parity stub — not implemented (stats & rankings engine) */
+        /** Undo a watched-progress reset for one show */
         delete: operations["_v1_shows_id_progress_watched_reset_DELETE"];
         options?: never;
         head?: never;
@@ -3360,8 +3377,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Parity stub — not implemented (stats & rankings engine) */
+        /** Most collected shows in a period (daily|weekly|monthly|yearly|all) */
         get: operations["_v1_shows_collected_period_GET"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shows/favorited/{period}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Most favorited shows in a period (daily|weekly|monthly|yearly|all) */
+        get: operations["_v1_shows_favorited_period_GET"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3377,7 +3411,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Parity stub — not implemented (stats & rankings engine) */
+        /** Currently hot shows (activity in the last 24 hours) */
         get: operations["_v1_shows_hot_GET"];
         put?: never;
         post?: never;
@@ -3394,7 +3428,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Parity stub — not implemented (stats & rankings engine) */
+        /** Most played shows in a period (daily|weekly|monthly|yearly|all) */
         get: operations["_v1_shows_played_period_GET"];
         put?: never;
         post?: never;
@@ -3513,7 +3547,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Parity stub — not implemented (stats & rankings engine) */
+        /** Most watched shows in a period (daily|weekly|monthly|yearly|all) */
         get: operations["_v1_shows_watched_period_GET"];
         put?: never;
         post?: never;
@@ -13437,6 +13471,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Popular media */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description invalid request */
             400: {
                 headers: {
@@ -13499,13 +13540,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
-            };
-            /** @description Not implemented — stats/rankings engine (issue #66) (#66) */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -13607,6 +13641,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Trending media */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description invalid request */
             400: {
                 headers: {
@@ -13669,13 +13710,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
-            };
-            /** @description Not implemented — stats/rankings engine (issue #66) (#66) */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -15046,13 +15080,6 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented (requires activity engine) */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
     _v1_movies_id_watchnow_country_GET: {
@@ -15317,6 +15344,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Ranked items */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description invalid request */
             400: {
                 headers: {
@@ -15380,12 +15414,86 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — stats/rankings engine (issue #66) (#66) */
-            501: {
+        };
+    };
+    _v1_movies_favorited_period_GET: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ranked items */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unprocessable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -15398,6 +15506,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Hot items */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description invalid request */
             400: {
                 headers: {
@@ -15460,13 +15575,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
-            };
-            /** @description Not implemented — stats/rankings engine (issue #66) (#66) */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -15479,6 +15587,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Ranked items */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description invalid request */
             400: {
                 headers: {
@@ -15541,13 +15656,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
-            };
-            /** @description Not implemented — stats/rankings engine (issue #66) (#66) */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -16049,6 +16157,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Ranked items */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description invalid request */
             400: {
                 headers: {
@@ -16111,13 +16226,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
-            };
-            /** @description Not implemented — stats/rankings engine (issue #66) (#66) */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -19955,7 +20063,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Progress after reset */
+            /** @description The reset point */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -19978,12 +20086,14 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description Show not found */
+            /** @description not found */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
             /** @description conflict */
             409: {
@@ -20032,6 +20142,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Reset removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description invalid request */
             400: {
                 headers: {
@@ -20041,14 +20158,12 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description unauthorized */
+            /** @description Unauthorized */
             401: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content: {
-                    "application/json": components["schemas"]["ErrorEnvelope"];
-                };
+                content?: never;
             };
             /** @description not found */
             404: {
@@ -20094,13 +20209,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
-            };
-            /** @description Not implemented — stats/rankings engine (issue #66) (#66) */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -22592,13 +22700,6 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented (requires activity engine) */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
         };
     };
     _v1_shows_id_watchnow_country_GET: {
@@ -22775,6 +22876,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Ranked items */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description invalid request */
             400: {
                 headers: {
@@ -22838,12 +22946,86 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Not implemented — stats/rankings engine (issue #66) (#66) */
-            501: {
+        };
+    };
+    _v1_shows_favorited_period_GET: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Ranked items */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unprocessable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
             };
         };
     };
@@ -22856,6 +23038,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Hot items */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description invalid request */
             400: {
                 headers: {
@@ -22918,13 +23107,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
-            };
-            /** @description Not implemented — stats/rankings engine (issue #66) (#66) */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -22937,6 +23119,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Ranked items */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description invalid request */
             400: {
                 headers: {
@@ -22999,13 +23188,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
-            };
-            /** @description Not implemented — stats/rankings engine (issue #66) (#66) */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };
@@ -23507,6 +23689,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
+            /** @description Ranked items */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             /** @description invalid request */
             400: {
                 headers: {
@@ -23569,13 +23758,6 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
-            };
-            /** @description Not implemented — stats/rankings engine (issue #66) (#66) */
-            501: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
             };
         };
     };

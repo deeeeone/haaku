@@ -74,40 +74,34 @@ sections:
     rows:
       - trakt: "GET /media/trending"
         ours: "GET /v1/media/trending"
-        status: blocked-engine
-        rationale: "Per-type feeds exist (/v1/movies/trending, /v1/shows/trending) but a single cross-type ranked feed needs the rankings engine."
-        engine: "stats/rankings engine (issue #66)"
+        status: implemented
+        rationale: "Merged movies+shows feed ordered by the same popularity signal as /v1/movies/trending; watchers is distinct users with history in the last 24 hours."
       - trakt: "GET /media/popular"
         ours: "GET /v1/media/popular"
-        status: blocked-engine
-        rationale: "Our popularity is movies/shows.popularity; one feed ranked across both media types is the rankings engine's job."
-        engine: "stats/rankings engine (issue #66)"
+        status: implemented
+        rationale: "Merged movies+shows feed in the contract's bare movie/show union, ordered by movies/shows.popularity."
   - name: "Movies"
     rows:
       - trakt: "GET /movies/watched/{period}"
         ours: "GET /v1/movies/watched/{period}"
-        status: blocked-engine
-        rationale: "Distinct watchers per period is a period-activity aggregate we do not compute yet."
-        engine: "stats/rankings engine (issue #66)"
+        status: implemented
+        rationale: "Distinct user_history watchers in the period window, with play and collection counts computed for every row."
       - trakt: "GET /movies/played/{period}"
         ours: "GET /v1/movies/played/{period}"
-        status: blocked-engine
-        rationale: "Play counts per period need the same aggregate as watched/{period}."
-        engine: "stats/rankings engine (issue #66)"
+        status: implemented
+        rationale: "History rows in the period window, with watcher and collection counts computed for the same row."
       - trakt: "GET /movies/collected/{period}"
         ours: "GET /v1/movies/collected/{period}"
-        status: blocked-engine
-        rationale: "Collector counts per period require the rankings engine's period rollups."
-        engine: "stats/rankings engine (issue #66)"
+        status: implemented
+        rationale: "Distinct collectors with collected_at in the period window, with watcher and play counts computed too."
       - trakt: "GET /movies/anticipated"
         ours: "GET /v1/movies/anticipated"
         status: implemented
         rationale: "Served at Trakt's path from the same watchlist-weighted anticipation query, shaped as the contract's {list_count, movie} array."
       - trakt: "GET /movies/hot"
         ours: "GET /v1/movies/hot"
-        status: blocked-engine
-        rationale: "hot is watchers in the last 24 hours; we store no windowed watcher counts (movies/trending is popularity-ordered, not play-ordered)."
-        engine: "stats/rankings engine (issue #66)"
+        status: implemented
+        rationale: "Ranked by 24h activity (history + checkins + start/scrobble + watchlist adds); list_count is distinct watchlist adders in that window."
       - trakt: "GET /movies/streaming/{period}"
         ours: "GET /v1/movies/streaming/{period}"
         status: implemented
@@ -159,35 +153,30 @@ sections:
         rationale: "Direct aggregates over user_history, user_collection, user_ratings, comments, list_items and user_favorites - no engine or materialised table needed. recommended mirrors favorited, which is what Trakt renamed it to."
       - trakt: "GET /movies/{id}/watching"
         ours: "GET /v1/movies/{id}/watching"
-        status: blocked-engine
-        rationale: "Registered but responds 501 not_implemented; users currently watching come from the activity/scrobble path."
-        engine: "activity engine"
+        status: implemented
+        rationale: "Users whose newest live scrobble session names the movie, filtered through the same privacy rule as /v1/users/{id}/watching."
   - name: "Shows"
     rows:
       - trakt: "GET /shows/watched/{period}"
         ours: "GET /v1/shows/watched/{period}"
-        status: blocked-engine
-        rationale: "Period distinct watchers for shows need the period-activity aggregate."
-        engine: "stats/rankings engine (issue #66)"
+        status: implemented
+        rationale: "Shows roll their episodes' history up to the show: distinct watchers and plays in the period, with collection counts."
       - trakt: "GET /shows/played/{period}"
         ours: "GET /v1/shows/played/{period}"
-        status: blocked-engine
-        rationale: "Period play counts for shows need the same aggregate."
-        engine: "stats/rankings engine (issue #66)"
+        status: implemented
+        rationale: "Episode history rows in the period window, rolled up to the show, with watcher and collection counts."
       - trakt: "GET /shows/collected/{period}"
         ours: "GET /v1/shows/collected/{period}"
-        status: blocked-engine
-        rationale: "Period collector counts need the rankings engine rollups."
-        engine: "stats/rankings engine (issue #66)"
+        status: implemented
+        rationale: "Distinct collectors of the show or its episodes in the period window; collector_count dedupes users."
       - trakt: "GET /shows/anticipated"
         ours: "GET /v1/shows/anticipated"
         status: implemented
         rationale: "Served at Trakt's path from the same watchlist-weighted anticipation query, shaped as the contract's {list_count, show} array."
       - trakt: "GET /shows/hot"
         ours: "GET /v1/shows/hot"
-        status: blocked-engine
-        rationale: "hot needs windowed watcher counts we do not compute (shows/trending is popularity-ordered)."
-        engine: "stats/rankings engine (issue #66)"
+        status: implemented
+        rationale: "Ranked by 24h activity (episode/show history + checkins + scrobbles + watchlist adds); list_count is distinct watchlist adders."
       - trakt: "GET /shows/streaming/{period}"
         ours: "GET /v1/shows/streaming/{period}"
         status: blocked-data
@@ -239,9 +228,8 @@ sections:
         rationale: "Landed: same per-season breakdown pinned to the caller's user_collection rows (aired vs collected episodes)."
       - trakt: "DELETE /shows/{id}/progress/watched/reset"
         ours: "DELETE /v1/shows/{id}/progress/watched/reset"
-        status: blocked-engine
-        rationale: "Resetting progress can only exist once progress is computed and stored."
-        engine: "stats/rankings engine (issue #66)"
+        status: implemented
+        rationale: "Undo: deletes the stored reset point and restores previous progress; 204 when no reset exists."
       - trakt: "POST /shows/{id}/progress/watched/reset"
         ours: "POST /v1/shows/{id}/progress/watched/reset"
         status: implemented
@@ -260,9 +248,8 @@ sections:
         rationale: "Direct aggregates over the show's episode history plus user_collection, user_ratings, comments, list_items and user_favorites; includes collected_episodes. recommended mirrors favorited, which is what Trakt renamed it to."
       - trakt: "GET /shows/{id}/watching"
         ours: "GET /v1/shows/{id}/watching"
-        status: blocked-engine
-        rationale: "Registered but responds 501 not_implemented; needs the activity engine."
-        engine: "activity engine"
+        status: implemented
+        rationale: "The same live sessions rolled up from the show, its seasons and episodes; private users excluded."
       - trakt: "GET /shows/{id}/seasons/{season}"
         ours: "GET /v1/seasons/{id}"
         status: divergent
@@ -834,9 +821,9 @@ sections:
         status: implemented
         rationale: "Served at GET /v1/media/anticipated; the path shape matches the contract."
       - trakt: "GET /movies/favorited/{period}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining movie metadata sub-resources blocked on ingest (#68)"
+        ours: "GET /v1/movies/favorited/{period}"
+        status: implemented
+        rationale: "Distinct users who favorited the movie in the period window (user_favorites.favorited_at)."
       - trakt: "GET /movies/popular"
         ours: "GET /v1/movies/popular"
         status: implemented
@@ -923,9 +910,9 @@ sections:
         status: implemented
         rationale: "Served at GET /v1/search/{type}/exact; case-insensitive exact title match for movies and shows."
       - trakt: "GET /shows/favorited/{period}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining show metadata sub-resources (videos, studios, sentiments, certifications) blocked on ingest (#68)"
+        ours: "GET /v1/shows/favorited/{period}"
+        status: implemented
+        rationale: "Distinct users who favorited the show in the period window."
       - trakt: "GET /shows/popular"
         ours: "GET /v1/shows/popular"
         status: implemented

@@ -32,3 +32,9 @@ acknowledged:
   - signature: "removed-status-code GET /v1/shows/{id}/lists 501"
     date: 2026-11-09
     reason: "Same as the movie lists row: the 501 placeholder became a working 200 response, so nothing clients call or parse was removed."
+  - signature: "removed-status-code GET /v1/movies/{id}/watching 501"
+    date: 2026-11-09
+    reason: "The 501 placeholder is now a real live-session read with 200; clients that treated 501 as unavailable now get the contract profile array."
+  - signature: "removed-status-code GET /v1/shows/{id}/watching 501"
+    date: 2026-11-09
+    reason: "Same as the movie watching row: the 501 placeholder became a working 200, so no callable or parseable surface was removed."
