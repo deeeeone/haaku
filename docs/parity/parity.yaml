@@ -842,8 +842,9 @@ sections:
         rationale: "deferred: tracked by the owning group issue under #4"
       - trakt: "GET /oauth/authorize"
         ours: "GET /oauth/authorize"
-        status: implemented
-        rationale: "Served at GET /oauth/authorize; the path shape matches the contract."
+        status: divergent
+        rationale: "Answers 302 to the client's registered redirect_uri carrying code and state, which is what a browser OAuth client requires; the contract declares 200 with an empty schema. Answering 200 here would break every real authorization flow, so the 302 is deliberate and the row stays divergent."
+        compat: "no bridge needed: a 302 is the real OAuth response and every Trakt client follows it. The contract's 200 is a documentation artifact of the vendored ts-rest schema."
       - trakt: "GET /people/updates/id/{start_date}"
         ours: ""
         status: out-of-scope
