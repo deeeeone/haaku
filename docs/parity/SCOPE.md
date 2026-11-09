@@ -112,7 +112,7 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /recommendations/movies/` | out-of-scope | related / recommendations (owner carve-out: stays 501) | #49 |
 | `GET /recommendations/shows/` | out-of-scope | related / recommendations (owner carve-out: stays 501) | #49 |
 | `GET /search/recent_by_id/global/{type}` | blocked-data | search engine | #70 |
-| `GET /search/{type}` | divergent | divergent shapes — serve the contract path | #104 |
+| `GET /search/{type}` | divergent | search engine | #70 |
 | `GET /search/{type}/exact` | out-of-scope | search engine | #70 |
 | `GET /shows/collected/{period}` | blocked-engine | stats and rankings | #66 |
 | `GET /shows/favorited/{period}` | out-of-scope | stats and rankings | #66 |
@@ -124,9 +124,9 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /shows/{id}/lists/{type}/{sort}` | blocked-engine | lists engine — per-item lists | #67 |
 | `GET /shows/{id}/related` | blocked-engine | related / recommendations (owner carve-out: stays 501) | #49 |
 | `GET /shows/{id}/seasons/{season}` | divergent | divergent shapes — serve the contract path | #104 |
-| `GET /shows/{id}/seasons/{season}/comments/{sort}` | divergent | divergent shapes — serve the contract path | #104 |
+| `GET /shows/{id}/seasons/{season}/comments/{sort}` | divergent | TMDB metadata ingest | #68 |
 | `GET /shows/{id}/seasons/{season}/episodes/{episode}` | divergent | divergent shapes — serve the contract path | #104 |
-| `GET /shows/{id}/seasons/{season}/episodes/{episode}/comments/{sort}` | divergent | divergent shapes — serve the contract path | #104 |
+| `GET /shows/{id}/seasons/{season}/episodes/{episode}/comments/{sort}` | divergent | TMDB metadata ingest | #68 |
 | `GET /shows/{id}/seasons/{season}/episodes/{episode}/people` | blocked-data | TMDB metadata ingest | #68 |
 | `GET /shows/{id}/seasons/{season}/episodes/{episode}/ratings` | out-of-scope | per-item reads over stored data | #86 |
 | `GET /shows/{id}/seasons/{season}/episodes/{episode}/stats` | out-of-scope | per-item reads over stored data | #86 |
@@ -153,28 +153,28 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /sync/collection/minimal/episodes` | out-of-scope | remaining sync reads and writes | #106 |
 | `GET /sync/collection/minimal/movies` | out-of-scope | remaining sync reads and writes | #106 |
 | `GET /sync/collection/minimal/shows` | out-of-scope | remaining sync reads and writes | #106 |
-| `GET /sync/collection/{type}` | divergent | divergent shapes — serve the contract path | #104 |
-| `GET /sync/favorites/{type}/{sort_by}/{sort_how}` | divergent | divergent shapes — serve the contract path | #104 |
+| `GET /sync/collection/{type}` | divergent | remaining sync reads and writes | #106 |
+| `GET /sync/favorites/{type}/{sort_by}/{sort_how}` | divergent | remaining sync reads and writes | #106 |
 | `GET /sync/progress/up_next` | out-of-scope | remaining sync reads and writes | #106 |
 | `GET /sync/progress/up_next_nitro` | out-of-scope | remaining sync reads and writes | #106 |
 | `GET /sync/progress/watched` | out-of-scope | remaining sync reads and writes | #106 |
 | `GET /sync/watched/{type}` | out-of-scope | remaining sync reads and writes | #106 |
-| `GET /sync/watchlist/{type}/{sort_by}/{sort_how}` | divergent | divergent shapes — serve the contract path | #104 |
+| `GET /sync/watchlist/{type}/{sort_by}/{sort_how}` | divergent | remaining sync reads and writes | #106 |
 | `GET /users/hidden/dropped` | out-of-scope | per-section hidden item lists | #108 |
 | `GET /users/hidden/progress_watched` | out-of-scope | per-section hidden item lists | #108 |
 | `GET /users/requests/` | out-of-scope | follow requests (blocked on #54) | #110 |
 | `GET /users/requests/following` | out-of-scope | follow requests (blocked on #54) | #110 |
 | `GET /users/{id}/favorites/comments/{sort}` | out-of-scope | public-profile read surface | #103 |
-| `GET /users/{id}/favorites/media/{sort}` | divergent | divergent shapes — serve the contract path | #104 |
-| `GET /users/{id}/favorites/movies/{sort}` | divergent | divergent shapes — serve the contract path | #104 |
-| `GET /users/{id}/favorites/shows/{sort}` | divergent | divergent shapes — serve the contract path | #104 |
-| `GET /users/{id}/favorites/{type}/{sort_by}/{sort_how}` | divergent | divergent shapes — serve the contract path | #104 |
-| `GET /users/{id}/history/episodes` | divergent | divergent shapes — serve the contract path | #104 |
-| `GET /users/{id}/history/episodes/{item_id}` | divergent | divergent shapes — serve the contract path | #104 |
-| `GET /users/{id}/history/movies` | divergent | divergent shapes — serve the contract path | #104 |
-| `GET /users/{id}/history/movies/{item_id}` | divergent | divergent shapes — serve the contract path | #104 |
-| `GET /users/{id}/history/shows` | divergent | divergent shapes — serve the contract path | #104 |
-| `GET /users/{id}/history/shows/{item_id}` | divergent | divergent shapes — serve the contract path | #104 |
+| `GET /users/{id}/favorites/media/{sort}` | divergent | public-profile read surface | #103 |
+| `GET /users/{id}/favorites/movies/{sort}` | divergent | public-profile read surface | #103 |
+| `GET /users/{id}/favorites/shows/{sort}` | divergent | public-profile read surface | #103 |
+| `GET /users/{id}/favorites/{type}/{sort_by}/{sort_how}` | divergent | public-profile read surface | #103 |
+| `GET /users/{id}/history/episodes` | divergent | public-profile read surface | #103 |
+| `GET /users/{id}/history/episodes/{item_id}` | divergent | public-profile read surface | #103 |
+| `GET /users/{id}/history/movies` | divergent | public-profile read surface | #103 |
+| `GET /users/{id}/history/movies/{item_id}` | divergent | public-profile read surface | #103 |
+| `GET /users/{id}/history/shows` | divergent | public-profile read surface | #103 |
+| `GET /users/{id}/history/shows/{item_id}` | divergent | public-profile read surface | #103 |
 | `GET /users/{id}/lists/collaborations` | out-of-scope | list management — writes, items, smart lists | #105 |
 | `GET /users/{id}/lists/{list_id}/` | out-of-scope | list management — writes, items, smart lists | #105 |
 | `GET /users/{id}/lists/{list_id}/comments/{sort}` | out-of-scope | list management — writes, items, smart lists | #105 |
@@ -188,13 +188,13 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /users/{id}/smart-list-drafts` | out-of-scope | public-profile read surface | #103 |
 | `GET /users/{id}/smart-lists` | out-of-scope | list management — writes, items, smart lists | #105 |
 | `GET /users/{id}/smart-lists/{list_id}/` | out-of-scope | list management — writes, items, smart lists | #105 |
-| `GET /users/{id}/watched/shows` | divergent | divergent shapes — serve the contract path | #104 |
-| `GET /users/{id}/watched/{type}` | divergent | divergent shapes — serve the contract path | #104 |
-| `GET /users/{id}/watchlist/movie,show/{sort}` | divergent | divergent shapes — serve the contract path | #104 |
-| `GET /users/{id}/watchlist/movies/{sort}` | divergent | divergent shapes — serve the contract path | #104 |
-| `GET /users/{id}/watchlist/shows/{sort}` | divergent | divergent shapes — serve the contract path | #104 |
-| `GET /users/{id}/watchlist/{type}/{sort_by}/{sort_how}` | divergent | divergent shapes — serve the contract path | #104 |
-| `GET /users/{id}/{type}/activities` | divergent | divergent shapes — serve the contract path | #104 |
+| `GET /users/{id}/watched/shows` | divergent | public-profile read surface | #103 |
+| `GET /users/{id}/watched/{type}` | divergent | public-profile read surface | #103 |
+| `GET /users/{id}/watchlist/movie,show/{sort}` | divergent | public-profile read surface | #103 |
+| `GET /users/{id}/watchlist/movies/{sort}` | divergent | public-profile read surface | #103 |
+| `GET /users/{id}/watchlist/shows/{sort}` | divergent | public-profile read surface | #103 |
+| `GET /users/{id}/watchlist/{type}/{sort_by}/{sort_how}` | divergent | public-profile read surface | #103 |
+| `GET /users/{id}/{type}/activities` | divergent | public-profile read surface | #103 |
 | `GET /watchnow/sources` | blocked-data | calendars and Watch Now data | #69 |
 | `GET /watchnow/sources/{countryCode}` | blocked-data | calendars and Watch Now data | #69 |
 | `POST /comments/` | out-of-scope | comment moderation, reactions and the note item read | #107 |
