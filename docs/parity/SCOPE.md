@@ -98,7 +98,7 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /movies/{id}/watching` | blocked-engine | stats and rankings | #66 |
 | `GET /movies/{id}/watchnow/justwatch_links/{country}` | out-of-scope | TMDB metadata ingest | #68 |
 | `GET /notes/{id}/item` | out-of-scope | comment moderation, reactions and the note item read | #107 |
-| `GET /oauth/authorize` | divergent | None | unfiled (None) |
+| `GET /oauth/authorize` | divergent | divergent shapes — serve the contract path | #104 |
 | `GET /people/updates/id/{start_date}` | out-of-scope | TMDB metadata ingest | #68 |
 | `GET /people/{id}/` | out-of-scope | TMDB metadata ingest | #68 |
 | `GET /people/{id}/lists/{type}/{sort}` | blocked-engine | lists engine — per-item lists | #67 |

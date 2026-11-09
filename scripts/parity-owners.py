@@ -76,6 +76,13 @@ RULES = [
      r"^/people/|^/episodes/|^/seasons/", "68"),
     # -- the public-profile read surface -------------------------------------
     (r"^/users/", "PROFILE"),
+    # -- the OAuth surface. Its rows are implemented and owned by nobody: the
+    #    one divergent row (`GET /oauth/authorize` answers the 302 a real client
+    #    needs where the contract declares 200) is a shape question on a route we
+    #    do serve, so it belongs with the cross-cutting divergent slice rather
+    #    than with the endpoint groups. Without this rule the row is unowned and
+    #    the frozen scope cannot be written.
+    (r"^/oauth/", "DIVERGENT"),
 ]
 
 # group -> (issue number, human name). A group whose issue is not filed yet has
