@@ -5234,7 +5234,11 @@ paths:
                 "200":
                     description: Stats
                 "400":
-                    description: Invalid id
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
                 "401":
                     content:
                         application/json:
@@ -5242,7 +5246,11 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: unauthorized
                 "404":
-                    description: Movie not found
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
                 "409":
                     content:
                         application/json:
@@ -9413,7 +9421,11 @@ paths:
                 "200":
                     description: Stats
                 "400":
-                    description: Invalid id
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
                 "401":
                     content:
                         application/json:
@@ -9421,7 +9433,11 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: unauthorized
                 "404":
-                    description: Show not found
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
                 "409":
                     content:
                         application/json:
