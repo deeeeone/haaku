@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -691,8 +690,6 @@ func TestMeLikesRoutes(t *testing.T) {
 }
 
 func ptrInt64(v int64) *int64 { return &v }
-
-func itoa(v int64) string { return strconv.FormatInt(v, 10) }
 
 // TestProfileReadsMeAliasResolvesToTheCaller covers the "me" alias on the
 // :id routes: /v1/users/me/watchlist must serve the caller's own list rather
