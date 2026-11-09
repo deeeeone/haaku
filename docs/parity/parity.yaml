@@ -685,13 +685,13 @@ sections:
         status: out-of-scope
         rationale: "deferred: DVD, streaming and release calendars blocked on release data (#69)"
       - trakt: "GET /certifications/movies"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: reference-data enums beyond the subsets /v1/reference serves"
+        ours: "GET /v1/certifications/movies"
+        status: implemented
+        rationale: "Served at GET /v1/certifications/movies from TMDB's /certification/movie/list — the same reference source /v1/certifications/{type} reads — shaped as the contract's country-keyed object of {name, slug, description}. No hardcoded enum."
       - trakt: "GET /certifications/shows"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: reference-data enums beyond the subsets /v1/reference serves"
+        ours: "GET /v1/certifications/shows"
+        status: implemented
+        rationale: "Served at GET /v1/certifications/shows from TMDB's /certification/tv/list — the same reference source /v1/certifications/{type} reads — shaped as the contract's country-keyed object of {name, slug, description}. No hardcoded enum."
       - trakt: "GET /certifications/{type}"
         ours: "GET /v1/certifications/{type}"
         status: implemented
