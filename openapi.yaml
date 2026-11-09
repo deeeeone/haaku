@@ -5275,10 +5275,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented (requires stats engine)
             security: []
-            summary: Get stats for a movie
+            summary: Get stats for a movie (watchers, plays, collectors, comments, lists, votes, favorited, recommended)
             tags:
                 - Movies
     /v1/movies/{id}/studios:
@@ -9028,6 +9026,94 @@ paths:
             summary: Parity stub — not implemented (TMDB metadata ingest)
             tags:
                 - Shows
+    /v1/shows/{id}/seasons/{season}/episodes/{episode}/ratings:
+        get:
+            operationId: _v1_shows_id_seasons_season_episodes_episode_ratings_GET
+            responses:
+                "200":
+                    description: Ratings
+                "400":
+                    description: Invalid season or episode number
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    description: Show, season or episode not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Episode rating distribution (contract path)
+            tags:
+                - Shows
+    /v1/shows/{id}/seasons/{season}/episodes/{episode}/stats:
+        get:
+            operationId: _v1_shows_id_seasons_season_episodes_episode_stats_GET
+            responses:
+                "200":
+                    description: Stats
+                "400":
+                    description: Invalid season or episode number
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    description: Show, season or episode not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security: []
+            summary: Episode stats (contract path)
+            tags:
+                - Shows
     /v1/shows/{id}/seasons/{season}/episodes/{episode}/translations/{lang}:
         get:
             operationId: _v1_shows_id_seasons_season_episodes_episode_translations_lang_GET
@@ -9464,10 +9550,8 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "501":
-                    description: Not implemented (requires stats engine)
             security: []
-            summary: Get stats for a show
+            summary: Get stats for a show (watchers, plays, collectors, comments, lists, votes, favorited, recommended)
             tags:
                 - Shows
     /v1/shows/{id}/studios:

@@ -42,6 +42,9 @@ func RegisterRoutes(api fiber.Router) {
 
 	// Contract-shaped nested episode lists (/shows/{id}/seasons/{season}/episodes/{episode}/lists/...).
 	registerContractEpisodeListRoutes(api)
+
+	// Contract-shaped nested episode stats/ratings (/shows/{id}/seasons/{season}/episodes/{episode}/{stats,ratings}).
+	registerContractEpisodeStatsRoutes(api)
 }
 
 // ---------------------------------------------------------------------------

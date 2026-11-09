@@ -28,6 +28,7 @@ func setupTestDB(t *testing.T) *gorm.DB {
 		&database.Show{}, &database.Season{}, &database.Episode{},
 		&database.ExternalID{},
 		&database.UserHistory{}, &database.UserRating{},
+		&database.UserCollection{}, &database.UserFavorite{},
 		&database.Comment{}, &database.List{}, &database.ListItem{},
 	}
 	if err := db.AutoMigrate(models...); err != nil {
