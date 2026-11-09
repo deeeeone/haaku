@@ -11,7 +11,7 @@ path (modulo our `/v1` prefix), with a real 2xx — except the recommendation/re
 engine, which stays an honest `501 not_implemented` and graded `blocked-engine` by
 the owner's carve-out. Done is `go run ./cmd/parity`, not a PR count.
 
-Contract operations: **336**. Not yet served (**in scope**): **167**. Out by owner decision: **31**. Served today: **138**.
+Contract operations: **336**. Not yet served (**in scope**): **168**. Out by owner decision: **31**. Served today: **137**.
 
 ## Out of scope (owner decisions, re-affirmed)
 
@@ -105,6 +105,7 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /movies/{id}/watching` | blocked-engine | stats and rankings | #66 |
 | `GET /movies/{id}/watchnow/justwatch_links/{country}` | out-of-scope | TMDB metadata ingest | #68 |
 | `GET /notes/{id}/item` | out-of-scope | comment moderation, reactions and the note item read | #107 |
+| `GET /oauth/authorize` | divergent | None | unfiled (None) |
 | `GET /people/updates/id/{start_date}` | out-of-scope | TMDB metadata ingest | #68 |
 | `GET /people/{id}/` | out-of-scope | TMDB metadata ingest | #68 |
 | `GET /people/{id}/lists/{type}/{sort}` | blocked-engine | lists engine — per-item lists | #67 |
@@ -269,7 +270,6 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /movies/{id}/watchnow/{country}` | `GET /v1/movies/{id}/watchnow/{country}` |
 | `GET /networks` | `GET /v1/networks` |
 | `GET /notes/{id}` | `GET /v1/notes/{id}` |
-| `GET /oauth/authorize` | `GET /oauth/authorize` |
 | `GET /people/updates/{start_date}` | `GET /v1/people/updates/{start_date}` |
 | `GET /people/{id}/movies` | `GET /v1/people/{id}/movies` |
 | `GET /people/{id}/shows` | `GET /v1/people/{id}/shows` |

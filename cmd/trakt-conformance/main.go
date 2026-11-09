@@ -357,8 +357,19 @@ type client struct {
 
 func newClient(base string, timeout time.Duration, fx Fixtures, index *contract.Index, doc *contract.Document) (*client, error) {
 	c := &client{
-		base:  strings.TrimRight(base, "/"),
-		http:  &http.Client{Timeout: timeout},
+		base: strings.TrimRight(base, "/"),
+		http: &http.Client{
+			Timeout: timeout,
+			// Do not follow redirects. A 3xx is a response we must grade:
+			// /oauth/authorize answers 302 to the registered callback, and
+			// following it turned a handler behaviour we want to see into a
+			// harness error (dial tcp: lookup example.test: no such host)
+			// that hid the real finding. Observing the 302 lets the status
+			// assertion report it honestly.
+			CheckRedirect: func(*http.Request, []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
 		fx:    fx,
 		index: index,
 		doc:   doc,
