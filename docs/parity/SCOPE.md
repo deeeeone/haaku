@@ -11,7 +11,7 @@ path (modulo our `/v1` prefix), with a real 2xx — except the recommendation/re
 engine, which stays an honest `501 not_implemented` and graded `blocked-engine` by
 the owner's carve-out. Done is `go run ./cmd/parity`, not a PR count.
 
-Contract operations: **336**. Not yet served (**in scope**): **125**. Out by owner decision: **31**. Served today: **180**.
+Contract operations: **336**. Not yet served (**in scope**): **115**. Out by owner decision: **31**. Served today: **190**.
 
 ## Out of scope (owner decisions, re-affirmed)
 
@@ -57,8 +57,6 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 
 | Contract operation | Status | Group | Owner |
 |---|---|---|---|
-| `DELETE /comments/{id}/` | out-of-scope | comment moderation, reactions and the note item read | #107 |
-| `DELETE /comments/{id}/reactions/{reaction_type}` | out-of-scope | comment moderation, reactions and the note item read | #107 |
 | `DELETE /recommendations/movies/{id}` | blocked-engine | related / recommendations (owner carve-out: stays 501) | #49 |
 | `DELETE /recommendations/shows/{id}` | blocked-engine | related / recommendations (owner carve-out: stays 501) | #49 |
 | `DELETE /shows/{id}/progress/watched/reset` | blocked-engine | stats and rankings | #66 |
@@ -73,10 +71,6 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /calendars/{target}/streaming/{start_date}/{days}` | blocked-data | calendars and Watch Now data | #69 |
 | `GET /certifications/movies` | out-of-scope | reference-data certification enums | #109 |
 | `GET /certifications/shows` | out-of-scope | reference-data certification enums | #109 |
-| `GET /comments/recent/{comment_type}/{type}` | out-of-scope | comment moderation, reactions and the note item read | #107 |
-| `GET /comments/updates/{comment_type}/{type}` | out-of-scope | comment moderation, reactions and the note item read | #107 |
-| `GET /comments/{id}/reactions/` | out-of-scope | comment moderation, reactions and the note item read | #107 |
-| `GET /comments/{id}/reactions/summary` | out-of-scope | comment moderation, reactions and the note item read | #107 |
 | `GET /episodes/{id}/watchnow/{country}` | out-of-scope | TMDB metadata ingest | #68 |
 | `GET /lists/{id}/comments/{sort}` | divergent | list management — writes, items, smart lists | #105 |
 | `GET /lists/{id}/items/{type}/{sort_by}/{sort_how}` | divergent | list management — writes, items, smart lists | #105 |
@@ -97,7 +91,6 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /movies/{id}/videos` | blocked-data | TMDB metadata ingest | #68 |
 | `GET /movies/{id}/watching` | blocked-engine | stats and rankings | #66 |
 | `GET /movies/{id}/watchnow/justwatch_links/{country}` | out-of-scope | TMDB metadata ingest | #68 |
-| `GET /notes/{id}/item` | out-of-scope | comment moderation, reactions and the note item read | #107 |
 | `GET /oauth/authorize` | divergent | divergent shapes — serve the contract path | #104 |
 | `GET /people/updates/id/{start_date}` | out-of-scope | TMDB metadata ingest | #68 |
 | `GET /people/{id}/` | out-of-scope | TMDB metadata ingest | #68 |
@@ -165,8 +158,6 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /users/{id}/{type}/activities` | divergent | public-profile read surface | #103 |
 | `GET /watchnow/sources` | blocked-data | calendars and Watch Now data | #69 |
 | `GET /watchnow/sources/{countryCode}` | blocked-data | calendars and Watch Now data | #69 |
-| `POST /comments/` | out-of-scope | comment moderation, reactions and the note item read | #107 |
-| `POST /comments/{id}/reactions/{reaction_type}` | out-of-scope | comment moderation, reactions and the note item read | #107 |
 | `POST /movies/{id}/refresh/justwatch` | out-of-scope | TMDB metadata ingest | #68 |
 | `POST /people/{id}/report` | out-of-scope | TMDB metadata ingest | #68 |
 | `POST /search/recent/` | blocked-data | search engine | #70 |
@@ -179,7 +170,6 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `POST /users/requests/{id}` | out-of-scope | follow requests (blocked on #54) | #110 |
 | `POST /users/{id}/lists` | divergent | list management — writes, items, smart lists | #105 |
 | `POST /users/{id}/smart-lists` | divergent | list management — writes, items, smart lists | #105 |
-| `PUT /comments/{id}/` | out-of-scope | comment moderation, reactions and the note item read | #107 |
 | `PUT /sync/favorites/{list_item_id}` | divergent | remaining sync reads and writes | #106 |
 | `PUT /sync/watchlist` | divergent | remaining sync reads and writes | #106 |
 
@@ -188,7 +178,9 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | Contract operation | Our path |
 |---|---|
 | `DELETE /checkin` | `DELETE /v1/checkin` |
+| `DELETE /comments/{id}/` | `DELETE /v1/comments/{id}` |
 | `DELETE /comments/{id}/like` | `DELETE /v1/comments/{id}/like` |
+| `DELETE /comments/{id}/reactions/{reaction_type}` | `DELETE /v1/comments/{id}/reactions/{reaction_type}` |
 | `DELETE /lists/{id}/like` | `DELETE /v1/lists/{id}/like` |
 | `DELETE /notes/{id}` | `DELETE /v1/notes/{id}` |
 | `DELETE /sync/playback/{id}` | `DELETE /v1/sync/playback/{id}` |
@@ -202,10 +194,14 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /calendars/releases/hot/premieres/{start_date}/{days}` | `GET /v1/calendars/releases/hot/premieres/{start_date}/{days}` |
 | `GET /calendars/{target}/movies/{start_date}/{days}` | `GET /v1/calendars/all/movies/{start_date}/{days}` |
 | `GET /certifications/{type}` | `GET /v1/certifications/{type}` |
+| `GET /comments/recent/{comment_type}/{type}` | `GET /v1/comments/recent/{comment_type}/{type}` |
 | `GET /comments/trending/{comment_type}/{type}` | `GET /v1/comments/trending/{comment_type}/{type}` |
+| `GET /comments/updates/{comment_type}/{type}` | `GET /v1/comments/updates/{comment_type}/{type}` |
 | `GET /comments/{id}` | `GET /v1/comments/{id}` |
 | `GET /comments/{id}/item` | `GET /v1/comments/{id}/item` |
 | `GET /comments/{id}/likes` | `GET /v1/comments/{id}/likes` |
+| `GET /comments/{id}/reactions/` | `GET /v1/comments/{id}/reactions` |
+| `GET /comments/{id}/reactions/summary` | `GET /v1/comments/{id}/reactions/summary` |
 | `GET /comments/{id}/replies` | `GET /v1/comments/{id}/replies` |
 | `GET /countries/{type}` | `GET /v1/countries/{type}` |
 | `GET /genres/{type}` | `GET /v1/genres/{type}` |
@@ -234,6 +230,7 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /movies/{id}/watchnow/{country}` | `GET /v1/movies/{id}/watchnow/{country}` |
 | `GET /networks` | `GET /v1/networks` |
 | `GET /notes/{id}` | `GET /v1/notes/{id}` |
+| `GET /notes/{id}/item` | `GET /v1/notes/{id}/item` |
 | `GET /people/updates/{start_date}` | `GET /v1/people/updates/{start_date}` |
 | `GET /people/{id}/movies` | `GET /v1/people/{id}/movies` |
 | `GET /people/{id}/shows` | `GET /v1/people/{id}/shows` |
@@ -319,7 +316,9 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /users/{id}/watching` | `GET /v1/users/{id}/watching` |
 | `GET /users/{id}/watchlist/comments/{sort}` | `GET /v1/users/{id}/watchlist/comments/{sort}` |
 | `POST /checkin` | `POST /v1/checkin` |
+| `POST /comments/` | `POST /v1/comments` |
 | `POST /comments/{id}/like` | `POST /v1/comments/{id}/like` |
+| `POST /comments/{id}/reactions/{reaction_type}` | `POST /v1/comments/{id}/reactions/{reaction_type}` |
 | `POST /comments/{id}/replies` | `POST /v1/comments/{id}/replies` |
 | `POST /comments/{id}/report` | `POST /v1/comments/{id}/report` |
 | `POST /episodes/{id}/report` | `POST /v1/episodes/{id}/report` |
@@ -361,6 +360,7 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `POST /users/{id}/lists/{list_id}/report` | `POST /v1/users/{id}/lists/{list_id}/report` |
 | `POST /users/{id}/lists/{list_id}/smart-list-draft/convert` | `POST /v1/users/{id}/lists/{list_id}/smart-list-draft/convert` |
 | `POST /users/{id}/report` | `POST /v1/users/{id}/report` |
+| `PUT /comments/{id}/` | `PUT /v1/comments/{id}` |
 | `PUT /notes/{id}` | `PUT /v1/notes/{id}` |
 | `PUT /sync/watchlist/{list_item_id}` | `PUT /v1/sync/watchlist/{list_item_id}` |
 | `PUT /users/settings` | `PUT /v1/users/settings` |
