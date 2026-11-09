@@ -167,8 +167,8 @@ func handleAddHidden(c *fiber.Ctx) error {
 	}
 
 	var req AddHiddenRequest
-	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	if req.MediaType == "" || req.MediaID == 0 {
@@ -232,8 +232,8 @@ func handleRemoveHidden(c *fiber.Ctx) error {
 	}
 
 	var req RemoveHiddenRequest
-	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	if req.MediaType == "" || req.MediaID == 0 {

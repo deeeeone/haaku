@@ -345,8 +345,8 @@ func handleCreateComment(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 
 	var req commentCreateRequest
-	if err := c.BodyParser(&req); err != nil {
-		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 	if err := validateCommentBody(c, req.Comment); err != nil {
 		return err
@@ -406,8 +406,8 @@ func handleEditComment(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 
 	var req commentEditRequest
-	if err := c.BodyParser(&req); err != nil {
-		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 	if err := validateCommentBody(c, req.Comment); err != nil {
 		return err
@@ -563,8 +563,8 @@ func handleCreateReply(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 
 	var req replyCreateRequest
-	if err := c.BodyParser(&req); err != nil {
-		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 	if err := validateCommentBody(c, req.Comment); err != nil {
 		return err
@@ -821,8 +821,8 @@ func handleAddReaction(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 
 	var req reactionRequest
-	if err := c.BodyParser(&req); err != nil {
-		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 	if !allowedReactions[req.Reaction] {
 		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid reaction type; allowed: 👍🔥😂😮😢😡")
@@ -877,8 +877,8 @@ func handleRemoveReaction(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 
 	var req reactionRequest
-	if err := c.BodyParser(&req); err != nil {
-		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	db, err := database.GetDB()
@@ -923,8 +923,8 @@ func handleReportComment(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 
 	var req reportRequest
-	if err := c.BodyParser(&req); err != nil {
-		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid request body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 	if !allowedReportReasons[req.Reason] {
 		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", "invalid report reason")

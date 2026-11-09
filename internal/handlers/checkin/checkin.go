@@ -66,7 +66,7 @@ type checkinItem struct {
 }
 
 type checkinIDs struct {
-	TMDB int `json:"tmdb"`
+	TMDB response.FlexibleID `json:"tmdb"`
 }
 
 type checkinSharing struct {
@@ -122,7 +122,7 @@ var (
 // maps them to proper HTTP statuses instead of a blanket 400.
 func resolveCheckinItem(c *fiber.Ctx, req *checkinRequest) (string, int64, *int64, *int64, error) {
 	if req.Episode != nil {
-		mt, id, err := media.ResolveID(c, fmt.Sprintf("%d", req.Episode.IDs.TMDB))
+		mt, id, err := media.ResolveID(c, fmt.Sprintf("%d", req.Episode.IDs.TMDB.Int()))
 		if err != nil {
 			return "", 0, nil, nil, err
 		}
@@ -157,7 +157,7 @@ func resolveCheckinItem(c *fiber.Ctx, req *checkinRequest) (string, int64, *int6
 	}
 
 	if req.Movie != nil {
-		mt, id, err := media.ResolveID(c, fmt.Sprintf("%d", req.Movie.IDs.TMDB))
+		mt, id, err := media.ResolveID(c, fmt.Sprintf("%d", req.Movie.IDs.TMDB.Int()))
 		if err != nil {
 			return "", 0, nil, nil, err
 		}
@@ -168,7 +168,7 @@ func resolveCheckinItem(c *fiber.Ctx, req *checkinRequest) (string, int64, *int6
 	}
 
 	if req.Show != nil {
-		mt, id, err := media.ResolveID(c, fmt.Sprintf("%d", req.Show.IDs.TMDB))
+		mt, id, err := media.ResolveID(c, fmt.Sprintf("%d", req.Show.IDs.TMDB.Int()))
 		if err != nil {
 			return "", 0, nil, nil, err
 		}

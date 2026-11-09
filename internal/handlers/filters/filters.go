@@ -121,8 +121,8 @@ func handleSaveFilter(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 
 	var req filterSaveRequest
-	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 	if req.Section == "" || req.Name == "" {
 		return response.BadRequest(c, "section and name are required")

@@ -163,8 +163,8 @@ func handleInviteCollaborator(c *fiber.Ctx) error {
 	}
 
 	var req InviteCollaboratorRequest
-	if err := c.BodyParser(&req); err != nil {
-		return response.BadRequest(c, "invalid request body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 	if req.Username == "" {
 		return response.BadRequest(c, "username is required")

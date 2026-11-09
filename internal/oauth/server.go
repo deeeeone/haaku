@@ -12,6 +12,7 @@ import (
 
 	"github.com/haaku-tv/haaku/internal/database"
 	"github.com/haaku-tv/haaku/internal/openapi"
+	"github.com/haaku-tv/haaku/internal/response"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -209,8 +210,8 @@ func handleCreateApplication(c *fiber.Ctx) error {
 	}
 
 	var req createAppRequest
-	if err := c.BodyParser(&req); err != nil {
-		return oauthBadRequest(c, "invalid JSON body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 	if strings.TrimSpace(req.Name) == "" {
 		return oauthBadRequest(c, "name is required")
@@ -366,8 +367,8 @@ type tokenResponse struct {
 
 func handleToken(c *fiber.Ctx) error {
 	var req tokenRequest
-	if err := c.BodyParser(&req); err != nil {
-		return oauthBadRequest(c, "invalid JSON body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	switch req.GrantType {
@@ -560,8 +561,8 @@ type revokeRequest struct {
 
 func handleRevoke(c *fiber.Ctx) error {
 	var req revokeRequest
-	if err := c.BodyParser(&req); err != nil {
-		return oauthBadRequest(c, "invalid JSON body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 	if req.Token == "" {
 		return oauthBadRequest(c, "token is required")
@@ -615,8 +616,8 @@ type deviceGrant struct {
 
 func handleDeviceCode(c *fiber.Ctx) error {
 	var req deviceCodeRequest
-	if err := c.BodyParser(&req); err != nil {
-		return oauthBadRequest(c, "invalid JSON body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 	if req.ClientID == "" {
 		return oauthBadRequest(c, "client_id is required")
@@ -671,8 +672,8 @@ type deviceTokenRequest struct {
 
 func handleDeviceToken(c *fiber.Ctx) error {
 	var req deviceTokenRequest
-	if err := c.BodyParser(&req); err != nil {
-		return oauthBadRequest(c, "invalid JSON body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 
 	if req.GrantType != "urn:ietf:params:oauth:grant-type:device_code" {
@@ -727,8 +728,8 @@ func handleDeviceVerify(c *fiber.Ctx) error {
 	var req struct {
 		UserCode string `json:"user_code"`
 	}
-	if err := c.BodyParser(&req); err != nil {
-		return oauthBadRequest(c, "invalid JSON body")
+	if err := response.ParseBody(c, &req); err != nil {
+		return err
 	}
 	if req.UserCode == "" {
 		return oauthBadRequest(c, "user_code is required")
