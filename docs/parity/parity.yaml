@@ -866,13 +866,13 @@ sections:
         status: implemented
         rationale: "Served at GET /v1/movies/{id}/ratings; the path shape matches the contract."
       - trakt: "GET /movies/{id}/translations"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining movie metadata sub-resources blocked on ingest (#68)"
+        ours: "GET /v1/movies/{id}/translations"
+        status: implemented
+        rationale: "Served at Trakt's path: TMDB translations are stored once in the row's metadata and served in the contract array, with the optional ?language= filter."
       - trakt: "GET /movies/{id}/watchnow/justwatch_links/{country}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining movie metadata sub-resources blocked on ingest (#68)"
+        ours: "GET /v1/movies/{id}/watchnow/justwatch_links/{country}"
+        status: implemented
+        rationale: "Served at Trakt's path: the per-country JustWatch URL TMDB's watch/providers payload carries, in the contract's open string record (empty when no link is stored)."
       - trakt: "GET /networks"
         ours: "GET /v1/networks"
         status: implemented
@@ -891,17 +891,17 @@ sections:
         rationale: "Answers 302 to the client's registered redirect_uri carrying code and state, which is what a browser OAuth client requires; the contract declares 200 with an empty schema. Answering 200 here would break every real authorization flow, so the 302 is deliberate and the row stays divergent."
         compat: "no bridge needed: a 302 is the real OAuth response and every Trakt client follows it. The contract's 200 is a documentation artifact of the vendored ts-rest schema."
       - trakt: "GET /people/updates/id/{start_date}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: person surfaces blocked on metadata ingest (#68)"
+        ours: "GET /v1/people/updates/id/{start_date}"
+        status: implemented
+        rationale: "Served at Trakt's path: a paginated bare array of person ids whose updated_at is in the window."
       - trakt: "GET /people/updates/{start_date}"
         ours: "GET /v1/people/updates/{start_date}"
         status: implemented
         rationale: "Served at GET /v1/people/updates/{start_date}; the path shape matches the contract."
       - trakt: "GET /people/{id}/"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: person surfaces blocked on metadata ingest (#68)"
+        ours: "GET /v1/people/{id}"
+        status: implemented
+        rationale: "Served at Trakt's path in personResponseSchema; the existing /v1/people/{id} handler now serves the contract shape and answers the trailing-slash form too."
       - trakt: "GET /people/{id}/movies"
         ours: "GET /v1/people/{id}/movies"
         status: implemented
@@ -967,25 +967,25 @@ sections:
         status: out-of-scope
         rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
       - trakt: "GET /shows/{id}/seasons/{season}/episodes/{episode}/translations"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
+        ours: "GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/translations"
+        status: implemented
+        rationale: "Served at Trakt's path: TMDB episode translations are stored once in the episode metadata and served in the contract array, with the optional ?language= filter."
       - trakt: "GET /shows/{id}/seasons/{season}/episodes/{episode}/watching"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
+        ours: "GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/watching"
+        status: implemented
+        rationale: "Served at Trakt's path: the accounts with a live scrobble session on the episode, in profileResponseSchema, filtered by the same activity visibility rule as /v1/users/{id}/watching."
       - trakt: "GET /shows/{id}/seasons/{season}/episodes/{episode}/watchnow/{country}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
+        ours: "GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/watchnow/{country}"
+        status: implemented
+        rationale: "Served at Trakt's path: TMDB episode watch/providers are hydrated once into the episode metadata and shaped by the same category builder as the movie/show watch-now routes."
       - trakt: "GET /shows/{id}/seasons/{season}/info"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
+        ours: "GET /v1/shows/{id}/seasons/{season}/info"
+        status: implemented
+        rationale: "Served at Trakt's path in seasonResponseSchema from the stored season row."
       - trakt: "GET /shows/{id}/seasons/{season}/watching"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: season/episode sub-resources blocked on metadata ingest (#68)"
+        ours: "GET /v1/shows/{id}/seasons/{season}/watching"
+        status: implemented
+        rationale: "Served at Trakt's path: the accounts with a live scrobble session on that season or any of its episodes, in profileResponseSchema, visibility-filtered like /v1/users/{id}/watching."
       - trakt: "GET /shows/{id}/seasons/{season}/watchnow/justwatch_links/{country}"
         ours: ""
         status: out-of-scope

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strconv"
 
+	"github.com/haaku-tv/haaku/internal/contractshape"
 	"github.com/haaku-tv/haaku/internal/database"
 	"github.com/haaku-tv/haaku/internal/handlers/media"
 	"github.com/haaku-tv/haaku/internal/openapi"
@@ -25,6 +26,7 @@ func init() {
 	routes := []openapi.RouteDef{
 		{Method: "GET", Path: "/v1/shows/{id}/seasons/{season}/ratings", Summary: "Season rating distribution (contract path)", Tags: []string{"Seasons"}, Auth: "none", StatusCodes: map[int]string{200: "Ratings", 400: "Invalid season number", 404: "Show or season not found"}},
 		{Method: "GET", Path: "/v1/shows/{id}/seasons/{season}/stats", Summary: "Season stats (contract path)", Tags: []string{"Seasons"}, Auth: "none", StatusCodes: map[int]string{200: "Stats", 400: "Invalid season number", 404: "Show or season not found"}},
+		{Method: "GET", Path: "/v1/shows/{id}/seasons/{season}/info", Summary: "Single season summary (contract path)", Tags: []string{"Seasons"}, Auth: "none", StatusCodes: map[int]string{200: "Season"}},
 	}
 	for _, r := range routes {
 		openapi.Register(r)
@@ -35,6 +37,21 @@ func init() {
 func registerContractSeasonRoutes(api fiber.Router) {
 	api.Get("/shows/:id/seasons/:season/ratings", handleContractSeasonRatings)
 	api.Get("/shows/:id/seasons/:season/stats", handleContractSeasonStats)
+	api.Get("/shows/:id/seasons/:season/info", handleContractSeasonInfo)
+}
+
+// handleContractSeasonInfo serves GET /v1/shows/{id}/seasons/{season}/info in
+// the contract's season shape. Every full-extended field the row can answer is
+// emitted; fields it does not hold are null, as the schema allows.
+func handleContractSeasonInfo(c *fiber.Ctx) error {
+	_, season, err := resolveShowSeason(c)
+	if err != nil {
+		return err
+	}
+	if season == nil {
+		return nil
+	}
+	return c.JSON(contractshape.Season(season))
 }
 
 // resolveShowSeason turns the contract's show+season segment into our season
@@ -47,7 +64,8 @@ func resolveShowSeason(c *fiber.Ctx) (*gorm.DB, *database.Season, error) {
 	}
 	seasonNum, aerr := strconv.Atoi(c.Params("season"))
 	if aerr != nil || seasonNum < 0 {
-		return nil, nil, response.BadRequest(c, "invalid season number")
+		_ = response.BadRequest(c, "invalid season number")
+		return nil, nil, response.ErrHandled
 	}
 	db, dbErr := database.GetDB()
 	if dbErr != nil {
@@ -56,7 +74,8 @@ func resolveShowSeason(c *fiber.Ctx) (*gorm.DB, *database.Season, error) {
 	var season database.Season
 	if err := db.Where("show_id = ? AND season_number = ?", showID, seasonNum).First(&season).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, nil, response.NotFound(c, "season not found")
+			_ = response.NotFound(c, "season not found")
+			return nil, nil, response.ErrHandled
 		}
 		return nil, nil, response.InternalError(c)
 	}

@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/haaku-tv/haaku/internal/contractshape"
 	"github.com/haaku-tv/haaku/internal/database"
 	"github.com/haaku-tv/haaku/internal/openapi"
 
@@ -102,6 +103,8 @@ func RegisterRoutes(api fiber.Router) {
 
 	// --- TMDB metadata sub-resources (issue #68) ---
 	RegisterMetadataRoutes(api)
+	registerContractWatchingRoutes(api)
+	registerContractTranslationAllRoutes(api)
 
 	// --- Translation & alias routes ---
 	RegisterTranslationRoutes(api)
@@ -565,28 +568,11 @@ func handleGetPerson(c *fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "database query error")
 	}
 
-	resp := BuildPersonResponse(&person)
-
-	// Include credits.
-	var credits []database.Credit
-	db.Where("person_id = ?", person.ID).Order("\"order\" ASC").Find(&credits)
-
-	movieCredits := make([]CreditResponse, 0)
-	showCredits := make([]CreditResponse, 0)
-	for _, cr := range credits {
-		crResp := creditToResponse(cr)
-		switch cr.MediaType {
-		case "movie":
-			movieCredits = append(movieCredits, crResp)
-		case "show":
-			showCredits = append(showCredits, crResp)
-		}
-	}
-	resp.Credits = &PersonCredits{
-		Cast: append(movieCredits, showCredits...),
-	}
-
-	return c.JSON(resp)
+	// The person summary is served in the Trakt contract shape (the credits
+	// live on /people/{id}/{movies,shows}). Fiber treats /people/1 and
+	// /people/1/ as the same route when strict routing is off, so one
+	// registration answers both forms.
+	return c.JSON(contractshape.Person(&person))
 }
 
 func handleGetPersonMovies(c *fiber.Ctx) error {

@@ -139,22 +139,38 @@ func SeasonIDs(s *database.Season) map[string]any {
 
 // Season renders a season in the contract's season object shape. The contract
 // requires number and ids; aired_episodes is emitted from the row.
+//
+// first_aired is optional-with-no-null in the contract, so it is omitted when
+// the row has no air date rather than emitted as null. images is always the
+// contract's {poster, thumb} arrays, populated from the stored image blob when
+// it carries those keys.
 func Season(s *database.Season) map[string]any {
-	images := map[string]any{}
+	images := map[string]any{"poster": []string{}, "thumb": []string{}}
 	if s.Images != nil {
-		images = map[string]any(s.Images)
+		for _, key := range []string{"poster", "thumb"} {
+			if value, ok := s.Images[key]; ok {
+				images[key] = value
+			}
+		}
 	}
-	return map[string]any{
+	out := map[string]any{
 		"number":         s.SeasonNumber,
 		"ids":            SeasonIDs(s),
 		"aired_episodes": s.EpisodeCount,
 		"episode_count":  s.EpisodeCount,
 		"title":          nil,
 		"overview":       nil,
-		"first_aired":    Date(s.AiredAt),
+		"rating":         nil,
+		"votes":          nil,
+		"total_runtime":  nil,
+		"network":        nil,
 		"updated_at":     Timestamp(s.UpdatedAt),
 		"images":         images,
 	}
+	if s.AiredAt != nil && !s.AiredAt.IsZero() {
+		out["first_aired"] = s.AiredAt.Format("2006-01-02")
+	}
+	return out
 }
 
 // ListIDs builds the contract ids object for a list.
@@ -281,11 +297,52 @@ func Person(p *database.Person) map[string]any {
 		"death":                Date(p.Deathday),
 		"birthplace":           nil,
 		"homepage":             nil,
-		"gender":               nil,
-		"known_for_department": nil,
+		"gender":               genderEnum(p.Gender),
+		"known_for_department": crewDepartment(p.KnownForDepartment),
 		"updated_at":           Timestamp(p.UpdatedAt),
 		"images":               images,
 	}
+}
+
+// genderEnum maps TMDB's numeric gender onto the contract's enum. TMDB numbers
+// it 0 unknown, 1 female, 2 male, 3 non-binary.
+func genderEnum(gender int) any {
+	switch gender {
+	case 1:
+		return "female"
+	case 2:
+		return "male"
+	case 3:
+		return "non_binary"
+	default:
+		return "unknown"
+	}
+}
+
+// Profile renders the contract's profileResponseSchema from a user row. It is
+// used wherever a list of accounts is embedded (the "watching right now"
+// routes). Fields the store does not hold are null; ids uses the same stable
+// local numeric derivation as every other embedded user.
+func Profile(u *database.User) map[string]any {
+	out := map[string]any{
+		"username":  u.Username,
+		"private":   u.IsPrivate,
+		"deleted":   false,
+		"name":      NullableString(u.Name),
+		"vip":       false,
+		"vip_ep":    false,
+		"director":  false,
+		"ids":       map[string]any{"slug": NullableString(u.Username), "trakt": LocalUserNum(u.ID)},
+		"joined_at": Timestamp(u.CreatedAt),
+		"location":  NullableString(u.Location),
+		"about":     NullableString(u.Bio),
+		"gender":    nil,
+		"age":       nil,
+	}
+	if u.AvatarURL != "" {
+		out["images"] = map[string]any{"avatar": map[string]any{"full": u.AvatarURL}}
+	}
+	return out
 }
 
 // User renders the compact user object used by comments and lists. The

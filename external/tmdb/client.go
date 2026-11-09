@@ -364,6 +364,38 @@ func (c *Client) GetShowCredits(id int) (*CreditsResponse, error) {
 }
 
 // GetMovieWatchProviders returns streaming/rent/buy availability for a movie (v3).
+// GetMovieTranslations returns every translation TMDB carries for a movie.
+func (c *Client) GetMovieTranslations(movieID int) (*TranslationsResponse, error) {
+	resp, err := c.do("GET", fmt.Sprintf("/movie/%d/translations", movieID), nil)
+	if err != nil {
+		return nil, err
+	}
+	return decode[TranslationsResponse](resp)
+}
+
+// GetEpisodeTranslations returns every translation TMDB carries for one
+// episode. TMDB has no season-level translation-all call shape we need here;
+// the season path is translated episode-by-episode.
+func (c *Client) GetEpisodeTranslations(showID, seasonNum, episodeNum int) (*TranslationsResponse, error) {
+	resp, err := c.do("GET",
+		fmt.Sprintf("/tv/%d/season/%d/episode/%d/translations", showID, seasonNum, episodeNum), nil)
+	if err != nil {
+		return nil, err
+	}
+	return decode[TranslationsResponse](resp)
+}
+
+// GetEpisodeWatchProviders returns the per-country watch providers TMDB
+// carries for one episode.
+func (c *Client) GetEpisodeWatchProviders(showID, seasonNum, episodeNum int) (*WatchProvidersResponse, error) {
+	resp, err := c.do("GET",
+		fmt.Sprintf("/tv/%d/season/%d/episode/%d/watch/providers", showID, seasonNum, episodeNum), nil)
+	if err != nil {
+		return nil, err
+	}
+	return decode[WatchProvidersResponse](resp)
+}
+
 func (c *Client) GetMovieWatchProviders(movieID int) (*WatchProvidersResponse, error) {
 	resp, err := c.doV3("GET", fmt.Sprintf("/movie/%d/watch/providers", movieID), nil)
 	if err != nil {

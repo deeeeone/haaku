@@ -11,7 +11,7 @@ path (modulo our `/v1` prefix), with a real 2xx — except the recommendation/re
 engine, which stays an honest `501 not_implemented` and graded `blocked-engine` by
 the owner's carve-out. Done is `go run ./cmd/parity`, not a PR count.
 
-Contract operations: **336**. Not yet served (**in scope**): **151**. Out by owner decision: **31**. Served today: **153**.
+Contract operations: **336**. Not yet served (**in scope**): **142**. Out by owner decision: **31**. Served today: **162**.
 
 ## Out of scope (owner decisions, re-affirmed)
 
@@ -97,12 +97,8 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /movies/streaming/{period}` | blocked-data | calendars and Watch Now data | #69 |
 | `GET /movies/watched/{period}` | blocked-engine | stats and rankings | #66 |
 | `GET /movies/{id}/related` | blocked-engine | related / recommendations (owner carve-out: stays 501) | #49 |
-| `GET /movies/{id}/translations` | out-of-scope | TMDB metadata ingest | #68 |
 | `GET /movies/{id}/watching` | blocked-engine | stats and rankings | #66 |
-| `GET /movies/{id}/watchnow/justwatch_links/{country}` | out-of-scope | TMDB metadata ingest | #68 |
 | `GET /notes/{id}/item` | out-of-scope | comment moderation, reactions and the note item read | #107 |
-| `GET /people/updates/id/{start_date}` | out-of-scope | TMDB metadata ingest | #68 |
-| `GET /people/{id}/` | out-of-scope | TMDB metadata ingest | #68 |
 | `GET /recommendations/movies/` | out-of-scope | related / recommendations (owner carve-out: stays 501) | #49 |
 | `GET /recommendations/shows/` | out-of-scope | related / recommendations (owner carve-out: stays 501) | #49 |
 | `GET /search/{type}` | divergent | search engine | #70 |
@@ -119,11 +115,6 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /shows/{id}/seasons/{season}/episodes/{episode}/comments/{sort}` | divergent | TMDB metadata ingest | #68 |
 | `GET /shows/{id}/seasons/{season}/episodes/{episode}/ratings` | out-of-scope | per-item reads over stored data | #86 |
 | `GET /shows/{id}/seasons/{season}/episodes/{episode}/stats` | out-of-scope | per-item reads over stored data | #86 |
-| `GET /shows/{id}/seasons/{season}/episodes/{episode}/translations` | out-of-scope | TMDB metadata ingest | #68 |
-| `GET /shows/{id}/seasons/{season}/episodes/{episode}/watching` | out-of-scope | TMDB metadata ingest | #68 |
-| `GET /shows/{id}/seasons/{season}/episodes/{episode}/watchnow/{country}` | out-of-scope | TMDB metadata ingest | #68 |
-| `GET /shows/{id}/seasons/{season}/info` | out-of-scope | TMDB metadata ingest | #68 |
-| `GET /shows/{id}/seasons/{season}/watching` | out-of-scope | TMDB metadata ingest | #68 |
 | `GET /shows/{id}/seasons/{season}/watchnow/justwatch_links/{country}` | out-of-scope | TMDB metadata ingest | #68 |
 | `GET /shows/{id}/translations` | out-of-scope | TMDB metadata ingest | #68 |
 | `GET /shows/{id}/watching` | blocked-engine | stats and rankings | #66 |
@@ -253,12 +244,16 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /movies/{id}/releases/{country}` | `GET /v1/movies/{id}/releases/{country}` |
 | `GET /movies/{id}/stats` | `GET /v1/movies/{id}/stats` |
 | `GET /movies/{id}/studios` | `GET /v1/movies/{id}/studios` |
+| `GET /movies/{id}/translations` | `GET /v1/movies/{id}/translations` |
 | `GET /movies/{id}/videos` | `GET /v1/movies/{id}/videos` |
+| `GET /movies/{id}/watchnow/justwatch_links/{country}` | `GET /v1/movies/{id}/watchnow/justwatch_links/{country}` |
 | `GET /movies/{id}/watchnow/{country}` | `GET /v1/movies/{id}/watchnow/{country}` |
 | `GET /networks` | `GET /v1/networks` |
 | `GET /notes/{id}` | `GET /v1/notes/{id}` |
 | `GET /oauth/authorize` | `GET /oauth/authorize` |
+| `GET /people/updates/id/{start_date}` | `GET /v1/people/updates/id/{start_date}` |
 | `GET /people/updates/{start_date}` | `GET /v1/people/updates/{start_date}` |
+| `GET /people/{id}/` | `GET /v1/people/{id}` |
 | `GET /people/{id}/lists/{type}/{sort}` | `GET /v1/people/{id}/lists/{type}/{sort}` |
 | `GET /people/{id}/movies` | `GET /v1/people/{id}/movies` |
 | `GET /people/{id}/shows` | `GET /v1/people/{id}/shows` |
@@ -284,13 +279,18 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /shows/{id}/seasons` | `GET /v1/shows/{id}/seasons` |
 | `GET /shows/{id}/seasons/{season}/episodes/{episode}/lists/{type}/{sort}` | `GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/lists/{type}/{sort}` |
 | `GET /shows/{id}/seasons/{season}/episodes/{episode}/people` | `GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/people` |
+| `GET /shows/{id}/seasons/{season}/episodes/{episode}/translations` | `GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/translations` |
 | `GET /shows/{id}/seasons/{season}/episodes/{episode}/videos` | `GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/videos` |
+| `GET /shows/{id}/seasons/{season}/episodes/{episode}/watching` | `GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/watching` |
+| `GET /shows/{id}/seasons/{season}/episodes/{episode}/watchnow/{country}` | `GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/watchnow/{country}` |
+| `GET /shows/{id}/seasons/{season}/info` | `GET /v1/shows/{id}/seasons/{season}/info` |
 | `GET /shows/{id}/seasons/{season}/lists/{type}/{sort}` | `GET /v1/shows/{id}/seasons/{season}/lists/{type}/{sort}` |
 | `GET /shows/{id}/seasons/{season}/people` | `GET /v1/shows/{id}/seasons/{season}/people` |
 | `GET /shows/{id}/seasons/{season}/ratings` | `GET /v1/shows/{id}/seasons/{season}/ratings` |
 | `GET /shows/{id}/seasons/{season}/stats` | `GET /v1/shows/{id}/seasons/{season}/stats` |
 | `GET /shows/{id}/seasons/{season}/translations` | `GET /v1/shows/{id}/seasons/{season}/translations` |
 | `GET /shows/{id}/seasons/{season}/videos` | `GET /v1/shows/{id}/seasons/{season}/videos` |
+| `GET /shows/{id}/seasons/{season}/watching` | `GET /v1/shows/{id}/seasons/{season}/watching` |
 | `GET /shows/{id}/stats` | `GET /v1/shows/{id}/stats` |
 | `GET /shows/{id}/studios` | `GET /v1/shows/{id}/studios` |
 | `GET /shows/{id}/videos` | `GET /v1/shows/{id}/videos` |

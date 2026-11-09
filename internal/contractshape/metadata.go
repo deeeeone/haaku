@@ -158,6 +158,35 @@ func Certifications(certifications []Certification) []map[string]any {
 	return out
 }
 
+// --- translations ---
+
+// Translation is one language/country variant in the contract's shape. Movies
+// and shows carry a tagline; episodes do not, so an empty tagline serializes as
+// null and is accepted by both translation schemas.
+type Translation struct {
+	Title    string
+	Overview string
+	Tagline  string
+	Language string
+	Country  string
+}
+
+// Translations renders stored translations in the contract's array shape. A
+// non-nil empty slice is returned so an empty result serializes as [].
+func Translations(translations []Translation) []map[string]any {
+	out := make([]map[string]any, 0, len(translations))
+	for _, t := range translations {
+		out = append(out, map[string]any{
+			"title":    NullableString(t.Title),
+			"overview": NullableString(t.Overview),
+			"tagline":  NullableString(t.Tagline),
+			"language": t.Language,
+			"country":  NullableString(t.Country),
+		})
+	}
+	return out
+}
+
 // --- people ---
 
 // People renders a credit set in the contract's peopleResponseSchema shape:

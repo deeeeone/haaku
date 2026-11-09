@@ -30,6 +30,7 @@ const (
 	KeyReleases       = "releases"
 	KeyCertifications = "certifications"
 	KeyCredits        = "credits"
+	KeyTranslations   = "translations"
 )
 
 // HasKey reports whether a metadata blob carries the given sub-resource key.
@@ -215,6 +216,85 @@ func CertificationsFromTMDB(contentRatings *tmdb.ContentRatings) []contractshape
 		})
 	}
 	return out
+}
+
+// TranslationsFromTMDB converts TMDB's translations payload to the contract's
+// array shape. Episodes carry the translated title under `name`, movies and
+// shows under `title`; the first non-empty wins. Entries with no language are
+// dropped — the contract requires one.
+func TranslationsFromTMDB(resp *tmdb.TranslationsResponse) []contractshape.Translation {
+	if resp == nil {
+		return nil
+	}
+	out := make([]contractshape.Translation, 0, len(resp.Translations))
+	for _, t := range resp.Translations {
+		if t.ISO639 == "" {
+			continue
+		}
+		title := t.Data.Title
+		if title == "" {
+			title = t.Data.Name
+		}
+		out = append(out, contractshape.Translation{
+			Title:    title,
+			Overview: t.Data.Overview,
+			Tagline:  t.Data.Tagline,
+			Language: strings.ToLower(t.ISO639),
+			Country:  strings.ToLower(t.ISO3166),
+		})
+	}
+	return out
+}
+
+// HydrateMovieTranslations fetches a movie's TMDB translations once and stores
+// them under the row's `translations` key. The key is written even when TMDB
+// answers with none, so the read path can tell "empty" from "never fetched".
+func HydrateMovieTranslations(db *gorm.DB, client *tmdb.Client, movie *database.Movie) (database.JSONMap, error) {
+	if movie == nil || client == nil || movie.TmdbID <= 0 {
+		if movie == nil {
+			return nil, nil
+		}
+		return movie.Metadata, nil
+	}
+
+	record, err := client.GetMovieTranslations(movie.TmdbID)
+	if err != nil {
+		return movie.Metadata, fmt.Errorf("fetch movie %d translations: %w", movie.TmdbID, err)
+	}
+
+	merged := mergeJSONMaps(movie.Metadata, database.JSONMap{
+		KeyTranslations: contractshape.Translations(TranslationsFromTMDB(record)),
+	})
+	if err := storeMetadata(db, &database.Movie{}, movie.ID, merged); err != nil {
+		return movie.Metadata, err
+	}
+	movie.Metadata = merged
+	return merged, nil
+}
+
+// HydrateEpisodeTranslations is HydrateMovieTranslations for one episode.
+func HydrateEpisodeTranslations(db *gorm.DB, client *tmdb.Client, show *database.Show, season *database.Season, episode *database.Episode) (database.JSONMap, error) {
+	if episode == nil {
+		return nil, nil
+	}
+	if client == nil || show == nil || season == nil || show.TmdbID <= 0 {
+		return episode.Metadata, nil
+	}
+
+	record, err := client.GetEpisodeTranslations(show.TmdbID, season.SeasonNumber, episode.EpisodeNumber)
+	if err != nil {
+		return episode.Metadata, fmt.Errorf("fetch show %d season %d episode %d translations: %w",
+			show.TmdbID, season.SeasonNumber, episode.EpisodeNumber, err)
+	}
+
+	merged := mergeJSONMaps(episode.Metadata, database.JSONMap{
+		KeyTranslations: contractshape.Translations(TranslationsFromTMDB(record)),
+	})
+	if err := storeMetadata(db, &database.Episode{}, episode.ID, merged); err != nil {
+		return episode.Metadata, err
+	}
+	episode.Metadata = merged
+	return merged, nil
 }
 
 // --- hydration ---

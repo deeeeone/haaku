@@ -77,6 +77,16 @@ func registerOpenAPIRoutes() {
 				400: "Invalid start_date format",
 			},
 		},
+		{
+			Method:  "GET",
+			Path:    "/v1/people/updates/id/{start_date}",
+			Summary: "Get IDs of people updated since a date",
+			Tags:    []string{"Updates"},
+			Auth:    "none",
+			StatusCodes: map[int]string{
+				200: "Updated person IDs",
+			},
+		},
 	}
 
 	for _, r := range routes {
@@ -95,6 +105,7 @@ func RegisterRoutes(api fiber.Router) {
 	shows.Get("/updates/:start_date", handleShowUpdates)
 
 	people := api.Group("/people")
+	people.Get("/updates/id/:start_date", handlePeopleUpdatedIDs) // static segment first
 	people.Get("/updates/:start_date", handlePeopleUpdates)
 }
 
@@ -237,6 +248,11 @@ func handlePeopleUpdates(c *fiber.Ctx) error {
 	updatesSetCache(cacheKey, updatesCacheEnvelope{Total: total, Count: len(resp), Body: mustMarshal(resp)})
 	response.SetPaginationHeaders(c, page, limit, total, len(resp))
 	return c.JSON(resp)
+}
+
+// handlePeopleUpdatedIDs returns the IDs of people updated since start_date.
+func handlePeopleUpdatedIDs(c *fiber.Ctx) error {
+	return handleUpdatedIDs(c, &database.Person{})
 }
 
 // ---------------------------------------------------------------------------

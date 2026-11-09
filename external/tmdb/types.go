@@ -361,6 +361,34 @@ type CrewMember struct {
 	Adult              bool   `json:"adult"`
 }
 
+// --- Translations (v3) ---
+
+// TranslationsResponse is TMDB's translations payload for a movie, show,
+// season or episode. The translated fields live under `data`; `name` is TMDB's
+// own language label, not a translated title.
+type TranslationsResponse struct {
+	ID           int           `json:"id"`
+	Translations []Translation `json:"translations"`
+}
+
+// Translation is one language/country variant.
+type Translation struct {
+	ISO3166 string          `json:"iso_3166_1"`
+	ISO639  string          `json:"iso_639_1"`
+	Name    string          `json:"name"`
+	English string          `json:"english_name"`
+	Data    TranslationData `json:"data"`
+}
+
+// TranslationData holds the translated text fields. Episodes carry no tagline;
+// `name` is what TMDB fills for an episode title.
+type TranslationData struct {
+	Title    string `json:"title"`
+	Name     string `json:"name"`
+	Overview string `json:"overview"`
+	Tagline  string `json:"tagline"`
+}
+
 // --- Watch providers (v3) ---
 
 // WatchProvidersResponse is the TMDB v3 watch/providers response.
