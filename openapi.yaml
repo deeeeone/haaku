@@ -9274,7 +9274,7 @@ paths:
         post:
             operationId: _v1_shows_id_progress_watched_reset_POST
             responses:
-                "200":
+                "201":
                     description: The reset point
                 "400":
                     content:

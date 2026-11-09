@@ -30,8 +30,8 @@ func TestResetKeepsHistoryAndUndoRestoresProgress(t *testing.T) {
 
 	app := showProgressApp("user-1")
 	resp := doProgressReq(t, app, http.MethodPost, "/shows/"+strconv.FormatInt(showID, 10)+"/progress/watched/reset")
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("reset status = %d, want 200", resp.StatusCode)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("reset status = %d, want 201", resp.StatusCode)
 	}
 	var ack struct {
 		ResetAt string `json:"reset_at"`
@@ -114,8 +114,8 @@ func TestResetWithEarlierResetAtKeepsLaterPlays(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reset request: %v", err)
 	}
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("reset status = %d, want 200", resp.StatusCode)
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("reset status = %d, want 201", resp.StatusCode)
 	}
 	_ = resp.Body.Close()
 

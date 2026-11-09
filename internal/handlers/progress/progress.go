@@ -69,7 +69,7 @@ func registerOpenAPIRoutes() {
 			Tags:    []string{"Shows"},
 			Auth:    "required",
 			StatusCodes: map[int]string{
-				200: "The reset point",
+				201: "The reset point",
 				401: "Unauthorized",
 			},
 		},

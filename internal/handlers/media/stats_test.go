@@ -190,9 +190,12 @@ func TestShowStats(t *testing.T) {
 		t.Fatalf("status = %d, want 200 (%s)", resp.StatusCode, errorMessage(t, resp))
 	}
 
+	// user-1 collected the show and an episode; user-2 collected only an
+	// episode. Trakt counts both as collectors of the show, so the count is 2
+	// even though only one row is show-level.
 	collected := int64(2)
 	want := statsPayload{
-		Watchers: 2, Plays: 3, Collectors: 1, CollectedEpisodes: &collected,
+		Watchers: 2, Plays: 3, Collectors: 2, CollectedEpisodes: &collected,
 		Comments: 1, Lists: 1, Votes: 1, Favorited: 1, Recommended: 1,
 	}
 	if got := decodeStats(t, resp); !reflect.DeepEqual(got, want) {

@@ -38,3 +38,6 @@ acknowledged:
   - signature: "removed-status-code GET /v1/shows/{id}/watching 501"
     date: 2026-11-09
     reason: "Same as the movie watching row: the 501 placeholder became a working 200, so no callable or parseable surface was removed."
+  - signature: "removed-status-code POST /v1/shows/{id}/progress/watched/reset 200"
+    date: 2026-11-09
+    reason: "The route now answers Trakt's documented 201 instead of 200; the body is unchanged ({reset_at}), so clients only need to treat 201 as success."

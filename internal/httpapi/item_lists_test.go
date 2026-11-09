@@ -237,13 +237,33 @@ func TestItemListsComputedEmptyKinds(t *testing.T) {
 func TestItemListsRejectsBadTypeAndSort(t *testing.T) {
 	app, _ := newItemListsApp(t)
 
+	// Every variant shares the validator, so every variant must carry the
+	// error envelope — not the handler's "[]" body under a 400 status.
 	for _, path := range []string{
 		"/v1/movies/1/lists/blocked/popular",
+		"/v1/shows/1/lists/blocked/popular",
+		"/v1/people/1/lists/blocked/popular",
+		"/v1/shows/1/seasons/1/lists/blocked/popular",
 		"/v1/movies/1/lists/personal/unknown",
+		"/v1/shows/1/lists/personal/unknown",
+		"/v1/people/1/lists/personal/unknown",
+		"/v1/shows/1/seasons/1/lists/personal/unknown",
 	} {
 		resp, raw := itemListGET(t, app, path)
 		if resp.StatusCode != http.StatusBadRequest {
 			t.Fatalf("%s status = %d, want 400 (%s)", path, resp.StatusCode, raw)
+		}
+		var envelope struct {
+			Error struct {
+				Code    string `json:"code"`
+				Message string `json:"message"`
+			} `json:"error"`
+		}
+		if err := json.Unmarshal(raw, &envelope); err != nil {
+			t.Fatalf("%s body = %q, want the error envelope (%v)", path, raw, err)
+		}
+		if envelope.Error.Code != "invalid_request" || envelope.Error.Message == "" {
+			t.Fatalf("%s envelope = %+v, want code=invalid_request with a message", path, envelope.Error)
 		}
 	}
 }

@@ -58,8 +58,9 @@ func queryMovieStats(db *gorm.DB, movieID int64) (*StatsResponse, error) {
 
 // queryShowStats computes Trakt show stats. Plays and watchers count the
 // history rows of the show's episodes (user_history keys episodes by
-// media_type='episode', media_id=episode id), while collections, ratings,
-// comments, lists and favorites are title-level (media_type='show').
+// media_type='episode', media_id=episode id). Collectors count users who
+// collected the show or any of its episodes; ratings, comments, lists and
+// favorites are title-level (media_type='show').
 func queryShowStats(db *gorm.DB, showID int64) (*StatsResponse, error) {
 	stats := &StatsResponse{}
 	episodes := db.Model(&database.Episode{}).Select("id").Where("show_id = ?", showID)
@@ -74,8 +75,11 @@ func queryShowStats(db *gorm.DB, showID int64) (*StatsResponse, error) {
 		Count(&stats.Plays).Error; err != nil {
 		return nil, fmt.Errorf("count plays: %w", err)
 	}
+	// Trakt counts a collector as a user who collected the show OR any of its
+	// episodes, so an episode-only collector is still a collector.
 	if err := db.Model(&database.UserCollection{}).
-		Where("media_type = ? AND media_id = ?", "show", showID).
+		Where("(media_type = ? AND media_id = ?) OR (media_type = ? AND media_id IN (?))",
+			"show", showID, "episode", episodes).
 		Distinct("user_id").Count(&stats.Collectors).Error; err != nil {
 		return nil, fmt.Errorf("count collectors: %w", err)
 	}

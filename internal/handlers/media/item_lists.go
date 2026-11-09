@@ -190,12 +190,18 @@ func serveItemLists(c *fiber.Ctx, mediaType, listType, sort string) error {
 	return writeItemLists(c, db, mediaType, id, listType, sort)
 }
 
+// validateItemListKind writes the 400 envelope itself and returns ErrHandled so
+// the caller stops: response.BadRequest returns nil on success, so returning it
+// let the handler carry on and overwrite the envelope with its "[]" result
+// under the same 400 status.
 func validateItemListKind(c *fiber.Ctx, listType, sort string) error {
 	if !itemListTypes[listType] {
-		return response.BadRequest(c, "type must be one of: all, personal, official, watchlist, favorites")
+		_ = response.BadRequest(c, "type must be one of: all, personal, official, watchlist, favorites")
+		return response.ErrHandled
 	}
 	if !itemListSorts[sort] {
-		return response.BadRequest(c, "sort must be one of: popular, likes, comments, items, added, updated")
+		_ = response.BadRequest(c, "sort must be one of: popular, likes, comments, items, added, updated")
+		return response.ErrHandled
 	}
 	return nil
 }

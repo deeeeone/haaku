@@ -309,8 +309,8 @@ type ShowProgressResetResponse struct {
 // to now, may not be in the future).
 //
 // Ratings, collection, playback positions and every other show's history are
-// untouched. The status stays 200 because that is the status this route has
-// always advertised; the body is the contract's {reset_at}.
+// untouched. The contract answers 201, and so do we; the body is the
+// contract's {reset_at}.
 func handleShowProgressReset(c *fiber.Ctx) error {
 	userID, ok := c.Locals("user_id").(string)
 	if !ok || userID == "" {
@@ -359,7 +359,7 @@ func handleShowProgressReset(c *fiber.Ctx) error {
 		return response.InternalError(c, "failed to reset progress")
 	}
 
-	return c.JSON(ShowProgressResetResponse{ResetAt: response.FormatTime(resetAt)})
+	return c.Status(fiber.StatusCreated).JSON(ShowProgressResetResponse{ResetAt: response.FormatTime(resetAt)})
 }
 
 // DELETE /v1/shows/{id}/progress/watched/reset

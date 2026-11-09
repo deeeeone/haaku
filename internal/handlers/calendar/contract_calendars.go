@@ -46,13 +46,16 @@ func registerContractShowRoutes(calendars fiber.Router) {
 }
 
 // contractMiddlewares builds the registration chain for one contract feed:
-// auth first for the user-scoped target, then the Locals pin.
+// auth first for the user-scoped target, then the Locals pin, then the shared
+// handler. The handler MUST be part of the chain: a chain that ends with the
+// pin middleware leaves its c.Next() with nothing to call, which Fiber turns
+// into its "unknown route" 404 — exactly how these feeds shipped unreachable.
 func contractMiddlewares(target, subtype string) []fiber.Handler {
-	handlers := make([]fiber.Handler, 0, 2)
+	handlers := make([]fiber.Handler, 0, 3)
 	if target == "my" {
 		handlers = append(handlers, auth.AuthRequired())
 	}
-	handlers = append(handlers, pinCalendarFeed(target, subtype))
+	handlers = append(handlers, pinCalendarFeed(target, subtype), handleCalendarShows)
 	return handlers
 }
 

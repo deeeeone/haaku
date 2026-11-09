@@ -49,7 +49,7 @@ func UpsertRecentSearch(db *gorm.DB, mediaType string, mediaID int64, query stri
 			{Name: "query"},
 		},
 		DoUpdates: clause.Assignments(map[string]any{
-			"count":            gorm.Expr("count + 1"),
+			"count":            gorm.Expr("recent_searches.count + 1"),
 			"last_searched_at": at,
 		}),
 	}).Create(&row).Error

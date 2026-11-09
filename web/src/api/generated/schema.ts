@@ -20064,7 +20064,7 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description The reset point */
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
