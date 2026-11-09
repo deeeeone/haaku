@@ -2,6 +2,7 @@ package shared
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -117,6 +118,10 @@ func ParseCatalogueFilter(c *fiber.Ctx, allowed ...string) (*CatalogueFilter, bo
 			}
 			switch name {
 			case FilterYears:
+				if err := validateYearSpans(spans); err != nil {
+					reject(c, fmt.Sprintf("invalid years filter: %v", err))
+					return nil, false
+				}
 				f.years = spans
 			case FilterRatings:
 				f.ratings = spans
@@ -259,7 +264,7 @@ func WatchlistVisibility(c *fiber.Ctx) (string, []any, bool) {
 		case "nonotes":
 			parts = append(parts, "user_watchlist.notes IS NULL")
 		case "unwatched":
-			parts = append(parts, "NOT "+watchlistRelation("user_history"))
+			parts = append(parts, "NOT "+watchlistWatched())
 		case "uncollected":
 			parts = append(parts, "NOT "+watchlistRelation("user_collection"))
 		case "unrated":
@@ -276,16 +281,16 @@ func WatchlistVisibility(c *fiber.Ctx) (string, []any, bool) {
 
 	for _, flag := range []struct {
 		param string
-		table string
+		pred  string
 	}{
-		{"ignore_watched", "user_history"},
-		{"ignore_collected", "user_collection"},
-		{"ignore_watchlisted", "user_watchlist"},
+		{"ignore_watched", watchlistWatched()},
+		{"ignore_collected", watchlistRelation("user_collection")},
+		{"ignore_watchlisted", watchlistRelation("user_watchlist")},
 	} {
 		if !QueryBool(c, flag.param) {
 			continue
 		}
-		parts = append(parts, "NOT "+watchlistRelation(flag.table))
+		parts = append(parts, "NOT "+flag.pred)
 	}
 	if len(parts) == 0 {
 		return "", nil, true
@@ -298,6 +303,19 @@ func WatchlistVisibility(c *fiber.Ctx) (string, []any, bool) {
 func watchlistRelation(table string) string {
 	return "(EXISTS (SELECT 1 FROM " + table + " r WHERE r.user_id = user_watchlist.user_id" +
 		" AND r.media_type = user_watchlist.media_type AND r.media_id = user_watchlist.media_id))"
+}
+
+// watchlistWatched is the history-specific predicate: a direct history row for
+// the listed item, or — for a listed show — any watched episode belonging to
+// it. Show watches are stored as media_type='episode' rows, so the generic
+// relation predicate above never matches a show and would report a show with
+// watched episodes as unwatched.
+func watchlistWatched() string {
+	return "(EXISTS (SELECT 1 FROM user_history r WHERE r.user_id = user_watchlist.user_id" +
+		" AND r.media_type = user_watchlist.media_type AND r.media_id = user_watchlist.media_id)" +
+		" OR EXISTS (SELECT 1 FROM user_history r JOIN episodes e ON e.id = COALESCE(r.episode_id, r.media_id)" +
+		" WHERE r.user_id = user_watchlist.user_id AND r.media_type = 'episode'" +
+		" AND user_watchlist.media_type = 'show' AND e.show_id = user_watchlist.media_id))"
 }
 
 // QueryBool reads a contract boolean query flag (Trakt spells it true/false).
@@ -441,26 +459,28 @@ func lowerAll(in []string) []string {
 }
 
 // parseSpans reads Trakt's comma-separated value or range syntax ("2014-2016",
-// "30-90,120"). A malformed value is an error, not an empty filter.
+// "30-90,120"). A malformed value is an error, not an empty filter. A value
+// that parses as NaN/Inf (strconv.ParseFloat accepts "NaN" and "Inf") is
+// rejected here, before any caller converts it to an integer.
 func parseSpans(raw string) ([]span, error) {
 	var out []span
 	for _, part := range splitList(raw) {
 		lo, hi, ok := strings.Cut(part, "-")
 		if !ok {
-			v, err := strconv.ParseFloat(strings.TrimSpace(part), 64)
+			v, err := spanValue(part, part)
 			if err != nil {
-				return nil, fmt.Errorf("%q is not a number or range", part)
+				return nil, err
 			}
 			out = append(out, span{v, v})
 			continue
 		}
-		lv, err := strconv.ParseFloat(strings.TrimSpace(lo), 64)
+		lv, err := spanValue(lo, part)
 		if err != nil {
-			return nil, fmt.Errorf("%q is not a number or range", part)
+			return nil, err
 		}
-		hv, err := strconv.ParseFloat(strings.TrimSpace(hi), 64)
+		hv, err := spanValue(hi, part)
 		if err != nil {
-			return nil, fmt.Errorf("%q is not a number or range", part)
+			return nil, err
 		}
 		if hv < lv {
 			return nil, fmt.Errorf("%q has its upper bound below its lower bound", part)
@@ -468,6 +488,38 @@ func parseSpans(raw string) ([]span, error) {
 		out = append(out, span{lv, hv})
 	}
 	return out, nil
+}
+
+func spanValue(raw, part string) (float64, error) {
+	v, err := strconv.ParseFloat(strings.TrimSpace(raw), 64)
+	if err != nil || math.IsNaN(v) || math.IsInf(v, 0) {
+		return 0, fmt.Errorf("%q is not a number or range", part)
+	}
+	return v, nil
+}
+
+// Year spans become date literals ("%04d-01-01"), so an endpoint outside the
+// representable calendar range is a client error here rather than an
+// out-of-range date literal reaching the database as a 500. The upper
+// endpoint is formatted together with its exclusive successor (hi+1), so it
+// must leave room for that extra year.
+const (
+	minFilterYear = 1
+	maxFilterYear = 9998
+)
+
+func validateYearSpans(spans []span) error {
+	for _, s := range spans {
+		for _, v := range []float64{s.lo, s.hi} {
+			if v != math.Trunc(v) {
+				return fmt.Errorf("year %v is not a whole number", v)
+			}
+			if v < minFilterYear || v > maxFilterYear {
+				return fmt.Errorf("year %.0f is outside the supported range %d-%d", v, minFilterYear, maxFilterYear)
+			}
+		}
+	}
+	return nil
 }
 
 func sortedStrings(in []string) []string {

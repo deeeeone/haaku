@@ -44,6 +44,8 @@ func TestPostgresCatalogueFilterSQL(t *testing.T) {
 			`CREATE TABLE episodes (id BIGINT, show_id BIGINT, runtime INT, aired_at DATE)`,
 			`CREATE TABLE user_history (id BIGINT, user_id TEXT, media_type TEXT,
 				media_id BIGINT, episode_id BIGINT, watched_at TIMESTAMPTZ)`,
+			`CREATE TABLE user_watchlist (user_id TEXT, media_type TEXT, media_id BIGINT,
+				rank INT, listed_at TIMESTAMPTZ)`,
 		} {
 			if err := tx.Exec(ddl).Error; err != nil {
 				return err
@@ -60,8 +62,11 @@ func TestPostgresCatalogueFilterSQL(t *testing.T) {
 			`INSERT INTO episodes VALUES (100,10,42,'2016-05-01')`,
 			`INSERT INTO user_history VALUES
 			 (1,'u','movie',1,NULL,'2026-01-01'),
-			 (2,'u','movie',2,NULL,'2026-01-02'),
 			 (3,'u','episode',100,100,'2026-01-03')`,
+			`INSERT INTO user_watchlist VALUES
+			 ('u','movie',1,1,'2026-01-01'),
+			 ('u','movie',2,2,'2026-01-01'),
+			 ('u','show',10,1,'2026-01-01')`,
 		}
 		for _, s := range seeds {
 			if err := tx.Exec(s).Error; err != nil {
@@ -112,6 +117,11 @@ func TestPostgresCatalogueFilterSQL(t *testing.T) {
 		hist := &CatalogueFilter{genres: []string{"drama"}}
 		if n := count("user_history", "", at(hist.HistoryMediaWhere(tx))); n != 2 {
 			t.Errorf("history genre matched %d rows, want 2", n)
+		}
+		// The watched predicate is history-specific: the watched movie and the
+		// show with a watched episode match, the unwatched movie does not.
+		if n := count("user_watchlist", "", where{watchlistWatched(), nil}); n != 2 {
+			t.Errorf("watchlistWatched matched %d rows, want 2", n)
 		}
 		return nil
 	})

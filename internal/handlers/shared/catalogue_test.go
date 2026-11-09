@@ -131,3 +131,34 @@ func TestParseNeverLetsAFilterThroughUnchecked(t *testing.T) {
 		t.Fatalf("computable filters status = %d, want 200", got)
 	}
 }
+
+// TestYearSpansRejectUnrepresentableValues proves a year an endpoint cannot
+// turn into a date literal is refused at parse time (400), not left to reach
+// the database as an out-of-range date and surface as a 500. The upper
+// endpoint is checked because yearPart formats hi+1 as the exclusive bound.
+func TestYearSpansRejectUnrepresentableValues(t *testing.T) {
+	for _, query := range []string{
+		"years=99999999",
+		"years=2010-99999999",
+		"years=0",
+		"years=2010.5",
+		"years=NaN",
+		"years=Inf",
+	} {
+		if got := parseRequest(t, "/x?"+query); got != http.StatusBadRequest {
+			t.Errorf("%s: status = %d, want 400", query, got)
+		}
+	}
+	for _, query := range []string{"years=2010", "years=2010-2015", "years=1900-2015,2020"} {
+		if got := parseRequest(t, "/x?"+query); got != http.StatusOK {
+			t.Errorf("%s: status = %d, want 200", query, got)
+		}
+	}
+	// Non-finite values are refused for the numeric spans too, before their
+	// int conversion in runtimePart.
+	for _, query := range []string{"runtimes=NaN", "ratings=Inf"} {
+		if got := parseRequest(t, "/x?"+query); got != http.StatusBadRequest {
+			t.Errorf("%s: status = %d, want 400", query, got)
+		}
+	}
+}

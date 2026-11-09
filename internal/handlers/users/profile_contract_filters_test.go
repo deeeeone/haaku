@@ -132,7 +132,8 @@ func TestContractCatalogueFiltersRefuseUnstored(t *testing.T) {
 }
 
 // TestContractWatchlistHideNarrows proves hide/ignore_* are applied rather than
-// ignored.
+// ignored — for movies through a direct history row, and for shows through
+// their watched episodes (a show watch is stored as an episode row).
 func TestContractWatchlistHideNarrows(t *testing.T) {
 	db := contractTestDB(t)
 	seedUser(t, db, "target", false, "active")
@@ -151,17 +152,145 @@ func TestContractWatchlistHideNarrows(t *testing.T) {
 	if err := db.Create(&database.UserHistory{UserID: "target", MediaType: "movie", MediaID: 101, WatchedAt: now, Source: "api"}).Error; err != nil {
 		t.Fatal(err)
 	}
+
+	// One watchlisted show the user has watched episodes of, and one they have
+	// not. Only the second is unwatched.
+	watchedShow, _, episodes := seedContractMedia(t, db)
+	unwatchedShow := database.Show{TmdbID: 702, Title: "Unwatched Show", Slug: "unwatched-show", CreatedAt: now, UpdatedAt: now}
+	if err := db.Create(&unwatchedShow).Error; err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []int64{watchedShow.ID, unwatchedShow.ID} {
+		if err := db.Create(&database.UserWatchlist{UserID: "target", MediaType: "show", MediaID: id, Rank: 1, ListedAt: now}).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	seedEpisodeHistory(t, db, "target", episodes[0], now, "api")
+
 	app := newContractApp("target")
 
 	_, body := doGETFull(t, app, "/v1/users/target/watchlist/movies/rank?hide=unwatched")
 	var items []map[string]any
 	_ = json.Unmarshal([]byte(body), &items)
 	if len(items) != 1 {
-		t.Fatalf("hide=unwatched: got %d items, want 1 (%s)", len(items), body)
+		t.Fatalf("hide=unwatched movies: got %d items, want 1 (%s)", len(items), body)
+	}
+
+	// The show watched through an episode must be hidden; the one with no
+	// history must stay.
+	_, body = doGETFull(t, app, "/v1/users/target/watchlist/shows/rank?hide=unwatched")
+	items = nil
+	_ = json.Unmarshal([]byte(body), &items)
+	if len(items) != 1 {
+		t.Fatalf("hide=unwatched shows: got %d items, want 1 (%s)", len(items), body)
+	}
+	if !strings.Contains(body, "Unwatched Show") || strings.Contains(body, "Parity Show") {
+		t.Fatalf("hide=unwatched shows returned the wrong item: %s", body)
 	}
 
 	if status, body := doGET(t, app, "/v1/users/target/watchlist/movies/rank?hide=ended"); status != http.StatusBadRequest {
 		t.Errorf("hide=ended: status %d, want 400 (%s)", status, body)
+	}
+}
+
+// TestContractWatchlistInvalidSortIsBadRequest proves an unsupported sort_by or
+// sort_how on the contract's sorted watchlist path is the declared 400 naming
+// the accepted values, not a plain error the app maps to 500.
+func TestContractWatchlistInvalidSortIsBadRequest(t *testing.T) {
+	db := contractTestDB(t)
+	seedUser(t, db, "target", false, "active")
+	app := newContractApp("target")
+
+	cases := []struct {
+		path string
+		want string
+	}{
+		{"/v1/users/target/watchlist/movies/rank/sideways", "asc"},
+		{"/v1/users/target/watchlist/movies/notasort/asc", "rank"},
+		{"/v1/users/target/watchlist/shows/rank/sideways", "asc"},
+	}
+	for _, tc := range cases {
+		status, body := doGET(t, app, tc.path)
+		if status != http.StatusBadRequest {
+			t.Errorf("%s: status %d, want 400 (%s)", tc.path, status, body)
+			continue
+		}
+		if !strings.Contains(body, tc.want) {
+			t.Errorf("%s: 400 body does not name %q: %s", tc.path, tc.want, body)
+		}
+	}
+}
+
+// TestContractWatchedAggregateKeepsCalendarHiddenItems proves `hidden` narrows
+// seasons, not whole items: a movie hidden from the calendar is still in the
+// default watched aggregate and its pagination count. The aggregate's movie
+// branch is reached directly because the map-shaped /watched/movies read is
+// registered at the same path.
+func TestContractWatchedAggregateKeepsCalendarHiddenItems(t *testing.T) {
+	db := contractTestDB(t)
+	seedUser(t, db, "target", false, "active")
+	now := time.Now().UTC()
+	if err := db.Create(&database.Movie{ID: 301, TmdbID: 301, Slug: "hidden-movie", Title: "Hidden Movie", CreatedAt: now, UpdatedAt: now}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&database.UserHistory{UserID: "target", MediaType: "movie", MediaID: 301, WatchedAt: now, Source: "api"}).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Create(&database.UserHidden{UserID: "target", Section: "calendar",
+		MediaType: "movie", MediaID: 301, HiddenAt: now}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	app := newContractApp("target")
+	app.Get("/v1/aggregate/users/:id/watched/:type", handleContractWatchedType)
+
+	resp, body := doGETFull(t, app, "/v1/aggregate/users/target/watched/movies")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("watched aggregate: status %d (%s)", resp.StatusCode, body)
+	}
+	var items []map[string]any
+	if err := json.Unmarshal([]byte(body), &items); err != nil {
+		t.Fatalf("decode: %v (%s)", err, body)
+	}
+	if len(items) != 1 {
+		t.Fatalf("calendar-hidden movie dropped from watched aggregate: got %d items (%s)", len(items), body)
+	}
+	if got := resp.Header.Get("X-Pagination-Total-Items"); got != "1" {
+		t.Errorf("X-Pagination-Total-Items = %q, want 1", got)
+	}
+}
+
+// TestContractActivitiesRejectInvalidFilterWithoutFriends proves filter
+// validation runs before the account set is resolved: an account with no
+// visible friends still gets a 400 for a filter the store cannot evaluate,
+// rather than an empty 200.
+func TestContractActivitiesRejectInvalidFilterWithoutFriends(t *testing.T) {
+	db := contractTestDB(t)
+	seedUser(t, db, "target", false, "active")
+	seedUser(t, db, "stranger", false, "active")
+	app := newContractApp("stranger")
+
+	for _, query := range []string{"countries=us", "ignore_watched=true", "years=99999999"} {
+		status, body := doGET(t, app, "/v1/users/target/friends/activities?"+query)
+		if status != http.StatusBadRequest {
+			t.Errorf("%s: status %d, want 400 (%s)", query, status, body)
+		}
+	}
+}
+
+// TestContractHistoryRejectsOutOfRangeYear proves the year validation is a 400
+// on a real route, not a database error surfacing as 500.
+func TestContractHistoryRejectsOutOfRangeYear(t *testing.T) {
+	db := contractTestDB(t)
+	seedUser(t, db, "target", false, "active")
+	app := newContractApp("target")
+
+	status, body := doGET(t, app, "/v1/users/target/history/movies?years=99999999")
+	if status != http.StatusBadRequest {
+		t.Fatalf("years=99999999: status %d, want 400 (%s)", status, body)
+	}
+	if !strings.Contains(body, "99999999") {
+		t.Errorf("400 body does not name the rejected year: %s", body)
 	}
 }
 

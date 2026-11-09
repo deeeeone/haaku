@@ -490,9 +490,10 @@ type watchedAggregate struct {
 
 // watchedTypeSQL returns the portable aggregation for one watched type: the
 // group key, the FROM clause (a join onto episodes for the episode-derived
-// types), the WHERE clause with one user_id placeholder (plus a second when
-// hidden rows are excluded), and the play-count expression. countSpecials=false
-// with specials included keeps season 0 in the list but out of the play count.
+// types), the WHERE clause with one user_id placeholder (plus a second for the
+// season/episode branches when hidden rows are excluded), and the play-count
+// expression. countSpecials=false with specials included keeps season 0 in the
+// list but out of the play count.
 func watchedTypeSQL(kind string, specials, hidden, countSpecials bool) (keyExpr, from, where, plays string) {
 	const episodeRows = "uh.user_id = ? AND uh.media_type = 'episode'"
 	const episodeJoin = "user_history uh JOIN episodes e ON e.id = COALESCE(uh.episode_id, uh.media_id)"
@@ -501,7 +502,10 @@ func watchedTypeSQL(kind string, specials, hidden, countSpecials bool) (keyExpr,
 	if !specials {
 		specialFilter = " AND e.season_id NOT IN (SELECT id FROM seasons WHERE season_number = 0)"
 	}
-	// hidden=false is the contract default: a hidden item is left out.
+	// hidden=false is the contract default: a hidden item is left out. `hidden`
+	// names hidden seasons (the calendar's per-season switch), so only the
+	// season-scoped branches below apply it; a movie or show hidden from the
+	// calendar still appears in the item aggregates.
 	hiddenFilter := func(mediaTypeExpr, mediaIDExpr string) string {
 		if hidden {
 			return ""
@@ -513,13 +517,11 @@ func watchedTypeSQL(kind string, specials, hidden, countSpecials bool) (keyExpr,
 	case "movie":
 		// A movie whose row is gone is not served (and so is not counted).
 		return "uh.media_id", "user_history uh",
-			"uh.user_id = ? AND uh.media_type = 'movie' AND EXISTS (SELECT 1 FROM movies m WHERE m.id = uh.media_id)" +
-				hiddenFilter("movie", "uh.media_id"),
+			"uh.user_id = ? AND uh.media_type = 'movie' AND EXISTS (SELECT 1 FROM movies m WHERE m.id = uh.media_id)",
 			"COUNT(*)"
 	case "show":
 		return "e.show_id", episodeJoin,
-			episodeRows + " AND EXISTS (SELECT 1 FROM shows s WHERE s.id = e.show_id)" + specialFilter +
-				hiddenFilter("show", "e.show_id"),
+			episodeRows + " AND EXISTS (SELECT 1 FROM shows s WHERE s.id = e.show_id)" + specialFilter,
 			playCountExpr(specials, countSpecials)
 	case "season":
 		return "e.season_id", episodeJoin,
@@ -584,9 +586,9 @@ func handleContractWatchedType(c *fiber.Ctx) error {
 		"WHERE g.rn = 1 ORDER BY g.watched_at DESC, g.history_id DESC LIMIT ? OFFSET ?"
 
 	// The WHERE clause carries the user id once, and a second time for the
-	// hidden-row subquery when hidden is off.
+	// hidden-row subquery — which only the season-scoped branches emit.
 	whereArgs := []any{target.ID}
-	if !hidden {
+	if !hidden && (kind == "season" || kind == "episode") {
 		whereArgs = append(whereArgs, target.ID)
 	}
 
@@ -664,6 +666,21 @@ func handleContractActivities(c *fiber.Ctx) error {
 	}
 	page, limit := contractPage(c)
 
+	// Validate the filters before the account resolution: an unsupported
+	// filter is a 400 for every caller, including one with no visible friends,
+	// and no database work runs ahead of rejecting bad input.
+	for _, p := range []string{"ignore_watched", "ignore_collected", "ignore_watchlisted"} {
+		if c.Query(p) != "" {
+			return response.BadRequest(c, "filter "+p+" is not supported on the activities feed")
+		}
+	}
+	filter, ok := shared.ParseCatalogueFilter(c,
+		shared.FilterGenres, shared.FilterYears, shared.FilterRatings,
+		shared.FilterRuntimes, shared.FilterStatuses, shared.FilterCertifications)
+	if !ok {
+		return nil
+	}
+
 	userIDs, err := activityUserIDs(db, target.ID, kind)
 	if err != nil {
 		return response.InternalError(c)
@@ -686,17 +703,6 @@ func handleContractActivities(c *fiber.Ctx) error {
 	}
 
 	q := db.Where("user_id IN ?", userIDs)
-	for _, p := range []string{"ignore_watched", "ignore_collected", "ignore_watchlisted"} {
-		if c.Query(p) != "" {
-			return response.BadRequest(c, "filter "+p+" is not supported on the activities feed")
-		}
-	}
-	filter, ok := shared.ParseCatalogueFilter(c,
-		shared.FilterGenres, shared.FilterYears, shared.FilterRatings,
-		shared.FilterRuntimes, shared.FilterStatuses, shared.FilterCertifications)
-	if !ok {
-		return nil
-	}
 	clause, args := filter.HistoryMediaWhere(db)
 	if clause != "" {
 		q = q.Where(clause, args...)
