@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
-
-	"gorm.io/gorm"
 )
 
 // StringArray is a JSONB-backed string array for GORM -> PostgreSQL.
@@ -96,36 +94,41 @@ func (OAuthClient) TableName() string { return "oauth_clients" }
 
 // OAuthGrant represents an authorization code grant (PKCE-capable).
 type OAuthGrant struct {
-	ID                  string      `gorm:"primaryKey;type:uuid;default:gen_random_uuid()" json:"id"`
-	ClientID            string      `gorm:"type:uuid;not null" json:"client_id"`
-	UserID              string      `gorm:"type:text;not null" json:"user_id"`
-	CodeHash            string      `gorm:"type:text;not null;index" json:"-"`
-	CodeChallenge       string      `gorm:"type:text" json:"-"`
-	CodeChallengeMethod string      `gorm:"type:text;default:S256" json:"code_challenge_method,omitempty"`
-	RedirectURI         string      `gorm:"type:text;not null" json:"redirect_uri"`
-	Scopes              StringArray `gorm:"type:jsonb;not null;default:'[]'" json:"scopes"`
-	ExpiresAt           time.Time   `json:"expires_at"`
-	Used                bool        `gorm:"not null;default:false" json:"used"`
-	CreatedAt           time.Time   `json:"created_at"`
+	ID                  string    `gorm:"primaryKey;type:uuid;default:gen_random_uuid()" json:"id"`
+	ClientID            string    `gorm:"type:uuid;not null" json:"client_id"`
+	UserID              string    `gorm:"type:text;not null" json:"user_id"`
+	CodeHash            string    `gorm:"type:text;not null;index" json:"-"`
+	CodeChallenge       string    `gorm:"type:text" json:"-"`
+	CodeChallengeMethod string    `gorm:"type:text;default:S256" json:"code_challenge_method,omitempty"`
+	RedirectURI         string    `gorm:"type:text;not null" json:"redirect_uri"`
+	Scopes              TextArray `gorm:"type:text[];not null;default:'{}'" json:"scopes"`
+	ExpiresAt           time.Time `json:"expires_at"`
+	Used                bool      `gorm:"not null;default:false" json:"used"`
+	CreatedAt           time.Time `json:"created_at"`
 }
 
 func (OAuthGrant) TableName() string { return "oauth_grants" }
 
 // OAuthToken represents an issued access/refresh token pair.
 type OAuthToken struct {
-	ID                 string         `gorm:"primaryKey;type:uuid;default:gen_random_uuid()" json:"id"`
-	GrantID            *string        `gorm:"type:uuid" json:"grant_id,omitempty"`
-	ClientID           string         `gorm:"type:uuid;not null" json:"client_id"`
-	UserID             string         `gorm:"type:text;not null;index" json:"user_id"`
-	TokenHash          string         `gorm:"type:text;not null;index" json:"-"`
-	RefreshTokenHash   string         `gorm:"type:text;index" json:"-"`
-	RefreshTokenFamily string         `gorm:"type:text" json:"-"`
-	Scopes             StringArray    `gorm:"type:jsonb;not null;default:'[]'" json:"scopes"`
-	ExpiresAt          time.Time      `json:"expires_at"`
-	RefreshExpiresAt   *time.Time     `json:"refresh_expires_at,omitempty"`
-	Revoked            bool           `gorm:"not null;default:false" json:"revoked"`
-	CreatedAt          time.Time      `json:"created_at"`
-	DeletedAt          gorm.DeletedAt `gorm:"index" json:"-"`
+	ID                 string     `gorm:"primaryKey;type:uuid;default:gen_random_uuid()" json:"id"`
+	GrantID            *string    `gorm:"type:uuid" json:"grant_id,omitempty"`
+	ClientID           string     `gorm:"type:uuid;not null" json:"client_id"`
+	UserID             string     `gorm:"type:text;not null;index" json:"user_id"`
+	TokenHash          string     `gorm:"type:text;not null;index" json:"-"`
+	RefreshTokenHash   string     `gorm:"type:text;index" json:"-"`
+	RefreshTokenFamily string     `gorm:"type:text" json:"-"`
+	Scopes             TextArray  `gorm:"type:text[];not null;default:'{}'" json:"scopes"`
+	ExpiresAt          time.Time  `json:"expires_at"`
+	RefreshExpiresAt   *time.Time `json:"refresh_expires_at,omitempty"`
+	Revoked            bool       `gorm:"not null;default:false" json:"revoked"`
+	CreatedAt          time.Time  `json:"created_at"`
+	// NOTE: deliberately no gorm.DeletedAt here. migrations/sql/0004 does not
+	// create an oauth_tokens.deleted_at column, so carrying the field made every
+	// INSERT and UPDATE on this model fail on PostgreSQL with
+	// `column "deleted_at" of relation "oauth_tokens" does not exist`
+	// (SQLSTATE 42703) — a 500 on every token issuance and revocation. Token
+	// lifecycle is `revoked`, and rows are hard-deleted with the user.
 }
 
 func (OAuthToken) TableName() string { return "oauth_tokens" }

@@ -320,7 +320,7 @@ func handleAuthorize(c *fiber.Ctx) error {
 		CodeChallenge:       codeChallenge,
 		CodeChallengeMethod: codeChallengeMethod,
 		RedirectURI:         redirectURI,
-		Scopes:              database.StringArray(scopes),
+		Scopes:              database.TextArray(scopes),
 		ExpiresAt:           time.Now().Add(authCodeTTL),
 	}
 
@@ -363,6 +363,7 @@ type tokenResponse struct {
 	ExpiresIn    int    `json:"expires_in"`
 	RefreshToken string `json:"refresh_token,omitempty"`
 	Scope        string `json:"scope"`
+	CreatedAt    int64  `json:"created_at"`
 }
 
 func handleToken(c *fiber.Ctx) error {
@@ -532,7 +533,7 @@ func issueTokens(c *fiber.Ctx, db *gorm.DB, clientID, userID string, grantID *st
 		TokenHash:          hashToken(accessToken),
 		RefreshTokenHash:   hashToken(refreshToken),
 		RefreshTokenFamily: family,
-		Scopes:             database.StringArray(scopes),
+		Scopes:             database.TextArray(scopes),
 		ExpiresAt:          accessExpires,
 		RefreshExpiresAt:   &refreshExpires,
 	}
@@ -547,6 +548,7 @@ func issueTokens(c *fiber.Ctx, db *gorm.DB, clientID, userID string, grantID *st
 		ExpiresIn:    int(accessTokenTTL.Seconds()),
 		RefreshToken: refreshToken,
 		Scope:        scopeString(scopes),
+		CreatedAt:    now.Unix(),
 	})
 }
 
@@ -598,7 +600,7 @@ type deviceCodeRequest struct {
 type deviceCodeResponse struct {
 	DeviceCode      string `json:"device_code"`
 	UserCode        string `json:"user_code"`
-	VerificationURI string `json:"verification_uri"`
+	VerificationURL string `json:"verification_url"`
 	ExpiresIn       int    `json:"expires_in"`
 	Interval        int    `json:"interval"`
 }
@@ -658,16 +660,22 @@ func handleDeviceCode(c *fiber.Ctx) error {
 	return c.JSON(deviceCodeResponse{
 		DeviceCode:      deviceCode,
 		UserCode:        userCode,
-		VerificationURI: "https://haaku.tv/activate",
+		VerificationURL: "https://haaku.tv/activate",
 		ExpiresIn:       int(deviceCodeTTL.Seconds()),
 		Interval:        devicePollInterval,
 	})
 }
 
+// deviceTokenRequest is the contract's request body for the device-flow token
+// poll: `{code, client_id}` required, `client_secret` optional and deprecated.
+// The contract names the device code `code`, and it carries neither
+// `grant_type` nor `device_code`, so neither is required here. `device_code` is
+// still accepted as an alias (RFC 8628 naming) for clients already sending it.
 type deviceTokenRequest struct {
-	GrantType  string `json:"grant_type"`
-	DeviceCode string `json:"device_code"`
-	ClientID   string `json:"client_id"`
+	Code         string `json:"code"`
+	DeviceCode   string `json:"device_code,omitempty"`
+	ClientID     string `json:"client_id"`
+	ClientSecret string `json:"client_secret,omitempty"`
 }
 
 func handleDeviceToken(c *fiber.Ctx) error {
@@ -676,28 +684,44 @@ func handleDeviceToken(c *fiber.Ctx) error {
 		return err
 	}
 
-	if req.GrantType != "urn:ietf:params:oauth:grant-type:device_code" {
-		return oauthBadRequest(c, "grant_type must be 'urn:ietf:params:oauth:grant-type:device_code'")
+	code := req.Code
+	if code == "" {
+		code = req.DeviceCode
 	}
-	if req.DeviceCode == "" {
-		return oauthBadRequest(c, "device_code is required")
+	if code == "" {
+		return oauthBadRequest(c, "code is required")
 	}
 	if req.ClientID == "" {
 		return oauthBadRequest(c, "client_id is required")
 	}
 
-	grant, ok := deviceGrantStore[req.DeviceCode]
+	grant, ok := deviceGrantStore[code]
 	if !ok {
 		return oauthBadRequest(c, "invalid_grant: device code not found")
 	}
 
 	if time.Now().After(grant.ExpiresAt) {
-		delete(deviceGrantStore, req.DeviceCode)
+		delete(deviceGrantStore, code)
 		return oauthBadRequest(c, "expired_token: device code has expired")
 	}
 
 	if grant.ClientID != req.ClientID {
 		return oauthBadRequest(c, "invalid_grant: client_id mismatch")
+	}
+
+	db, dbErr := database.GetDB()
+	if dbErr != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "database unavailable")
+	}
+
+	// client_secret is optional per the contract; when a client does send one,
+	// check it rather than accepting it unchecked.
+	if req.ClientSecret != "" {
+		var client database.OAuthClient
+		if err := db.First(&client, "id = ?", req.ClientID).Error; err != nil ||
+			subtle.ConstantTimeCompare([]byte(client.SecretHash), []byte(hashSecret(req.ClientSecret))) != 1 {
+			return oauthBadRequest(c, "invalid_client: invalid client_secret")
+		}
 	}
 
 	if !grant.Authorized {
@@ -707,12 +731,7 @@ func handleDeviceToken(c *fiber.Ctx) error {
 		})
 	}
 
-	db, dbErr := database.GetDB()
-	if dbErr != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, "database unavailable")
-	}
-
-	delete(deviceGrantStore, req.DeviceCode)
+	delete(deviceGrantStore, code)
 
 	return issueTokens(c, db, grant.ClientID, grant.UserID, nil, grant.Scopes, "")
 }
