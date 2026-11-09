@@ -135,8 +135,16 @@ _PARAM = re.compile(r"\{[^}]+\}")
 
 
 def _shape(path):
-    """The path with every parameter collapsed, so id and media_type compare."""
-    return _PARAM.sub("{}", path.strip())
+    """The path with every parameter collapsed, so id and media_type compare.
+
+    One trailing slash is dropped too: the contract spells some paths with one
+    (`/users/{id}/`, `/lists/{id}/`) and routes are equivalent with or without,
+    so a slash variant must not read as a divergence.
+    """
+    p = _PARAM.sub("{}", path.strip())
+    if len(p) > 1 and p.endswith("/"):
+        p = p[:-1]
+    return p
 
 
 def _path_diverges(trakt, ours):
@@ -152,6 +160,8 @@ def _path_diverges(trakt, ours):
     have = _shape(ours.split(" ", 1)[1] if " " in ours else ours)
     if have.startswith("/v1"):
         have = have[len("/v1"):]
+    if have == "":
+        have = "/"  # the API root, mounted at /v1
     return want != have
 
 
