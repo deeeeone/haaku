@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/haaku-tv/haaku/internal/auth"
@@ -94,6 +95,34 @@ func applyHistoryWindow(q *gorm.DB, c *fiber.Ctx) *gorm.DB {
 		q = q.Where("watched_at <= ?", t.Add(24*time.Hour))
 	}
 	return q
+}
+
+// applyActivityWindow applies the contract's activity window: the feed covers
+// the last 7 days by default, and start_date/end_date narrow (or widen) it when
+// supplied. The window is real stored watched_at time, so it can be honoured.
+func applyActivityWindow(q *gorm.DB, c *fiber.Ctx) *gorm.DB {
+	start, hasStart := parseDateQuery(c.Query("start_date"))
+	end, hasEnd := parseDateQuery(c.Query("end_date"))
+	if !hasStart {
+		start = time.Now().UTC().AddDate(0, 0, -7)
+	}
+	q = q.Where("watched_at >= ?", start)
+	if hasEnd {
+		q = q.Where("watched_at < ?", end.Add(24*time.Hour))
+	}
+	return q
+}
+
+// parseDateQuery parses an optional YYYY-MM-DD date parameter.
+func parseDateQuery(raw string) (time.Time, bool) {
+	if raw == "" {
+		return time.Time{}, false
+	}
+	t, err := time.Parse("2006-01-02", raw)
+	if err != nil {
+		return time.Time{}, false
+	}
+	return t, true
 }
 
 // handleContractHistoryList serves the per-type history arrays.
@@ -352,8 +381,15 @@ func handleContractWatchedMovies(c *fiber.Ctx) error {
 	return c.JSON(out)
 }
 
+// queryBool reads a boolean query flag; Trakt spells it true/false.
+func queryBool(c *fiber.Ctx, name string) bool {
+	v := strings.ToLower(strings.TrimSpace(c.Query(name)))
+	return v == "true" || v == "1"
+}
+
 // handleContractWatchedShows serves /watched/shows: show slug -> season ->
-// episode -> watched dates.
+// episode -> watched dates. `specials=true` keeps season 0; by default specials
+// are omitted, as the contract specifies.
 func handleContractWatchedShows(c *fiber.Ctx) error {
 	if err := validateExtended(c); err != nil {
 		return err
@@ -362,6 +398,7 @@ func handleContractWatchedShows(c *fiber.Ctx) error {
 	if !ok {
 		return nil
 	}
+	specials := queryBool(c, "specials")
 
 	var rows []database.UserHistory
 	if err := db.Where("user_id = ? AND media_type = ?", target.ID, "episode").
@@ -393,6 +430,9 @@ func handleContractWatchedShows(c *fiber.Ctx) error {
 		}
 		season, found := seasons[ep.SeasonID]
 		if !found {
+			continue
+		}
+		if season.SeasonNumber == 0 && !specials {
 			continue
 		}
 		if out[showSlug] == nil {
@@ -437,9 +477,14 @@ type watchedAggregate struct {
 // watchedTypeSQL returns the portable aggregation for one watched type: the
 // group key, the FROM clause (a join onto episodes for the episode-derived
 // types), and the WHERE clause with the user_id placeholder.
-func watchedTypeSQL(kind string) (keyExpr, from, where string) {
+func watchedTypeSQL(kind string, specials bool) (keyExpr, from, where string) {
 	const episodeRows = "uh.user_id = ? AND uh.media_type = 'episode'"
 	const episodeJoin = "user_history uh JOIN episodes e ON e.id = COALESCE(uh.episode_id, uh.media_id)"
+	// Season 0 holds specials; the contract omits them unless specials=true.
+	specialFilter := ""
+	if !specials {
+		specialFilter = " AND e.season_id NOT IN (SELECT id FROM seasons WHERE season_number = 0)"
+	}
 	switch kind {
 	case "movie":
 		// A movie whose row is gone is not served (and so is not counted).
@@ -447,12 +492,12 @@ func watchedTypeSQL(kind string) (keyExpr, from, where string) {
 			"uh.user_id = ? AND uh.media_type = 'movie' AND EXISTS (SELECT 1 FROM movies m WHERE m.id = uh.media_id)"
 	case "show":
 		return "e.show_id", episodeJoin,
-			episodeRows + " AND EXISTS (SELECT 1 FROM shows s WHERE s.id = e.show_id)"
+			episodeRows + " AND EXISTS (SELECT 1 FROM shows s WHERE s.id = e.show_id)" + specialFilter
 	case "season":
 		return "e.season_id", episodeJoin,
-			episodeRows + " AND EXISTS (SELECT 1 FROM seasons sn WHERE sn.id = e.season_id)"
+			episodeRows + " AND EXISTS (SELECT 1 FROM seasons sn WHERE sn.id = e.season_id)" + specialFilter
 	default: // episode
-		return "e.id", episodeJoin, episodeRows
+		return "e.id", episodeJoin, episodeRows + specialFilter
 	}
 }
 
@@ -476,8 +521,9 @@ func handleContractWatchedType(c *fiber.Ctx) error {
 		return response.BadRequest(c, "invalid type")
 	}
 	page, limit := contractPage(c)
+	specials := queryBool(c, "specials")
 
-	keyExpr, from, where := watchedTypeSQL(kind)
+	keyExpr, from, where := watchedTypeSQL(kind, specials)
 
 	// One row per group: the newest history row of the group, its play count,
 	// ordered by that newest watch. ROW_NUMBER/COUNT are window functions, so
@@ -587,6 +633,7 @@ func handleContractActivities(c *fiber.Ctx) error {
 	}
 
 	q := db.Where("user_id IN ?", userIDs)
+	q = applyActivityWindow(q, c)
 	var total int64
 	if err := q.Model(&database.UserHistory{}).Count(&total).Error; err != nil {
 		return response.InternalError(c)

@@ -162,7 +162,7 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /users/hidden/progress_watched` | out-of-scope | per-section hidden item lists | #108 |
 | `GET /users/requests/` | out-of-scope | follow requests (blocked on #54) | #110 |
 | `GET /users/requests/following` | out-of-scope | follow requests (blocked on #54) | #110 |
-| `GET /users/{id}/favorites/comments/{sort}` | out-of-scope | public-profile read surface | #103 |
+| `GET /users/{id}/favorites/comments/{sort}` | divergent | public-profile read surface | #103 |
 | `GET /users/{id}/favorites/media/{sort}` | divergent | public-profile read surface | #103 |
 | `GET /users/{id}/favorites/movies/{sort}` | divergent | public-profile read surface | #103 |
 | `GET /users/{id}/favorites/shows/{sort}` | divergent | public-profile read surface | #103 |
@@ -183,7 +183,7 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /users/{id}/lists/{list_id}/items/{type}/{sort_by}/{sort_how}` | out-of-scope | list management — writes, items, smart lists | #105 |
 | `GET /users/{id}/lists/{list_id}/likes` | out-of-scope | list management — writes, items, smart lists | #105 |
 | `GET /users/{id}/lists/{list_id}/smart-list-draft` | out-of-scope | list management — writes, items, smart lists | #105 |
-| `GET /users/{id}/smart-list-drafts` | out-of-scope | public-profile read surface | #103 |
+| `GET /users/{id}/smart-list-drafts` | divergent | public-profile read surface | #103 |
 | `GET /users/{id}/smart-lists` | out-of-scope | list management — writes, items, smart lists | #105 |
 | `GET /users/{id}/smart-lists/{list_id}/` | out-of-scope | list management — writes, items, smart lists | #105 |
 | `GET /users/{id}/watched/shows` | divergent | public-profile read surface | #103 |

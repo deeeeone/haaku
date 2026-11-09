@@ -25,12 +25,14 @@ func registerContractCollectionReads(users fiber.Router) {
 	users.Get("/:id/favorites/movies/:sort", auth.PrivacyFilter("id"), handleContractFavorites("movie"))
 	users.Get("/:id/favorites/shows/:sort", auth.PrivacyFilter("id"), handleContractFavorites("show"))
 	users.Get("/:id/favorites/media/:sort", auth.PrivacyFilter("id"), handleContractFavorites(""))
+	users.Get("/:id/favorites/comments/:sort", auth.PrivacyFilter("id"), handleContractFavoritesComments)
 	users.Get("/:id/favorites/:type/:sort_by/:sort_how", auth.PrivacyFilter("id"), handleContractFavoritesTyped)
 
 	users.Get("/:id/watchlist/movies/:sort", auth.PrivacyFilter("id"), handleContractWatchlist("movie"))
 	users.Get("/:id/watchlist/shows/:sort", auth.PrivacyFilter("id"), handleContractWatchlist("show"))
 	users.Get("/:id/watchlist/movie,show/:sort", auth.PrivacyFilter("id"), handleContractWatchlist(""))
 	users.Get("/:id/watchlist/comments/:sort", auth.PrivacyFilter("id"), handleContractWatchlistComments)
+	registerContractSmartListDraftRoutes(users)
 }
 
 func init() {
@@ -38,6 +40,7 @@ func init() {
 		{Method: "GET", Path: "/v1/users/{id}/favorites/movies/{sort}", Summary: "A user's favorite movies (contract path)", Tags: []string{"Users"}, Auth: "optional", StatusCodes: map[int]string{200: "Favorites", 400: "Invalid sort", 403: "Private profile", 404: "Not found"}},
 		{Method: "GET", Path: "/v1/users/{id}/favorites/shows/{sort}", Summary: "A user's favorite shows (contract path)", Tags: []string{"Users"}, Auth: "optional", StatusCodes: map[int]string{200: "Favorites", 400: "Invalid sort", 403: "Private profile", 404: "Not found"}},
 		{Method: "GET", Path: "/v1/users/{id}/favorites/media/{sort}", Summary: "A user's favorite media, all types (contract path)", Tags: []string{"Users"}, Auth: "optional", StatusCodes: map[int]string{200: "Favorites", 400: "Invalid sort", 403: "Private profile", 404: "Not found"}},
+		{Method: "GET", Path: "/v1/users/{id}/favorites/comments/{sort}", Summary: "Comments on a user's favorites (contract path)", Tags: []string{"Users"}, Auth: "optional", StatusCodes: map[int]string{200: "Comments", 400: "Invalid sort", 403: "Private profile", 404: "Not found"}},
 		{Method: "GET", Path: "/v1/users/{id}/favorites/{type}/{sort_by}/{sort_how}", Summary: "A user's favorites for one type, sorted (contract path)", Tags: []string{"Users"}, Auth: "optional", StatusCodes: map[int]string{200: "Favorites", 400: "Invalid type or sort", 403: "Private profile", 404: "Not found"}},
 		{Method: "GET", Path: "/v1/users/{id}/watchlist/movies/{sort}", Summary: "A user's movie watchlist, sorted (contract path)", Tags: []string{"Users"}, Auth: "optional", StatusCodes: map[int]string{200: "Watchlist", 400: "Invalid sort", 403: "Private profile", 404: "Not found"}},
 		{Method: "GET", Path: "/v1/users/{id}/watchlist/shows/{sort}", Summary: "A user's show watchlist, sorted (contract path)", Tags: []string{"Users"}, Auth: "optional", StatusCodes: map[int]string{200: "Watchlist", 400: "Invalid sort", 403: "Private profile", 404: "Not found"}},
@@ -54,8 +57,11 @@ func init() {
 // we can actually order by are accepted; anything else is a 400 rather than a
 // silently ignored sort.
 func mediaListOrder(sortBy, how, timeCol string) (string, error) {
-	if how != "asc" && how != "desc" {
+	if how == "" {
 		how = "asc"
+	}
+	if how != "asc" && how != "desc" {
+		return "", errInvalidSort
 	}
 	title := `COALESCE(
 		(SELECT m.title FROM movies m WHERE m.id = media_id AND media_type = 'movie'),
@@ -78,6 +84,21 @@ func mediaListOrder(sortBy, how, timeCol string) (string, error) {
 	}
 }
 
+// collectionSort resolves a `{sort}` path segment with the contract's optional
+// sort_by/sort_how query overrides. The query value wins when present, since
+// Trakt lets a client re-sort a sorted path.
+func collectionSort(c *fiber.Ctx) (sortBy, how string) {
+	sortBy = c.Params("sort")
+	how = "asc"
+	if q := c.Query("sort_by"); q != "" {
+		sortBy = q
+	}
+	if q := c.Query("sort_how"); q != "" {
+		how = q
+	}
+	return sortBy, how
+}
+
 // handleContractFavorites serves /favorites/{movies,shows,media}/{sort}.
 // kind "" means all storable favorite types.
 func handleContractFavorites(kind string) fiber.Handler {
@@ -89,7 +110,8 @@ func handleContractFavorites(kind string) fiber.Handler {
 		if !ok {
 			return nil
 		}
-		order, err := mediaListOrder(c.Params("sort"), "asc", "favorited_at")
+		sortBy, how := collectionSort(c)
+		order, err := mediaListOrder(sortBy, how, "favorited_at")
 		if err != nil {
 			return response.BadRequest(c, "invalid sort")
 		}
@@ -171,7 +193,8 @@ func handleContractWatchlist(kind string) fiber.Handler {
 		if !ok {
 			return nil
 		}
-		order, err := mediaListOrder(c.Params("sort"), "asc", "listed_at")
+		sortBy, how := collectionSort(c)
+		order, err := mediaListOrder(sortBy, how, "listed_at")
 		if err != nil {
 			return response.BadRequest(c, "invalid sort")
 		}
@@ -257,6 +280,75 @@ func handleContractWatchlistComments(c *fiber.Ctx) error {
 	}
 
 	q := db.Model(&database.Comment{})
+	switch {
+	case len(movies) > 0 && len(shows) > 0:
+		q = q.Where("(media_type = ? AND media_id IN ?) OR (media_type = ? AND media_id IN ?)", "movie", movies, "show", shows)
+	case len(movies) > 0:
+		q = q.Where("media_type = ? AND media_id IN ?", "movie", movies)
+	default:
+		q = q.Where("media_type = ? AND media_id IN ?", "show", shows)
+	}
+	var total int64
+	if err := q.Count(&total).Error; err != nil {
+		return response.InternalError(c)
+	}
+	var rows []database.Comment
+	if err := q.Order(order).Offset(pageOffset(page, limit)).Limit(limit).Find(&rows).Error; err != nil {
+		return response.InternalError(c)
+	}
+	items := make([]map[string]any, 0, len(rows))
+	for i := range rows {
+		if item, ok := contractComment(db, &rows[i]); ok {
+			items = append(items, item)
+		}
+	}
+	return writeContractPage(c, items, page, limit, total, len(items))
+}
+
+// handleContractFavoritesComments serves /favorites/comments/{sort}: top-level
+// comments on the movies and shows in the user's favorites. It is the same
+// stored relation the watchlist-comments read uses, scoped to user_favorites.
+func handleContractFavoritesComments(c *fiber.Ctx) error {
+	sort := c.Params("sort")
+	var order string
+	switch sort {
+	case "newest":
+		order = "created_at DESC, id DESC"
+	case "oldest":
+		order = "created_at ASC, id ASC"
+	case "likes":
+		order = "like_count DESC, id DESC"
+	case "replies":
+		order = "reply_count DESC, id DESC"
+	default:
+		return response.BadRequest(c, "sort must be one of newest, oldest, likes, replies")
+	}
+
+	target, db, ok := profileTarget(c)
+	if !ok {
+		return nil
+	}
+	page, limit := contractPage(c)
+
+	var favorites []database.UserFavorite
+	if err := db.Where("user_id = ? AND media_type IN ?", target.ID, []string{"movie", "show"}).
+		Find(&favorites).Error; err != nil {
+		return response.InternalError(c)
+	}
+	movies := make([]int64, 0)
+	shows := make([]int64, 0)
+	for _, f := range favorites {
+		if f.MediaType == "movie" {
+			movies = append(movies, f.MediaID)
+		} else {
+			shows = append(shows, f.MediaID)
+		}
+	}
+	if len(movies) == 0 && len(shows) == 0 {
+		return writeContractPage(c, []map[string]any{}, page, limit, 0, 0)
+	}
+
+	q := db.Model(&database.Comment{}).Where("parent_id IS NULL")
 	switch {
 	case len(movies) > 0 && len(shows) > 0:
 		q = q.Where("(media_type = ? AND media_id IN ?) OR (media_type = ? AND media_id IN ?)", "movie", movies, "show", shows)

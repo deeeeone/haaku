@@ -229,7 +229,9 @@ func uniqueIDs(ids []int64) []int64 {
 }
 
 // contractHistoryRow renders one user_history row in the contract's history
-// shape: id, watched_at, action, type, plus the type's media object.
+// shape: id, watched_at, action, type, plus the type's media object. An episode
+// history row carries BOTH the episode and its show — the contract marks both
+// required on /users/{id}/history/{episodes,shows}.
 func contractHistoryRow(db *gorm.DB, h *database.UserHistory) (map[string]any, bool) {
 	mediaType := h.MediaType
 	mediaID := h.MediaID
@@ -242,12 +244,40 @@ func contractHistoryRow(db *gorm.DB, h *database.UserHistory) (map[string]any, b
 		"action":     syncHistoryAction(h.Source),
 		"type":       mediaType,
 	}
-	media, ok := contractMediaRow(db, mediaType, mediaID)
-	if !ok {
-		return nil, false
+	if mediaType == "episode" {
+		episode, show, ok := contractEpisodeRow(db, mediaID)
+		if !ok {
+			return nil, false
+		}
+		row["episode"] = episode
+		row["show"] = show
+		return row, true
 	}
-	row[mediaType] = media
-	return row, true
+	if media, ok := contractMediaRow(db, mediaType, mediaID); ok {
+		row[mediaType] = media
+		return row, true
+	}
+	return nil, false
+}
+
+// contractEpisodeRow loads one episode with the season number and the parent
+// show the contract's history/episode object needs. ok is false when the
+// episode, its season or its show row is gone, so the caller omits the dangling
+// entry instead of inventing one.
+func contractEpisodeRow(db *gorm.DB, episodeID int64) (episode, show map[string]any, ok bool) {
+	ep, found := loadEpisodeMap(db, []int64{episodeID})[episodeID]
+	if !found {
+		return nil, nil, false
+	}
+	season, found := loadSeasonMap(db, []int64{ep.SeasonID})[ep.SeasonID]
+	if !found {
+		return nil, nil, false
+	}
+	sh, found := loadShowMap(db, []int64{ep.ShowID})[ep.ShowID]
+	if !found {
+		return nil, nil, false
+	}
+	return contractshape.Episode(&ep, season.SeasonNumber), contractshape.Show(&sh), true
 }
 
 // syncHistoryAction mirrors sync.HistoryAction without importing the sync
