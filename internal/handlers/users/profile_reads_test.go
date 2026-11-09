@@ -379,6 +379,10 @@ func TestProfileReadsCommentsEmptyIsArray(t *testing.T) {
 func TestProfileReadsHistoryMediaTypeFilter(t *testing.T) {
 	db := profileTestDB(t)
 	seedUser(t, db, "target", false, "active")
+	// The contract history row requires its media object, so the movies the
+	// history points at must exist for the rows to render.
+	db.Create(&database.Movie{TmdbID: 11, Title: "One"})
+	db.Create(&database.Movie{TmdbID: 12, Title: "Two"})
 	seedHistory(t, db, "target", 2, "movie")
 	seedHistory(t, db, "target", 1, "episode")
 	app := newProfileReadApp("stranger")
@@ -387,18 +391,21 @@ func TestProfileReadsHistoryMediaTypeFilter(t *testing.T) {
 	if status != http.StatusOK {
 		t.Fatalf("want 200, got %d (%s)", status, body)
 	}
-	var page struct {
-		Items    []map[string]any `json:"items"`
-		RowCount int64            `json:"row_count"`
-	}
-	if err := json.Unmarshal([]byte(body), &page); err != nil {
+	// The contract path returns a bare array of contract history rows.
+	var items []map[string]any
+	if err := json.Unmarshal([]byte(body), &items); err != nil {
 		t.Fatalf("decode: %v (%s)", err, body)
 	}
-	if page.RowCount != 2 || len(page.Items) != 2 {
-		t.Errorf("movies filter: want 2 rows, got row_count=%d items=%d", page.RowCount, len(page.Items))
+	if len(items) != 2 {
+		t.Errorf("movies filter: want 2 rows, got %d", len(items))
 	}
-	if got := page.Items[0]["media_type"]; got != "movie" {
-		t.Errorf("media_type = %v, want movie", got)
+	if len(items) > 0 {
+		if got := items[0]["type"]; got != "movie" {
+			t.Errorf("type = %v, want movie", got)
+		}
+		if _, ok := items[0]["movie"]; !ok {
+			t.Errorf("history row missing the movie object: %v", items[0])
+		}
 	}
 
 	// Invalid media type is a 400, not a silent empty list.
@@ -432,7 +439,7 @@ func TestProfileReadsHistoryItem(t *testing.T) {
 	if status != http.StatusOK {
 		t.Fatalf("want 200, got %d (%s)", status, body)
 	}
-	if !strings.Contains(body, `"media_id":`+itoa(movie.ID)) {
+	if !strings.Contains(body, `"title":"Heat"`) {
 		t.Errorf("history item not returned: %s", body)
 	}
 }

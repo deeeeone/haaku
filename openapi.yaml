@@ -12447,6 +12447,54 @@ paths:
             summary: Get public user profile
             tags:
                 - Users
+    /v1/users/{id}/{type}/activities:
+        get:
+            operationId: _v1_users_id_type_activities_GET
+            responses:
+                "200":
+                    description: Activities
+                "400":
+                    description: Invalid type
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "403":
+                    description: Private profile
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Recent activity of a user's friends/followers/following (contract path)
+            tags:
+                - Users
     /v1/users/{id}/block:
         delete:
             operationId: _v1_users_id_block_DELETE
@@ -12680,6 +12728,198 @@ paths:
                 - apiKey: []
                 - oauth: []
             summary: 'A user''s comments (comment_type: all|reviews|shouts; media_type: all|movies|shows|seasons|episodes|lists)'
+            tags:
+                - Users
+    /v1/users/{id}/favorites/{type}/{sort_by}/{sort_how}:
+        get:
+            operationId: _v1_users_id_favorites_type_sort_by_sort_how_GET
+            responses:
+                "200":
+                    description: Favorites
+                "400":
+                    description: Invalid type or sort
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "403":
+                    description: Private profile
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: A user's favorites for one type, sorted (contract path)
+            tags:
+                - Users
+    /v1/users/{id}/favorites/media/{sort}:
+        get:
+            operationId: _v1_users_id_favorites_media_sort_GET
+            responses:
+                "200":
+                    description: Favorites
+                "400":
+                    description: Invalid sort
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "403":
+                    description: Private profile
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: A user's favorite media, all types (contract path)
+            tags:
+                - Users
+    /v1/users/{id}/favorites/movies/{sort}:
+        get:
+            operationId: _v1_users_id_favorites_movies_sort_GET
+            responses:
+                "200":
+                    description: Favorites
+                "400":
+                    description: Invalid sort
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "403":
+                    description: Private profile
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: A user's favorite movies (contract path)
+            tags:
+                - Users
+    /v1/users/{id}/favorites/shows/{sort}:
+        get:
+            operationId: _v1_users_id_favorites_shows_sort_GET
+            responses:
+                "200":
+                    description: Favorites
+                "400":
+                    description: Invalid sort
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "403":
+                    description: Private profile
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: A user's favorite shows (contract path)
             tags:
                 - Users
     /v1/users/{id}/follow:
@@ -13067,6 +13307,306 @@ paths:
             summary: A user's watch history for one item (?id_type= resolves an external id)
             tags:
                 - Users
+    /v1/users/{id}/history/episodes:
+        get:
+            operationId: _v1_users_id_history_episodes_GET
+            responses:
+                "200":
+                    description: History
+                "400":
+                    description: Invalid extended value
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "403":
+                    description: Private profile
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: A user's episode watch history (contract path)
+            tags:
+                - Users
+    /v1/users/{id}/history/episodes/{item_id}:
+        get:
+            operationId: _v1_users_id_history_episodes_item_id_GET
+            responses:
+                "200":
+                    description: History
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "403":
+                    description: Private profile
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: A user's history for one episode (contract path)
+            tags:
+                - Users
+    /v1/users/{id}/history/movies:
+        get:
+            operationId: _v1_users_id_history_movies_GET
+            responses:
+                "200":
+                    description: History
+                "400":
+                    description: Invalid extended value
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "403":
+                    description: Private profile
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: A user's movie watch history (contract path)
+            tags:
+                - Users
+    /v1/users/{id}/history/movies/{item_id}:
+        get:
+            operationId: _v1_users_id_history_movies_item_id_GET
+            responses:
+                "200":
+                    description: History
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "403":
+                    description: Private profile
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: A user's history for one movie (contract path)
+            tags:
+                - Users
+    /v1/users/{id}/history/shows:
+        get:
+            operationId: _v1_users_id_history_shows_GET
+            responses:
+                "200":
+                    description: History
+                "400":
+                    description: Invalid extended value
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "403":
+                    description: Private profile
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: A user's show/episode watch history (contract path)
+            tags:
+                - Users
+    /v1/users/{id}/history/shows/{item_id}:
+        get:
+            operationId: _v1_users_id_history_shows_item_id_GET
+            responses:
+                "200":
+                    description: History
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "403":
+                    description: Private profile
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: A user's history for one show (contract path)
+            tags:
+                - Users
     /v1/users/{id}/likes/comments:
         get:
             operationId: _v1_users_id_likes_comments_GET
@@ -13371,6 +13911,254 @@ paths:
             summary: A user's ratings filtered by media type
             tags:
                 - Users
+    /v1/users/{id}/ratings/{type}/{rating}:
+        get:
+            operationId: _v1_users_id_ratings_type_rating_GET
+            responses:
+                "200":
+                    description: Ratings
+                "400":
+                    description: Invalid type or rating
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "403":
+                    description: Private profile
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: A user's ratings for one type at one rating value (contract path)
+            tags:
+                - Users
+    /v1/users/{id}/ratings/episodes:
+        get:
+            operationId: _v1_users_id_ratings_episodes_GET
+            responses:
+                "200":
+                    description: Ratings
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "403":
+                    description: Private profile
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: A user's episode ratings (contract path)
+            tags:
+                - Users
+    /v1/users/{id}/ratings/movies:
+        get:
+            operationId: _v1_users_id_ratings_movies_GET
+            responses:
+                "200":
+                    description: Ratings
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "403":
+                    description: Private profile
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: A user's movie ratings (contract path)
+            tags:
+                - Users
+    /v1/users/{id}/ratings/shows:
+        get:
+            operationId: _v1_users_id_ratings_shows_GET
+            responses:
+                "200":
+                    description: Ratings
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "403":
+                    description: Private profile
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: A user's show ratings (contract path)
+            tags:
+                - Users
+    /v1/users/{id}/report:
+        post:
+            operationId: _v1_users_id_report_POST
+            responses:
+                "201":
+                    description: Report filed
+                "400":
+                    description: Invalid reason
+                "401":
+                    description: Unauthorized
+                "403":
+                    description: Private profile
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Report a user for moderator review (contract path)
+            tags:
+                - Users
     /v1/users/{id}/stats:
         get:
             operationId: _v1_users_id_stats_GET
@@ -13421,6 +14209,150 @@ paths:
                 - apiKey: []
                 - oauth: []
             summary: Get user statistics (plays, minutes, unique media counts, ratings)
+            tags:
+                - Users
+    /v1/users/{id}/watched/{type}:
+        get:
+            operationId: _v1_users_id_watched_type_GET
+            responses:
+                "200":
+                    description: Watched items
+                "400":
+                    description: Invalid type
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "403":
+                    description: Private profile
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: A user's watched media aggregated per item (contract path)
+            tags:
+                - Users
+    /v1/users/{id}/watched/movies:
+        get:
+            operationId: _v1_users_id_watched_movies_GET
+            responses:
+                "200":
+                    description: Watched movies
+                "400":
+                    description: Invalid extended value
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "403":
+                    description: Private profile
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: A user's watched movies (contract map shape)
+            tags:
+                - Users
+    /v1/users/{id}/watched/shows:
+        get:
+            operationId: _v1_users_id_watched_shows_GET
+            responses:
+                "200":
+                    description: Watched shows
+                "400":
+                    description: Invalid extended value
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "403":
+                    description: Private profile
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: A user's watched shows (contract map shape)
             tags:
                 - Users
     /v1/users/{id}/watching:
@@ -13617,6 +14549,248 @@ paths:
                 - apiKey: []
                 - oauth: []
             summary: A user's watchlist for one media type, sorted (contract path)
+            tags:
+                - Users
+    /v1/users/{id}/watchlist/comments/{sort}:
+        get:
+            operationId: _v1_users_id_watchlist_comments_sort_GET
+            responses:
+                "200":
+                    description: Comments
+                "400":
+                    description: Invalid sort
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "403":
+                    description: Private profile
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Comments on items in a user's watchlist (contract path)
+            tags:
+                - Users
+    /v1/users/{id}/watchlist/movie,show/{sort}:
+        get:
+            operationId: _v1_users_id_watchlist_movieshow_sort_GET
+            responses:
+                "200":
+                    description: Watchlist
+                "400":
+                    description: Invalid sort
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "403":
+                    description: Private profile
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: A user's movie and show watchlist, sorted (contract path)
+            tags:
+                - Users
+    /v1/users/{id}/watchlist/movies/{sort}:
+        get:
+            operationId: _v1_users_id_watchlist_movies_sort_GET
+            responses:
+                "200":
+                    description: Watchlist
+                "400":
+                    description: Invalid sort
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "403":
+                    description: Private profile
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: A user's movie watchlist, sorted (contract path)
+            tags:
+                - Users
+    /v1/users/{id}/watchlist/shows/{sort}:
+        get:
+            operationId: _v1_users_id_watchlist_shows_sort_GET
+            responses:
+                "200":
+                    description: Watchlist
+                "400":
+                    description: Invalid sort
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "403":
+                    description: Private profile
+                "404":
+                    description: Not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: A user's show watchlist, sorted (contract path)
+            tags:
+                - Users
+    /v1/users/blocked:
+        get:
+            operationId: _v1_users_blocked_GET
+            responses:
+                "200":
+                    description: Blocked users
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    description: Unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Users the caller has blocked (contract path)
             tags:
                 - Users
     /v1/users/hidden/{section}:
@@ -14878,6 +16052,98 @@ paths:
             summary: Create smart list
             tags:
                 - Lists
+    /v1/users/reactions/comments:
+        get:
+            operationId: _v1_users_reactions_comments_GET
+            responses:
+                "200":
+                    description: Reactions
+                "400":
+                    description: Invalid extended value
+                "401":
+                    description: Unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: The caller's comment reactions (contract path)
+            tags:
+                - Users
+    /v1/users/saved_filters/{section}:
+        get:
+            operationId: _v1_users_saved_filters_section_GET
+            responses:
+                "200":
+                    description: Saved filters
+                "400":
+                    description: Invalid section
+                "401":
+                    description: Unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: The caller's saved filters for a section (contract path)
+            tags:
+                - Users
     /v1/users/settings:
         get:
             operationId: _v1_users_settings_GET
@@ -14922,6 +16188,51 @@ paths:
                 - apiKey: []
                 - oauth: []
             summary: Get the authenticated user's settings (contract path)
+            tags:
+                - Users
+        put:
+            operationId: _v1_users_settings_PUT
+            responses:
+                "200":
+                    description: Updated settings
+                "400":
+                    description: Invalid request
+                "401":
+                    description: Unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+            security:
+                - apiKey: []
+                - oauth: []
+            summary: Update the caller's settings (contract path)
             tags:
                 - Users
     /v1/watchnow/sources:

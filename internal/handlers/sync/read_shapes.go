@@ -20,6 +20,11 @@ type WatchlistResponse = watchlistResponse
 // RatingResponse is a single rating row.
 type RatingResponse = ratingResponse
 
+// HistoryAction maps a stored history row's source onto Trakt's action
+// vocabulary (scrobble|checkin|watch). Exported because the public-profile
+// contract reads render the same rows at /users/{id}/history/*.
+func HistoryAction(source string) string { return historyAction(source) }
+
 // BuildHistoryResponse renders a history row.
 func BuildHistoryResponse(h *database.UserHistory) HistoryResponse {
 	return buildHistoryResponse(h)
