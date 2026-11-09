@@ -5283,58 +5283,6 @@ paths:
             summary: Anticipated upcoming movies weighted by watchlist interest (contract path)
             tags:
                 - Movies
-    /v1/movies/boxoffice:
-        get:
-            operationId: _v1_movies_boxoffice_GET
-            responses:
-                "400":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
-                "401":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: unauthorized
-                "404":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
-                "409":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: conflict
-                "422":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: unprocessable
-                "429":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: rate limited
-                "500":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: internal server error
-                "501":
-                    description: Not implemented — No revenue/box-office columns exist and the TMDB ingest does not fetch them. (#66)
-            security: []
-            summary: Parity stub — not implemented (stats & rankings engine)
-            tags:
-                - Movies
     /v1/movies/collected/{period}:
         get:
             operationId: _v1_movies_collected_period_GET
