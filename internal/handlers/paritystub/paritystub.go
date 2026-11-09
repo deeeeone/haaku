@@ -32,13 +32,16 @@ func stubHandler(issue int, trakt, reason string) fiber.Handler {
 	}
 }
 
-// RegisterRoutes wires every parity stub. It is called FIRST in httpapi.RegisterRoutes
-// so a static stub segment (`/v1/movies/watched/{period}`) is matched before the
-// `{id}` routes that would otherwise swallow it.
+// RegisterRoutes wires every parity stub. It is called FIRST in httpapi.RegisterRoutes,
+// on the app root (the generated paths already carry /v1), so a static stub segment
+// (`/v1/smart-lists/templates`) is matched before the `{id}` routes; newStubRouter
+// skips a stub whose path a real handler already serves.
 func RegisterRoutes(api fiber.Router) {
-	registerStub49(api)
-	registerStub69(api)
-	registerStub106(api)
+	w := newStubRouter(api)
+	registerStub49(w)
+	registerStub69(w)
+	registerStub105(w)
+	registerStub106(w)
 }
 
 // routeDefs is every stub's registry entry, in a stable order.
@@ -46,6 +49,7 @@ func routeDefs() []openapi.RouteDef {
 	var all []openapi.RouteDef
 	all = append(all, defsStub49()...)
 	all = append(all, defsStub69()...)
+	all = append(all, defsStub105()...)
 	all = append(all, defsStub106()...)
 	return all
 }

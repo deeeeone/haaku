@@ -27,7 +27,7 @@ func TestParityStubIsMountedUnderV1(t *testing.T) {
 		want int
 	}{
 		{"/v1/smart-lists/templates", http.StatusNotImplemented},
-		{"/v1/media/trending", http.StatusNotImplemented},
+		{"/v1/shows/streaming/weekly", http.StatusNotImplemented},
 		{"/v1/v1/smart-lists/templates", http.StatusNotFound},
 	}
 	for _, tc := range cases {
