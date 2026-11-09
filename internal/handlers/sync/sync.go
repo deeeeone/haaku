@@ -32,6 +32,7 @@ func registerOpenAPIRoutes() {
 		{Method: "POST", Path: "/v1/sync/history/remove", Summary: "Remove history items", Tags: []string{"Sync"}, Auth: "required", StatusCodes: map[int]string{200: "Remove result", 401: "Unauthorized"}},
 		// Collection
 		{Method: "GET", Path: "/v1/sync/collection", Summary: "Get user collection", Tags: []string{"Sync"}, Auth: "required", StatusCodes: map[int]string{200: "Collection items", 401: "Unauthorized"}},
+		{Method: "GET", Path: "/v1/sync/collection/episodes", Summary: "Get collected episodes", Tags: []string{"Sync"}, Auth: "required", StatusCodes: map[int]string{200: "Collected episodes", 401: "Unauthorized"}},
 		{Method: "POST", Path: "/v1/sync/collection", Summary: "Add collection items", Tags: []string{"Sync"}, Auth: "required", StatusCodes: map[int]string{200: "Add result", 401: "Unauthorized"}},
 		{Method: "POST", Path: "/v1/sync/collection/remove", Summary: "Remove collection items", Tags: []string{"Sync"}, Auth: "required", StatusCodes: map[int]string{200: "Remove result", 401: "Unauthorized"}},
 		// Watchlist
@@ -68,6 +69,7 @@ func RegisterRoutes(api fiber.Router) {
 
 	// Collection
 	sync.Get("/collection", handleGetCollection)
+	sync.Get("/collection/episodes", handleGetCollectionEpisodes)
 	sync.Post("/collection", handleAddCollection)
 	sync.Post("/collection/remove", handleRemoveCollection)
 
@@ -612,172 +614,11 @@ func handleGetCollection(c *fiber.Ctx) error {
 }
 
 func handleAddCollection(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(string)
-
-	var req struct {
-		Movies []historyMovie `json:"movies,omitempty"`
-		Shows  []historyShow  `json:"shows,omitempty"`
-	}
-	if err := response.ParseBody(c, &req); err != nil {
-		return err
-	}
-
-	added, duplicates := 0, 0
-	var notFound notFoundList
-	var movieIDs []int64
-	var showIDs []int64
-	now := time.Now()
-
-	// Batch-resolve every item's external ids up front (kills the per-item
-	// N+1). A client may identify media by tvdb, tmdb or imdb; see
-	// media.ResolveIDsBatch for the precedence.
-	var idRefs []media.IDRef
-	for _, m := range req.Movies {
-		idRefs = append(idRefs, idRefFor(m.IDs).WithType("movie"))
-	}
-	for _, s := range req.Shows {
-		idRefs = append(idRefs, idRefFor(s.IDs).WithType("show"))
-	}
-
-	dbErr := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
-		cacheTx := cache.NewCacheTransaction()
-
-		refs, resolveErr := media.ResolveIDsBatch(tx, idRefs)
-		if resolveErr != nil {
-			return nil, resolveErr
-		}
-
-		for _, m := range req.Movies {
-			ref, ok := refs[idRefFor(m.IDs).WithType("movie")]
-			if !ok || ref.MediaType != "movie" {
-				notFound.movie(m.IDs)
-				continue
-			}
-			mediaID := ref.MediaID
-			result := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&database.UserCollection{
-				UserID: userID, MediaType: "movie", MediaID: mediaID, CollectedAt: now,
-			})
-			if result.RowsAffected > 0 {
-				added++
-				movieIDs = append(movieIDs, mediaID)
-			} else {
-				duplicates++
-			}
-		}
-		for _, s := range req.Shows {
-			ref, ok := refs[idRefFor(s.IDs).WithType("show")]
-			if !ok || ref.MediaType != "show" {
-				notFound.show(s.IDs)
-				continue
-			}
-			mediaID := ref.MediaID
-			result := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&database.UserCollection{
-				UserID: userID, MediaType: "show", MediaID: mediaID, CollectedAt: now,
-			})
-			if result.RowsAffected > 0 {
-				added++
-				showIDs = append(showIDs, mediaID)
-			} else {
-				duplicates++
-			}
-		}
-
-		if added > 0 {
-			queueUserInvalidation(cacheTx, userID)
-			for _, id := range movieIDs {
-				queueMediaInvalidation(cacheTx, "movie", id)
-			}
-			for _, id := range showIDs {
-				queueMediaInvalidation(cacheTx, "show", id)
-			}
-			if err := outbox.PublishEvent(tx, outbox.EventCollectionAdded, userID, map[string]any{
-				"movies_added": len(movieIDs),
-				"shows_added":  len(showIDs),
-			}); err != nil {
-				return nil, err
-			}
-		}
-
-		return cacheTx, nil
-	})
-	if dbErr != nil {
-		return response.InternalError(c)
-	}
-
-	return c.JSON(fiber.Map{
-		"added":      fiber.Map{"movies": added, "episodes": 0},
-		"not_found":  notFound.payload(),
-		"duplicates": fiber.Map{"movies": duplicates, "episodes": 0},
-	})
+	return addCollection(c)
 }
 
 func handleRemoveCollection(c *fiber.Ctx) error {
-	userID := c.Locals("user_id").(string)
-
-	var req struct {
-		Movies []historyMovie `json:"movies,omitempty"`
-		Shows  []historyShow  `json:"shows,omitempty"`
-	}
-	if err := response.ParseBody(c, &req); err != nil {
-		return err
-	}
-
-	deleted := 0
-	var movieIDs []int64
-	var showIDs []int64
-
-	dbErr := cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
-		cacheTx := cache.NewCacheTransaction()
-
-		for _, m := range req.Movies {
-			_, mediaID, err := resolveRefs(c, tx, m.IDs, "movie")
-			if err != nil {
-				continue
-			}
-			result := tx.Where("user_id = ? AND media_type = ? AND media_id = ?", userID, "movie", mediaID).
-				Delete(&database.UserCollection{})
-			if result.RowsAffected > 0 {
-				deleted += int(result.RowsAffected)
-				movieIDs = append(movieIDs, mediaID)
-			}
-		}
-		for _, s := range req.Shows {
-			_, showID, err := resolveRefs(c, tx, s.IDs, "show")
-			if err != nil {
-				continue
-			}
-			result := tx.Where("user_id = ? AND media_type = ? AND media_id = ?", userID, "show", showID).
-				Delete(&database.UserCollection{})
-			if result.RowsAffected > 0 {
-				deleted += int(result.RowsAffected)
-				showIDs = append(showIDs, showID)
-			}
-		}
-
-		if deleted > 0 {
-			queueUserInvalidation(cacheTx, userID)
-			for _, id := range movieIDs {
-				queueMediaInvalidation(cacheTx, "movie", id)
-			}
-			for _, id := range showIDs {
-				queueMediaInvalidation(cacheTx, "show", id)
-			}
-			// EventCollectionAdded's wire value is "collection.updated",
-			// which correctly covers both adds and removals.
-			if err := outbox.PublishEvent(tx, outbox.EventCollectionAdded, userID, map[string]any{
-				"deleted": deleted,
-			}); err != nil {
-				return nil, err
-			}
-		}
-
-		return cacheTx, nil
-	})
-	if dbErr != nil {
-		return response.InternalError(c)
-	}
-
-	return c.JSON(fiber.Map{"deleted": deleted})
+	return removeCollection(c)
 }
 
 // ============================================================================

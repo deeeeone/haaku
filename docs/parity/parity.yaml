@@ -356,10 +356,58 @@ sections:
         rationale: "Landed as a per-type read pinned to media_type='show'."
       - trakt: "GET /sync/collection/episodes"
         ours: "GET /v1/sync/collection/episodes"
+        status: implemented
+        rationale: "Episode rows in user_collection are the source of truth; seasons and shows with seasons expand to their episode rows, and the read returns Trakt's collected-episode shape."
+      - trakt: "GET /sync/watchlist/movies"
+        ours: "GET /v1/sync/watchlist/movies"
+        status: implemented
+        rationale: "Landed as a per-type read pinned to media_type='movie'."
+      - trakt: "GET /sync/watchlist/shows"
+        ours: "GET /v1/sync/watchlist/shows"
+        status: implemented
+        rationale: "Landed as a per-type read pinned to media_type='show'."
+      - trakt: "GET /sync/watchlist/seasons"
+        ours: ""
         status: blocked-data
-        rationale: "user_collection.media_type is 'movie' or 'show' only; an episode collection row cannot be stored."
-      - trakt: "GET /sync/watchlist/{type}/{sort_by}/{sort_how}"
-        ours: "GET /v1/sync/watchlist/{type}/{sort_by}/{sort_how}"
+        rationale: "user_watchlist.media_type is 'movie' or 'show' only."
+      - trakt: "GET /sync/watchlist/episodes"
+        ours: ""
+        status: blocked-data
+        rationale: "user_watchlist.media_type is 'movie' or 'show' only."
+      - trakt: "GET /sync/ratings/movies"
+        ours: "GET /v1/sync/ratings/movies"
+        status: implemented
+        rationale: "Landed as a per-type read pinned to media_type='movie'."
+      - trakt: "GET /sync/ratings/shows"
+        ours: "GET /v1/sync/ratings/shows"
+        status: implemented
+        rationale: "Landed as a per-type read pinned to media_type='show'."
+      - trakt: "GET /sync/ratings/seasons"
+        ours: "GET /v1/sync/ratings/seasons"
+        status: implemented
+        rationale: "Landed as a per-type read pinned to media_type='season'."
+      - trakt: "GET /sync/ratings/episodes"
+        ours: "GET /v1/sync/ratings/episodes"
+        status: implemented
+        rationale: "Landed as a per-type read pinned to media_type='episode'."
+      - trakt: "GET /sync/favorites/movies"
+        ours: "GET /v1/sync/favorites/movies"
+        status: implemented
+        rationale: "Landed as a per-type read pinned to media_type='movie'."
+      - trakt: "GET /sync/favorites/shows"
+        ours: "GET /v1/sync/favorites/shows"
+        status: implemented
+        rationale: "Landed as a per-type read pinned to media_type='show'."
+      - trakt: "GET /sync/history/movies"
+        ours: "GET /v1/sync/history/movies"
+        status: implemented
+        rationale: "Landed as a per-type read pinned to media_type='movie'."
+      - trakt: "GET /sync/history/episodes"
+        ours: "GET /v1/sync/history/episodes"
+        status: implemented
+        rationale: "Landed as a per-type read pinned to media_type='episode'."
+      - trakt: "GET /sync/history/shows"
+        ours: "GET /v1/sync/history"
         status: divergent
         rationale: "The contract path is registered for movies and shows; user_watchlist cannot store season or episode rows (#71), so the type set this endpoint declares is served only for movies and shows."
         compat: "movies and shows served with sort_by rank|added|listed|title|popularity|released|runtime|votes|percentage|random (unknown values 400); seasons and episodes answer 400 because the store cannot hold them (#71)."

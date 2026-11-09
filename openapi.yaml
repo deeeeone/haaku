@@ -10811,14 +10811,18 @@ paths:
             summary: Add collection items
             tags:
                 - Sync
-    /v1/sync/collection/{type}:
+    /v1/sync/collection/episodes:
         get:
-            operationId: _v1_sync_collection_type_GET
+            operationId: _v1_sync_collection_episodes_GET
             responses:
                 "200":
-                    description: Collection items
+                    description: Collected episodes
                 "400":
-                    description: Invalid type
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
                 "401":
                     description: Unauthorized
                 "404":
@@ -10854,61 +10858,7 @@ paths:
             security:
                 - apiKey: []
                 - oauth: []
-            summary: Collection rows for one media type (contract path)
-            tags:
-                - Sync
-    /v1/sync/collection/episodes:
-        get:
-            operationId: _v1_sync_collection_episodes_GET
-            responses:
-                "400":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
-                "401":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: unauthorized
-                "404":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
-                "409":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: conflict
-                "422":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: unprocessable
-                "429":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: rate limited
-                "500":
-                    content:
-                        application/json:
-                            schema:
-                                $ref: '#/components/schemas/ErrorEnvelope'
-                    description: internal server error
-                "501":
-                    description: Not implemented — user_collection.media_type is 'movie' or 'show' only; an episode collection row cannot be stored. (#71)
-            security:
-                - apiKey: []
-                - oauth: []
-            summary: Parity stub — not implemented (season/episode-level sync)
+            summary: Get collected episodes
             tags:
                 - Sync
     /v1/sync/collection/media:

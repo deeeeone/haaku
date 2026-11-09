@@ -46,9 +46,9 @@ func init() {
 //     the caller). No fabricated constants, no placeholder "now".
 //   - A section the caller has no rows for is null, not an object of nulls.
 //   - A Trakt field we do not store is an explicit null, never an invented
-//     value. Today that is `episodes.collected_at`, `episodes.watchlisted_at`
-//     and `seasons.watchlisted_at`: our collection and watchlist tables only
-//     carry movies and shows (documented gap in sync.md).
+//     value. Today that is `episodes.watchlisted_at` and
+//     `seasons.watchlisted_at`: our watchlist table only carries movies and
+//     shows (documented gap in sync.md).
 // ---------------------------------------------------------------------------
 
 // LastActivitiesResponse is the payload for GET /v1/sync/last_activities.
@@ -83,8 +83,8 @@ type MovieActivities struct {
 	HiddenAt      *string `json:"hidden_at"`
 }
 
-// EpisodeActivities mirrors Trakt's `episodes` section. CollectedAt and
-// WatchlistedAt are always null: we do not store episode collection/watchlist.
+// EpisodeActivities mirrors Trakt's `episodes` section. WatchlistedAt is
+// always null: we do not store episode watchlist rows.
 type EpisodeActivities struct {
 	WatchedAt     *string `json:"watched_at"`
 	CollectedAt   *string `json:"collected_at"`
@@ -189,10 +189,11 @@ func buildLastActivities(db *gorm.DB, userID string) (*LastActivitiesResponse, e
 
 	episodes := &EpisodeActivities{
 		WatchedAt:   get("user_history", "watched_at", "user_id", mt(mtEpisode)),
+		CollectedAt: get("user_collection", "collected_at", "user_id", mt(mtEpisode)),
 		RatedAt:     get("user_ratings", "rated_at", "user_id", mt(mtEpisode)),
 		CommentedAt: get("comments", "created_at", "user_id", mt(mtEpisode)),
 		PausedAt:    get("user_playback", "paused_at", "user_id", mt(mtEpisode)),
-		// CollectedAt / WatchlistedAt: not stored (null, not invented).
+		// WatchlistedAt: not stored (null, not invented).
 	}
 
 	shows := &ShowActivities{
