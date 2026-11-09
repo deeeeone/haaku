@@ -40,6 +40,9 @@ func RegisterRoutes(api fiber.Router) {
 	sg.Get("/:id", handleGetSeason)
 	sg.Get("/:id/stats", handleGetSeasonStats)
 	sg.Get("/:id/ratings", handleGetSeasonRatings)
+
+	// Contract-shaped nested season reads (/shows/{id}/seasons/{season}/...).
+	registerContractSeasonRoutes(api)
 }
 
 // ---------------------------------------------------------------------------

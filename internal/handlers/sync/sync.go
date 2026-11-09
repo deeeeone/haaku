@@ -153,7 +153,7 @@ func handleGetHistory(c *fiber.Ctx) error {
 func handleGetHistoryItem(c *fiber.Ctx) error {
 	userID := c.Locals("user_id").(string)
 
-	mt := c.Params("media_type")
+	mt := normalizeHistoryType(c.Params("media_type"))
 	mediaParam := c.Params("media_id")
 
 	resolvedMT, mediaID, err := media.ResolveID(c, mediaParam)
@@ -176,15 +176,7 @@ func handleGetHistoryItem(c *fiber.Ctx) error {
 		return response.InternalError(c)
 	}
 
-	results := make([]historyResponse, 0, len(items))
-	for _, item := range items {
-		results = append(results, buildHistoryResponse(&item))
-	}
-	if results == nil {
-		results = make([]historyResponse, 0)
-	}
-
-	return c.JSON(results)
+	return c.JSON(contractHistoryItems(items))
 }
 
 // historyAddRequest is the body for POST /v1/sync/history.
