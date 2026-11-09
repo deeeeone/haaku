@@ -44,30 +44,36 @@ func TestCommentRoutesRegistered(t *testing.T) {
 func TestCommentRoutesRequireAuth(t *testing.T) {
 	routes := openapi.AllRoutes()
 
-	authRequiredPaths := map[string]bool{
-		"/v1/comments":                true,
-		"/v1/comments/{id}":           true,
-		"/v1/comments/{id}/replies":   true,
-		"/v1/comments/{id}/like":      true,
-		"/v1/comments/{id}/reactions": true,
-		"/v1/comments/{id}/report":    true,
+	authRequired := map[string]bool{
+		"POST /v1/comments":                                  true,
+		"PUT /v1/comments/{id}":                              true,
+		"DELETE /v1/comments/{id}":                           true,
+		"POST /v1/comments/{id}/replies":                     true,
+		"POST /v1/comments/{id}/like":                        true,
+		"DELETE /v1/comments/{id}/like":                      true,
+		"POST /v1/comments/{id}/reactions":                   true,
+		"DELETE /v1/comments/{id}/reactions":                 true,
+		"POST /v1/comments/{id}/reactions/{reaction_type}":   true,
+		"DELETE /v1/comments/{id}/reactions/{reaction_type}": true,
+		"POST /v1/comments/{id}/report":                      true,
 	}
 
+	// Key by method+path: /v1/comments/{id}/reactions is a public read (the
+	// contract's reaction list) and an authenticated write, so a path-only map
+	// would depend on registration order.
 	found := make(map[string]string)
 	for _, r := range routes {
-		if _, ok := authRequiredPaths[r.Path]; ok {
-			found[r.Path] = r.Auth
-		}
+		found[r.Method+" "+r.Path] = r.Auth
 	}
 
-	for path := range authRequiredPaths {
-		auth, ok := found[path]
+	for key := range authRequired {
+		auth, ok := found[key]
 		if !ok {
-			t.Errorf("comment auth-required route %q not found", path)
+			t.Errorf("comment auth-required route %q not found", key)
 			continue
 		}
 		if auth != "required" {
-			t.Errorf("comment route %q has auth=%q, want required", path, auth)
+			t.Errorf("comment route %q has auth=%q, want required", key, auth)
 		}
 	}
 }

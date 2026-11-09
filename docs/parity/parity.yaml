@@ -605,17 +605,17 @@ sections:
         status: implemented
         rationale: "Served at DELETE /v1/checkin; the path shape matches the contract."
       - trakt: "DELETE /comments/{id}/"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the comment moderation/reaction surface; our comments module serves the create/reply/like subset"
+        ours: "DELETE /v1/comments/{id}"
+        status: implemented
+        rationale: "Served at DELETE /v1/comments/{id}; Fiber runs without StrictRouting so the contract's trailing slash is the same route (proved by internal/httpapi.TestTrailingSlashIsTheSameRoute). Author or moderator, the same ownership check the other comment writes use: a foreign comment answers 403, a missing one 404, and 409 only for the age/replies rule."
       - trakt: "DELETE /comments/{id}/like"
         ours: "DELETE /v1/comments/{id}/like"
         status: implemented
         rationale: "Served at DELETE /v1/comments/{id}/like; the path shape matches the contract."
       - trakt: "DELETE /comments/{id}/reactions/{reaction_type}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the comment moderation/reaction surface; our comments module serves the create/reply/like subset"
+        ours: "DELETE /v1/comments/{id}/reactions/{reaction_type}"
+        status: implemented
+        rationale: "Served at the contract path with reaction_type as a path segment; deletes the matching comment_reactions row and answers 204. An unknown reaction type is 400, a comment that does not exist is 404."
       - trakt: "DELETE /lists/{id}/like"
         ours: "DELETE /v1/lists/{id}/like"
         status: implemented
@@ -697,13 +697,13 @@ sections:
         status: implemented
         rationale: "Served at GET /v1/certifications/{type}; the path shape matches the contract."
       - trakt: "GET /comments/recent/{comment_type}/{type}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the comment moderation/reaction surface; our comments module serves the create/reply/like subset"
+        ours: "GET /v1/comments/recent/{comment_type}/{type}"
+        status: implemented
+        rationale: "Served at the contract path: real rows from comments, filtered by comment_type (all|shouts|reviews) and media type, newest created_at first, bare array of contract comment objects plus X-Pagination-* headers. include_replies returns reply rows in the same stream."
       - trakt: "GET /comments/updates/{comment_type}/{type}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the comment moderation/reaction surface; our comments module serves the create/reply/like subset"
+        ours: "GET /v1/comments/updates/{comment_type}/{type}"
+        status: implemented
+        rationale: "Served at the contract path: comments with edited_at IS NOT NULL for the requested comment kind and media type, newest edit first, bare array of contract comment objects plus X-Pagination-* headers."
       - trakt: "GET /comments/{id}"
         ours: "GET /v1/comments/{id}"
         status: implemented
@@ -717,13 +717,13 @@ sections:
         status: implemented
         rationale: "Served at GET /v1/comments/{id}/likes; the path shape matches the contract."
       - trakt: "GET /comments/{id}/reactions/"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the comment moderation/reaction surface; our comments module serves the create/reply/like subset"
+        ours: "GET /v1/comments/{id}/reactions"
+        status: implemented
+        rationale: "Served at GET /v1/comments/{id}/reactions (trailing slash equivalent under the default router): bare array of {reacted_at, reaction.type, user} built from stored comment_reactions rows, newest first, paginated, with limit=all honoured."
       - trakt: "GET /comments/{id}/reactions/summary"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the comment moderation/reaction surface; our comments module serves the create/reply/like subset"
+        ours: "GET /v1/comments/{id}/reactions/summary"
+        status: implemented
+        rationale: "reaction_count, user_count and distribution are read from comment_reactions with a GROUP BY (and COUNT DISTINCT user), not constants."
       - trakt: "GET /comments/{id}/replies"
         ours: "GET /v1/comments/{id}/replies"
         status: implemented
@@ -839,9 +839,9 @@ sections:
         status: implemented
         rationale: "Served at GET /v1/notes/{id}; the path shape matches the contract."
       - trakt: "GET /notes/{id}/item"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: tracked by the owning group issue under #4"
+        ours: "GET /v1/notes/{id}/item"
+        status: implemented
+        rationale: "Owner-only read: resolves user_notes.(media_type, media_id) to the stored movie/show/season/episode row and returns {type, <type>: <contract media object>}; 404 when the referenced row no longer exists, 403 for another user's note."
       - trakt: "GET /oauth/authorize"
         ours: "GET /oauth/authorize"
         status: divergent
@@ -1306,17 +1306,17 @@ sections:
         status: implemented
         rationale: "Served at POST /v1/checkin; the path shape matches the contract."
       - trakt: "POST /comments/"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the comment moderation/reaction surface; our comments module serves the create/reply/like subset"
+        ours: "POST /v1/comments"
+        status: implemented
+        rationale: "Served at POST /v1/comments; the contract's trailing slash is the same route because Fiber runs without StrictRouting. Accepts item.{movie|show|season|episode|list}.ids.trakt (and the legacy flat/web item spellings), comment, spoiler, review and gif (stored in comments.gif_url/gif_slug), and answers 201 with the contract comment object."
       - trakt: "POST /comments/{id}/like"
         ours: "POST /v1/comments/{id}/like"
         status: implemented
         rationale: "Served at POST /v1/comments/{id}/like; the path shape matches the contract."
       - trakt: "POST /comments/{id}/reactions/{reaction_type}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the comment moderation/reaction surface; our comments module serves the create/reply/like subset"
+        ours: "POST /v1/comments/{id}/reactions/{reaction_type}"
+        status: implemented
+        rationale: "Served at the contract path; stores the named reaction (like|dislike|love|laugh|shocked|bravo|spoiler) in comment_reactions idempotently and answers 204. Unknown type 400, missing comment 404."
       - trakt: "POST /comments/{id}/replies"
         ours: "POST /v1/comments/{id}/replies"
         status: implemented
@@ -1548,9 +1548,9 @@ sections:
         status: out-of-scope
         rationale: "decision: Trakt's proprietary cross-service linking product; a self-hosted tracker has nothing to link through it"
       - trakt: "PUT /comments/{id}/"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the comment moderation/reaction surface; our comments module serves the create/reply/like subset"
+        ours: "PUT /v1/comments/{id}"
+        status: implemented
+        rationale: "Served at PUT /v1/comments/{id}; the contract's trailing slash is the same route under the default router. Author or moderator (403 otherwise, 404 for a missing comment), updates comment/spoiler/review/gif and answers 200 with the contract comment object."
       - trakt: "PUT /notes/{id}"
         ours: "PUT /v1/notes/{id}"
         status: implemented
