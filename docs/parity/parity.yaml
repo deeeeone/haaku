@@ -649,17 +649,17 @@ sections:
         status: implemented
         rationale: "Served at DELETE /v1/users/{id}/follow; the path shape matches the contract."
       - trakt: "DELETE /users/{id}/lists/{list_id}/"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "DELETE /v1/users/{id}/lists/{list_id}/"
+        status: implemented
+        rationale: "Deletes the owner's list; 204 (handleContractDeleteList)."
       - trakt: "DELETE /users/{id}/lists/{list_id}/like"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "DELETE /v1/users/{id}/lists/{list_id}/like"
+        status: implemented
+        rationale: "Deletes the caller's list_likes row and decrements like_count; 204 (handleContractUnlikeList)."
       - trakt: "DELETE /users/{id}/smart-lists/{list_id}/"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "DELETE /v1/users/{id}/smart-lists/{list_id}/"
+        status: implemented
+        rationale: "Deletes the owner's smart_lists row; 204 (handleContractDeleteSmartList)."
       - trakt: "DELETE /younify/users/services/{service_id}"
         ours: ""
         status: out-of-scope
@@ -757,29 +757,31 @@ sections:
         status: implemented
         rationale: "Served at GET /v1/lists/{id}; the path shape matches the contract."
       - trakt: "GET /lists/{id}/comments/{sort}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining lists surface tracked by #67"
+        ours: "GET /v1/lists/{id}/comments/{sort}"
+        status: divergent
+        rationale: "Serves stored list_comments rows. The {sort} segment honours newest and oldest (created_at); likes and replies fall back to newest."
+        compat: contract sort=newest|oldest ordered server-side; likes/replies fall back to newest.
       - trakt: "GET /lists/{id}/items/movie"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining lists surface tracked by #67"
+        ours: "GET /v1/lists/{id}/items/movie"
+        status: implemented
+        rationale: "The 'movie' segment is a real filter over list_items.media_type; serves the contract item array (serveContractListItems)."
       - trakt: "GET /lists/{id}/items/movie,show"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining lists surface tracked by #67"
+        ours: "GET /v1/lists/{id}/items/movie,show"
+        status: implemented
+        rationale: "The 'movie,show' segment is a real filter over list_items.media_type; serves the contract item array (serveContractListItems)."
       - trakt: "GET /lists/{id}/items/movie,show,episode,season"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining lists surface tracked by #67"
+        ours: "GET /v1/lists/{id}/items/movie,show,episode,season"
+        status: implemented
+        rationale: "The 'movie,show,episode,season' segment is a real filter over list_items.media_type; serves the contract item array (serveContractListItems)."
       - trakt: "GET /lists/{id}/items/show"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining lists surface tracked by #67"
+        ours: "GET /v1/lists/{id}/items/show"
+        status: implemented
+        rationale: "The 'show' segment is a real filter over list_items.media_type; serves the contract item array (serveContractListItems)."
       - trakt: "GET /lists/{id}/items/{type}/{sort_by}/{sort_how}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining lists surface tracked by #67"
+        ours: "GET /v1/lists/{id}/items/{type}/{sort_by}/{sort_how}"
+        status: divergent
+        rationale: "The {type} CSV segment is a real filter over list_items.media_type. {sort_by} honours rank and added only; other documented sorts fall back to rank."
+        compat: contract sort_by=rank|added ordered server-side; other documented sorts fall back to rank.
       - trakt: "GET /lists/{id}/likes"
         ours: "GET /v1/lists/{id}/likes"
         status: implemented
@@ -954,9 +956,9 @@ sections:
         status: out-of-scope
         rationale: "deferred: the remaining show metadata sub-resources (videos, studios, sentiments, certifications) blocked on ingest (#68)"
       - trakt: "GET /smart-lists/templates"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "GET /v1/smart-lists/templates"
+        status: blocked-data
+        rationale: "No smart-list template catalog exists in our store; the contract's template set is Trakt-authored reference data. Serving a hardcoded set would be a fabricated payload."
       - trakt: "GET /smart-lists/{list_id}"
         ours: "GET /v1/smart-lists/{id}"
         status: implemented
@@ -966,9 +968,10 @@ sections:
         status: implemented
         rationale: "Served at GET /v1/smart-lists/{id}/items; the path shape matches the contract."
       - trakt: "GET /smart-lists/{list_id}/items/{type}/{sort_by}/{sort_how}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "GET /v1/smart-lists/{list_id}/items/{type}/{sort_by}/{sort_how}"
+        status: divergent
+        rationale: "Resolves the smart list's stored filter DSL. The {type} segment maps movies/shows/media onto the DSL; {sort_by} is passed to the sanitized smart-list sort allowlist, not the list-items sort set."
+        compat: type movies|shows|media honoured; sort_by is the smart-list allowlist, not the contract's list-item sort names.
       - trakt: "GET /sync/collection/media"
         ours: "GET /v1/sync/collection/media"
         status: divergent
@@ -1160,45 +1163,48 @@ sections:
         status: implemented
         rationale: "Served at GET /v1/users/{id}/lists; the path shape matches the contract."
       - trakt: "GET /users/{id}/lists/collaborations"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "GET /v1/users/{id}/lists/collaborations"
+        status: implemented
+        rationale: "Returns contract list objects for lists the caller collaborates on, from list_collaborators rows (handleContractCollaborations)."
       - trakt: "GET /users/{id}/lists/{list_id}/"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "GET /v1/users/{id}/lists/{list_id}/"
+        status: implemented
+        rationale: "Returns the contract list object with a real item_count; a private list is 403 to a stranger (handleContractGetList)."
       - trakt: "GET /users/{id}/lists/{list_id}/comments/{sort}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "GET /v1/users/{id}/lists/{list_id}/comments/{sort}"
+        status: divergent
+        rationale: "Serves stored list_comments rows. The {sort} segment honours newest and oldest (created_at); likes and replies fall back to newest because list comments carry no like/reply counts."
+        compat: contract sort=newest|oldest ordered server-side; likes/replies fall back to newest.
       - trakt: "GET /users/{id}/lists/{list_id}/items/movie"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "GET /v1/users/{id}/lists/{list_id}/items/movie"
+        status: implemented
+        rationale: "The 'movie' segment is a real filter over list_items.media_type; serves the contract item array with a real row_count (serveContractListItems)."
       - trakt: "GET /users/{id}/lists/{list_id}/items/movie,show"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "GET /v1/users/{id}/lists/{list_id}/items/movie,show"
+        status: implemented
+        rationale: "The 'movie,show' segment is a real filter over list_items.media_type; serves the contract item array with a real row_count (serveContractListItems)."
       - trakt: "GET /users/{id}/lists/{list_id}/items/movie,show,season,episode"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "GET /v1/users/{id}/lists/{list_id}/items/movie,show,season,episode"
+        status: implemented
+        rationale: "The 'movie,show,season,episode' segment is a real filter over list_items.media_type; serves the contract item array with a real row_count (serveContractListItems)."
       - trakt: "GET /users/{id}/lists/{list_id}/items/show"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "GET /v1/users/{id}/lists/{list_id}/items/show"
+        status: implemented
+        rationale: "The 'show' segment is a real filter over list_items.media_type; serves the contract item array with a real row_count (serveContractListItems)."
       - trakt: "GET /users/{id}/lists/{list_id}/items/{type}/{sort_by}/{sort_how}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "GET /v1/users/{id}/lists/{list_id}/items/{type}/{sort_by}/{sort_how}"
+        status: divergent
+        rationale: "The {type} CSV segment is a real filter over list_items.media_type. {sort_by} honours rank and added only: list_items has no media columns to sort by, so released/title/popularity/votes/random fall back to rank."
+        compat: contract sort_by=rank|added ordered server-side; other documented sorts fall back to rank rather than being silently accepted as equal.
       - trakt: "GET /users/{id}/lists/{list_id}/likes"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "GET /v1/users/{id}/lists/{list_id}/likes"
+        status: implemented
+        rationale: "Returns {liked_at,user} for each list_likes row (handleContractListLikes)."
       - trakt: "GET /users/{id}/lists/{list_id}/smart-list-draft"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "GET /v1/users/{id}/lists/{list_id}/smart-list-draft"
+        status: divergent
+        rationale: "Returns a draft whose media_type is derived from the list's stored item types and whose filters are empty; a list's items are explicit rows, not a filter expression, so no filter set can be derived without inventing one."
+        compat: draft list.ids and media_type are real; filters are empty rather than fabricated from the item rows.
       - trakt: "GET /users/{id}/mir/{year}/{month}"
         ours: ""
         status: out-of-scope
@@ -1225,13 +1231,13 @@ sections:
         rationale: "Served owner-only; the contract's documented empty state (convertible_count 0, best_confidence null, lists [])."
         compat: "haaku stores smart-list filters but no stale_origin or draft confidence, so no list is ever convertible: the endpoint answers the contract's empty state rather than a fabricated draft list; non-owner 403."
       - trakt: "GET /users/{id}/smart-lists"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "GET /v1/users/{id}/smart-lists"
+        status: implemented
+        rationale: "Returns the caller's smart_lists rows in the contract smart-list shape (handleContractGetSmartLists)."
       - trakt: "GET /users/{id}/smart-lists/{list_id}/"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "GET /v1/users/{id}/smart-lists/{list_id}/"
+        status: implemented
+        rationale: "Returns the owner's smart_lists row in the contract shape (handleContractGetSmartList)."
       - trakt: "GET /users/{id}/stats"
         ours: "GET /v1/users/{id}/stats"
         status: implemented
@@ -1327,9 +1333,9 @@ sections:
         status: implemented
         rationale: "Served at POST /v1/lists/{id}/like; the path shape matches the contract."
       - trakt: "POST /lists/{id}/report"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the remaining lists surface tracked by #67"
+        ours: "POST /v1/lists/{id}/report"
+        status: implemented
+        rationale: "Inserts a content_reports row (media_type=list) and returns 201; a duplicate report is 409 (handleContractReportList)."
       - trakt: "POST /movies/{id}/refresh/justwatch"
         ours: ""
         status: out-of-scope
@@ -1479,49 +1485,49 @@ sections:
         status: implemented
         rationale: "Served at POST /v1/users/{id}/follow; the path shape matches the contract."
       - trakt: "POST /users/{id}/lists"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "POST /v1/users/{id}/lists"
+        status: implemented
+        rationale: "Creates a lists row for the caller and returns the contract list object with 201 (handleContractCreateList)."
       - trakt: "POST /users/{id}/lists/reorder"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "POST /v1/users/{id}/lists/reorder"
+        status: implemented
+        rationale: "Persists the caller's list order in lists.sort_order; ids that are not the caller's lists are returned in skipped_ids (handleContractReorderUserLists)."
       - trakt: "POST /users/{id}/lists/{list_id}/items"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "POST /v1/users/{id}/lists/{list_id}/items"
+        status: implemented
+        rationale: "Adds stored media rows and returns the contract {added,existing,not_found,list} envelope with 201 (handleContractAddItems)."
       - trakt: "POST /users/{id}/lists/{list_id}/items/remove"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "POST /v1/users/{id}/lists/{list_id}/items/remove"
+        status: implemented
+        rationale: "Removes stored media rows and returns the contract {deleted,not_found} envelope (handleContractRemoveItems)."
       - trakt: "POST /users/{id}/lists/{list_id}/items/reorder"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "POST /v1/users/{id}/lists/{list_id}/items/reorder"
+        status: implemented
+        rationale: "Sets list_items.rank from the body's rank array; unknown ids go to skipped_ids (handleContractReorderItems)."
       - trakt: "POST /users/{id}/lists/{list_id}/like"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "POST /v1/users/{id}/lists/{list_id}/like"
+        status: implemented
+        rationale: "Inserts a list_likes row for the caller and bumps like_count; 204 (handleContractLikeList)."
       - trakt: "POST /users/{id}/lists/{list_id}/reorder"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "POST /v1/users/{id}/lists/{list_id}/reorder"
+        status: implemented
+        rationale: "Per-list reorder variant: sets list_items.rank from the body's rank array (handleContractReorderItems)."
       - trakt: "POST /users/{id}/lists/{list_id}/report"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "POST /v1/users/{id}/lists/{list_id}/report"
+        status: implemented
+        rationale: "Inserts a content_reports row (media_type=list) and returns 201; a duplicate report is 409 (handleContractReportList)."
       - trakt: "POST /users/{id}/lists/{list_id}/smart-list-draft/convert"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "POST /v1/users/{id}/lists/{list_id}/smart-list-draft/convert"
+        status: implemented
+        rationale: "Creates a smart_lists row from the body after checking the source list is the caller's; 201 with the new ids (handleContractConvertDraft)."
       - trakt: "POST /users/{id}/report"
         ours: "POST /v1/users/{id}/report"
         status: implemented
         rationale: "Landed: writes a user_reports row (reason spam|adult|language|other + message); PrivacyFilter-gated, self-report is 400."
       - trakt: "POST /users/{id}/smart-lists"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "POST /v1/users/{id}/smart-lists"
+        status: implemented
+        rationale: "Creates a smart_lists row and returns 201 with the new ids (handleContractCreateSmartList)."
       - trakt: "POST /younify/connect"
         ours: ""
         status: out-of-scope
@@ -1569,17 +1575,17 @@ sections:
         status: out-of-scope
         rationale: "decision: Trakt's Plex integration and 'sync' product; haaku tracks via scrobbling, not a sync client"
       - trakt: "PUT /users/{id}/lists/{list_id}/"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "PUT /v1/users/{id}/lists/{list_id}/"
+        status: implemented
+        rationale: "Updates the owner's list and returns the contract list object (handleContractUpdateList)."
       - trakt: "PUT /users/{id}/lists/{list_id}/items/{list_item_id}"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "PUT /v1/users/{id}/lists/{list_id}/items/{list_item_id}"
+        status: implemented
+        rationale: "Updates one stored list item's notes/rank; 204 (handleContractUpdateItem)."
       - trakt: "PUT /users/{id}/smart-lists/{list_id}/"
-        ours: ""
-        status: out-of-scope
-        rationale: "deferred: the list-management write surface (create/edit/items/reorder) tracked by #67"
+        ours: "PUT /v1/users/{id}/smart-lists/{list_id}/"
+        status: implemented
+        rationale: "Updates the owner's smart_lists row and returns the contract shape (handleContractUpdateSmartList)."
       - trakt: ""
         ours: "GET /v1/movies/{id}/lists"
         status: blocked-engine

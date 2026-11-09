@@ -321,5 +321,11 @@ func RegisterRoutes(app *fiber.App) {
 	// users.RegisterRoutes; this adds the sorted per-type watchlist path).
 	users.RegisterContractRoutes(api)
 
+	// Contract-shaped list management (issue #105): list CRUD, items,
+	// likes/comments/report, collaborations and smart lists at Trakt's paths.
+	// Registered LAST so the static /users/me/lists[/collaborations] routes
+	// registered earlier win, and nothing here shadows a later static route.
+	lists.RegisterManagementContractRoutes(api)
+
 	_ = api
 }
