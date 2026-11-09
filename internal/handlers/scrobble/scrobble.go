@@ -2,6 +2,7 @@ package scrobble
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -106,6 +107,18 @@ type playbackResponse struct {
 func getUserID(c *fiber.Ctx) string {
 	uid, _ := c.Locals("user_id").(string)
 	return uid
+}
+
+// writeResolveError answers a resolveScrobbleItem failure with a 400 envelope.
+//
+// media.ResolveID writes its own envelope (404 "media not found", 400 "invalid
+// id_type") and returns response.ErrHandled to stop the caller; re-writing here
+// replaced that status with a 400 whose message was ErrHandled's own text.
+func writeResolveError(c *fiber.Ctx, err error) error {
+	if errors.Is(err, response.ErrHandled) {
+		return nil
+	}
+	return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", err.Error())
 }
 
 // resolveScrobbleItem resolves the media type/id from a scrobble request body.
@@ -246,7 +259,7 @@ func handleScrobbleStart(c *fiber.Ctx) error {
 
 	mediaType, mediaID, seasonID, episodeID, err := resolveScrobbleItem(c, &req)
 	if err != nil {
-		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", err.Error())
+		return writeResolveError(c, err)
 	}
 
 	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
@@ -320,7 +333,7 @@ func handleScrobblePause(c *fiber.Ctx) error {
 
 	mediaType, mediaID, seasonID, episodeID, err := resolveScrobbleItem(c, &req)
 	if err != nil {
-		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", err.Error())
+		return writeResolveError(c, err)
 	}
 
 	err = cache.WithCacheTransaction(func(tx *gorm.DB) (*cache.CacheTransaction, error) {
@@ -396,7 +409,7 @@ func handleScrobbleStop(c *fiber.Ctx) error {
 
 	mediaType, mediaID, seasonID, episodeID, err := resolveScrobbleItem(c, &req)
 	if err != nil {
-		return response.WriteError(c, fiber.StatusBadRequest, "invalid_request", err.Error())
+		return writeResolveError(c, err)
 	}
 
 	// <1% → 422 error

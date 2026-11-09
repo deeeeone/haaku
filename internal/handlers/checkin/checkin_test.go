@@ -2,11 +2,15 @@ package checkin
 
 import (
 	"errors"
+	"io"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+
+	"github.com/haaku-tv/haaku/internal/response"
 )
 
 // newCheckinApp registers a route that maps a sentinel error and a route that
@@ -36,6 +40,14 @@ func newCheckinApp() *fiber.App {
 	})
 	app.Get("/whoami-empty", func(c *fiber.Ctx) error {
 		return c.SendString(getUserID(c))
+	})
+	// A route that reproduces what media.ResolveID does before it returns
+	// response.ErrHandled: write the envelope, then hand the error back.
+	// Registered at its own path, not under /map/:err — a static path declared
+	// after a same-depth :param is shadowed by it (Fiber matches in order).
+	app.Get("/already-written", func(c *fiber.Ctx) error {
+		_ = response.NotFound(c, "media not found")
+		return mapResolveError(c, response.ErrHandled)
 	})
 	return app
 }
@@ -68,6 +80,28 @@ func TestMapResolveErrorStatusCodes(t *testing.T) {
 		if resp.StatusCode != tc.want {
 			t.Errorf("%s status = %d, want %d", tc.path, resp.StatusCode, tc.want)
 		}
+	}
+}
+
+// TestMapResolveErrorPreservesAWrittenEnvelope pins the contract media.ResolveID
+// relies on: it writes its own 404 (or 400) and returns response.ErrHandled, and
+// the check-in mapper must let that status stand. Before this case existed,
+// mapResolveError fell through to the generic-500 branch and answered 500 for a
+// media id that simply was not in the catalogue.
+func TestMapResolveErrorPreservesAWrittenEnvelope(t *testing.T) {
+	app := newCheckinApp()
+	resp, err := app.Test(getReq("/already-written"))
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d (the resolver's own envelope must survive)", resp.StatusCode, http.StatusNotFound)
+	}
+	if !strings.Contains(string(body), `"not_found"`) {
+		t.Errorf("body = %s, want the not_found envelope the resolver wrote", body)
 	}
 }
 

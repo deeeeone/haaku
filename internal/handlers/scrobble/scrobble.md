@@ -38,6 +38,7 @@ Best-practices module: uses shared `auth.AuthRequired`, `cache.WithCacheTransact
 - **`getUserID` ignores the type-assert `ok`** — returns `""` on mismatch, which is caught, but only by luck of the empty check.
 - **`writeAPIError` local helper (RESOLVED)** — replaced with shared `internal/response` (Batch 0); the auth wrapper delegates to shared `auth.AuthRequired`.
 - **`resolveScrobbleItem` for episodes requires TMDB show id in `episode.ids.tmdb`** — treats it as a show id; correct per Trakt schema but a misuse of the `tmdb` field name for episodes (a reader expects episode id).
+- **Resolve failures overwrote the resolver's envelope with the sentinel's own text** (RESOLVED, with #93) — all three handlers answered `response.WriteError(c, 400, "invalid_request", err.Error())`. `media.ResolveID` writes its own 404/400 and returns `response.ErrHandled`, so an id that was simply not in the catalogue answered `400 {"code":"invalid_request","message":"response already written"}` — internal wording, and the resolver's 404 replaced. Now `writeResolveError` passes `ErrHandled` through untouched (returns nil) and keeps the 400 for a failure that wrote nothing; `resolve_error_test.go` pins both halves.
 
 ## Todos
 
