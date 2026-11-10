@@ -2715,6 +2715,10 @@ paths:
                 "204":
                     description: Reaction removed
                 "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
                     description: Invalid reaction type
                 "401":
                     content:
@@ -2723,6 +2727,10 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: unauthorized
                 "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
                     description: Not found
                 "409":
                     content:
@@ -2760,6 +2768,10 @@ paths:
                 "204":
                     description: Reaction added
                 "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
                     description: Invalid reaction type
                 "401":
                     content:
@@ -2768,6 +2780,10 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: unauthorized
                 "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
                     description: Not found
                 "409":
                     content:
@@ -2818,6 +2834,10 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: unauthorized
                 "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
                     description: Not found
                 "409":
                     content:
@@ -3071,6 +3091,10 @@ paths:
                 "200":
                     description: Recent comments
                 "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
                     description: Invalid comment_type or type
                 "401":
                     content:
@@ -3283,6 +3307,10 @@ paths:
                 "200":
                     description: Updated comments
                 "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
                     description: Invalid comment_type or type
                 "401":
                     content:
@@ -7677,8 +7705,16 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: unauthorized
                 "403":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
                     description: Not your note
                 "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
                     description: Note or item not found
                 "409":
                     content:
