@@ -6813,7 +6813,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
+                    description: Invalid country code
                 "401":
                     content:
                         application/json:
@@ -6825,7 +6825,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Movie not found
                 "409":
                     content:
                         application/json:
@@ -6850,8 +6850,14 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
+                "503":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: Provider data temporarily unavailable
             security: []
-            summary: Get all movie releases for a country (or all)
+            summary: Get per-country releases for a movie (contract path)
             tags:
                 - Movies
     /v1/movies/{id}/report:
@@ -6985,7 +6991,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Movie not found
                 "409":
                     content:
                         application/json:
@@ -7010,8 +7016,14 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
+                "503":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: Provider data temporarily unavailable
             security: []
-            summary: Get all studios for a movie
+            summary: Get studios for a movie (contract path)
             tags:
                 - Movies
     /v1/movies/{id}/translations:
@@ -7037,7 +7049,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Movie not found
                 "409":
                     content:
                         application/json:
@@ -7062,14 +7074,14 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "502":
+                "503":
                     content:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
-                    description: Provider unavailable
+                    description: Provider data temporarily unavailable
             security: []
-            summary: Get all movie translations, filtered by the optional ?language=
+            summary: Get translations for a movie (contract path)
             tags:
                 - Movies
     /v1/movies/{id}/translations/{lang}:
@@ -7147,7 +7159,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Movie not found
                 "409":
                     content:
                         application/json:
@@ -7172,8 +7184,14 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
+                "503":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: Provider data temporarily unavailable
             security: []
-            summary: Get all videos for a movie
+            summary: Get videos for a movie (contract path)
             tags:
                 - Movies
     /v1/movies/{id}/watch:
@@ -10257,7 +10275,7 @@ paths:
             operationId: _v1_shows_id_certifications_GET
             responses:
                 "200":
-                    description: Certifications
+                    description: Certification
                 "400":
                     content:
                         application/json:
@@ -10275,7 +10293,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Show not found
                 "409":
                     content:
                         application/json:
@@ -10301,7 +10319,7 @@ paths:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
             security: []
-            summary: Get all show certifications, one per country
+            summary: Get content certifications for a show (contract path)
             tags:
                 - Shows
     /v1/shows/{id}/comments/{sort}:
@@ -11650,7 +11668,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
+                    description: Invalid season or episode number
                 "401":
                     content:
                         application/json:
@@ -11662,7 +11680,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Show, season or episode not found
                 "409":
                     content:
                         application/json:
@@ -11687,14 +11705,14 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
-                "502":
+                "503":
                     content:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
-                    description: Provider unavailable
+                    description: Provider data temporarily unavailable
             security: []
-            summary: Get all episode translations, filtered by the optional ?language=
+            summary: Get translations for an episode (contract path)
             tags:
                 - Shows
     /v1/shows/{id}/seasons/{season}/episodes/{episode}/translations/{lang}:
@@ -11760,7 +11778,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
+                    description: Invalid season or episode number
                 "401":
                     content:
                         application/json:
@@ -11772,7 +11790,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Show, season or episode not found
                 "409":
                     content:
                         application/json:
@@ -11797,8 +11815,14 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
+                "503":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: Provider data temporarily unavailable
             security: []
-            summary: Get all videos for an episode
+            summary: Get videos for an episode (contract path)
             tags:
                 - Shows
     /v1/shows/{id}/seasons/{season}/episodes/{episode}/watching:
@@ -11806,13 +11830,13 @@ paths:
             operationId: _v1_shows_id_seasons_season_episodes_episode_watching_GET
             responses:
                 "200":
-                    description: Users watching
+                    description: Watching users
                 "400":
                     content:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
+                    description: Invalid season or episode number
                 "401":
                     content:
                         application/json:
@@ -11824,7 +11848,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Show, season or episode not found
                 "409":
                     content:
                         application/json:
@@ -11852,7 +11876,7 @@ paths:
             security:
                 - apiKey: []
                 - oauth: []
-            summary: Get users watching this episode right now
+            summary: Users watching an episode right now (contract path)
             tags:
                 - Shows
     /v1/shows/{id}/seasons/{season}/episodes/{episode}/watchnow/{country}:
@@ -11924,7 +11948,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
+                    description: Invalid season number
                 "401":
                     content:
                         application/json:
@@ -11936,7 +11960,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Show or season not found
                 "409":
                     content:
                         application/json:
@@ -11961,10 +11985,16 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
+                "503":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: Provider data temporarily unavailable
             security: []
-            summary: Single season summary (contract path)
+            summary: Get a single season for a show (contract path)
             tags:
-                - Seasons
+                - Shows
     /v1/shows/{id}/seasons/{season}/lists/{type}/{sort}:
         get:
             operationId: _v1_shows_id_seasons_season_lists_type_sort_GET
@@ -12227,6 +12257,64 @@ paths:
             summary: Season stats (contract path)
             tags:
                 - Seasons
+    /v1/shows/{id}/seasons/{season}/translations:
+        get:
+            operationId: _v1_shows_id_seasons_season_translations_GET
+            responses:
+                "200":
+                    description: Translations
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: Invalid season number
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: Show or season not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+                "503":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: Provider data temporarily unavailable
+            security: []
+            summary: Get translations for a season (contract path)
+            tags:
+                - Shows
     /v1/shows/{id}/seasons/{season}/translations/{lang}:
         get:
             operationId: _v1_shows_id_seasons_season_translations_lang_GET
@@ -12290,7 +12378,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
+                    description: Invalid season number
                 "401":
                     content:
                         application/json:
@@ -12302,7 +12390,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Show or season not found
                 "409":
                     content:
                         application/json:
@@ -12327,8 +12415,14 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
+                "503":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: Provider data temporarily unavailable
             security: []
-            summary: Get all videos for a season
+            summary: Get videos for a season (contract path)
             tags:
                 - Shows
     /v1/shows/{id}/seasons/{season}/watching:
@@ -12336,13 +12430,13 @@ paths:
             operationId: _v1_shows_id_seasons_season_watching_GET
             responses:
                 "200":
-                    description: Users watching
+                    description: Watching users
                 "400":
                     content:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
-                    description: invalid request
+                    description: Invalid season number
                 "401":
                     content:
                         application/json:
@@ -12354,7 +12448,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Show or season not found
                 "409":
                     content:
                         application/json:
@@ -12382,7 +12476,7 @@ paths:
             security:
                 - apiKey: []
                 - oauth: []
-            summary: Get users watching this season right now
+            summary: Users watching a season right now (contract path)
             tags:
                 - Shows
     /v1/shows/{id}/stats:
@@ -12460,7 +12554,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Show not found
                 "409":
                     content:
                         application/json:
@@ -12485,8 +12579,72 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
+                "503":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: Provider data temporarily unavailable
             security: []
-            summary: Get all studios for a show
+            summary: Get studios for a show (contract path)
+            tags:
+                - Shows
+    /v1/shows/{id}/translations:
+        get:
+            operationId: _v1_shows_id_translations_GET
+            responses:
+                "200":
+                    description: Translations
+                "400":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: invalid request
+                "401":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unauthorized
+                "404":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: Show not found
+                "409":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: conflict
+                "422":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: unprocessable
+                "429":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: rate limited
+                "500":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: internal server error
+                "503":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: Provider data temporarily unavailable
+            security: []
+            summary: Get translations for a show (contract path)
             tags:
                 - Shows
     /v1/shows/{id}/translations/{lang}:
@@ -12564,7 +12722,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
-                    description: not found
+                    description: Show not found
                 "409":
                     content:
                         application/json:
@@ -12589,8 +12747,14 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorEnvelope'
                     description: internal server error
+                "503":
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorEnvelope'
+                    description: Provider data temporarily unavailable
             security: []
-            summary: Get all videos for a show
+            summary: Get videos for a show (contract path)
             tags:
                 - Shows
     /v1/shows/{id}/watch:

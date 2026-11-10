@@ -1862,7 +1862,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get all movie releases for a country (or all) */
+        /** Get per-country releases for a movie (contract path) */
         get: operations["_v1_movies_id_releases_country_GET"];
         put?: never;
         post?: never;
@@ -1913,7 +1913,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get all studios for a movie */
+        /** Get studios for a movie (contract path) */
         get: operations["_v1_movies_id_studios_GET"];
         put?: never;
         post?: never;
@@ -1930,7 +1930,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get all movie translations, filtered by the optional ?language= */
+        /** Get translations for a movie (contract path) */
         get: operations["_v1_movies_id_translations_GET"];
         put?: never;
         post?: never;
@@ -1964,7 +1964,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get all videos for a movie */
+        /** Get videos for a movie (contract path) */
         get: operations["_v1_movies_id_videos_GET"];
         put?: never;
         post?: never;
@@ -2918,7 +2918,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get all show certifications, one per country */
+        /** Get content certifications for a show (contract path) */
         get: operations["_v1_shows_id_certifications_GET"];
         put?: never;
         post?: never;
@@ -3344,7 +3344,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get all episode translations, filtered by the optional ?language= */
+        /** Get translations for an episode (contract path) */
         get: operations["_v1_shows_id_seasons_season_episodes_episode_translations_GET"];
         put?: never;
         post?: never;
@@ -3378,7 +3378,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get all videos for an episode */
+        /** Get videos for an episode (contract path) */
         get: operations["_v1_shows_id_seasons_season_episodes_episode_videos_GET"];
         put?: never;
         post?: never;
@@ -3395,7 +3395,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get users watching this episode right now */
+        /** Users watching an episode right now (contract path) */
         get: operations["_v1_shows_id_seasons_season_episodes_episode_watching_GET"];
         put?: never;
         post?: never;
@@ -3429,7 +3429,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Single season summary (contract path) */
+        /** Get a single season for a show (contract path) */
         get: operations["_v1_shows_id_seasons_season_info_GET"];
         put?: never;
         post?: never;
@@ -3524,6 +3524,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/shows/{id}/seasons/{season}/translations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get translations for a season (contract path) */
+        get: operations["_v1_shows_id_seasons_season_translations_GET"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/shows/{id}/seasons/{season}/translations/{lang}": {
         parameters: {
             query?: never;
@@ -3548,7 +3565,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get all videos for a season */
+        /** Get videos for a season (contract path) */
         get: operations["_v1_shows_id_seasons_season_videos_GET"];
         put?: never;
         post?: never;
@@ -3565,7 +3582,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get users watching this season right now */
+        /** Users watching a season right now (contract path) */
         get: operations["_v1_shows_id_seasons_season_watching_GET"];
         put?: never;
         post?: never;
@@ -3599,8 +3616,25 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get all studios for a show */
+        /** Get studios for a show (contract path) */
         get: operations["_v1_shows_id_studios_GET"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/shows/{id}/translations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get translations for a show (contract path) */
+        get: operations["_v1_shows_id_translations_GET"];
         put?: never;
         post?: never;
         delete?: never;
@@ -3633,7 +3667,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get all videos for a show */
+        /** Get videos for a show (contract path) */
         get: operations["_v1_shows_id_videos_GET"];
         put?: never;
         post?: never;
@@ -16922,7 +16956,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description invalid request */
+            /** @description Invalid country code */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -16940,7 +16974,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description not found */
+            /** @description Movie not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -16978,6 +17012,15 @@ export interface operations {
             };
             /** @description internal server error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Provider data temporarily unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -17190,7 +17233,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description not found */
+            /** @description Movie not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -17228,6 +17271,15 @@ export interface operations {
             };
             /** @description internal server error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Provider data temporarily unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -17271,7 +17323,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description not found */
+            /** @description Movie not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -17316,8 +17368,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Provider unavailable */
-            502: {
+            /** @description Provider data temporarily unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -17442,7 +17494,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description not found */
+            /** @description Movie not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -17480,6 +17532,15 @@ export interface operations {
             };
             /** @description internal server error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Provider data temporarily unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -22216,7 +22277,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Certifications */
+            /** @description Certification */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -22241,7 +22302,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description not found */
+            /** @description Show not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -24361,7 +24422,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description invalid request */
+            /** @description Invalid season or episode number */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -24379,7 +24440,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description not found */
+            /** @description Show, season or episode not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -24424,8 +24485,8 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description Provider unavailable */
-            502: {
+            /** @description Provider data temporarily unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -24532,7 +24593,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description invalid request */
+            /** @description Invalid season or episode number */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -24550,7 +24611,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description not found */
+            /** @description Show, season or episode not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -24595,6 +24656,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description Provider data temporarily unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
         };
     };
     _v1_shows_id_seasons_season_episodes_episode_watching_GET: {
@@ -24606,14 +24676,14 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Users watching */
+            /** @description Watching users */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description invalid request */
+            /** @description Invalid season or episode number */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -24631,7 +24701,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description not found */
+            /** @description Show, season or episode not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -24784,7 +24854,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description invalid request */
+            /** @description Invalid season number */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -24802,7 +24872,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description not found */
+            /** @description Show or season not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -24840,6 +24910,15 @@ export interface operations {
             };
             /** @description internal server error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Provider data temporarily unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -25254,6 +25333,96 @@ export interface operations {
             };
         };
     };
+    _v1_shows_id_seasons_season_translations_GET: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Translations */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Invalid season number */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Show or season not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unprocessable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Provider data temporarily unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     _v1_shows_id_seasons_season_translations_lang_GET: {
         parameters: {
             query?: never;
@@ -25351,7 +25520,7 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description invalid request */
+            /** @description Invalid season number */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -25369,7 +25538,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description not found */
+            /** @description Show or season not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -25414,6 +25583,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
+            /** @description Provider data temporarily unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
         };
     };
     _v1_shows_id_seasons_season_watching_GET: {
@@ -25425,14 +25603,14 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Users watching */
+            /** @description Watching users */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
             };
-            /** @description invalid request */
+            /** @description Invalid season number */
             400: {
                 headers: {
                     [name: string]: unknown;
@@ -25450,7 +25628,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description not found */
+            /** @description Show or season not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -25612,7 +25790,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description not found */
+            /** @description Show not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -25650,6 +25828,105 @@ export interface operations {
             };
             /** @description internal server error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Provider data temporarily unavailable */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    _v1_shows_id_translations_GET: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Translations */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description invalid request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Show not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description unprocessable */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description rate limited */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Provider data temporarily unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -25774,7 +26051,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
-            /** @description not found */
+            /** @description Show not found */
             404: {
                 headers: {
                     [name: string]: unknown;
@@ -25812,6 +26089,15 @@ export interface operations {
             };
             /** @description internal server error */
             500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Provider data temporarily unavailable */
+            503: {
                 headers: {
                     [name: string]: unknown;
                 };
