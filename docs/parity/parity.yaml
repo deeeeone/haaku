@@ -487,8 +487,9 @@ sections:
     rows:
       - trakt: "GET /comments/trending/{comment_type}/{type}"
         ours: "GET /v1/comments/trending/{comment_type}/{type}"
-        status: implemented
-        rationale: "Served at Trakt's path: the two segments pin comment_type and media_type on the same 7-day trending query and return the contract's comment shape."
+        status: divergent
+        rationale: "The two segments do pin comment_type and media_type on the 7-day trending query, but the response carries no X-Pagination-* headers, which the contract declares on this list operation (conformance reports the first of five)."
+        compat: "the rows and their shape are served; only the pagination headers are missing."
   - name: "Lists"
     rows:
       - trakt: "GET /lists/trending/{type}"
@@ -708,16 +709,18 @@ sections:
         rationale: "Served at the contract path: comments with edited_at IS NOT NULL for the requested comment kind and media type, newest edit first, bare array of contract comment objects (parent_id 0 for a top-level comment) plus X-Pagination-* headers."
       - trakt: "GET /comments/{id}"
         ours: "GET /v1/comments/{id}"
-        status: implemented
-        rationale: "Served at GET /v1/comments/{id}; the path shape matches the contract."
+        status: divergent
+        rationale: "Serves the comment, but in the web client's shape: make conformance reports \"$.parent_id: missing required field\" plus six more field differences. The contract shape is served by the contract-shaped comment writer, not by this read."
+        compat: "the web client reads this path for its own shape; a contract client should read the shape served by the comments contract routes. Fixing this read is tracked separately."
       - trakt: "GET /comments/{id}/item"
         ours: "GET /v1/comments/{id}/item"
         status: implemented
         rationale: "Served at GET /v1/comments/{id}/item; the path shape matches the contract."
       - trakt: "GET /comments/{id}/likes"
         ours: "GET /v1/comments/{id}/likes"
-        status: implemented
-        rationale: "Served at GET /v1/comments/{id}/likes; the path shape matches the contract."
+        status: divergent
+        rationale: "Emits an object envelope where the contract declares a bare array: conformance reports \"$: expected array, got object\"."
+        compat: "the object envelope is our own shape, used by the web client; the contract expects an array of users."
       - trakt: "GET /comments/{id}/reactions/"
         ours: "GET /v1/comments/{id}/reactions"
         status: implemented
@@ -728,8 +731,9 @@ sections:
         rationale: "reaction_count, user_count and distribution are read from comment_reactions with a GROUP BY (and COUNT DISTINCT user), not constants."
       - trakt: "GET /comments/{id}/replies"
         ours: "GET /v1/comments/{id}/replies"
-        status: implemented
-        rationale: "Served at GET /v1/comments/{id}/replies; the path shape matches the contract."
+        status: divergent
+        rationale: "Returns the replies in the web client's shape without the X-Pagination-* headers the contract declares on this list operation (conformance reports the first of six differences)."
+        compat: "rows are real; the envelope and pagination headers are ours, not the contract's."
       - trakt: "GET /countries/{type}"
         ours: "GET /v1/countries/{type}"
         status: implemented
