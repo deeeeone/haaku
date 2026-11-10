@@ -24,10 +24,10 @@ type statsPayload struct {
 	Lists             int64  `json:"lists"`
 	Votes             int64  `json:"votes"`
 	Favorited         int64  `json:"favorited"`
-	Recommended       int64  `json:"recommended"`
+	Recommended       *int64 `json:"recommended"`
 }
 
-func setupStatsDB(t *testing.T) *gorm.DB {
+func setupStatsAggregateDB(t *testing.T) *gorm.DB {
 	t.Helper()
 	db := setupShowsDB(t)
 	models := []interface{}{
@@ -126,7 +126,7 @@ func seedListItem(t *testing.T, db *gorm.DB, mediaType string, mediaID int64) {
 	}
 }
 
-func decodeStats(t *testing.T, resp *http.Response) statsPayload {
+func decodeStatsAggregate(t *testing.T, resp *http.Response) statsPayload {
 	t.Helper()
 	defer func() { _ = resp.Body.Close() }()
 	var out statsPayload
@@ -137,7 +137,7 @@ func decodeStats(t *testing.T, resp *http.Response) statsPayload {
 }
 
 func TestMovieStats(t *testing.T) {
-	db := setupStatsDB(t)
+	db := setupStatsAggregateDB(t)
 	movieID := seedStatsMovie(t, db, 8001, "Stats Movie")
 
 	// 2 watchers / 3 plays (the second user has two play sources).
@@ -157,15 +157,15 @@ func TestMovieStats(t *testing.T) {
 
 	want := statsPayload{
 		Watchers: 2, Plays: 3, Collectors: 1, Comments: 1,
-		Lists: 1, Votes: 1, Favorited: 1, Recommended: 1,
+		Lists: 1, Votes: 1, Favorited: 1, Recommended: nil,
 	}
-	if got := decodeStats(t, resp); !reflect.DeepEqual(got, want) {
+	if got := decodeStatsAggregate(t, resp); !reflect.DeepEqual(got, want) {
 		t.Errorf("stats = %+v, want %+v", got, want)
 	}
 }
 
 func TestShowStats(t *testing.T) {
-	db := setupStatsDB(t)
+	db := setupStatsAggregateDB(t)
 	now := time.Now().UTC()
 	showID, episodes := seedShowWithEpisodes(t, db, 8002, "Stats Show", now, now)
 
@@ -196,15 +196,15 @@ func TestShowStats(t *testing.T) {
 	collected := int64(2)
 	want := statsPayload{
 		Watchers: 2, Plays: 3, Collectors: 2, CollectedEpisodes: &collected,
-		Comments: 1, Lists: 1, Votes: 1, Favorited: 1, Recommended: 1,
+		Comments: 1, Lists: 1, Votes: 1, Favorited: 1, Recommended: nil,
 	}
-	if got := decodeStats(t, resp); !reflect.DeepEqual(got, want) {
+	if got := decodeStatsAggregate(t, resp); !reflect.DeepEqual(got, want) {
 		t.Errorf("stats = %+v, want %+v", got, want)
 	}
 }
 
 func TestStatsZeroActivity(t *testing.T) {
-	db := setupStatsDB(t)
+	db := setupStatsAggregateDB(t)
 	movieID := seedStatsMovie(t, db, 8003, "Quiet Movie")
 	showID := seedStatsShow(t, db, 8004, "Quiet Show")
 	app := showsApp()
@@ -213,7 +213,7 @@ func TestStatsZeroActivity(t *testing.T) {
 	if movieResp.StatusCode != http.StatusOK {
 		t.Fatalf("movie status = %d, want 200 (%s)", movieResp.StatusCode, errorMessage(t, movieResp))
 	}
-	if got := decodeStats(t, movieResp); !reflect.DeepEqual(got, statsPayload{}) {
+	if got := decodeStatsAggregate(t, movieResp); !reflect.DeepEqual(got, statsPayload{}) {
 		t.Errorf("movie stats = %+v, want all zeros", got)
 	}
 
@@ -223,13 +223,13 @@ func TestStatsZeroActivity(t *testing.T) {
 	}
 	zero := int64(0)
 	want := statsPayload{CollectedEpisodes: &zero}
-	if got := decodeStats(t, showResp); !reflect.DeepEqual(got, want) {
+	if got := decodeStatsAggregate(t, showResp); !reflect.DeepEqual(got, want) {
 		t.Errorf("show stats = %+v, want all zeros incl. collected_episodes", got)
 	}
 }
 
 func TestStatsIDErrors(t *testing.T) {
-	db := setupStatsDB(t)
+	db := setupStatsAggregateDB(t)
 	seedStatsMovie(t, db, 8005, "Exists Movie")
 	seedStatsShow(t, db, 8006, "Exists Show")
 	app := showsApp()
@@ -240,8 +240,11 @@ func TestStatsIDErrors(t *testing.T) {
 	}{
 		{"/v1/movies/999999/stats", http.StatusNotFound},
 		{"/v1/shows/999999/stats", http.StatusNotFound},
-		{"/v1/movies/not-an-int/stats", http.StatusBadRequest},
-		{"/v1/shows/not-an-int/stats", http.StatusBadRequest},
+		// A non-numeric string is a valid slug shape, so an unknown one is a 404
+		// like any other unknown id, not a 400 (main's stats handler already
+		// answered 404 here via ResolveIDAs).
+		{"/v1/movies/not-an-int/stats", http.StatusNotFound},
+		{"/v1/shows/not-an-int/stats", http.StatusNotFound},
 	}
 	for _, tc := range cases {
 		resp := doShowsGet(t, app, tc.path)
@@ -254,7 +257,7 @@ func TestStatsIDErrors(t *testing.T) {
 }
 
 func TestRatingDistributionHistogram(t *testing.T) {
-	db := setupStatsDB(t)
+	db := setupStatsAggregateDB(t)
 	movieID := seedStatsMovie(t, db, 8007, "Rated Movie")
 	showID := seedStatsShow(t, db, 8008, "Rated Show")
 

@@ -193,7 +193,9 @@ func handleGetMovieRatingSummary(c *fiber.Ctx) error {
 }
 
 func handleGetMovieStats(c *fiber.Ctx) error {
-	id, err := response.ParseIDParam(c, "movie")
+	// Resolve the contract id (numeric, slug or ?id_type=) the same way the
+	// other media routes do; ResolveIDAs owns the 404 for an unknown item.
+	_, id, err := ResolveIDAs(c, c.Params("id"), "movie")
 	if err != nil {
 		return err
 	}
@@ -471,7 +473,9 @@ func handleGetShowRatingSummary(c *fiber.Ctx) error {
 }
 
 func handleGetShowStats(c *fiber.Ctx) error {
-	id, err := response.ParseIDParam(c, "show")
+	// Resolve the contract id (numeric, slug or ?id_type=) the same way the
+	// other media routes do; ResolveIDAs owns the 404 for an unknown item.
+	_, id, err := ResolveIDAs(c, c.Params("id"), "show")
 	if err != nil {
 		return err
 	}
