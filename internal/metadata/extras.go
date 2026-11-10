@@ -406,6 +406,18 @@ func HydrateSeasonExtras(db *gorm.DB, client *tmdb.Client, show *database.Show, 
 			show.TmdbID, season.SeasonNumber, err)
 	}
 
+	// Ingest the credits BEFORE recording the marker (or the videos). IngestCredits
+	// deletes the existing credit rows first, so a failure here can leave them
+	// empty — and if the marker were already stored, the next read would see
+	// HasCredits and skip hydration forever, serving an empty people object with
+	// no way to recover. Storing the marker only on success lets the next read
+	// retry.
+	if record.Credits != nil {
+		if err := IngestCredits(db, "season", season.ID, record.Credits); err != nil {
+			return season.Metadata, err
+		}
+	}
+
 	patch := database.JSONMap{KeyCredits: true}
 	if record.Videos != nil {
 		patch[KeyVideos] = contractshape.Videos(VideosFromTMDB(record.Videos.Results))
@@ -415,12 +427,6 @@ func HydrateSeasonExtras(db *gorm.DB, client *tmdb.Client, show *database.Show, 
 		return season.Metadata, err
 	}
 	season.Metadata = merged
-
-	if record.Credits != nil {
-		if err := IngestCredits(db, "season", season.ID, record.Credits); err != nil {
-			return merged, err
-		}
-	}
 	return merged, nil
 }
 
@@ -441,6 +447,13 @@ func HydrateEpisodeExtras(db *gorm.DB, client *tmdb.Client, show *database.Show,
 			show.TmdbID, season.SeasonNumber, episode.EpisodeNumber, err)
 	}
 
+	credits := episodeCredits(record)
+	if credits != nil {
+		if err := IngestCredits(db, "episode", episode.ID, credits); err != nil {
+			return episode.Metadata, err
+		}
+	}
+
 	patch := database.JSONMap{KeyCredits: true}
 	if record.Videos != nil {
 		patch[KeyVideos] = contractshape.Videos(VideosFromTMDB(record.Videos.Results))
@@ -450,13 +463,6 @@ func HydrateEpisodeExtras(db *gorm.DB, client *tmdb.Client, show *database.Show,
 		return episode.Metadata, err
 	}
 	episode.Metadata = merged
-
-	credits := episodeCredits(record)
-	if credits != nil {
-		if err := IngestCredits(db, "episode", episode.ID, credits); err != nil {
-			return merged, err
-		}
-	}
 	return merged, nil
 }
 

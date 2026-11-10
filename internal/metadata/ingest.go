@@ -2,6 +2,7 @@ package metadata
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -367,6 +368,21 @@ func ingestCreditPerson(db *gorm.DB, tmdbID int, name, profilePath string, gende
 	if tmdbID <= 0 || name == "" {
 		return 0, nil
 	}
+	// A credit carries only part of a person (name, profile path, gender,
+	// department, adult flag) — no biography, birthday or IMDb id. IngestPerson
+	// builds a full record and Save writes every column, so passing a credit
+	// record for someone we already hold would null their Birthday/Deathday and
+	// drop their extra images. Use the stored row when the person exists, and
+	// only create when they are genuinely new.
+	var existing database.Person
+	lookupErr := db.Where("tmdb_id = ?", tmdbID).First(&existing).Error
+	if lookupErr == nil {
+		return existing.ID, nil
+	}
+	if !errors.Is(lookupErr, gorm.ErrRecordNotFound) {
+		return 0, fmt.Errorf("lookup credit person %d (%s): %w", tmdbID, name, lookupErr)
+	}
+
 	person, err := IngestPerson(db, &tmdb.Person{
 		ID:                 tmdbID,
 		Name:               name,

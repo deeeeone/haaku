@@ -216,6 +216,13 @@ func RegisterRoutes(app *fiber.App) {
 	// Watch providers endpoints (Phase 1: T1.10)
 	watch.RegisterRoutes(api)
 
+	// Contract-shaped per-item metadata (issue #68): videos, releases,
+	// translations, studios, season info, watching and reports. Registered
+	// BEFORE seasons/episodes below: those packages also mount
+	// /shows/:id/seasons/:season/info, and Fiber matches in registration order,
+	// so this provider-backed handler has to win (main's order, kept).
+	tmdbmeta.RegisterRoutes(api)
+
 	// Watch-now provider catalogue (issue #69).
 	watchnow.RegisterRoutes(api)
 
@@ -230,9 +237,6 @@ func RegisterRoutes(app *fiber.App) {
 
 	// Season detail endpoints (T1.x)
 	seasons.RegisterRoutes(api)
-
-	// TMDB-backed metadata sub-resources (videos, studios, translations, releases)
-	tmdbmeta.RegisterRoutes(api)
 
 	// Users endpoints (Phase 2: T2.6, T2.7)
 	users.RegisterRoutes(api)

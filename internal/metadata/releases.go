@@ -61,12 +61,28 @@ func ReplaceMovieReleases(db *gorm.DB, movieID int64, releases []contractshape.R
 // with no country or an unparseable date is skipped: it cannot answer a
 // date-window query, and inventing either value is exactly what this repo
 // forbids.
+// releaseDateOnly reduces TMDB's release_dates value to the calendar date the
+// movie_releases.release_date column stores. That endpoint returns a date-time
+// ("1999-03-31T00:00:00.000Z"), and parseDate only knows "2006-01-02", so
+// without this every real release parsed to nil and movie_releases stayed empty
+// — the DVD/streaming calendars then read an empty table.
+func releaseDateOnly(value string) string {
+	value = strings.TrimSpace(value)
+	if i := strings.IndexByte(value, 'T'); i > 0 {
+		return value[:i]
+	}
+	if len(value) > 10 {
+		return value[:10]
+	}
+	return value
+}
+
 func movieReleaseRows(movieID int64, releases []contractshape.Release) []database.MovieRelease {
 	out := make([]database.MovieRelease, 0, len(releases))
 	seen := make(map[string]bool, len(releases))
 	for _, release := range releases {
 		country := strings.ToLower(strings.TrimSpace(release.Country))
-		date := parseDate(strings.TrimSpace(release.ReleaseDate))
+		date := parseDate(releaseDateOnly(release.ReleaseDate))
 		if country == "" || date == nil {
 			continue
 		}

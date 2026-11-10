@@ -118,3 +118,23 @@ func TestReplaceMovieReleasesDeduplicates(t *testing.T) {
 		}
 	}
 }
+
+// TestMovieReleaseRowsAcceptsTMDBDateTime pins the fix for TMDB's release_dates
+// shape: that endpoint returns a date-time ("1999-03-31T00:00:00.000Z"), and a
+// bare "2006-01-02" parse silently dropped every row, leaving movie_releases
+// empty for real data and the DVD/streaming calendars reading nothing.
+func TestMovieReleaseRowsAcceptsTMDBDateTime(t *testing.T) {
+	rows := movieReleaseRows(7, []contractshape.Release{
+		{Country: "US", ReleaseDate: "1999-03-31T00:00:00.000Z", ReleaseType: ReleaseTypeTheatrical},
+		{Country: "GB", ReleaseDate: "2031-06-06", ReleaseType: ReleaseTypePhysical},
+	})
+	if len(rows) != 2 {
+		t.Fatalf("rows = %d, want 2 (a date-time release must not be dropped): %+v", len(rows), rows)
+	}
+	if got := rows[0].ReleaseDate.String(); got != "1999-03-31" {
+		t.Errorf("date-time release stored as %q, want 1999-03-31", got)
+	}
+	if got := rows[1].ReleaseDate.String(); got != "2031-06-06" {
+		t.Errorf("bare-date release stored as %q, want 2031-06-06", got)
+	}
+}
