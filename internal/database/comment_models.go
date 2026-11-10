@@ -16,8 +16,12 @@ type Comment struct {
 	LikeCount   int        `gorm:"default:0" json:"like_count"`
 	ReplyCount  int        `gorm:"default:0" json:"reply_count"`
 	EditedAt    *time.Time `json:"edited_at,omitempty"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
+	// GIFURL/GIFSlug carry the contract's optional comment gif object
+	// ({url, slug}). Nil means the comment has no gif.
+	GIFURL    *string   `gorm:"type:text" json:"gif_url,omitempty"`
+	GIFSlug   *string   `gorm:"type:text" json:"gif_slug,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 func (Comment) TableName() string { return "comments" }

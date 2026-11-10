@@ -38,6 +38,7 @@ func registerOpenAPIRoutes() {
 func RegisterRoutes(api fiber.Router) {
 	api.Post("/notes", auth.AuthRequired(), handleCreateNote)
 	api.Get("/notes/:id", auth.AuthRequired(), handleGetNote)
+	api.Get("/notes/:id/item", auth.AuthRequired(), handleGetNoteItem)
 	api.Put("/notes/:id", auth.AuthRequired(), handleUpdateNote)
 	api.Delete("/notes/:id", auth.AuthRequired(), handleDeleteNote)
 	api.Get("/users/me/notes", auth.AuthRequired(), handleListNotes)

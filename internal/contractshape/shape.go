@@ -56,6 +56,21 @@ func NullableInt(n int) any {
 	return n
 }
 
+// ParentID renders a comment's parent id in the contract's comment shape.
+//
+// The contract types parent_id as a *required* integer and gives it no null
+// alternative, so a top-level comment cannot be expressed as null — that made
+// every top-level comment fail the response schema. Trakt's own payloads use 0
+// for "no parent", which is the only value the declared type admits as a
+// sentinel; it is a marker, never a comment id (ids are positive), and every
+// reader of the field must treat 0 as top-level.
+func ParentID(parent *int64) int64 {
+	if parent == nil {
+		return 0
+	}
+	return *parent
+}
+
 // Year derives the release year from a date, or nil.
 func Year(d *database.Date) any {
 	if d == nil || d.IsZero() {
