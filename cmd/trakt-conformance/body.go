@@ -71,7 +71,28 @@ func sampleValue(schema map[string]any, opPath string, fx Fixtures, prop, media 
 			if isIDSet(subs) {
 				return sampleValue(pickIDAlternative(subs), opPath, fx, prop, media)
 			}
-			return sampleValue(pickObjectAlternative(subs), opPath, fx, prop, media)
+			chosen := sampleValue(pickObjectAlternative(subs), opPath, fx, prop, media)
+			// An allOf may merge a block of shared properties with a oneOf of
+			// target objects — POST /comments/ is {comment, spoiler, gif} plus
+			// oneOf{movie|show|season|episode|list}. Returning only the chosen
+			// alternative drops the shared required fields and sends a body the
+			// contract never defined, so merge the shared properties in as well.
+			if props, ok := schema["properties"].(map[string]any); ok && len(props) > 0 {
+				base := map[string]any{}
+				names := make([]string, 0, len(props))
+				for name := range props {
+					names = append(names, name)
+				}
+				sort.Strings(names)
+				for _, name := range names {
+					base[name] = sampleValue(asMap(props[name]), opPath, fx, name, mediaForProperty(name, media))
+				}
+				for k, v := range asMap(chosen) {
+					base[k] = v
+				}
+				return base
+			}
+			return chosen
 		}
 	}
 	// A string with a documented enum must carry one of its own values.

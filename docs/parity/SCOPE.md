@@ -11,7 +11,7 @@ path (modulo our `/v1` prefix), with a real 2xx — except the recommendation/re
 engine, which stays an honest `501 not_implemented` and graded `blocked-engine` by
 the owner's carve-out. Done is `go run ./cmd/parity`, not a PR count.
 
-Contract operations: **336**. Not yet served (**in scope**): **62**. Out by owner decision: **31**. Served today: **242**.
+Contract operations: **336**. Not yet served (**in scope**): **64**. Out by owner decision: **33**. Served today: **239**.
 
 ## Out of scope (owner decisions, re-affirmed)
 
@@ -27,7 +27,9 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `DELETE /younify/users/services/{service_id}` | decision: Trakt's proprietary cross-service linking product; a self-hosted tracker has nothing to link through it |
 | `GET /movies/boxoffice` | decision: Trakt's /movies/boxoffice is a weekend box-office chart; TMDB dropped box-office figures and carries only a lifetime `revenue` number, which is a different measurement. No honest source, so it is declined rather than filled with a number that is not the one the contract names. |
 | `GET /movies/{id}/sentiments` | decision: Trakt derives sentiments from a per-episode sentiment model over its whole comment corpus; nothing in a self-hosted instance produces that signal, and inventing a score is exactly the fabricated payload this manifest forbids. Declined, tracked here so it can be revisited if a scorer is ever built. |
+| `GET /shows/{id}/seasons/{season}/watchnow/justwatch_links/{country}` | decision: no season-level watch-provider data, and Trakt's justwatch_links are affiliate links we do not hold. |
 | `GET /shows/{id}/sentiments` | decision: same as /movies/{id}/sentiments — no sentiment scorer exists and none is planned, and a fabricated score is worse than an honest absence. |
+| `GET /shows/{id}/watchnow/justwatch_links/{country}` | decision: Trakt's justwatch_links are Trakt's own affiliate links; we hold TMDB provider hrefs (served at /v1/shows/{id}/watchnow/{country}) and will not relabel them as Trakt links. |
 | `GET /team/` | decision: /team lists Trakt's staff; a self-hosted instance has no equivalent and no client depends on it. |
 | `GET /users/settings/plex/` | decision: Trakt's Plex integration and 'sync' product; haaku tracks via scrobbling, not a sync client |
 | `GET /users/settings/plex/servers` | decision: Trakt's Plex integration and 'sync' product; haaku tracks via scrobbling, not a sync client |
@@ -57,22 +59,26 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 
 | Contract operation | Status | Group | Owner |
 |---|---|---|---|
-| `DELETE /comments/{id}/` | out-of-scope | comment moderation, reactions and the note item read | #107 |
-| `DELETE /comments/{id}/reactions/{reaction_type}` | out-of-scope | comment moderation, reactions and the note item read | #107 |
 | `DELETE /recommendations/movies/{id}` | blocked-engine | related / recommendations (owner carve-out: stays 501) | #49 |
 | `DELETE /recommendations/shows/{id}` | blocked-engine | related / recommendations (owner carve-out: stays 501) | #49 |
 | `DELETE /users/requests/{id}` | out-of-scope | follow requests (blocked on #54) | #110 |
-| `GET /certifications/movies` | out-of-scope | reference-data certification enums | #109 |
-| `GET /certifications/shows` | out-of-scope | reference-data certification enums | #109 |
-| `GET /comments/recent/{comment_type}/{type}` | out-of-scope | comment moderation, reactions and the note item read | #107 |
-| `GET /comments/updates/{comment_type}/{type}` | out-of-scope | comment moderation, reactions and the note item read | #107 |
-| `GET /comments/{id}/reactions/` | out-of-scope | comment moderation, reactions and the note item read | #107 |
-| `GET /comments/{id}/reactions/summary` | out-of-scope | comment moderation, reactions and the note item read | #107 |
+| `GET /calendars/{target}/media/{start_date}/{days}` | out-of-scope | calendars and Watch Now data | #69 |
+| `GET /calendars/{target}/shows/finales/{start_date}/{days}` | out-of-scope | calendars and Watch Now data | #69 |
+| `GET /calendars/{target}/shows/new/{start_date}/{days}` | out-of-scope | calendars and Watch Now data | #69 |
+| `GET /calendars/{target}/shows/premieres/{start_date}/{days}` | out-of-scope | calendars and Watch Now data | #69 |
+| `GET /calendars/{target}/shows/{start_date}/{days}` | out-of-scope | calendars and Watch Now data | #69 |
+| `GET /comments/trending/{comment_type}/{type}` | divergent | comment moderation, reactions and the note item read | #107 |
+| `GET /comments/{id}` | divergent | comment moderation, reactions and the note item read | #107 |
+| `GET /comments/{id}/item` | divergent | comment moderation, reactions and the note item read | #107 |
+| `GET /comments/{id}/likes` | divergent | comment moderation, reactions and the note item read | #107 |
+| `GET /comments/{id}/replies` | divergent | comment moderation, reactions and the note item read | #107 |
 | `GET /lists/{id}/comments/{sort}` | divergent | list management — writes, items, smart lists | #105 |
 | `GET /lists/{id}/items/{type}/{sort_by}/{sort_how}` | divergent | list management — writes, items, smart lists | #105 |
 | `GET /movies/{id}/related` | blocked-engine | related / recommendations (owner carve-out: stays 501) | #49 |
-| `GET /notes/{id}/item` | out-of-scope | comment moderation, reactions and the note item read | #107 |
+| `GET /movies/{id}/stats` | divergent | per-item reads over stored data | #86 |
+| `GET /movies/{id}/studios` | divergent | TMDB metadata ingest | #68 |
 | `GET /oauth/authorize` | divergent | divergent shapes — serve the contract path | #104 |
+| `GET /people/{id}/` | out-of-scope | TMDB metadata ingest | #68 |
 | `GET /recommendations/movies/` | out-of-scope | related / recommendations (owner carve-out: stays 501) | #49 |
 | `GET /recommendations/shows/` | out-of-scope | related / recommendations (owner carve-out: stays 501) | #49 |
 | `GET /search/{type}` | divergent | search engine | #70 |
@@ -80,11 +86,8 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /shows/{id}/related` | blocked-engine | related / recommendations (owner carve-out: stays 501) | #49 |
 | `GET /shows/{id}/seasons/{season}` | divergent | divergent shapes — serve the contract path | #104 |
 | `GET /shows/{id}/seasons/{season}/episodes/{episode}` | divergent | divergent shapes — serve the contract path | #104 |
-| `GET /shows/{id}/seasons/{season}/episodes/{episode}/ratings` | out-of-scope | per-item reads over stored data | #86 |
-| `GET /shows/{id}/seasons/{season}/episodes/{episode}/stats` | out-of-scope | per-item reads over stored data | #86 |
-| `GET /shows/{id}/seasons/{season}/watchnow/justwatch_links/{country}` | out-of-scope | TMDB metadata ingest | #68 |
-| `GET /shows/{id}/translations` | out-of-scope | TMDB metadata ingest | #68 |
-| `GET /shows/{id}/watchnow/justwatch_links/{country}` | out-of-scope | TMDB metadata ingest | #68 |
+| `GET /shows/{id}/stats` | divergent | per-item reads over stored data | #86 |
+| `GET /shows/{id}/studios` | divergent | TMDB metadata ingest | #68 |
 | `GET /smart-lists/templates` | blocked-data | list management — writes, items, smart lists | #105 |
 | `GET /smart-lists/{list_id}/items/{type}/{sort_by}/{sort_how}` | divergent | list management — writes, items, smart lists | #105 |
 | `GET /sync/collection/media` | divergent | remaining sync reads and writes | #106 |
@@ -92,31 +95,32 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /sync/collection/minimal/movies` | divergent | remaining sync reads and writes | #106 |
 | `GET /sync/collection/minimal/shows` | divergent | remaining sync reads and writes | #106 |
 | `GET /sync/collection/{type}` | divergent | remaining sync reads and writes | #106 |
+| `GET /sync/progress/up_next_nitro` | divergent | remaining sync reads and writes | #106 |
+| `GET /sync/watchlist/{type}/{sort_by}/{sort_how}` | divergent | remaining sync reads and writes | #106 |
 | `GET /users/hidden/dropped` | out-of-scope | per-section hidden item lists | #108 |
 | `GET /users/hidden/progress_watched` | out-of-scope | per-section hidden item lists | #108 |
 | `GET /users/requests/` | out-of-scope | follow requests (blocked on #54) | #110 |
 | `GET /users/requests/following` | out-of-scope | follow requests (blocked on #54) | #110 |
+| `GET /users/{id}/history/episodes` | divergent | public-profile read surface | #103 |
 | `GET /users/{id}/history/episodes/{item_id}` | divergent | public-profile read surface | #103 |
+| `GET /users/{id}/history/movies` | divergent | public-profile read surface | #103 |
+| `GET /users/{id}/history/shows` | divergent | public-profile read surface | #103 |
 | `GET /users/{id}/lists/collaborations` | divergent | list management — writes, items, smart lists | #105 |
 | `GET /users/{id}/lists/{list_id}/comments/{sort}` | divergent | list management — writes, items, smart lists | #105 |
 | `GET /users/{id}/lists/{list_id}/items/{type}/{sort_by}/{sort_how}` | divergent | list management — writes, items, smart lists | #105 |
 | `GET /users/{id}/lists/{list_id}/smart-list-draft` | divergent | list management — writes, items, smart lists | #105 |
 | `GET /users/{id}/smart-list-drafts` | divergent | public-profile read surface | #103 |
+| `GET /users/{id}/watchlist/movie,show/{sort}` | divergent | public-profile read surface | #103 |
+| `GET /users/{id}/watchlist/movies/{sort}` | divergent | public-profile read surface | #103 |
+| `GET /users/{id}/watchlist/shows/{sort}` | divergent | public-profile read surface | #103 |
 | `GET /users/{id}/watchlist/{type}/{sort_by}/{sort_how}` | divergent | public-profile read surface | #103 |
-| `POST /comments/` | out-of-scope | comment moderation, reactions and the note item read | #107 |
-| `POST /comments/{id}/reactions/{reaction_type}` | out-of-scope | comment moderation, reactions and the note item read | #107 |
-| `POST /movies/{id}/refresh/justwatch` | out-of-scope | TMDB metadata ingest | #68 |
-| `POST /people/{id}/report` | out-of-scope | TMDB metadata ingest | #68 |
-| `POST /shows/{id}/refresh/justwatch` | out-of-scope | TMDB metadata ingest | #68 |
-| `POST /shows/{id}/seasons/{season}/episodes/{episode}/report` | out-of-scope | TMDB metadata ingest | #68 |
-| `POST /shows/{id}/seasons/{season}/report` | out-of-scope | TMDB metadata ingest | #68 |
+| `GET /users/{id}/{type}/activities` | divergent | public-profile read surface | #103 |
 | `POST /users/hidden/calendar/remove` | out-of-scope | per-section hidden item lists | #108 |
 | `POST /users/hidden/progress_watched/remove` | out-of-scope | per-section hidden item lists | #108 |
 | `POST /users/hidden/{section}/remove` | out-of-scope | per-section hidden item lists | #108 |
 | `POST /users/requests/{id}` | out-of-scope | follow requests (blocked on #54) | #110 |
 | `POST /users/{id}/lists` | divergent | list management — writes, items, smart lists | #105 |
 | `POST /users/{id}/smart-lists` | divergent | list management — writes, items, smart lists | #105 |
-| `PUT /comments/{id}/` | out-of-scope | comment moderation, reactions and the note item read | #107 |
 | `PUT /sync/favorites/{list_item_id}` | divergent | remaining sync reads and writes | #106 |
 | `PUT /sync/watchlist` | divergent | remaining sync reads and writes | #106 |
 
@@ -125,7 +129,9 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | Contract operation | Our path |
 |---|---|
 | `DELETE /checkin` | `DELETE /v1/checkin` |
+| `DELETE /comments/{id}/` | `DELETE /v1/comments/{id}` |
 | `DELETE /comments/{id}/like` | `DELETE /v1/comments/{id}/like` |
+| `DELETE /comments/{id}/reactions/{reaction_type}` | `DELETE /v1/comments/{id}/reactions/{reaction_type}` |
 | `DELETE /lists/{id}/like` | `DELETE /v1/lists/{id}/like` |
 | `DELETE /notes/{id}` | `DELETE /v1/notes/{id}` |
 | `DELETE /shows/{id}/progress/watched/reset` | `DELETE /v1/shows/{id}/progress/watched/reset` |
@@ -140,19 +146,15 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /calendars/releases/hot/premieres/{start_date}/{days}` | `GET /v1/calendars/releases/hot/premieres/{start_date}/{days}` |
 | `GET /calendars/releases/hot/{start_date}/{days}` | `GET /v1/calendars/releases/hot/{start_date}/{days}` |
 | `GET /calendars/{target}/dvd/{start_date}/{days}` | `GET /v1/calendars/all/dvd/{start_date}/{days}` |
-| `GET /calendars/{target}/media/{start_date}/{days}` | `GET /v1/calendars/all/media/{start_date}/{days}` |
 | `GET /calendars/{target}/movies/{start_date}/{days}` | `GET /v1/calendars/all/movies/{start_date}/{days}` |
-| `GET /calendars/{target}/shows/finales/{start_date}/{days}` | `GET /v1/calendars/all/shows/finales/{start_date}/{days}` |
-| `GET /calendars/{target}/shows/new/{start_date}/{days}` | `GET /v1/calendars/all/shows/new/{start_date}/{days}` |
-| `GET /calendars/{target}/shows/premieres/{start_date}/{days}` | `GET /v1/calendars/all/shows/premieres/{start_date}/{days}` |
-| `GET /calendars/{target}/shows/{start_date}/{days}` | `GET /v1/calendars/all/shows/{start_date}/{days}` |
 | `GET /calendars/{target}/streaming/{start_date}/{days}` | `GET /v1/calendars/all/streaming/{start_date}/{days}` |
+| `GET /certifications/movies` | `GET /v1/certifications/movies` |
+| `GET /certifications/shows` | `GET /v1/certifications/shows` |
 | `GET /certifications/{type}` | `GET /v1/certifications/{type}` |
-| `GET /comments/trending/{comment_type}/{type}` | `GET /v1/comments/trending/{comment_type}/{type}` |
-| `GET /comments/{id}` | `GET /v1/comments/{id}` |
-| `GET /comments/{id}/item` | `GET /v1/comments/{id}/item` |
-| `GET /comments/{id}/likes` | `GET /v1/comments/{id}/likes` |
-| `GET /comments/{id}/replies` | `GET /v1/comments/{id}/replies` |
+| `GET /comments/recent/{comment_type}/{type}` | `GET /v1/comments/recent/{comment_type}/{type}` |
+| `GET /comments/updates/{comment_type}/{type}` | `GET /v1/comments/updates/{comment_type}/{type}` |
+| `GET /comments/{id}/reactions/` | `GET /v1/comments/{id}/reactions` |
+| `GET /comments/{id}/reactions/summary` | `GET /v1/comments/{id}/reactions/summary` |
 | `GET /countries/{type}` | `GET /v1/countries/{type}` |
 | `GET /episodes/{id}/watchnow/{country}` | `GET /v1/episodes/{id}/watchnow/{country}` |
 | `GET /genres/{type}` | `GET /v1/genres/{type}` |
@@ -188,8 +190,6 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /movies/{id}/people` | `GET /v1/movies/{id}/people` |
 | `GET /movies/{id}/ratings` | `GET /v1/movies/{id}/ratings` |
 | `GET /movies/{id}/releases/{country}` | `GET /v1/movies/{id}/releases/{country}` |
-| `GET /movies/{id}/stats` | `GET /v1/movies/{id}/stats` |
-| `GET /movies/{id}/studios` | `GET /v1/movies/{id}/studios` |
 | `GET /movies/{id}/translations` | `GET /v1/movies/{id}/translations` |
 | `GET /movies/{id}/videos` | `GET /v1/movies/{id}/videos` |
 | `GET /movies/{id}/watching` | `GET /v1/movies/{id}/watching` |
@@ -197,9 +197,9 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /movies/{id}/watchnow/{country}` | `GET /v1/movies/{id}/watchnow/{country}` |
 | `GET /networks` | `GET /v1/networks` |
 | `GET /notes/{id}` | `GET /v1/notes/{id}` |
+| `GET /notes/{id}/item` | `GET /v1/notes/{id}/item` |
 | `GET /people/updates/id/{start_date}` | `GET /v1/people/updates/id/{start_date}` |
 | `GET /people/updates/{start_date}` | `GET /v1/people/updates/{start_date}` |
-| `GET /people/{id}/` | `GET /v1/people/{id}` |
 | `GET /people/{id}/lists/{type}/{sort}` | `GET /v1/people/{id}/lists/{type}/{sort}` |
 | `GET /people/{id}/movies` | `GET /v1/people/{id}/movies` |
 | `GET /people/{id}/shows` | `GET /v1/people/{id}/shows` |
@@ -232,6 +232,8 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /shows/{id}/seasons/{season}/episodes/{episode}/comments/{sort}` | `GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/comments/{sort}` |
 | `GET /shows/{id}/seasons/{season}/episodes/{episode}/lists/{type}/{sort}` | `GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/lists/{type}/{sort}` |
 | `GET /shows/{id}/seasons/{season}/episodes/{episode}/people` | `GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/people` |
+| `GET /shows/{id}/seasons/{season}/episodes/{episode}/ratings` | `GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/ratings` |
+| `GET /shows/{id}/seasons/{season}/episodes/{episode}/stats` | `GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/stats` |
 | `GET /shows/{id}/seasons/{season}/episodes/{episode}/translations` | `GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/translations` |
 | `GET /shows/{id}/seasons/{season}/episodes/{episode}/videos` | `GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/videos` |
 | `GET /shows/{id}/seasons/{season}/episodes/{episode}/watching` | `GET /v1/shows/{id}/seasons/{season}/episodes/{episode}/watching` |
@@ -244,8 +246,7 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /shows/{id}/seasons/{season}/translations` | `GET /v1/shows/{id}/seasons/{season}/translations` |
 | `GET /shows/{id}/seasons/{season}/videos` | `GET /v1/shows/{id}/seasons/{season}/videos` |
 | `GET /shows/{id}/seasons/{season}/watching` | `GET /v1/shows/{id}/seasons/{season}/watching` |
-| `GET /shows/{id}/stats` | `GET /v1/shows/{id}/stats` |
-| `GET /shows/{id}/studios` | `GET /v1/shows/{id}/studios` |
+| `GET /shows/{id}/translations` | `GET /v1/shows/{id}/translations` |
 | `GET /shows/{id}/videos` | `GET /v1/shows/{id}/videos` |
 | `GET /shows/{id}/watching` | `GET /v1/shows/{id}/watching` |
 | `GET /shows/{id}/watchnow/{country}` | `GET /v1/shows/{id}/watchnow/{country}` |
@@ -261,7 +262,6 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /sync/playback/episodes` | `GET /v1/sync/playback/episodes` |
 | `GET /sync/playback/movies` | `GET /v1/sync/playback/movies` |
 | `GET /sync/progress/up_next` | `GET /v1/sync/progress/up_next` |
-| `GET /sync/progress/up_next_nitro` | `GET /v1/sync/progress/up_next_nitro` |
 | `GET /sync/progress/watched` | `GET /v1/sync/progress/watched` |
 | `GET /sync/ratings/{type}/{rating}` | `GET /v1/sync/ratings/{type}/{rating}` |
 | `GET /sync/watched/{type}` | `GET /v1/sync/watched/{type}` |
@@ -282,10 +282,7 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /users/{id}/following` | `GET /v1/users/{id}/following` |
 | `GET /users/{id}/friends` | `GET /v1/users/{id}/friends` |
 | `GET /users/{id}/history/` | `GET /v1/users/{id}/history` |
-| `GET /users/{id}/history/episodes` | `GET /v1/users/{id}/history/episodes` |
-| `GET /users/{id}/history/movies` | `GET /v1/users/{id}/history/movies` |
 | `GET /users/{id}/history/movies/{item_id}` | `GET /v1/users/{id}/history/movies/{item_id}` |
-| `GET /users/{id}/history/shows` | `GET /v1/users/{id}/history/shows` |
 | `GET /users/{id}/history/shows/{item_id}` | `GET /v1/users/{id}/history/shows/{item_id}` |
 | `GET /users/{id}/history/{type}/{item_id}` | `GET /v1/users/{id}/history/{media_type}/{media_id}` |
 | `GET /users/{id}/likes/{type}` | `GET /v1/users/{id}/likes/comments` |
@@ -310,32 +307,35 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /users/{id}/watched/{type}` | `GET /v1/users/{id}/watched/{type}` |
 | `GET /users/{id}/watching` | `GET /v1/users/{id}/watching` |
 | `GET /users/{id}/watchlist/comments/{sort}` | `GET /v1/users/{id}/watchlist/comments/{sort}` |
-| `GET /users/{id}/watchlist/movie,show/{sort}` | `GET /v1/users/{id}/watchlist/movie,show/{sort}` |
-| `GET /users/{id}/watchlist/movies/{sort}` | `GET /v1/users/{id}/watchlist/movies/{sort}` |
-| `GET /users/{id}/watchlist/shows/{sort}` | `GET /v1/users/{id}/watchlist/shows/{sort}` |
-| `GET /users/{id}/{type}/activities` | `GET /v1/users/{id}/{type}/activities` |
 | `GET /watchnow/sources` | `GET /v1/watchnow/sources` |
 | `GET /watchnow/sources/{countryCode}` | `GET /v1/watchnow/sources/{countryCode}` |
 | `POST /checkin` | `POST /v1/checkin` |
+| `POST /comments/` | `POST /v1/comments` |
 | `POST /comments/{id}/like` | `POST /v1/comments/{id}/like` |
+| `POST /comments/{id}/reactions/{reaction_type}` | `POST /v1/comments/{id}/reactions/{reaction_type}` |
 | `POST /comments/{id}/replies` | `POST /v1/comments/{id}/replies` |
 | `POST /comments/{id}/report` | `POST /v1/comments/{id}/report` |
 | `POST /episodes/{id}/report` | `POST /v1/episodes/{id}/report` |
 | `POST /lists/{id}/like` | `POST /v1/lists/{id}/like` |
 | `POST /lists/{id}/report` | `POST /v1/lists/{id}/report` |
+| `POST /movies/{id}/refresh/justwatch` | `POST /v1/movies/{id}/refresh/justwatch` |
 | `POST /movies/{id}/report` | `POST /v1/movies/{id}/report` |
 | `POST /notes` | `POST /v1/notes` |
 | `POST /oauth/device/code` | `POST /oauth/device/code` |
 | `POST /oauth/device/token` | `POST /oauth/device/token` |
 | `POST /oauth/revoke` | `POST /oauth/revoke` |
 | `POST /oauth/token` | `POST /oauth/token` |
+| `POST /people/{id}/report` | `POST /v1/people/{id}/report` |
 | `POST /scrobble/pause` | `POST /v1/scrobble/pause` |
 | `POST /scrobble/start` | `POST /v1/scrobble/start` |
 | `POST /scrobble/stop` | `POST /v1/scrobble/stop` |
 | `POST /search/recent/` | `POST /v1/search/recent` |
 | `POST /seasons/{id}/report` | `POST /v1/seasons/{id}/report` |
 | `POST /shows/{id}/progress/watched/reset` | `POST /v1/shows/{id}/progress/watched/reset` |
+| `POST /shows/{id}/refresh/justwatch` | `POST /v1/shows/{id}/refresh/justwatch` |
 | `POST /shows/{id}/report` | `POST /v1/shows/{id}/report` |
+| `POST /shows/{id}/seasons/{season}/episodes/{episode}/report` | `POST /v1/shows/{id}/seasons/{season}/episodes/{episode}/report` |
+| `POST /shows/{id}/seasons/{season}/report` | `POST /v1/shows/{id}/seasons/{season}/report` |
 | `POST /sync/collection` | `POST /v1/sync/collection` |
 | `POST /sync/collection/remove` | `POST /v1/sync/collection/remove` |
 | `POST /sync/favorites` | `POST /v1/sync/favorites` |
@@ -360,6 +360,7 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `POST /users/{id}/lists/{list_id}/report` | `POST /v1/users/{id}/lists/{list_id}/report` |
 | `POST /users/{id}/lists/{list_id}/smart-list-draft/convert` | `POST /v1/users/{id}/lists/{list_id}/smart-list-draft/convert` |
 | `POST /users/{id}/report` | `POST /v1/users/{id}/report` |
+| `PUT /comments/{id}/` | `PUT /v1/comments/{id}` |
 | `PUT /notes/{id}` | `PUT /v1/notes/{id}` |
 | `PUT /sync/watchlist/{list_item_id}` | `PUT /v1/sync/watchlist/{list_item_id}` |
 | `PUT /users/settings` | `PUT /v1/users/settings` |

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/response"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/driver/sqlite"
@@ -46,7 +47,10 @@ func setupRemainingDB(t *testing.T) *gorm.DB {
 // newRemainingApp mounts the issue-#106 handlers with a stub auth middleware
 // that pins user_id, so the handlers run without a token.
 func newRemainingApp(userID string) *fiber.App {
-	app := fiber.New()
+	// The production error handler: a helper that answers 400 and returns
+	// response.ErrHandled must not be turned into a 500 by Fiber's default
+	// handler (which is what a bare fiber.New() does).
+	app := fiber.New(fiber.Config{ErrorHandler: response.HandleError})
 	v1 := app.Group("/v1")
 	v1.Use(func(c *fiber.Ctx) error {
 		c.Locals("user_id", userID)
@@ -312,15 +316,22 @@ func TestUpNextNitroIntentAndFilters(t *testing.T) {
 		t.Errorf("genres=drama should narrow out the genreless show, got %d items", len(items))
 	}
 
-	// A declared filter this store cannot evaluate is a 400, never a 200 that
-	// quietly returns everything.
-	status, _ = doJSON(t, app, http.MethodGet, "/v1/sync/progress/up_next_nitro?countries=us", "")
-	if status != http.StatusBadRequest {
-		t.Errorf("countries filter: expected 400, got %d", status)
+	// A declared filter this store cannot evaluate is ignored, not refused: the
+	// request succeeds with the superset and the parity row is `divergent`
+	// naming the parameter. Refusing it (the #130 behaviour) returned nothing at
+	// all to a client that sent a documented parameter.
+	status, raw = doJSON(t, app, http.MethodGet, "/v1/sync/progress/up_next_nitro?countries=us", "")
+	if status != http.StatusOK {
+		t.Errorf("countries filter: expected 200 (ignored), got %d (%s)", status, raw)
+	} else if items := decodeArray(t, raw); len(items) != 1 {
+		t.Errorf("countries filter should be ignored, want 1 show, got %d", len(items))
 	}
-	status, _ = doJSON(t, app, http.MethodGet, "/v1/sync/progress/up_next_nitro?runtimes=30-60", "")
-	if status != http.StatusBadRequest {
-		t.Errorf("runtimes filter (not a shows column): expected 400, got %d", status)
+	// runtimes is not a shows column, so it is ignored for the same reason.
+	status, raw = doJSON(t, app, http.MethodGet, "/v1/sync/progress/up_next_nitro?runtimes=30-60", "")
+	if status != http.StatusOK {
+		t.Errorf("runtimes filter (not a shows column): expected 200 (ignored), got %d (%s)", status, raw)
+	} else if items := decodeArray(t, raw); len(items) != 1 {
+		t.Errorf("runtimes filter should be ignored, want 1 show, got %d", len(items))
 	}
 }
 

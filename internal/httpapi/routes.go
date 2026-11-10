@@ -29,6 +29,7 @@ import (
 	"github.com/haaku-tv/haaku/internal/handlers/stats"
 	"github.com/haaku-tv/haaku/internal/handlers/sync"
 	"github.com/haaku-tv/haaku/internal/handlers/syncs"
+	"github.com/haaku-tv/haaku/internal/handlers/tmdbmeta"
 	"github.com/haaku-tv/haaku/internal/handlers/updates"
 	"github.com/haaku-tv/haaku/internal/handlers/users"
 	"github.com/haaku-tv/haaku/internal/handlers/watch"
@@ -229,6 +230,9 @@ func RegisterRoutes(app *fiber.App) {
 
 	// Season detail endpoints (T1.x)
 	seasons.RegisterRoutes(api)
+
+	// TMDB-backed metadata sub-resources (videos, studios, translations, releases)
+	tmdbmeta.RegisterRoutes(api)
 
 	// Users endpoints (Phase 2: T2.6, T2.7)
 	users.RegisterRoutes(api)

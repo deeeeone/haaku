@@ -68,6 +68,9 @@ func RegisterRoutes(api fiber.Router) {
 
 	// Contract-shaped watch-now routes (Trakt's /{movies,shows}/{id}/watchnow/{country}).
 	registerContractWatchRoutes(api)
+
+	// Contract-shaped provider refreshes (Trakt's POST .../refresh/justwatch).
+	registerContractRefreshRoutes(api)
 }
 
 // tmdbClient is lazily initialized on first use.

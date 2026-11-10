@@ -60,7 +60,6 @@ func RegisterTranslationRoutes(api fiber.Router) {
 	api.Get("/movies/:id/translations/:lang", handleMovieTranslations)
 	api.Get("/shows/:id/translations/:lang", handleShowTranslations)
 	api.Get("/shows/:id/seasons/:season/translations/:lang", handleShowSeasonTranslations)
-	api.Get("/shows/:id/seasons/:season/translations", handleContractSeasonTranslations)
 	api.Get("/shows/:id/seasons/:season/episodes/:episode/translations/:lang", handleShowEpisodeTranslations)
 	api.Get("/movies/:id/aliases", handleMovieAliases)
 	api.Get("/shows/:id/aliases", handleShowAliases)

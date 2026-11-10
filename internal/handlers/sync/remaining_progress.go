@@ -203,7 +203,11 @@ func progressSort(c *fiber.Ctx, rows []*showProgressRow) error {
 	sortBy := c.Query("sort_by", "last_watched_at")
 	how := c.Query("sort_how", "desc")
 	if how != "asc" && how != "desc" {
-		return response.BadRequest(c, "sort_how must be one of: asc, desc")
+		// Write the envelope, then hand back ErrHandled: the writer returns nil
+		// on success, so returning it here would let the caller carry on and
+		// overwrite the 400 body with its own payload.
+		_ = response.BadRequest(c, "sort_how must be one of: asc, desc")
+		return response.ErrHandled
 	}
 	less := func(a, b *showProgressRow) bool { return false }
 	switch sortBy {
@@ -231,7 +235,8 @@ func progressSort(c *fiber.Ctx, rows []*showProgressRow) error {
 	case "aired":
 		less = func(a, b *showProgressRow) bool { return a.aired < b.aired }
 	default:
-		return response.BadRequest(c, "sort_by must be one of: aired, last_watched_at, title")
+		_ = response.BadRequest(c, "sort_by must be one of: aired, last_watched_at, title")
+		return response.ErrHandled
 	}
 	sort.SliceStable(rows, func(i, j int) bool {
 		if how == "desc" {

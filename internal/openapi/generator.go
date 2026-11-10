@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	"gopkg.in/yaml.v3"
 )
@@ -150,10 +151,17 @@ func authToSecurity(auth string) []map[string][]string {
 }
 
 // buildResponses produces the responses map for an operation.
+//
+// Every documented error status carries the contract's ErrorEnvelope content,
+// including the ones a route gives its own description. A route that declares
+// `404: "Show not found"` must not silently drop the application/json schema the
+// baseline advertised for 404 — a client written against the documented error
+// format would lose it. Success bodies are whatever ResponseType says.
 func buildResponses(r RouteDef) map[string]interface{} {
 	responses := make(map[string]interface{})
 
-	// Add route-specific success response.
+	// Add route-specific responses (success and any error status the route
+	// customises).
 	for code, desc := range r.StatusCodes {
 		resp := map[string]interface{}{
 			"description": desc,
@@ -166,29 +174,55 @@ func buildResponses(r RouteDef) map[string]interface{} {
 				},
 			}
 		}
-		responses[fmt.Sprintf("%d", code)] = resp
+		responses[strconv.Itoa(code)] = resp
 	}
 
-	// Add standard error responses (won't overwrite route-specific ones).
+	// Add standard error responses (won't overwrite route-specific descriptions).
 	for code, desc := range standardStatusCodes {
-		key := fmt.Sprintf("%d", code)
+		key := strconv.Itoa(code)
 		if _, exists := responses[key]; exists {
 			continue
 		}
-		content := map[string]interface{}{
-			"application/json": map[string]interface{}{
-				"schema": map[string]interface{}{
-					"$ref": "#/components/schemas/ErrorEnvelope",
-				},
-			},
+		responses[key] = envelopeResponse(desc)
+	}
+
+	// Any remaining error response — a status the route documents but the
+	// standard set does not cover, such as 503 — still gets the envelope, so the
+	// error format is uniform across the spec.
+	for key, raw := range responses {
+		code, err := strconv.Atoi(key)
+		if err != nil || code < 400 {
+			continue
 		}
-		responses[key] = map[string]interface{}{
-			"description": desc,
-			"content":     content,
+		resp, ok := raw.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if _, hasContent := resp["content"]; !hasContent {
+			resp["content"] = errorEnvelopeContent()
 		}
 	}
 
 	return responses
+}
+
+// envelopeResponse is a response object whose body is the shared ErrorEnvelope.
+func envelopeResponse(desc string) map[string]interface{} {
+	return map[string]interface{}{
+		"description": desc,
+		"content":     errorEnvelopeContent(),
+	}
+}
+
+// errorEnvelopeContent is the content map referencing the ErrorEnvelope schema.
+func errorEnvelopeContent() map[string]interface{} {
+	return map[string]interface{}{
+		"application/json": map[string]interface{}{
+			"schema": map[string]interface{}{
+				"$ref": "#/components/schemas/ErrorEnvelope",
+			},
+		},
+	}
 }
 
 // securitySchemes defines apiKey (header) and oauth (bearer) schemes.

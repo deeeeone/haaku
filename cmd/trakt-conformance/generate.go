@@ -233,8 +233,18 @@ func paramValue(name, method, path string, p contract.Parameter, fx Fixtures) st
 	case "lang":
 		return "en"
 	case "season", "number":
+		// A report is unique per (reporter, media). The flat
+		// /seasons/{id}/report case already reports season one, so a
+		// contract-path report of the same season would legitimately answer
+		// 409; point those cases at the second season's premiere instead.
+		if method == "POST" && strings.HasSuffix(path, "/report") {
+			return fmt.Sprintf("%d", fx.Season2Num)
+		}
 		return fmt.Sprintf("%d", fx.SeasonNum)
 	case "episode":
+		if method == "POST" && strings.HasSuffix(path, "/report") {
+			return fmt.Sprintf("%d", fx.Episode3Num)
+		}
 		return fmt.Sprintf("%d", fx.EpisodeNum)
 	case "list_id":
 		if strings.Contains(path, "/smart-lists") {
@@ -305,12 +315,18 @@ func idValue(method, path string, fx Fixtures) string {
 		return fx.UserID
 	case "comments":
 		// The reply/like assertions need a comment with rows; the plain comment
-		// GET keeps the reply-free row so DELETE is not a 409, and DELETE uses a
-		// third row so it cannot consume the GET fixture.
+		// GET keeps the reply-free row so DELETE is not a 409, and the two
+		// destructive DELETEs get their own rows so neither consumes the other's.
 		if strings.Contains(path, "/replies") || strings.Contains(path, "/likes") {
 			return fmt.Sprintf("%d", fx.ThreadCommentID)
 		}
 		if method == "DELETE" {
+			if strings.Contains(path, "/reactions/") {
+				return fmt.Sprintf("%d", fx.ReactionCommentID)
+			}
+			if strings.HasSuffix(path, "/like") {
+				return fmt.Sprintf("%d", fx.LikeCommentID)
+			}
 			return fmt.Sprintf("%d", fx.DeleteCommentID)
 		}
 		return fmt.Sprintf("%d", fx.CommentID)

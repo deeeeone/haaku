@@ -18,30 +18,30 @@ type IDSet struct {
 // are pointers because a client that does not append (the change-feed sync)
 // still decodes into this type.
 type Movie struct {
-	ID                  int                 `json:"id"`
-	IMDBID              string              `json:"imdb_id"`
-	Title               string              `json:"title"`
-	OriginalTitle       string              `json:"original_title"`
-	Tagline             string              `json:"tagline"`
-	Overview            string              `json:"overview"`
-	ReleaseDate         string              `json:"release_date"`
-	Runtime             int                 `json:"runtime"`
-	Status              string              `json:"status"`
-	Popularity          float64             `json:"popularity"`
-	VoteAverage         float64             `json:"vote_average"`
-	VoteCount           int64               `json:"vote_count"`
-	Genres              []Genre             `json:"genres"`
-	Language            string              `json:"original_language"`
-	PosterPath          string              `json:"poster_path"`
-	BackdropPath        string              `json:"backdrop_path"`
-	Adult               bool                `json:"adult"`
-	Budget              int64               `json:"budget"`  // for metadata passthrough
-	Revenue             int64               `json:"revenue"` // for metadata passthrough
-	ProductionCountries []Country           `json:"production_countries"`
-	ProductionCompanies []ProductionCompany `json:"production_companies"`
-	ExternalIDs         *ExternalIDs        `json:"external_ids,omitempty"`
-	ReleaseDates        *ReleaseDates       `json:"release_dates,omitempty"`
-	Videos              *Videos             `json:"videos,omitempty"`
+	ID                  int           `json:"id"`
+	IMDBID              string        `json:"imdb_id"`
+	Title               string        `json:"title"`
+	OriginalTitle       string        `json:"original_title"`
+	Tagline             string        `json:"tagline"`
+	Overview            string        `json:"overview"`
+	ReleaseDate         string        `json:"release_date"`
+	Runtime             int           `json:"runtime"`
+	Status              string        `json:"status"`
+	Popularity          float64       `json:"popularity"`
+	VoteAverage         float64       `json:"vote_average"`
+	VoteCount           int64         `json:"vote_count"`
+	Genres              []Genre       `json:"genres"`
+	Language            string        `json:"original_language"`
+	PosterPath          string        `json:"poster_path"`
+	BackdropPath        string        `json:"backdrop_path"`
+	Adult               bool          `json:"adult"`
+	Budget              int64         `json:"budget"`  // for metadata passthrough
+	Revenue             int64         `json:"revenue"` // for metadata passthrough
+	ProductionCountries []Country     `json:"production_countries"`
+	ProductionCompanies []Company     `json:"production_companies"`
+	ExternalIDs         *ExternalIDs  `json:"external_ids,omitempty"`
+	ReleaseDates        *ReleaseDates `json:"release_dates,omitempty"`
+	Videos              *Videos       `json:"videos,omitempty"`
 }
 
 // Show represents a TMDB TV show detail response.
@@ -90,19 +90,19 @@ type SeasonSummary struct {
 }
 
 // Season represents a full TMDB season detail response.
-//
-// GetSeasonExtras appends videos and credits, so a season read can store one
-// season's videos and its credit set in a single request.
 type Season struct {
-	ID           int              `json:"id"`
-	SeasonNumber int              `json:"season_number"`
-	Name         string           `json:"name"`
-	Overview     string           `json:"overview"`
-	AirDate      string           `json:"air_date"`
-	PosterPath   string           `json:"poster_path"`
-	Episodes     []EpisodeDetail  `json:"episodes"`
-	Videos       *Videos          `json:"videos,omitempty"`
-	Credits      *CreditsResponse `json:"credits,omitempty"`
+	ID           int             `json:"id"`
+	SeasonNumber int             `json:"season_number"`
+	Name         string          `json:"name"`
+	Overview     string          `json:"overview"`
+	AirDate      string          `json:"air_date"`
+	PosterPath   string          `json:"poster_path"`
+	VoteAverage  float64         `json:"vote_average"`
+	VoteCount    int64           `json:"vote_count"`
+	Episodes     []EpisodeDetail `json:"episodes"`
+	// Videos and Credits are appended when a read asks for them (issue #68).
+	Videos  *Videos          `json:"videos,omitempty"`
+	Credits *CreditsResponse `json:"credits,omitempty"`
 }
 
 // EpisodeDetail is a single episode from the season detail response.
@@ -122,16 +122,6 @@ type EpisodeDetail struct {
 	Crew          []CrewMember     `json:"crew,omitempty"`
 	Videos        *Videos          `json:"videos,omitempty"`
 	Credits       *CreditsResponse `json:"credits,omitempty"`
-}
-
-// ProductionCompany is one studio from TMDB's production_companies list. The
-// origin country is TMDB's own, and it is what a Trakt-shaped studio object
-// carries alongside the name and ids.
-type ProductionCompany struct {
-	ID            int    `json:"id"`
-	LogoPath      string `json:"logo_path"`
-	Name          string `json:"name"`
-	OriginCountry string `json:"origin_country"`
 }
 
 // Person represents a TMDB person detail response.
@@ -170,8 +160,48 @@ type Genre struct {
 }
 
 type Network struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
+	ID            int    `json:"id"`
+	Name          string `json:"name"`
+	OriginCountry string `json:"origin_country"`
+}
+
+// Company is a TMDB production company (a movie's studio list).
+type Company struct {
+	ID            int    `json:"id"`
+	Name          string `json:"name"`
+	OriginCountry string `json:"origin_country"`
+	LogoPath      string `json:"logo_path"`
+}
+
+// ProductionCompany and TranslationsResponse are the names the PR's metadata
+// layer uses for these two TMDB shapes. main introduced Company and
+// Translations for the same JSON; keep both spellings as aliases so neither
+// layer has to rename.
+type ProductionCompany = Company
+type TranslationsResponse = Translations
+
+// Translations is TMDB's translations payload, shared by movies, shows and
+// episodes. Each entry carries the per-language text under `data`.
+type Translations struct {
+	Translations []Translation `json:"translations"`
+}
+
+// Translation is one language's text for a title or episode.
+type Translation struct {
+	ISO639      string          `json:"iso_639_1"`
+	ISO3166     string          `json:"iso_3166_1"`
+	Name        string          `json:"name"`
+	EnglishName string          `json:"english_name"`
+	Data        TranslationData `json:"data"`
+}
+
+// TranslationData is the per-language text. Movies fill title/overview/tagline;
+// episodes fill name/overview.
+type TranslationData struct {
+	Title    string `json:"title"`
+	Name     string `json:"name"`
+	Overview string `json:"overview"`
+	Tagline  string `json:"tagline"`
 }
 
 type Country struct {
@@ -327,9 +357,7 @@ type TrendingItem struct {
 
 // --- Credits ---
 
-// CreditsResponse holds cast and crew for a movie or TV show. An EPISODE's
-// credits carry guest_stars instead of a full cast; the field is kept so one
-// type covers both payloads.
+// CreditsResponse holds cast and crew for a movie or TV show.
 type CreditsResponse struct {
 	ID         int          `json:"id"`
 	Cast       []CastMember `json:"cast"`
@@ -361,54 +389,7 @@ type CrewMember struct {
 	Adult              bool   `json:"adult"`
 }
 
-// --- Translations (v3) ---
-
-// TranslationsResponse is TMDB's translations payload for a movie, show,
-// season or episode. The translated fields live under `data`; `name` is TMDB's
-// own language label, not a translated title.
-type TranslationsResponse struct {
-	ID           int           `json:"id"`
-	Translations []Translation `json:"translations"`
-}
-
-// Translation is one language/country variant.
-type Translation struct {
-	ISO3166 string          `json:"iso_3166_1"`
-	ISO639  string          `json:"iso_639_1"`
-	Name    string          `json:"name"`
-	English string          `json:"english_name"`
-	Data    TranslationData `json:"data"`
-}
-
-// TranslationData holds the translated text fields. Episodes carry no tagline;
-// `name` is what TMDB fills for an episode title.
-type TranslationData struct {
-	Title    string `json:"title"`
-	Name     string `json:"name"`
-	Overview string `json:"overview"`
-	Tagline  string `json:"tagline"`
-}
-
 // --- Watch providers (v3) ---
-
-// WatchProvidersCatalogue is TMDB's watch-provider catalogue for one media
-// type (GET /watch/providers/{movie,tv}). Unlike the per-title watch/providers
-// payload, every entry carries its display priority in EVERY country TMDB
-// knows it in, which is what lets one request fill the country-filtered
-// /watchnow/sources catalogue.
-type WatchProvidersCatalogue struct {
-	Results []WatchProviderCatalogueEntry `json:"results"`
-}
-
-// WatchProviderCatalogueEntry is one provider in the catalogue. DisplayPriorities
-// is keyed by upper-case ISO 3166-1 country code.
-type WatchProviderCatalogueEntry struct {
-	DisplayPriorities map[string]int `json:"display_priorities"`
-	DisplayPriority   int            `json:"display_priority"`
-	LogoPath          string         `json:"logo_path"`
-	ProviderName      string         `json:"provider_name"`
-	ProviderID        int            `json:"provider_id"`
-}
 
 // WatchProvidersResponse is the TMDB v3 watch/providers response.
 type WatchProvidersResponse struct {
@@ -465,6 +446,25 @@ type Certification struct {
 	Order         int    `json:"order"`
 }
 
+// WatchProvidersCatalogue is TMDB's watch-provider catalogue for one media
+// type (GET /watch/providers/{movie,tv}). Unlike the per-title watch/providers
+// payload, every entry carries its display priority in EVERY country TMDB
+// knows it in, which is what lets one request fill the country-filtered
+// /watchnow/sources catalogue.
+type WatchProvidersCatalogue struct {
+	Results []WatchProviderCatalogueEntry `json:"results"`
+}
+
+// WatchProviderCatalogueEntry is one provider in the catalogue. DisplayPriorities
+// is keyed by upper-case ISO 3166-1 country code.
+type WatchProviderCatalogueEntry struct {
+	DisplayPriorities map[string]int `json:"display_priorities"`
+	DisplayPriority   int            `json:"display_priority"`
+	LogoPath          string         `json:"logo_path"`
+	ProviderName      string         `json:"provider_name"`
+	ProviderID        int            `json:"provider_id"`
+}
+
 // --- Appended sub-resources (append_to_response) ---
 
 // appendParams is the append_to_response list GetMovie/GetShow ask for. One
@@ -501,20 +501,17 @@ type Videos struct {
 }
 
 // Video is one trailer/teaser/clip.
-//
-// The extra fields are what the Trakt contract's video object requires: a size
-// (360/480/720/1080), a publish timestamp, and the language/country the video
-// was published for. They are part of the appended videos payload.
 type Video struct {
+	ID          string `json:"id"`
 	Key         string `json:"key"`
 	Site        string `json:"site"`
 	Type        string `json:"type"`
 	Name        string `json:"name"`
 	Official    bool   `json:"official"`
-	Size        int    `json:"size"`
-	PublishedAt string `json:"published_at"`
 	ISO639      string `json:"iso_639_1"`
 	ISO3166     string `json:"iso_3166_1"`
+	Size        int    `json:"size"`
+	PublishedAt string `json:"published_at"`
 }
 
 // TrailerURL returns a YouTube URL for the best trailer TMDB has, or "".

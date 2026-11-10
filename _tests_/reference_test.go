@@ -21,6 +21,8 @@ func TestReferenceRoutesRegistered(t *testing.T) {
 		"/v1/languages/{type}":      true,
 		"/v1/countries/{type}":      true,
 		"/v1/networks":              true,
+		"/v1/certifications/movies": true,
+		"/v1/certifications/shows":  true,
 		"/v1/certifications/{type}": true,
 	}
 
@@ -44,6 +46,8 @@ func TestReferenceRoutesHaveCorrectAuth(t *testing.T) {
 		"/v1/languages/{type}":      true,
 		"/v1/countries/{type}":      true,
 		"/v1/networks":              true,
+		"/v1/certifications/movies": true,
+		"/v1/certifications/shows":  true,
 		"/v1/certifications/{type}": true,
 	}
 

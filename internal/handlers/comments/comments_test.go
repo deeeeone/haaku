@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/haaku-tv/haaku/internal/database"
+	"github.com/haaku-tv/haaku/internal/response"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -15,7 +16,10 @@ import (
 // against the request body, so the write-to-context error envelope path is
 // exercised through a real Fiber context.
 func newCommentsApp() *fiber.App {
-	app := fiber.New()
+	// The server's envelope error handler: validateCommentBody writes its 400
+	// and returns response.ErrHandled, which the error handler treats as a
+	// no-op so the status already written survives.
+	app := fiber.New(fiber.Config{ErrorHandler: response.HandleError})
 	app.Post("/validated", func(c *fiber.Ctx) error {
 		return validateCommentBody(c, string(c.Body()))
 	})

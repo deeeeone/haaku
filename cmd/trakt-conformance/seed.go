@@ -32,16 +32,21 @@ type Fixtures struct {
 	MovieSlug string `json:"movie_slug"`
 	MovieTVDB int    `json:"movie_tvdb"`
 
-	ShowID     int64  `json:"show_id"`
-	ShowTMDB   int    `json:"show_tmdb"`
-	ShowIMDB   string `json:"show_imdb"`
-	ShowSlug   string `json:"show_slug"`
-	ShowTVDB   int    `json:"show_tvdb"`
-	SeasonID   int64  `json:"season_id"`
-	SeasonNum  int    `json:"season_number"`
-	EpisodeID  int64  `json:"episode_id"`
-	Episode2ID int64  `json:"episode2_id"`
-	EpisodeNum int    `json:"episode_number"`
+	ShowID    int64  `json:"show_id"`
+	ShowTMDB  int    `json:"show_tmdb"`
+	ShowIMDB  string `json:"show_imdb"`
+	ShowSlug  string `json:"show_slug"`
+	ShowTVDB  int    `json:"show_tvdb"`
+	SeasonID  int64  `json:"season_id"`
+	SeasonNum int    `json:"season_number"`
+	// Season2Num/Episode3Num address the second season's premiere. The report
+	// cases use them so a contract-path report does not collide with the report
+	// the flat /seasons/{id}/report case already wrote for season one.
+	Season2Num  int   `json:"season2_number"`
+	EpisodeID   int64 `json:"episode_id"`
+	Episode2ID  int64 `json:"episode2_id"`
+	EpisodeNum  int   `json:"episode_number"`
+	Episode3Num int   `json:"episode3_number"`
 
 	PersonID   int64  `json:"person_id"`
 	PersonTMDB int    `json:"person_tmdb"`
@@ -58,14 +63,20 @@ type Fixtures struct {
 	// than a vacuous empty array. CommentID itself stays reply-free so GET is
 	// not affected by reply state, and DeleteCommentID is a third row so the
 	// destructive DELETE case cannot consume the GET fixture.
-	ThreadCommentID int64  `json:"thread_comment_id"`
-	DeleteCommentID int64  `json:"delete_comment_id"`
-	NoteID          int64  `json:"note_id"`
-	DeleteNoteID    int64  `json:"delete_note_id"`
-	UserID          string `json:"user_id"`
-	Username        string `json:"username"`
-	Email           string `json:"email"`
-	Password        string `json:"password"`
+	ThreadCommentID int64 `json:"thread_comment_id"`
+	DeleteCommentID int64 `json:"delete_comment_id"`
+	// ReactionCommentID is a fourth row, so the reaction DELETE case (also a
+	// destructive call) cannot consume the row the comment DELETE case uses.
+	ReactionCommentID int64 `json:"reaction_comment_id"`
+	// LikeCommentID is a fifth row, consumed only by DELETE /comments/{id}/like,
+	// whose path does not match the /likes read fixture.
+	LikeCommentID int64  `json:"like_comment_id"`
+	NoteID        int64  `json:"note_id"`
+	DeleteNoteID  int64  `json:"delete_note_id"`
+	UserID        string `json:"user_id"`
+	Username      string `json:"username"`
+	Email         string `json:"email"`
+	Password      string `json:"password"`
 	// TargetUserID is a second account, mutually followed by the viewer so the
 	// follower/following/friends lists are non-empty. Follow/block cases use
 	// FollowUserID/BlockUserID instead, so their destructive calls cannot empty
@@ -74,6 +85,10 @@ type Fixtures struct {
 	TargetUsername string `json:"target_username"`
 	FollowUserID   string `json:"follow_user_id"`
 	BlockUserID    string `json:"block_user_id"`
+	// BlockedReadUserID exists only so GET /users/blocked has a row to return.
+	// It is deliberately a different account from BlockUserID, whose block the
+	// destructive block/unblock cases consume.
+	BlockedReadUserID string `json:"blocked_read_user_id"`
 
 	// OAuth application, seeded in the database. DeviceCode cannot be persisted
 	// by the seed: the device grant store is process-local, so the harness
@@ -364,6 +379,28 @@ func seedFixtures(db *gorm.DB, fx *Fixtures) error {
 		}
 	}
 
+	// A live scrobble session for the viewer, so the watching rows
+	// (/users/{id}/watching and the season/episode watching sub-resources) serve
+	// a real user object instead of an empty array that validates nothing. The
+	// predicate those handlers use is a live, non-expired session whose action is
+	// not pause/stop. The /users/{id}/watching case addresses the viewer
+	// (idValue returns fx.UserID for the users segment), so the session must be
+	// the viewer's. Re-seeding must not stack duplicates, so replace the user's
+	// sessions rather than create-if-absent.
+	if err := db.Where("user_id = ?", uid).Delete(&database.ScrobbleSession{}).Error; err != nil {
+		return fmt.Errorf("seed scrobble cleanup: %w", err)
+	}
+	episodeID := episodes[0].ID
+	seasonID := season.ID
+	liveSession := database.ScrobbleSession{
+		UserID: uid, MediaType: "episode", MediaID: episodeID,
+		SeasonID: &seasonID, EpisodeID: &episodeID, Action: "start", Progress: 12.5,
+		ExpiresAt: now.Add(4 * time.Hour), CreatedAt: now.Add(-time.Minute),
+	}
+	if err := db.Create(&liveSession).Error; err != nil {
+		return fmt.Errorf("seed scrobble session: %w", err)
+	}
+
 	// Comments carry no unique constraint to conflict on, so DoNothing silently
 	// appended a second row on every re-run and the fixture id moved. Read-or-create
 	// on the natural key instead.
@@ -407,6 +444,48 @@ func seedFixtures(db *gorm.DB, fx *Fixtures) error {
 		uid, "movie", movie2.ID); err != nil {
 		return fmt.Errorf("seed delete comment: %w", err)
 	}
+	// A fourth comment for the reaction DELETE case. That case and the comment
+	// DELETE are both destructive and both resolve their {id} from the seed;
+	// sharing one row meant whichever ran first consumed it and the other
+	// measured a 404 against an already-deleted comment, not a handler.
+	reactionComment := database.Comment{UserID: fx.TargetUserID, MediaType: "movie", MediaID: &movie.ID,
+		CommentType: "shout", Body: "A conformance comment the reaction delete consumes."}
+	if err := firstOrCreate(db, &reactionComment, "user_id = ? AND media_type = ? AND media_id = ?",
+		fx.TargetUserID, "movie", movie.ID); err != nil {
+		return fmt.Errorf("seed reaction comment: %w", err)
+	}
+	// DELETE /comments/{id}/like is destructive too. Its path does not contain
+	// "/likes", so it does not take the read fixture above; without its own row it
+	// fell through to the comment DELETE's row and answered 404 once that case had
+	// run, which looked like a handler defect and was not.
+	//
+	// It hangs off the show, not movie2: the edited-comment fixture below keys its
+	// own lookup on (user, movie, movie2) without the body, so a row sharing that
+	// triple would be found by that lookup and reused - the updates feed would
+	// silently lose its EditedAt row.
+	likeComment := database.Comment{UserID: fx.TargetUserID, MediaType: "show", MediaID: &show.ID,
+		CommentType: "shout", Body: "A conformance comment the like delete consumes."}
+	if err := firstOrCreate(db, &likeComment, "user_id = ? AND media_type = ? AND media_id = ? AND body = ?",
+		fx.TargetUserID, "show", show.ID, likeComment.Body); err != nil {
+		return fmt.Errorf("seed like comment: %w", err)
+	}
+	// A like for the delete case to remove, so it proves removal of an existing
+	// row rather than a no-op against a comment nobody liked.
+	like := database.CommentLike{CommentID: likeComment.ID, UserID: uid, CreatedAt: now}
+	if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&like).Error; err != nil {
+		return fmt.Errorf("seed comment like: %w", err)
+	}
+	// An edited comment inside the updates feed's window: /comments/updates
+	// returns the edited stream, so without an edit the assertion had nothing
+	// to validate (an empty array is not a pass).
+	editedAt := now.Add(-time.Hour)
+	editedComment := database.Comment{UserID: fx.TargetUserID, MediaType: "movie", MediaID: &movie2.ID,
+		CommentType: "shout", Body: "A conformance comment that was edited.",
+		EditedAt: &editedAt, UpdatedAt: editedAt}
+	if err := firstOrCreate(db, &editedComment, "user_id = ? AND media_type = ? AND media_id = ?",
+		fx.TargetUserID, "movie", movie2.ID); err != nil {
+		return fmt.Errorf("seed edited comment: %w", err)
+	}
 	for _, like := range []database.CommentLike{
 		{CommentID: thread.ID, UserID: uid, CreatedAt: now},
 		{CommentID: comment.ID, UserID: fx.TargetUserID, CreatedAt: now},
@@ -414,6 +493,13 @@ func seedFixtures(db *gorm.DB, fx *Fixtures) error {
 		if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&like).Error; err != nil {
 			return fmt.Errorf("seed comment like: %w", err)
 		}
+	}
+	// A stored reaction, so GET /comments/{id}/reactions/ has a real row to
+	// render instead of an empty array (which validates nothing).
+	reaction := database.CommentReaction{CommentID: comment.ID, UserID: fx.TargetUserID,
+		ReactionType: "like", CreatedAt: now}
+	if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&reaction).Error; err != nil {
+		return fmt.Errorf("seed comment reaction: %w", err)
 	}
 
 	list := database.List{UserID: uid, Name: "Conformance list", Slug: "conformance-list",
@@ -524,12 +610,70 @@ func seedFixtures(db *gorm.DB, fx *Fixtures) error {
 		}
 	}
 
+	// --- rows the profile list assertions need --------------------------------
+	//
+	// Five operations failed conformance with cause "empty" rather than a real
+	// field diff: the seed never created the rows their list assertions read, so
+	// an empty array validated against the schema and proved nothing (#123).
+	// These are real rows for real reads, like the fixtures above.
+	blockedRead := database.User{ID: "local_conformance_blocked_read",
+		Username: "conformance-blocked-read", Email: "conformance-blocked-read@example.test",
+		Name: "Conformance Blocked Read", Status: database.UserStatusActive, Plan: "free"}
+	if err := db.Clauses(clause.OnConflict{UpdateAll: true}).Create(&blockedRead).Error; err != nil {
+		return fmt.Errorf("seed blocked-read user: %w", err)
+	}
+	fx.BlockedReadUserID = blockedRead.ID
+	// The block the viewer owns, so GET /users/blocked is non-empty. BlockUserID
+	// is a different account because the block/unblock cases consume that one.
+	block := database.UserBlock{BlockerID: uid, BlockedID: blockedRead.ID, CreatedAt: now}
+	if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&block).Error; err != nil {
+		return fmt.Errorf("seed user block: %w", err)
+	}
+	// The viewer's own reaction, distinct from the target's seeded above: this is
+	// what GET /users/reactions/comments lists for the caller.
+	viewerReaction := database.CommentReaction{CommentID: comment.ID, UserID: uid,
+		ReactionType: "like", CreatedAt: now}
+	if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&viewerReaction).Error; err != nil {
+		return fmt.Errorf("seed viewer comment reaction: %w", err)
+	}
+	// One saved filter per section the handler accepts, so whichever section the
+	// generated case asks for there is a real row to assert on.
+	for _, section := range []string{"movies", "shows", "calendars", "search"} {
+		sf := database.SavedFilter{UserID: uid, Section: section, Name: "conformance-" + section,
+			Filter: database.JSONMap{"genres": "drama"}, CreatedAt: now}
+		if err := firstOrCreate(db, &sf, "user_id = ? AND section = ? AND name = ?",
+			uid, section, sf.Name); err != nil {
+			return fmt.Errorf("seed saved filter %s: %w", section, err)
+		}
+	}
+	// The ratings slice above holds no episode row, so /users/{id}/ratings/episodes
+	// had an empty list.
+	episodeRating := database.UserRating{UserID: uid, MediaType: "episode",
+		MediaID: episodes[0].ID, Rating: 8, RatedAt: now.Add(-30 * time.Hour)}
+	if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&episodeRating).Error; err != nil {
+		return fmt.Errorf("seed episode rating: %w", err)
+	}
+	// /users/{id}/{type}/activities reads history inside a window starting at the
+	// requested start_date, which the case sends as today, while every history row
+	// above sits in the past - so the feed was legitimately empty rather than
+	// wrong. One row watched today, for the viewer and for the followed target,
+	// gives both the own feed and the friends feed something real.
+	for _, actor := range []string{uid, fx.TargetUserID} {
+		h := database.UserHistory{UserID: actor, MediaType: "movie", MediaID: movie.ID,
+			WatchedAt: now, Source: "api"}
+		if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&h).Error; err != nil {
+			return fmt.Errorf("seed today history for %s: %w", actor, err)
+		}
+	}
+
 	fx.MovieID, fx.Movie2ID, fx.MovieTMDB = movie.ID, movie2.ID, movie.TmdbID
 	fx.MovieIMDB, fx.MovieSlug, fx.MovieTVDB = movie.ImdbID, movie.Slug, 1022
 	fx.ShowID, fx.ShowTMDB = show.ID, show.TmdbID
 	fx.ShowIMDB, fx.ShowSlug, fx.ShowTVDB = show.ImdbID, show.Slug, 81189
 	fx.SeasonID, fx.SeasonNum = season.ID, season.SeasonNumber
+	fx.Season2Num = season2.SeasonNumber
 	fx.EpisodeID, fx.Episode2ID, fx.EpisodeNum = episodes[0].ID, episodes[1].ID, episodes[0].EpisodeNumber
+	fx.Episode3Num = episode3.EpisodeNumber
 	fx.PersonID = person.ID
 	fx.PersonTMDB, fx.PersonIMDB = person.TmdbID, person.ImdbID
 	fx.PersonSlug = "bryan-cranston"
@@ -539,6 +683,8 @@ func seedFixtures(db *gorm.DB, fx *Fixtures) error {
 	fx.CommentID = comment.ID
 	fx.ThreadCommentID = thread.ID
 	fx.DeleteCommentID = deleteComment.ID
+	fx.ReactionCommentID = reactionComment.ID
+	fx.LikeCommentID = likeComment.ID
 	fx.NoteID = note.ID
 	fx.DeleteNoteID = deleteNote.ID
 	return nil

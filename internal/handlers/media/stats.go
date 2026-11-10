@@ -34,10 +34,9 @@ func queryMovieStats(db *gorm.DB, movieID int64) (*StatsResponse, error) {
 		Count(&stats.Comments).Error; err != nil {
 		return nil, fmt.Errorf("count comments: %w", err)
 	}
-	if err := db.Model(&database.ListItem{}).
-		Where("media_type = ? AND media_id = ?", "movie", movieID).
-		Distinct("list_id").Count(&stats.Lists).Error; err != nil {
-		return nil, fmt.Errorf("count lists: %w", err)
+	var listsErr error
+	if stats.Lists, listsErr = countVisibleListItems(db, "movie", movieID); listsErr != nil {
+		return nil, fmt.Errorf("count lists: %w", listsErr)
 	}
 	if err := db.Model(&database.UserRating{}).
 		Where("media_type = ? AND media_id = ?", "movie", movieID).
@@ -49,9 +48,12 @@ func queryMovieStats(db *gorm.DB, movieID int64) (*StatsResponse, error) {
 		Distinct("user_id").Count(&stats.Favorited).Error; err != nil {
 		return nil, fmt.Errorf("count favorited: %w", err)
 	}
-	// Trakt renamed "recommendations" to favorites, so its recommended count
-	// is the favorites count.
-	stats.Recommended = stats.Favorited
+	// Recommended counts users who recommended the item to another user. We do
+	// not store that action (there is no recommendations table), so the field is
+	// null - a fabricated 0 would be indistinguishable from "nobody recommended
+	// it" and would be shown to clients as a real count. (main's #126 review
+	// decided this; the PR's "favorites renamed" claim is not in the contract.)
+	stats.Recommended = nil
 
 	return stats, nil
 }
@@ -95,10 +97,9 @@ func queryShowStats(db *gorm.DB, showID int64) (*StatsResponse, error) {
 		Count(&stats.Comments).Error; err != nil {
 		return nil, fmt.Errorf("count comments: %w", err)
 	}
-	if err := db.Model(&database.ListItem{}).
-		Where("media_type = ? AND media_id = ?", "show", showID).
-		Distinct("list_id").Count(&stats.Lists).Error; err != nil {
-		return nil, fmt.Errorf("count lists: %w", err)
+	var showListsErr error
+	if stats.Lists, showListsErr = countVisibleListItems(db, "show", showID); showListsErr != nil {
+		return nil, fmt.Errorf("count lists: %w", showListsErr)
 	}
 	if err := db.Model(&database.UserRating{}).
 		Where("media_type = ? AND media_id = ?", "show", showID).
@@ -110,9 +111,12 @@ func queryShowStats(db *gorm.DB, showID int64) (*StatsResponse, error) {
 		Distinct("user_id").Count(&stats.Favorited).Error; err != nil {
 		return nil, fmt.Errorf("count favorited: %w", err)
 	}
-	// Trakt renamed "recommendations" to favorites, so its recommended count
-	// is the favorites count.
-	stats.Recommended = stats.Favorited
+	// Recommended counts users who recommended the item to another user. We do
+	// not store that action (there is no recommendations table), so the field is
+	// null - a fabricated 0 would be indistinguishable from "nobody recommended
+	// it" and would be shown to clients as a real count. (main's #126 review
+	// decided this; the PR's "favorites renamed" claim is not in the contract.)
+	stats.Recommended = nil
 
 	return stats, nil
 }
@@ -139,4 +143,20 @@ func queryRatingDistribution(db *gorm.DB, mediaType string, mediaID int64) (map[
 		}
 	}
 	return distribution, nil
+}
+
+// countVisibleListItems counts the lists that contain the item and that any
+// reader may open. A private list is visible only to its owner, so counting its
+// items would leak to every reader of /stats that a private list holds this
+// item. list_items carries no user column, so the privacy gate has to come from
+// the owning list: join and keep only public/link_only. Columns are qualified
+// because both tables have an `id` (and lists also has `user_id`).
+func countVisibleListItems(db *gorm.DB, mediaType string, mediaID int64) (int64, error) {
+	var n int64
+	err := db.Model(&database.ListItem{}).
+		Joins("JOIN lists ON lists.id = list_items.list_id").
+		Where("list_items.media_type = ? AND list_items.media_id = ?", mediaType, mediaID).
+		Where("lists.privacy IN ?", []string{"public", "link_only"}).
+		Count(&n).Error
+	return n, err
 }

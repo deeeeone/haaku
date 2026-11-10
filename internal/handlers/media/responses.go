@@ -168,7 +168,7 @@ type StatsResponse struct {
 	Lists             int64  `json:"lists"`
 	Votes             int64  `json:"votes"`
 	Favorited         int64  `json:"favorited"`
-	Recommended       int64  `json:"recommended"`
+	Recommended       *int64 `json:"recommended"`
 }
 
 // WatchingResponse is a stub — returns empty array for now.

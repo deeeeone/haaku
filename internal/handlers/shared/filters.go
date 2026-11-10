@@ -15,8 +15,27 @@ import (
 
 // Catalogue filters are the Trakt query parameters that narrow a catalogue read
 // by properties of the media item. This file is the single applier: parse the
-// declared parameters, reject the ones this store cannot honour with a 400 that
-// names what is served, and turn the rest into SQL predicates.
+// declared parameters, turn the ones this store can evaluate into SQL
+// predicates, and ignore — do not refuse — the ones it cannot.
+//
+// THE RULE, because this file got it wrong once and refused every whole
+// request that carried a documented parameter:
+//
+//  1. A malformed value of a filter we DO support (years=99999999, ratings=abc,
+//     a bogus sort_by) is a 400 naming the accepted values. The client asked for
+//     something impossible and we can say exactly what.
+//  2. A parameter the contract documents but this store (or this collection)
+//     has no column to narrow by — watchnow, countries, subgenres, parental_*,
+//     runtimes on a show collection — is IGNORED. The response is the unfiltered
+//     superset and the request succeeds. Refusing it answered 400 and returned
+//     nothing at all, which is strictly worse than the superset it replaced: the
+//     client was doing nothing wrong.
+//
+// The ignored names are exposed on the filter (IgnoredParams) and echoed in the
+// X-Haaku-Ignored-Filters response header. The matching docs/parity row MUST be
+// graded `divergent` with a compat note naming them. Ignoring the filter while
+// grading the row `implemented` is the lie this project forbids; ignoring it and
+// grading it `divergent` is the honest pair.
 //
 // Every predicate is an EXISTS over the media table (or an expression on the
 // row's own columns). None of them adds a JOIN to the outer query, so a media
@@ -43,13 +62,18 @@ var catalogueParams = []string{
 }
 
 // uncomputableParams are declared by the contract but have no stored column we
-// could narrow by. Naming them explicitly means a client gets a 400 that says
-// so, instead of a 200 containing everything it asked to exclude.
+// could narrow by. They are recorded as ignored so the caller can surface the
+// divergence; they never fail the request (see the rule at the top of this
+// file).
 var uncomputableParams = []string{
 	"watchnow", "subgenres", "countries",
 	"parental_nudity", "parental_violence", "parental_profanity",
 	"parental_alcohol", "parental_frightening", "parental_include_unrated",
 }
+
+// IgnoredFiltersHeader names the request filters that were accepted but not
+// applied, comma-separated, so a client debugging a superset can see why.
+const IgnoredFiltersHeader = "X-Haaku-Ignored-Filters"
 
 // CatalogueFilter is the parsed, validated form of a request's catalogue
 // filters. A nil *CatalogueFilter means "no filters supplied".
@@ -60,6 +84,20 @@ type CatalogueFilter struct {
 	runtimes       []span
 	statuses       []string
 	certifications []string
+	// ignored holds documented parameters that were supplied but not applied:
+	// no stored column, or no column on this collection. They make the response
+	// a superset, which is what the parity row must admit.
+	ignored []string
+}
+
+// IgnoredParams returns the documented filter names this request supplied that
+// the store could not evaluate. It is nil-safe so a handler can call it on the
+// nil filter ParseCatalogueFilter returns when nothing was supplied.
+func (f *CatalogueFilter) IgnoredParams() []string {
+	if f == nil {
+		return nil
+	}
+	return append([]string(nil), f.ignored...)
 }
 
 // span is an inclusive numeric range; lo == hi for a single value.
@@ -72,36 +110,35 @@ func (f *CatalogueFilter) HasAny() bool {
 }
 
 // ParseCatalogueFilter reads the contract's catalogue parameters. allowed names
-// the filters this particular collection can evaluate; a declared filter
-// outside that set, or one the store has no column for at all, writes a 400
-// naming what is served and returns ok=false so the caller stops with
-// `if !ok { return nil }` instead of running an unfiltered query.
+// the filters this particular collection can evaluate. A documented parameter
+// outside that set, or one the store has no column for at all, is recorded as
+// ignored and the request continues — never a 400 (rule 2 at the top of this
+// file). Only a malformed value of an allowed filter writes a 400 naming the
+// accepted values, and returns ok=false so the caller stops with
+// `if !ok { return nil }` instead of running a query on unparsed input.
 func ParseCatalogueFilter(c *fiber.Ctx, allowed ...string) (*CatalogueFilter, bool) {
 	allowedSet := make(map[string]bool, len(allowed))
 	for _, a := range allowed {
 		allowedSet[a] = true
 	}
 
+	f := &CatalogueFilter{}
 	for _, name := range uncomputableParams {
 		if strings.TrimSpace(c.Query(name)) != "" {
-			reject(c, fmt.Sprintf(
-				"filter %s is not supported: this store has no column to narrow by; supported catalogue filters: %s",
-				name, strings.Join(sortedStrings(allowed), ", ")))
-			return nil, false
+			f.ignored = append(f.ignored, name)
 		}
 	}
 
-	f := &CatalogueFilter{}
 	for _, name := range catalogueParams {
 		raw := strings.TrimSpace(c.Query(name))
 		if raw == "" {
 			continue
 		}
 		if !allowedSet[name] {
-			reject(c, fmt.Sprintf(
-				"filter %s is not supported on this collection; supported catalogue filters: %s",
-				name, strings.Join(sortedStrings(allowed), ", ")))
-			return nil, false
+			// Supported in general, no column on this collection: the same
+			// superset case as an unstored parameter.
+			f.ignored = append(f.ignored, name)
+			continue
 		}
 		switch name {
 		case FilterGenres:
@@ -130,7 +167,11 @@ func ParseCatalogueFilter(c *fiber.Ctx, allowed ...string) (*CatalogueFilter, bo
 			}
 		}
 	}
-	if !f.HasAny() {
+	if len(f.ignored) > 0 {
+		sort.Strings(f.ignored)
+		c.Set(IgnoredFiltersHeader, strings.Join(f.ignored, ","))
+	}
+	if !f.HasAny() && len(f.ignored) == 0 {
 		return nil, true
 	}
 	return f, true
@@ -522,14 +563,10 @@ func validateYearSpans(spans []span) error {
 	return nil
 }
 
-func sortedStrings(in []string) []string {
-	out := append([]string(nil), in...)
-	sort.Strings(out)
-	return out
-}
-
 // reject writes the 400 envelope. The caller returns ok=false so the handler
-// stops carrying on with an unfiltered query.
+// stops carrying on with an unfiltered query. Only a malformed value of a
+// filter we support reaches here; an unstored-but-documented parameter is
+// ignored instead (see the rule at the top of this file).
 func reject(c *fiber.Ctx, message string) {
 	_ = response.BadRequest(c, message)
 }
