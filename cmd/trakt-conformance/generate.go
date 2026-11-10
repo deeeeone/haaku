@@ -324,6 +324,9 @@ func idValue(method, path string, fx Fixtures) string {
 			if strings.Contains(path, "/reactions/") {
 				return fmt.Sprintf("%d", fx.ReactionCommentID)
 			}
+			if strings.HasSuffix(path, "/like") {
+				return fmt.Sprintf("%d", fx.LikeCommentID)
+			}
 			return fmt.Sprintf("%d", fx.DeleteCommentID)
 		}
 		return fmt.Sprintf("%d", fx.CommentID)
