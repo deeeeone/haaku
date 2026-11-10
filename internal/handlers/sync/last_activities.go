@@ -345,7 +345,10 @@ func movieOrNil(a *MovieActivities) *MovieActivities {
 }
 
 func episodeOrNil(a *EpisodeActivities) *EpisodeActivities {
-	if !anySet(a.WatchedAt, a.RatedAt, a.CommentedAt, a.PausedAt) {
+	// CollectedAt belongs here: episode collection writes create collection rows
+	// with no history or rating, and without it the whole episodes section was
+	// reported as null even though the account had collected episodes.
+	if !anySet(a.WatchedAt, a.CollectedAt, a.RatedAt, a.CommentedAt, a.PausedAt) {
 		return nil
 	}
 	return a
@@ -404,7 +407,7 @@ func allStamps(r *LastActivitiesResponse) []*string {
 			r.Movies.FavoritedAt, r.Movies.CommentedAt, r.Movies.PausedAt, r.Movies.HiddenAt)
 	}
 	if r.Episodes != nil {
-		add(r.Episodes.WatchedAt, r.Episodes.RatedAt, r.Episodes.CommentedAt, r.Episodes.PausedAt)
+		add(r.Episodes.WatchedAt, r.Episodes.CollectedAt, r.Episodes.RatedAt, r.Episodes.CommentedAt, r.Episodes.PausedAt)
 	}
 	if r.Shows != nil {
 		add(r.Shows.RatedAt, r.Shows.WatchlistedAt, r.Shows.FavoritedAt, r.Shows.CommentedAt, r.Shows.HiddenAt)

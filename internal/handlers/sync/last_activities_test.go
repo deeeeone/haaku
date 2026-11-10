@@ -318,3 +318,33 @@ func TestLastActivitiesScopesToCaller(t *testing.T) {
 		t.Errorf("all must be null for a caller with no rows, got %s", *got.All)
 	}
 }
+
+// TestLastActivitiesEpisodeCollectionWithoutHistory is the case the episode
+// collection writes create: a collection row with no episode history or rating.
+// episodeOrNil used to ignore CollectedAt and report the whole section as null.
+func TestLastActivitiesEpisodeCollectionWithoutHistory(t *testing.T) {
+	db := setupLastActivitiesDB(t)
+	u := lastActivitiesTestUser
+	at := time.Date(2026, 2, 1, 10, 0, 0, 0, time.UTC)
+	if err := db.Create(&database.UserCollection{
+		UserID: u, MediaType: "episode", MediaID: 7, CollectedAt: at, CreatedAt: at,
+	}).Error; err != nil {
+		t.Fatal(err)
+	}
+
+	app := newLastActivitiesApp(u)
+	status, raw := doGET(t, app, "/v1/sync/last_activities")
+	if status != http.StatusOK {
+		t.Fatalf("expected 200, got %d (%s)", status, raw)
+	}
+	var got LastActivitiesResponse
+	if err := json.Unmarshal(raw, &got); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if got.Episodes == nil {
+		t.Fatalf("episodes = null, want the collected episode represented: %s", raw)
+	}
+	if got.Episodes.CollectedAt == nil {
+		t.Errorf("episodes.collected_at = null, want the collection timestamp")
+	}
+}

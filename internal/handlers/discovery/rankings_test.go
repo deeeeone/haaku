@@ -527,3 +527,54 @@ func TestMediaTrendingAndPopularMergeTypes(t *testing.T) {
 		t.Errorf("Show One watchers = %v, want 2", trending[1]["watchers"])
 	}
 }
+
+// TestMediaTrendingRanksByActivityWithinTheWindow pins the distinct semantics of
+// the two feeds (issue #66): /media/trending ranks by activity in the prior 24
+// hours and /media/popular ranks by lifetime popularity, so a low-popularity
+// title watched in the window leads trending while a high-popularity title with
+// only out-of-window plays does not.
+func TestMediaTrendingRanksByActivityWithinTheWindow(t *testing.T) {
+	db := setupRankingsDB(t)
+	popularOnly := seedMovie(t, db, 901, "Popular Only", 100) // high popularity, no recent play
+	fresh := seedMovie(t, db, 902, "Fresh", 10)               // low popularity, two in-window plays
+
+	addHistory(t, db, "u1", "movie", fresh.ID, hoursAgo(1))
+	addHistory(t, db, "u2", "movie", fresh.ID, hoursAgo(1))
+	// 48h ago: outside the 24h window, so it must not lift Popular Only.
+	addHistory(t, db, "u3", "movie", popularOnly.ID, hoursAgo(48))
+
+	app := rankingsApp()
+
+	var popular []map[string]any
+	resp := getRankings(t, app, "/v1/media/popular?limit=2")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("popular status = %d, want 200", resp.StatusCode)
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&popular); err != nil {
+		t.Fatalf("decode popular: %v", err)
+	}
+	_ = resp.Body.Close()
+	if popular[0]["title"] != "Popular Only" {
+		t.Errorf("popular[0] = %v, want the lifetime-popularity winner", popular[0]["title"])
+	}
+
+	var trending []map[string]any
+	resp = getRankings(t, app, "/v1/media/trending?limit=2")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("trending status = %d, want 200", resp.StatusCode)
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&trending); err != nil {
+		t.Fatalf("decode trending: %v", err)
+	}
+	_ = resp.Body.Close()
+	if len(trending) != 2 || trending[0]["movie"] == nil {
+		t.Fatalf("trending = %+v, want two movie items", trending)
+	}
+	title := trending[0]["movie"].(map[string]any)["title"]
+	if title != "Fresh" {
+		t.Errorf("trending[0] = %v, want Fresh (the in-window play must lead); the out-of-window play must not count", title)
+	}
+	if w, _ := trending[0]["watchers"].(float64); w != 2 {
+		t.Errorf("trending[0] watchers = %v, want 2", trending[0]["watchers"])
+	}
+}

@@ -104,12 +104,51 @@ func serveMediaList(c *fiber.Ctx, kind string) error {
 	if take > total {
 		take = total
 	}
-	// A merge's first N entries cannot need more than N from either side.
-	items, err := mergedMedia(db, int(take))
+	// "popular" ranks by lifetime popularity. "trending" ranks by activity in the
+	// prior 24 hours with popularity as the tie-break, so the two endpoints are
+	// genuinely different lists (issue #66). Trending has to consider the whole
+	// candidate set: a title with a low popularity score can still be the most
+	// watched in the window, and taking only the top-N by popularity would hide it.
+	candidates := take
+	if kind == "trending" {
+		candidates = total
+	}
+	items, err := mergedMedia(db, int(candidates))
 	if err != nil {
 		return response.InternalError(c, "database query error")
 	}
+
+	watchers := map[int64]int64{}
+	if kind == "trending" {
+		allMovieIDs := make([]int64, 0, len(items))
+		allShowIDs := make([]int64, 0, len(items))
+		for _, item := range items {
+			if item.kind == "movie" {
+				allMovieIDs = append(allMovieIDs, item.id)
+			} else {
+				allShowIDs = append(allShowIDs, item.id)
+			}
+		}
+		watchers, err = recentWatchers(db, rankingsNow().Add(-24*time.Hour), allMovieIDs, allShowIDs)
+		if err != nil {
+			return response.InternalError(c, "database query error")
+		}
+	}
+
 	sort.SliceStable(items, func(i, j int) bool {
+		if kind == "trending" {
+			wi := watchers[items[i].id]
+			if items[i].kind == "show" {
+				wi = watchers[-items[i].id]
+			}
+			wj := watchers[items[j].id]
+			if items[j].kind == "show" {
+				wj = watchers[-items[j].id]
+			}
+			if wi != wj {
+				return wi > wj
+			}
+		}
 		if items[i].popularity != items[j].popularity {
 			return items[i].popularity > items[j].popularity
 		}
@@ -137,14 +176,6 @@ func serveMediaList(c *fiber.Ctx, kind string) error {
 	}
 	movies := loadMovieMap(db, movieIDs)
 	shows := loadShowMap(db, showIDs)
-
-	watchers := map[int64]int64{}
-	if kind == "trending" {
-		watchers, err = recentWatchers(db, rankingsNow().Add(-24*time.Hour), movieIDs, showIDs)
-		if err != nil {
-			return response.InternalError(c, "database query error")
-		}
-	}
 
 	out := make([]map[string]any, 0, len(window))
 	for _, item := range window {
