@@ -458,11 +458,22 @@ func seedFixtures(db *gorm.DB, fx *Fixtures) error {
 	// "/likes", so it does not take the read fixture above; without its own row it
 	// fell through to the comment DELETE's row and answered 404 once that case had
 	// run, which looked like a handler defect and was not.
-	likeComment := database.Comment{UserID: fx.TargetUserID, MediaType: "movie", MediaID: &movie2.ID,
+	//
+	// It hangs off the show, not movie2: the edited-comment fixture below keys its
+	// own lookup on (user, movie, movie2) without the body, so a row sharing that
+	// triple would be found by that lookup and reused - the updates feed would
+	// silently lose its EditedAt row.
+	likeComment := database.Comment{UserID: fx.TargetUserID, MediaType: "show", MediaID: &show.ID,
 		CommentType: "shout", Body: "A conformance comment the like delete consumes."}
 	if err := firstOrCreate(db, &likeComment, "user_id = ? AND media_type = ? AND media_id = ? AND body = ?",
-		fx.TargetUserID, "movie", movie2.ID, likeComment.Body); err != nil {
+		fx.TargetUserID, "show", show.ID, likeComment.Body); err != nil {
 		return fmt.Errorf("seed like comment: %w", err)
+	}
+	// A like for the delete case to remove, so it proves removal of an existing
+	// row rather than a no-op against a comment nobody liked.
+	like := database.CommentLike{CommentID: likeComment.ID, UserID: uid, CreatedAt: now}
+	if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&like).Error; err != nil {
+		return fmt.Errorf("seed comment like: %w", err)
 	}
 	// An edited comment inside the updates feed's window: /comments/updates
 	// returns the edited stream, so without an edit the assertion had nothing
