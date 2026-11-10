@@ -21,10 +21,10 @@ func setupProviderTestDB(t *testing.T) *gorm.DB {
 	if err != nil {
 		t.Fatalf("open test DB: %v", err)
 	}
-	if err := db.AutoMigrate(
-		&database.Movie{}, &database.Show{}, &database.Season{},
-		&database.Episode{}, &database.ExternalID{},
-	); err != nil {
+	// MediaModels() is the canonical media schema; the hand-rolled list here
+	// went stale the moment ingest started writing movie_releases and
+	// media_metadata, and every provider test then failed on a missing table.
+	if err := db.AutoMigrate(database.MediaModels()...); err != nil {
 		t.Fatalf("migrate test DB: %v", err)
 	}
 	return db
