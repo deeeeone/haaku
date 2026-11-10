@@ -714,8 +714,9 @@ sections:
         compat: "the web client reads this path for its own shape; a contract client should read the shape served by the comments contract routes. Fixing this read is tracked separately."
       - trakt: "GET /comments/{id}/item"
         ours: "GET /v1/comments/{id}/item"
-        status: implemented
-        rationale: "Served at GET /v1/comments/{id}/item; the path shape matches the contract."
+        status: divergent
+        rationale: 'Returns the comment target, but in our own envelope rather than the contract item shape: make conformance reports "$: matches none of the oneOf alternatives", with title and ids missing from the movie/show object.'
+        compat: 'the web client reads our envelope; a contract client expects the media object shape the other comment routes emit.'
       - trakt: "GET /comments/{id}/likes"
         ours: "GET /v1/comments/{id}/likes"
         status: divergent

@@ -11,7 +11,7 @@ path (modulo our `/v1` prefix), with a real 2xx — except the recommendation/re
 engine, which stays an honest `501 not_implemented` and graded `blocked-engine` by
 the owner's carve-out. Done is `go run ./cmd/parity`, not a PR count.
 
-Contract operations: **336**. Not yet served (**in scope**): **95**. Out by owner decision: **36**. Served today: **205**.
+Contract operations: **336**. Not yet served (**in scope**): **96**. Out by owner decision: **36**. Served today: **204**.
 
 ## Out of scope (owner decisions, re-affirmed)
 
@@ -76,6 +76,7 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /calendars/{target}/streaming/{start_date}/{days}` | blocked-data | calendars and Watch Now data | #69 |
 | `GET /comments/trending/{comment_type}/{type}` | divergent | comment moderation, reactions and the note item read | #107 |
 | `GET /comments/{id}` | divergent | comment moderation, reactions and the note item read | #107 |
+| `GET /comments/{id}/item` | divergent | comment moderation, reactions and the note item read | #107 |
 | `GET /comments/{id}/likes` | divergent | comment moderation, reactions and the note item read | #107 |
 | `GET /comments/{id}/replies` | divergent | comment moderation, reactions and the note item read | #107 |
 | `GET /lists/{id}/comments/{sort}` | divergent | list management — writes, items, smart lists | #105 |
@@ -183,7 +184,6 @@ re-audit. They are declined for a stated reason, never to make a number look goo
 | `GET /certifications/{type}` | `GET /v1/certifications/{type}` |
 | `GET /comments/recent/{comment_type}/{type}` | `GET /v1/comments/recent/{comment_type}/{type}` |
 | `GET /comments/updates/{comment_type}/{type}` | `GET /v1/comments/updates/{comment_type}/{type}` |
-| `GET /comments/{id}/item` | `GET /v1/comments/{id}/item` |
 | `GET /comments/{id}/reactions/` | `GET /v1/comments/{id}/reactions` |
 | `GET /comments/{id}/reactions/summary` | `GET /v1/comments/{id}/reactions/summary` |
 | `GET /countries/{type}` | `GET /v1/countries/{type}` |
