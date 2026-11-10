@@ -67,13 +67,16 @@ type Fixtures struct {
 	DeleteCommentID int64 `json:"delete_comment_id"`
 	// ReactionCommentID is a fourth row, so the reaction DELETE case (also a
 	// destructive call) cannot consume the row the comment DELETE case uses.
-	ReactionCommentID int64  `json:"reaction_comment_id"`
-	NoteID            int64  `json:"note_id"`
-	DeleteNoteID      int64  `json:"delete_note_id"`
-	UserID            string `json:"user_id"`
-	Username          string `json:"username"`
-	Email             string `json:"email"`
-	Password          string `json:"password"`
+	ReactionCommentID int64 `json:"reaction_comment_id"`
+	// LikeCommentID is a fifth row, consumed only by DELETE /comments/{id}/like,
+	// whose path does not match the /likes read fixture.
+	LikeCommentID int64  `json:"like_comment_id"`
+	NoteID        int64  `json:"note_id"`
+	DeleteNoteID  int64  `json:"delete_note_id"`
+	UserID        string `json:"user_id"`
+	Username      string `json:"username"`
+	Email         string `json:"email"`
+	Password      string `json:"password"`
 	// TargetUserID is a second account, mutually followed by the viewer so the
 	// follower/following/friends lists are non-empty. Follow/block cases use
 	// FollowUserID/BlockUserID instead, so their destructive calls cannot empty
@@ -451,6 +454,16 @@ func seedFixtures(db *gorm.DB, fx *Fixtures) error {
 		fx.TargetUserID, "movie", movie.ID); err != nil {
 		return fmt.Errorf("seed reaction comment: %w", err)
 	}
+	// DELETE /comments/{id}/like is destructive too. Its path does not contain
+	// "/likes", so it does not take the read fixture above; without its own row it
+	// fell through to the comment DELETE's row and answered 404 once that case had
+	// run, which looked like a handler defect and was not.
+	likeComment := database.Comment{UserID: fx.TargetUserID, MediaType: "movie", MediaID: &movie2.ID,
+		CommentType: "shout", Body: "A conformance comment the like delete consumes."}
+	if err := firstOrCreate(db, &likeComment, "user_id = ? AND media_type = ? AND media_id = ? AND body = ?",
+		fx.TargetUserID, "movie", movie2.ID, likeComment.Body); err != nil {
+		return fmt.Errorf("seed like comment: %w", err)
+	}
 	// An edited comment inside the updates feed's window: /comments/updates
 	// returns the edited stream, so without an edit the assertion had nothing
 	// to validate (an empty array is not a pass).
@@ -605,10 +618,12 @@ func seedFixtures(db *gorm.DB, fx *Fixtures) error {
 	if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&block).Error; err != nil {
 		return fmt.Errorf("seed user block: %w", err)
 	}
-	reaction := database.CommentReaction{CommentID: comment.ID, UserID: uid,
+	// The viewer's own reaction, distinct from the target's seeded above: this is
+	// what GET /users/reactions/comments lists for the caller.
+	viewerReaction := database.CommentReaction{CommentID: comment.ID, UserID: uid,
 		ReactionType: "like", CreatedAt: now}
-	if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&reaction).Error; err != nil {
-		return fmt.Errorf("seed comment reaction: %w", err)
+	if err := db.Clauses(clause.OnConflict{DoNothing: true}).Create(&viewerReaction).Error; err != nil {
+		return fmt.Errorf("seed viewer comment reaction: %w", err)
 	}
 	// One saved filter per section the handler accepts, so whichever section the
 	// generated case asks for there is a real row to assert on.
@@ -658,6 +673,7 @@ func seedFixtures(db *gorm.DB, fx *Fixtures) error {
 	fx.ThreadCommentID = thread.ID
 	fx.DeleteCommentID = deleteComment.ID
 	fx.ReactionCommentID = reactionComment.ID
+	fx.LikeCommentID = likeComment.ID
 	fx.NoteID = note.ID
 	fx.DeleteNoteID = deleteNote.ID
 	return nil

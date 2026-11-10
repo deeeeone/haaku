@@ -307,8 +307,12 @@ func contractComment(db *gorm.DB, cm *database.Comment) (map[string]any, bool) {
 	}
 	review := cm.CommentType == "review"
 	return map[string]any{
-		"id":         cm.ID,
-		"parent_id":  cm.ParentID,
+		"id": cm.ID,
+		// The contract types parent_id as a required integer with no null, so a
+		// top-level comment carries the sentinel contractshape.ParentID defines.
+		// This is the users-package copy of the comment shape; the comments
+		// package has its own and both must agree.
+		"parent_id":  contractshape.ParentID(cm.ParentID),
 		"created_at": contractshape.Timestamp(cm.CreatedAt),
 		"updated_at": contractshape.Timestamp(cm.UpdatedAt),
 		"comment":    cm.Body,
