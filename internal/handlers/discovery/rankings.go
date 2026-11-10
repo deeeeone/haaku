@@ -26,6 +26,7 @@ package discovery
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -681,7 +682,16 @@ func addHotActivity(db *gorm.DB, scores map[int64]*hotCounts, table, selectClaus
 		MediaID int64
 		N       int64
 	}
-	if err := query.Where(where, start).Group("media_id").Scan(&rows).Error; err != nil {
+	// Group by the SELECT expression, not its alias. When a join rolls a child
+	// row up to its parent (e.show_id AS media_id), the input relation also has
+	// a media_id column, and PostgreSQL resolves GROUP BY media_id to that input
+	// column — so e.show_id is left ungrouped and PG rejects the query (42803).
+	// SQLite is lenient, which is why this only showed up on the DB suite.
+	groupExpr := "media_id"
+	if i := strings.Index(selectClause, " AS media_id"); i >= 0 {
+		groupExpr = selectClause[:i]
+	}
+	if err := query.Where(where, start).Group(groupExpr).Scan(&rows).Error; err != nil {
 		return err
 	}
 	for _, row := range rows {
